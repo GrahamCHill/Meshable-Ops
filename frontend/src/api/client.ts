@@ -1,0 +1,110 @@
+import axios from 'axios'
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL ?? '/api',
+  headers: { 'Content-Type': 'application/json' },
+})
+
+// Inject JWT on every request
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
+// Auto-logout on 401
+api.interceptors.response.use(
+  res => res,
+  err => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('token')
+      window.location.href = '/login'
+    }
+    return Promise.reject(err)
+  }
+)
+
+export default api
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export interface AuthResponse {
+  token: string
+  id: string
+  email: string
+  username: string
+  role: string
+}
+
+export interface Item {
+  id: string
+  title: string
+  description?: string
+  tags?: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PageResponse<T> {
+  content: T[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
+export interface Event {
+  id: string
+  type: string
+  payload: Record<string, unknown>
+  createdAt: string
+}
+
+export interface VectorSearchResult {
+  pointId: string
+  score: number
+  payload: Record<string, string>
+}
+
+export interface HealthStatus {
+  timestamp: string
+  postgres: string
+  mongodb: string
+  qdrant: string
+}
+
+// ─── API calls ───────────────────────────────────────────────────────────────
+
+export const authApi = {
+  register: (data: { email: string; username: string; password: string }) =>
+    api.post<AuthResponse>('/auth/register', data).then(r => r.data),
+  login: (data: { email: string; password: string }) =>
+    api.post<AuthResponse>('/auth/login', data).then(r => r.data),
+}
+
+export const itemsApi = {
+  list: (page = 0, size = 20) =>
+    api.get<PageResponse<Item>>('/items', { params: { page, size } }).then(r => r.data),
+  create: (data: { title: string; description?: string; tags?: string[] }) =>
+    api.post<Item>('/items', data).then(r => r.data),
+  update: (id: string, data: { title: string; description?: string; tags?: string[] }) =>
+    api.put<Item>(`/items/${id}`, data).then(r => r.data),
+  delete: (id: string) =>
+    api.delete(`/items/${id}`),
+  reindex: () =>
+    api.post<{ message: string }>('/items/reindex').then(r => r.data),
+}
+
+export const eventsApi = {
+  list: (page = 0, size = 20) =>
+    api.get<PageResponse<Event>>('/events', { params: { page, size } }).then(r => r.data),
+}
+
+export const searchApi = {
+  search: (query: string, limit = 10) =>
+    api.post<VectorSearchResult[]>('/search', { query, limit }).then(r => r.data),
+}
+
+export const healthApi = {
+  check: () => api.get<HealthStatus>('/health').then(r => r.data),
+}
