@@ -2,11 +2,14 @@ import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { itemsApi, searchApi, type VectorSearchResult } from '../../api/client'
 import { Button, Card, Spinner } from '../ui'
+import { useAuthStore } from '../../hooks/useAuthStore'
 import { RefreshCcw, Search, Zap } from 'lucide-react'
 
 export function SearchPage() {
   const [query, setQuery] = useState('')
   const [limit, setLimit] = useState(10)
+  const { user } = useAuthStore()
+  const canReindex = user?.role === 'ADMIN'
 
   const search = useMutation({
     mutationFn: (q: string) => searchApi.search(q, limit),
@@ -42,12 +45,16 @@ export function SearchPage() {
           <Button onClick={run} loading={search.isPending} style={{ flexShrink: 0 }}>
             <Search size={14} /> Search
           </Button>
-          <Button onClick={() => reindex.mutate()} loading={reindex.isPending} variant="secondary" style={{ flexShrink: 0 }}>
-            <RefreshCcw size={14} /> Reindex Items
-          </Button>
+          {canReindex && (
+            <Button onClick={() => reindex.mutate()} loading={reindex.isPending} variant="secondary" style={{ flexShrink: 0 }}>
+              <RefreshCcw size={14} /> Reindex Items
+            </Button>
+          )}
         </div>
         <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>
-          Search results show similarity, not exact-match confidence. Reindex existing items after embedding changes so stored vectors stay in sync.
+          Search results show similarity, not exact-match confidence. {canReindex
+            ? 'Reindex existing items after embedding changes so stored vectors stay in sync.'
+            : 'Search is shared across all users, while reindexing is restricted to administrators.'}
         </p>
         {reindex.data && (
           <p style={{ fontSize: '0.8rem', color: 'var(--color-success)', marginTop: 8 }}>

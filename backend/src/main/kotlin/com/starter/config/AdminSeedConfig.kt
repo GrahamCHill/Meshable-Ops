@@ -85,7 +85,7 @@ class AdminSeedConfig {
     }
 
     private fun seedStarterItems(itemRepository: ItemRepository, user: User) {
-        if (itemRepository.findAllByUserId(user.id).isNotEmpty()) return
+        if (itemRepository.findAllByOrderByCreatedAtDesc().any { it.user.id == user.id }) return
 
         itemRepository.saveAll(
             listOf(

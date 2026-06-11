@@ -17,9 +17,8 @@ interface UserRepository : JpaRepository<User, UUID> {
 }
 
 interface ItemRepository : JpaRepository<Item, UUID> {
-    fun findByUserIdOrderByCreatedAtDesc(userId: UUID, pageable: Pageable): Page<Item>
-    fun findByIdAndUserId(id: UUID, userId: UUID): Optional<Item>
-    fun findAllByUserId(userId: UUID): List<Item>
+    fun findAllByOrderByCreatedAtDesc(pageable: Pageable): Page<Item>
+    fun findAllByOrderByCreatedAtDesc(): List<Item>
 
     @Query("SELECT i FROM Item i WHERE i.user.id = :userId AND :tag MEMBER OF i.tags")
     fun findByUserIdAndTag(userId: UUID, tag: String): List<Item>

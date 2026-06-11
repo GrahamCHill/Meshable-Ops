@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.repository.MongoRepository
 import java.time.Instant
 
 interface EventRepository : MongoRepository<Event, String> {
+    fun findAllByOrderByCreatedAtDesc(pageable: Pageable): Page<Event>
     fun findByUserIdOrderByCreatedAtDesc(userId: String, pageable: Pageable): Page<Event>
     fun findByUserIdAndType(userId: String, type: String): List<Event>
     fun findByUserIdAndCreatedAtBetween(userId: String, from: Instant, to: Instant): List<Event>

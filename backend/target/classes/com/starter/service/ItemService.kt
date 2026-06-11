@@ -11,7 +11,6 @@ import com.starter.repository.postgres.ItemRepository
 import com.starter.repository.postgres.UserRepository
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.PageRequest
-import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
@@ -31,7 +30,7 @@ class ItemService(
     @Transactional
     fun create(email: String, req: ItemRequest): ItemResponse {
         val user = userRepository.findByEmail(email)
-            .orElseThrow { UsernameNotFoundException("User not found") }
+            .orElseThrow { org.springframework.security.core.userdetails.UsernameNotFoundException("User not found") }
 
         val item = itemRepository.save(
             Item(
@@ -49,26 +48,27 @@ class ItemService(
         )
 
         eventRepository.save(
-            Event(userId = user.id.toString(), type = "ITEM_CREATED",
-                  payload = mapOf("itemId" to item.id.toString(), "title" to item.title))
+            Event(
+                userId = user.id.toString(),
+                type = "ITEM_CREATED",
+                payload = mapOf("itemId" to item.id.toString(), "title" to item.title, "actorEmail" to user.email)
+            )
         )
 
         return item.toResponse()
     }
 
     @Transactional(readOnly = true)
-    fun listForUser(email: String, page: Int, size: Int): PageResponse<ItemResponse> {
-        val user = userRepository.findByEmail(email)
-            .orElseThrow { UsernameNotFoundException("User not found") }
-        val p = itemRepository.findByUserIdOrderByCreatedAtDesc(user.id, PageRequest.of(page, size))
+    fun listShared(page: Int, size: Int): PageResponse<ItemResponse> {
+        val p = itemRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, size))
         return PageResponse(p.content.map { it.toResponse() }, p.number, p.size, p.totalElements, p.totalPages)
     }
 
     @Transactional
     fun update(email: String, itemId: UUID, req: ItemRequest): ItemResponse {
         val user = userRepository.findByEmail(email)
-            .orElseThrow { UsernameNotFoundException("User not found") }
-        val item = itemRepository.findByIdAndUserId(itemId, user.id)
+            .orElseThrow { org.springframework.security.core.userdetails.UsernameNotFoundException("User not found") }
+        val item = itemRepository.findById(itemId)
             .orElseThrow { NotFoundException("Item not found") }
 
         item.title = req.title
@@ -79,7 +79,19 @@ class ItemService(
         vectorService.upsert(
             saved.id,
             vectorService.embedText(buildVectorText(req.title, req.description, req.tags), vectorSize),
-            mapOf("itemId" to saved.id.toString(), "userId" to user.id.toString(), "title" to saved.title)
+            mapOf(
+                "itemId" to saved.id.toString(),
+                "ownerUserId" to saved.user.id.toString(),
+                "ownerEmail" to saved.user.email,
+                "title" to saved.title
+            )
+        )
+        eventRepository.save(
+            Event(
+                userId = user.id.toString(),
+                type = "ITEM_UPDATED",
+                payload = mapOf("itemId" to saved.id.toString(), "title" to saved.title, "actorEmail" to user.email)
+            )
         )
         return saved.toResponse()
     }
@@ -87,30 +99,36 @@ class ItemService(
     @Transactional
     fun delete(email: String, itemId: UUID) {
         val user = userRepository.findByEmail(email)
-            .orElseThrow { UsernameNotFoundException("User not found") }
-        val item = itemRepository.findByIdAndUserId(itemId, user.id)
+            .orElseThrow { org.springframework.security.core.userdetails.UsernameNotFoundException("User not found") }
+        val item = itemRepository.findById(itemId)
             .orElseThrow { NotFoundException("Item not found") }
 
         itemRepository.delete(item)
         vectorService.delete(itemId)
 
         eventRepository.save(
-            Event(userId = user.id.toString(), type = "ITEM_DELETED",
-                  payload = mapOf("itemId" to itemId.toString()))
+            Event(
+                userId = user.id.toString(),
+                type = "ITEM_DELETED",
+                payload = mapOf("itemId" to itemId.toString(), "title" to item.title, "actorEmail" to user.email)
+            )
         )
     }
 
     @Transactional(readOnly = true)
-    fun reindexForUser(email: String): Int {
-        val user = userRepository.findByEmail(email)
-            .orElseThrow { UsernameNotFoundException("User not found") }
-        val items = itemRepository.findAllByUserId(user.id)
+    fun reindexShared(): Int {
+        val items = itemRepository.findAllByOrderByCreatedAtDesc()
 
         items.forEach { item ->
             vectorService.upsert(
                 item.id,
                 vectorService.embedText(buildVectorText(item.title, item.description, item.tags), vectorSize),
-                mapOf("itemId" to item.id.toString(), "userId" to user.id.toString(), "title" to item.title)
+                mapOf(
+                    "itemId" to item.id.toString(),
+                    "ownerUserId" to item.user.id.toString(),
+                    "ownerEmail" to item.user.email,
+                    "title" to item.title
+                )
             )
         }
 

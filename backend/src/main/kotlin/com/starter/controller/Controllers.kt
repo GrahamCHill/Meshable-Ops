@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UsernameNotFoundException
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.data.mongodb.core.MongoTemplate
@@ -46,7 +47,7 @@ class ItemController(private val itemService: ItemService) {
         @AuthenticationPrincipal user: UserDetails,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int
-    ) = itemService.listForUser(user.username, page, size)
+    ) = itemService.listShared(page, size)
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -66,8 +67,9 @@ class ItemController(private val itemService: ItemService) {
         itemService.delete(user.username, id)
 
     @PostMapping("/reindex")
+    @PreAuthorize("hasRole('ADMIN')")
     fun reindex(@AuthenticationPrincipal user: UserDetails) =
-        MessageResponse("Reindexed ${itemService.reindexForUser(user.username)} items")
+        MessageResponse("Reindexed ${itemService.reindexShared()} items")
 }
 
 // ─── Events ──────────────────────────────────────────────────────────────────
@@ -84,9 +86,7 @@ class EventController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int
     ): PageResponse<EventResponse> {
-        val user = userRepository.findByEmail(principal.username)
-            .orElseThrow { UsernameNotFoundException("User not found") }
-        val p = eventRepository.findByUserIdOrderByCreatedAtDesc(user.id.toString(), PageRequest.of(page, size))
+        val p = eventRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, size))
         return PageResponse(
             content = p.content.map { EventResponse(it.id, it.type, it.payload, it.createdAt.toString()) },
             page = p.number, size = p.size, totalElements = p.totalElements, totalPages = p.totalPages
@@ -110,10 +110,8 @@ class SearchController(
         @AuthenticationPrincipal user: UserDetails,
         @Valid @RequestBody req: VectorSearchRequest
     ): List<VectorSearchResult> {
-        val dbUser = userRepository.findByEmail(user.username)
-            .orElseThrow { UsernameNotFoundException("User not found") }
         val embedding = vectorService.embedText(req.query, vectorSize)
-        return vectorService.search(embedding, req.limit, "userId", dbUser.id.toString()).map { sp ->
+        return vectorService.search(embedding, req.limit).map { sp ->
             VectorSearchResult(pointId = sp.id, score = sp.score, payload = sp.payload)
         }
     }
