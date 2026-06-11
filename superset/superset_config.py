@@ -81,7 +81,11 @@ WTF_CSRF_EXEMPT_LIST = ["superset.views.core.log"]
 # Embedding: origins that are allowed to embed Superset dashboards
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://[::1]:3000",
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://[::1]:5173",
     "http://frontend:80",
 ]
 
@@ -89,7 +93,8 @@ ALLOWED_ORIGINS = [
 HTTP_HEADERS = {
     "X-Frame-Options": "ALLOWALL",   # Override per-request in production
     "Content-Security-Policy": (
-        "frame-ancestors 'self' http://localhost:3000 http://localhost:5173 http://frontend:80"
+        "frame-ancestors 'self' http://localhost:3000 http://127.0.0.1:3000 http://[::1]:3000 "
+        "http://localhost:5173 http://127.0.0.1:5173 http://[::1]:5173 http://frontend:80"
     ),
 }
 
