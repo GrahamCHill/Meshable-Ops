@@ -44,7 +44,7 @@ class ItemService(
         vectorService.upsert(
             item.id,
             vectorService.embedText(buildVectorText(req.title, req.description, req.tags), vectorSize),
-            mapOf("itemId" to item.id.toString(), "userId" to user.id.toString(), "title" to item.title)
+            mapOf("itemId" to item.id.toString(), "title" to item.title)
         )
 
         eventRepository.save(
@@ -79,12 +79,7 @@ class ItemService(
         vectorService.upsert(
             saved.id,
             vectorService.embedText(buildVectorText(req.title, req.description, req.tags), vectorSize),
-            mapOf(
-                "itemId" to saved.id.toString(),
-                "ownerUserId" to saved.user.id.toString(),
-                "ownerEmail" to saved.user.email,
-                "title" to saved.title
-            )
+            mapOf("itemId" to saved.id.toString(), "title" to saved.title)
         )
         eventRepository.save(
             Event(
@@ -123,12 +118,7 @@ class ItemService(
             vectorService.upsert(
                 item.id,
                 vectorService.embedText(buildVectorText(item.title, item.description, item.tags), vectorSize),
-                mapOf(
-                    "itemId" to item.id.toString(),
-                    "ownerUserId" to item.user.id.toString(),
-                    "ownerEmail" to item.user.email,
-                    "title" to item.title
-                )
+                mapOf("itemId" to item.id.toString(), "title" to item.title)
             )
         }
 

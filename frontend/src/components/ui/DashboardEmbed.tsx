@@ -79,8 +79,8 @@ export function DashboardEmbed({
           fetchGuestToken,
           dashboardUiConfig: {
             hideTitle: false,
-            hideChartControls: false,
-            hideTab: false,
+            hideChartControls: true,
+            hideTab: true,
             filters: { expanded: true },
           },
         })
