@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { embedDashboard } from '@superset-ui/embedded-sdk'
 import api from '../../api/client'
+import { useAuthStore } from '../../hooks/useAuthStore'
 
 interface DashboardEmbedProps {
   dashboardId: string
@@ -18,9 +19,69 @@ export function DashboardEmbed({
   onError,
 }: DashboardEmbedProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const iframeObserverRef = useRef<MutationObserver | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [errorMsg, setErrorMsg] = useState('')
+  const user = useAuthStore((state) => state.user)
   const resourceId = guestTokenResourceId ?? dashboardId
+  const isAdmin = user?.role === 'ADMIN'
+
+  const hideShareActions = useCallback(() => {
+    const iframe = containerRef.current?.querySelector('iframe')
+    if (!iframe) return
+
+    let doc: Document | null = null
+    try {
+      doc = iframe.contentDocument
+    } catch {
+      return
+    }
+    if (!doc) return
+
+    const styleId = 'superset-embed-hide-share'
+    if (!doc.getElementById(styleId)) {
+      const style = doc.createElement('style')
+      style.id = styleId
+      style.textContent = `
+        [aria-label*="Share" i],
+        [title*="Share" i],
+        [data-test*="share" i],
+        [data-testid*="share" i] {
+          display: none !important;
+        }
+      `
+      doc.head?.appendChild(style)
+    }
+
+    const alwaysBlockedLabels = new Set(['share', 'share chart', 'share dashboard'])
+    const viewerOnlyBlockedLabels = new Set(['edit chart', 'view query'])
+    const actionNodes = doc.querySelectorAll<HTMLElement>('button, a, li, [role="button"], [role="menuitem"]')
+    actionNodes.forEach((node) => {
+      const text = (node.textContent ?? '').trim().toLowerCase()
+      const aria = (node.getAttribute('aria-label') ?? '').trim().toLowerCase()
+      const title = (node.getAttribute('title') ?? '').trim().toLowerCase()
+      const testId = `${node.getAttribute('data-test') ?? ''} ${node.getAttribute('data-testid') ?? ''}`.toLowerCase()
+      const isAlwaysBlocked =
+        alwaysBlockedLabels.has(text) ||
+        alwaysBlockedLabels.has(aria) ||
+        alwaysBlockedLabels.has(title) ||
+        testId.includes('share')
+      const isViewerOnlyBlocked =
+        !isAdmin && (
+          viewerOnlyBlockedLabels.has(text) ||
+          viewerOnlyBlockedLabels.has(aria) ||
+          viewerOnlyBlockedLabels.has(title) ||
+          testId.includes('edit-chart') ||
+          testId.includes('view-query')
+        )
+      if (
+        isAlwaysBlocked ||
+        isViewerOnlyBlocked
+      ) {
+        node.style.display = 'none'
+      }
+    })
+  }, [isAdmin])
 
   const stretchIframe = useCallback(() => {
     const mount = containerRef.current
@@ -52,7 +113,9 @@ export function DashboardEmbed({
       }
       node = node.parentElement
     }
-  }, [])
+
+    hideShareActions()
+  }, [hideShareActions])
 
   const fetchGuestToken = useCallback(async () => {
     const res = await api.post<{ token: string }>('/superset/guest-token', {
@@ -65,6 +128,7 @@ export function DashboardEmbed({
     if (!containerRef.current) return
 
     let destroyed = false
+    let iframeLoadHandler: (() => void) | null = null
     const observer = new MutationObserver(() => stretchIframe())
     const resizeObserver = new ResizeObserver(() => stretchIframe())
     observer.observe(containerRef.current, { childList: true, subtree: true })
@@ -79,11 +143,26 @@ export function DashboardEmbed({
           fetchGuestToken,
           dashboardUiConfig: {
             hideTitle: false,
-            hideChartControls: true,
+            hideChartControls: false,
             hideTab: true,
             filters: { expanded: true },
           },
         })
+        const iframe = containerRef.current?.querySelector('iframe')
+        if (iframe) {
+          iframeLoadHandler = () => hideShareActions()
+          iframe.addEventListener('load', iframeLoadHandler)
+          try {
+            const doc = iframe.contentDocument
+            if (doc?.body) {
+              iframeObserverRef.current?.disconnect()
+              iframeObserverRef.current = new MutationObserver(() => hideShareActions())
+              iframeObserverRef.current.observe(doc.body, { childList: true, subtree: true })
+            }
+          } catch {
+            // If the iframe is not readable yet, later resize/mutation passes will retry.
+          }
+        }
         stretchIframe()
         window.setTimeout(stretchIframe, 50)
         window.setTimeout(stretchIframe, 250)
@@ -105,10 +184,15 @@ export function DashboardEmbed({
     mount()
     return () => {
       destroyed = true
+      const iframe = containerRef.current?.querySelector('iframe')
+      if (iframe && iframeLoadHandler) {
+        iframe.removeEventListener('load', iframeLoadHandler)
+      }
+      iframeObserverRef.current?.disconnect()
       observer.disconnect()
       resizeObserver.disconnect()
     }
-  }, [dashboardId, fetchGuestToken, onLoad, onError, stretchIframe])
+  }, [dashboardId, fetchGuestToken, hideShareActions, onLoad, onError, stretchIframe])
 
   return (
     <div style={{ position: 'relative', width: '100%', height: typeof height === 'number' ? `${height}px` : height, minHeight: 0 }}>

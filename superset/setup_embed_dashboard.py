@@ -200,10 +200,8 @@ def main():
         "allowed_domains": [
             "http://localhost:3000",
             "http://127.0.0.1:3000",
-            "http://[::1]:3000",
             "http://localhost:5173",
             "http://127.0.0.1:5173",
-            "http://[::1]:5173",
         ]
     }
     r = s.post(f"{BASE}/api/v1/dashboard/{dashboard_id}/embedded", json=embed_payload)

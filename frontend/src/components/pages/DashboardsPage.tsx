@@ -4,22 +4,29 @@ import { DashboardEmbed } from '../ui/DashboardEmbed'
 import { Info, LayoutDashboard, Shield } from 'lucide-react'
 import { useAuthStore } from '../../hooks/useAuthStore'
 
+interface DashboardConfig {
+  id: string
+  label: string
+  description: string
+  guestTokenResourceId?: string
+}
+
 /**
  * Add your Superset dashboard IDs here.
  *
  * `id` is the embedded dashboard UUID used by the iframe SDK.
- * `guestTokenResourceId` is the numeric Superset dashboard id used to mint the guest token.
+ * `guestTokenResourceId` is optional. Use it only when the numeric Superset
+ * dashboard id differs from the embed UUID and your backend needs that numeric id
+ * to mint the guest token.
  */
-const DASHBOARDS = [
+const DASHBOARDS: DashboardConfig[] = [
   {
     id: 'fdda8aae-c6fb-48fc-9322-5f797764b9dd',
-    guestTokenResourceId: '2',
     label: 'Metrics Overview',
     description: 'Items created over time',
   },
   {
     id: 'fdda8aae-c6fb-48fc-9322-5f797764b9dd',
-    guestTokenResourceId: '2',
     label: 'Metrics Overview 22',
     description: 'Items created over time a second time',
   },

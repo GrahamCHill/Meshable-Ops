@@ -56,7 +56,7 @@ export function ItemsPage() {
     <div style={{ maxWidth: 720 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Items</h1>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Items yes</h1>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>Stored in PostgreSQL · indexed in Qdrant</p>
         </div>
         <Button onClick={() => setShowCreate(true)}><Plus size={15} /> New item</Button>
