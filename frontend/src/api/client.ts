@@ -93,6 +93,10 @@ export const authApi = {
     api.post<AuthResponse>('/auth/register', data).then(r => r.data),
   login: (data: { email: string; password: string }) =>
     api.post<AuthResponse>('/auth/login', data).then(r => r.data),
+  refreshSessionCookie: () =>
+    api.post('/auth/session-cookie').then(r => r.data),
+  logout: () =>
+    api.post('/auth/logout').then(r => r.data),
 }
 
 export const itemsApi = {

@@ -5,6 +5,7 @@ import com.starter.exception.ForbiddenException
 import com.starter.repository.mongo.EventRepository
 import com.starter.repository.postgres.UserRepository
 import com.starter.service.*
+import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotEmpty
 import org.springframework.beans.factory.annotation.Value
@@ -28,12 +29,28 @@ import java.util.UUID
 class AuthController(private val authService: AuthService) {
 
     @PostMapping("/register")
-    fun register(@Valid @RequestBody req: RegisterRequest): AuthResponse {
+    fun register(@Valid @RequestBody req: RegisterRequest, response: HttpServletResponse): AuthResponse {
         throw ForbiddenException("Registration is invite-only")
     }
 
     @PostMapping("/login")
-    fun login(@Valid @RequestBody req: AuthRequest) = authService.login(req)
+    fun login(@Valid @RequestBody req: AuthRequest, response: HttpServletResponse) = authService.login(req, response)
+
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun logout(response: HttpServletResponse) = authService.clearAuthCookie(response)
+
+    @PostMapping("/session-cookie")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun refreshSessionCookie(
+        @AuthenticationPrincipal principal: UserDetails,
+        response: HttpServletResponse
+    ) = authService.refreshAuthCookie(principal.username, response)
+
+    @GetMapping("/superset-admin-access")
+    @PreAuthorize("hasRole('ADMIN')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun supersetAdminAccess(@AuthenticationPrincipal principal: UserDetails) = Unit
 }
 
 // ─── Items ────────────────────────────────────────────────────────────────────
@@ -51,10 +68,12 @@ class ItemController(private val itemService: ItemService) {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMIN')")
     fun create(@AuthenticationPrincipal user: UserDetails, @Valid @RequestBody req: ItemRequest) =
         itemService.create(user.username, req)
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     fun update(
         @AuthenticationPrincipal user: UserDetails,
         @PathVariable id: UUID,
@@ -63,6 +82,7 @@ class ItemController(private val itemService: ItemService) {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('ADMIN')")
     fun delete(@AuthenticationPrincipal user: UserDetails, @PathVariable id: UUID) =
         itemService.delete(user.username, id)
 

@@ -32,7 +32,7 @@ class AdminSeedConfig {
         @Value("\${app.seed-dashboard.label:Metrics Overview}") dashboardLabel: String,
         @Value("\${app.seed-dashboard.description:Items created over time}") dashboardDescription: String,
         @Value("\${app.seed-dashboard.id:fdda8aae-c6fb-48fc-9322-5f797764b9dd}") dashboardId: String,
-        @Value("\${app.seed-dashboard.guest-token-resource-id:2}") guestTokenResourceId: String,
+        @Value("\${app.seed-dashboard.guest-token-resource-id:}") guestTokenResourceId: String,
         @Value("\${app.seed-dashboard.allowed-roles:ADMIN,USER}") dashboardAllowedRoles: String,
     ) = ApplicationRunner {
         seedUser(userRepository, passwordEncoder, seedEmail, seedUsername, seedPassword, seedRole, "admin")
@@ -107,6 +107,14 @@ class AdminSeedConfig {
                 dashboardEmbedConfigRepository.saveAll(missingRoles)
                 seedLog.info("Backfilled allowed roles for {} dashboard embed configs", missingRoles.size)
             }
+            val staleSeedResourceIds = existing.filter {
+                it.dashboardId == dashboardId && it.guestTokenResourceId == "2"
+            }
+            if (staleSeedResourceIds.isNotEmpty()) {
+                staleSeedResourceIds.forEach { it.guestTokenResourceId = null }
+                dashboardEmbedConfigRepository.saveAll(staleSeedResourceIds)
+                seedLog.info("Cleared stale guest token resource ids for {} dashboard embeds", staleSeedResourceIds.size)
+            }
             return
         }
 
@@ -115,7 +123,7 @@ class AdminSeedConfig {
                 label = label,
                 description = description,
                 dashboardId = dashboardId,
-                guestTokenResourceId = guestTokenResourceId,
+                guestTokenResourceId = guestTokenResourceId.ifBlank { null },
                 sortOrder = 0,
                 enabled = true,
                 allowedRoles = normalizedRoles.toMutableList(),

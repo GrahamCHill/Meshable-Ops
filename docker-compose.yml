@@ -130,6 +130,25 @@ services:
       retries: 10
       start_period: 30s
 
+  superset-embed-init:
+    image: apache/superset:4.0.2
+    container_name: superset_embed_init
+    command: ["python", "/app/setup_embed_dashboard.py"]
+    restart: "no"
+    environment:
+      <<: *superset-env
+      APP_POSTGRES_DB: app_db
+      APP_POSTGRES_USER: superset_user
+      APP_POSTGRES_PASSWORD: superset_pass
+    depends_on:
+      superset:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./superset/superset_config.py:/app/pythonpath/superset_config.py
+      - ./superset/setup_embed_dashboard.py:/app/setup_embed_dashboard.py
+
   superset-worker:
     image: apache/superset:4.0.2
     container_name: superset_worker
@@ -238,9 +257,14 @@ services:
     container_name: superset_frontend
     restart: unless-stopped
     depends_on:
-      - backend
-      - ml-backend
-      - superset
+      backend:
+        condition: service_healthy
+      ml-backend:
+        condition: service_healthy
+      superset:
+        condition: service_healthy
+      superset-embed-init:
+        condition: service_completed_successfully
     ports:
       - "3000:80"
 

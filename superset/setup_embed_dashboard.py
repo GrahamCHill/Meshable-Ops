@@ -14,8 +14,9 @@ import json
 import os
 import requests
 import psycopg2
+import uuid
 
-BASE = "http://localhost:8088"
+BASE = os.environ.get("SUPERSET_INTERNAL_URL", "http://superset:8088")
 
 
 def grant_public_datasource_access(database_name: str, table_name: str, dataset_id: int) -> None:
@@ -50,6 +51,74 @@ def grant_public_datasource_access(database_name: str, table_name: str, dataset_
                 (view_menu_name,),
             )
             print("granted Public datasource_access on", view_menu_name, "rows:", cur.rowcount)
+    finally:
+        conn.close()
+
+
+def sync_backend_dashboard_embed(embed_uuid: str, dashboard_id: int) -> None:
+    """Upsert the shared app dashboard config with the real embed UUID."""
+    conn = psycopg2.connect(
+        host=os.environ.get("DATABASE_HOST", "postgres"),
+        port=os.environ.get("DATABASE_PORT", "5432"),
+        dbname=os.environ.get("APP_POSTGRES_DB", "app_db"),
+        user=os.environ.get("APP_POSTGRES_USER", os.environ.get("DATABASE_USER", "superset_user")),
+        password=os.environ.get("APP_POSTGRES_PASSWORD", os.environ.get("DATABASE_PASSWORD", "superset_pass")),
+    )
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id
+                FROM dashboard_embed_configs
+                WHERE label = %s OR dashboard_id = %s
+                ORDER BY created_at ASC
+                LIMIT 1
+                """,
+                ("Metrics Overview", embed_uuid),
+            )
+            row = cur.fetchone()
+            config_id = row[0] if row else str(uuid.uuid4())
+
+            if row:
+                cur.execute(
+                    """
+                    UPDATE dashboard_embed_configs
+                    SET label = %s,
+                        description = %s,
+                        dashboard_id = %s,
+                        guest_token_resource_id = %s,
+                        sort_order = 0,
+                        enabled = TRUE,
+                        updated_at = NOW()
+                    WHERE id = %s
+                    """,
+                    ("Metrics Overview", "Items created over time", embed_uuid, str(dashboard_id), config_id),
+                )
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO dashboard_embed_configs (
+                        id,
+                        label,
+                        description,
+                        dashboard_id,
+                        guest_token_resource_id,
+                        sort_order,
+                        enabled
+                    ) VALUES (%s, %s, %s, %s, %s, 0, TRUE)
+                    """,
+                    (config_id, "Metrics Overview", "Items created over time", embed_uuid, str(dashboard_id)),
+                )
+
+            cur.execute("DELETE FROM dashboard_embed_config_roles WHERE dashboard_embed_config_id = %s", (config_id,))
+            cur.executemany(
+                """
+                INSERT INTO dashboard_embed_config_roles (dashboard_embed_config_id, role_name)
+                VALUES (%s, %s)
+                """,
+                [(config_id, "ADMIN"), (config_id, "USER")],
+            )
+            print("synced_backend_dashboard_embed", config_id, embed_uuid, dashboard_id)
     finally:
         conn.close()
 
@@ -205,9 +274,14 @@ def main():
         ]
     }
     r = s.post(f"{BASE}/api/v1/dashboard/{dashboard_id}/embedded", json=embed_payload)
-    r.raise_for_status()
-    embed_uuid = r.json()["result"]["uuid"]
+    if r.ok:
+        embed_uuid = r.json()["result"]["uuid"]
+    else:
+        existing_embed = s.get(f"{BASE}/api/v1/dashboard/{dashboard_id}/embedded")
+        existing_embed.raise_for_status()
+        embed_uuid = existing_embed.json()["result"]["uuid"]
     print("embed_uuid", embed_uuid)
+    sync_backend_dashboard_embed(embed_uuid, dashboard_id)
 
     print(json.dumps({
         "database_id": database_id,

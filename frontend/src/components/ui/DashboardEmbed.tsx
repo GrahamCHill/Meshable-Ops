@@ -21,7 +21,6 @@ export function DashboardEmbed({
   const iframeObserverRef = useRef<MutationObserver | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [errorMsg, setErrorMsg] = useState('')
-  const resourceId = guestTokenResourceId ?? dashboardId
 
   const hideEmbedActions = useCallback(() => {
     const iframe = containerRef.current?.querySelector('iframe')
@@ -134,11 +133,25 @@ export function DashboardEmbed({
   }, [hideEmbedActions])
 
   const fetchGuestToken = useCallback(async () => {
-    const res = await api.post<{ token: string }>('/superset/guest-token', {
-      dashboardIds: [resourceId],
-    })
-    return res.data.token
-  }, [resourceId])
+    const resourceIds = [
+      guestTokenResourceId?.trim(),
+      dashboardId.trim(),
+    ].filter((value, index, values): value is string => !!value && values.indexOf(value) === index)
+
+    let lastError: unknown
+    for (const resourceId of resourceIds) {
+      try {
+        const res = await api.post<{ token: string }>('/superset/guest-token', {
+          dashboardIds: [resourceId],
+        })
+        return res.data.token
+      } catch (error) {
+        lastError = error
+      }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error('Could not obtain Superset guest token')
+  }, [dashboardId, guestTokenResourceId])
 
   useEffect(() => {
     if (!containerRef.current) return

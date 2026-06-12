@@ -1,7 +1,8 @@
-import { type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, BarChart2, Package, Search, Activity, LogOut, Zap, Shield } from 'lucide-react'
 import { useAuthStore } from '../../hooks/useAuthStore'
+import { authApi } from '../../api/client'
 
 const nav = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
@@ -16,9 +17,23 @@ const adminNav = [
 ]
 
 export function AppLayout({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuthStore()
+  const { token, user, logout } = useAuthStore()
   const navigate = useNavigate()
-  const handleLogout = () => { logout(); navigate('/login') }
+
+  useEffect(() => {
+    if (!token) return
+    authApi.refreshSessionCookie().catch(() => undefined)
+  }, [token])
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout()
+    } catch {
+      // Clear local auth state even if the server-side cookie is already gone.
+    }
+    logout()
+    navigate('/login')
+  }
   const navItems = user?.role === 'ADMIN' ? [...nav, ...adminNav] : nav
 
   return (
