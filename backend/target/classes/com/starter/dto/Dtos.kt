@@ -70,7 +70,8 @@ data class DashboardEmbedConfigRequest(
     @field:NotBlank @field:Size(max = 255) val dashboardId: String,
     @field:Size(max = 255) val guestTokenResourceId: String? = null,
     @field:Min(0) val sortOrder: Int = 0,
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    val allowedRoles: List<@NotBlank String> = emptyList()
 )
 
 data class DashboardEmbedConfigResponse(
@@ -81,6 +82,7 @@ data class DashboardEmbedConfigResponse(
     val guestTokenResourceId: String?,
     val sortOrder: Int,
     val enabled: Boolean,
+    val allowedRoles: List<String>,
     val createdAt: String?,
     val updatedAt: String?
 )

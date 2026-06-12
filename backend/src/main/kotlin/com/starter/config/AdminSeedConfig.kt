@@ -33,10 +33,11 @@ class AdminSeedConfig {
         @Value("\${app.seed-dashboard.description:Items created over time}") dashboardDescription: String,
         @Value("\${app.seed-dashboard.id:fdda8aae-c6fb-48fc-9322-5f797764b9dd}") dashboardId: String,
         @Value("\${app.seed-dashboard.guest-token-resource-id:2}") guestTokenResourceId: String,
+        @Value("\${app.seed-dashboard.allowed-roles:ADMIN,USER}") dashboardAllowedRoles: String,
     ) = ApplicationRunner {
         seedUser(userRepository, passwordEncoder, seedEmail, seedUsername, seedPassword, seedRole, "admin")
         seedUser(userRepository, passwordEncoder, standardEmail, standardUsername, standardPassword, standardRole, "standard")
-        seedDashboardEmbed(dashboardEmbedConfigRepository, dashboardLabel, dashboardDescription, dashboardId, guestTokenResourceId)
+        seedDashboardEmbed(dashboardEmbedConfigRepository, dashboardLabel, dashboardDescription, dashboardId, guestTokenResourceId, dashboardAllowedRoles)
     }
 
     private fun seedUser(
@@ -94,8 +95,18 @@ class AdminSeedConfig {
         description: String,
         dashboardId: String,
         guestTokenResourceId: String,
+        allowedRoles: String,
     ) {
-        if (dashboardEmbedConfigRepository.count() > 0L) {
+        val normalizedRoles = allowedRoles.split(",").map { it.trim().uppercase() }.filter { it.isNotBlank() }
+        val existing = dashboardEmbedConfigRepository.findAll()
+
+        if (existing.isNotEmpty()) {
+            val missingRoles = existing.filter { it.allowedRoles.isEmpty() }
+            if (missingRoles.isNotEmpty()) {
+                missingRoles.forEach { it.allowedRoles = normalizedRoles.toMutableList() }
+                dashboardEmbedConfigRepository.saveAll(missingRoles)
+                seedLog.info("Backfilled allowed roles for {} dashboard embed configs", missingRoles.size)
+            }
             return
         }
 
@@ -107,6 +118,7 @@ class AdminSeedConfig {
                 guestTokenResourceId = guestTokenResourceId,
                 sortOrder = 0,
                 enabled = true,
+                allowedRoles = normalizedRoles.toMutableList(),
             )
         )
         seedLog.info("Seeded default dashboard embed {}", dashboardId)

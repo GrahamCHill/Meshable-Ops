@@ -81,6 +81,7 @@ export interface DashboardEmbedConfig {
   guestTokenResourceId?: string
   sortOrder: number
   enabled: boolean
+  allowedRoles: string[]
   createdAt: string
   updatedAt: string
 }
@@ -133,6 +134,7 @@ export const dashboardEmbedsApi = {
     guestTokenResourceId?: string
     sortOrder: number
     enabled: boolean
+    allowedRoles: string[]
   }) => api.post<DashboardEmbedConfig>('/superset/dashboard-embeds', data).then(r => r.data),
   update: (id: string, data: {
     label: string
@@ -141,7 +143,10 @@ export const dashboardEmbedsApi = {
     guestTokenResourceId?: string
     sortOrder: number
     enabled: boolean
+    allowedRoles: string[]
   }) => api.put<DashboardEmbedConfig>(`/superset/dashboard-embeds/${id}`, data).then(r => r.data),
   delete: (id: string) =>
     api.delete(`/superset/dashboard-embeds/${id}`),
+  listRoles: () =>
+    api.get<string[]>('/superset/dashboard-embeds/roles').then(r => r.data),
 }

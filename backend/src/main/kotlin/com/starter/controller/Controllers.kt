@@ -136,12 +136,17 @@ class SupersetController(
 
     @GetMapping("/dashboard-embeds")
     fun listDashboardEmbeds(@AuthenticationPrincipal principal: UserDetails) =
-        dashboardEmbedConfigService.listEnabled()
+        dashboardEmbedConfigService.listEnabledForRole(principal.authorities.firstOrNull()?.authority?.removePrefix("ROLE_") ?: "USER")
 
     @GetMapping("/dashboard-embeds/admin")
     @PreAuthorize("hasRole('ADMIN')")
     fun listAllDashboardEmbeds(@AuthenticationPrincipal principal: UserDetails) =
         dashboardEmbedConfigService.listAll()
+
+    @GetMapping("/dashboard-embeds/roles")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun listDashboardEmbedRoles(@AuthenticationPrincipal principal: UserDetails) =
+        dashboardEmbedConfigService.listAvailableRoles()
 
     @PostMapping("/dashboard-embeds")
     @PreAuthorize("hasRole('ADMIN')")

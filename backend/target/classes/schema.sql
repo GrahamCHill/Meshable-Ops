@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS dashboard_embed_configs (
     id UUID PRIMARY KEY,
     label TEXT NOT NULL,
     description TEXT NULL,
-    dashboard_id TEXT NOT NULL UNIQUE,
+    dashboard_id TEXT NOT NULL,
     guest_token_resource_id TEXT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
@@ -17,5 +17,16 @@ CREATE TABLE IF NOT EXISTS dashboard_embed_configs (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE dashboard_embed_configs
+    DROP CONSTRAINT IF EXISTS dashboard_embed_configs_dashboard_id_key;
+
 CREATE INDEX IF NOT EXISTS idx_dashboard_embed_configs_sort_order
     ON dashboard_embed_configs (sort_order, created_at);
+
+CREATE TABLE IF NOT EXISTS dashboard_embed_config_roles (
+    dashboard_embed_config_id UUID NOT NULL REFERENCES dashboard_embed_configs(id) ON DELETE CASCADE,
+    role_name TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_dashboard_embed_config_roles_config_id
+    ON dashboard_embed_config_roles (dashboard_embed_config_id);

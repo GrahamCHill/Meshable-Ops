@@ -5,22 +5,31 @@ import com.starter.dto.DashboardEmbedConfigResponse
 import com.starter.exception.NotFoundException
 import com.starter.model.postgres.DashboardEmbedConfig
 import com.starter.repository.postgres.DashboardEmbedConfigRepository
+import com.starter.repository.postgres.UserRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
 @Service
 class DashboardEmbedConfigService(
-    private val dashboardEmbedConfigRepository: DashboardEmbedConfigRepository
+    private val dashboardEmbedConfigRepository: DashboardEmbedConfigRepository,
+    private val userRepository: UserRepository,
 ) {
 
     @Transactional(readOnly = true)
-    fun listEnabled(): List<DashboardEmbedConfigResponse> =
-        dashboardEmbedConfigRepository.findAllByEnabledTrueOrderBySortOrderAscCreatedAtAsc().map { it.toResponse() }
+    fun listEnabledForRole(role: String): List<DashboardEmbedConfigResponse> =
+        dashboardEmbedConfigRepository.findAllByEnabledTrueOrderBySortOrderAscCreatedAtAsc()
+            .filter { config ->
+                config.allowedRoles.isEmpty() || config.allowedRoles.any { it.equals(role, ignoreCase = true) }
+            }
+            .map { it.toResponse() }
 
     @Transactional(readOnly = true)
     fun listAll(): List<DashboardEmbedConfigResponse> =
         dashboardEmbedConfigRepository.findAllByOrderBySortOrderAscCreatedAtAsc().map { it.toResponse() }
+
+    @Transactional(readOnly = true)
+    fun listAvailableRoles(): List<String> = userRepository.findDistinctRoles()
 
     @Transactional
     fun create(req: DashboardEmbedConfigRequest): DashboardEmbedConfigResponse =
@@ -31,7 +40,8 @@ class DashboardEmbedConfigService(
                 dashboardId = req.dashboardId.trim(),
                 guestTokenResourceId = req.guestTokenResourceId?.trim()?.ifBlank { null },
                 sortOrder = req.sortOrder,
-                enabled = req.enabled
+                enabled = req.enabled,
+                allowedRoles = normalizeRoles(req.allowedRoles).toMutableList(),
             )
         ).toResponse()
 
@@ -46,6 +56,7 @@ class DashboardEmbedConfigService(
         config.guestTokenResourceId = req.guestTokenResourceId?.trim()?.ifBlank { null }
         config.sortOrder = req.sortOrder
         config.enabled = req.enabled
+        config.allowedRoles = normalizeRoles(req.allowedRoles).toMutableList()
 
         return dashboardEmbedConfigRepository.save(config).toResponse()
     }
@@ -57,6 +68,9 @@ class DashboardEmbedConfigService(
         dashboardEmbedConfigRepository.delete(config)
     }
 
+    private fun normalizeRoles(roles: List<String>): List<String> =
+        roles.map { it.trim().uppercase() }.filter { it.isNotBlank() }.distinct()
+
     private fun DashboardEmbedConfig.toResponse() = DashboardEmbedConfigResponse(
         id = id.toString(),
         label = label,
@@ -65,6 +79,7 @@ class DashboardEmbedConfigService(
         guestTokenResourceId = guestTokenResourceId,
         sortOrder = sortOrder,
         enabled = enabled,
+        allowedRoles = allowedRoles.map { it.uppercase() }.sorted(),
         createdAt = createdAt.toString(),
         updatedAt = updatedAt.toString()
     )

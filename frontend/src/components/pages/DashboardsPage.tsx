@@ -14,6 +14,7 @@ type DashboardFormValues = {
   guestTokenResourceId: string
   sortOrder: string
   enabled: boolean
+  allowedRoles: string[]
 }
 
 const emptyForm: DashboardFormValues = {
@@ -23,15 +24,18 @@ const emptyForm: DashboardFormValues = {
   guestTokenResourceId: '',
   sortOrder: '0',
   enabled: true,
+  allowedRoles: [],
 }
 
 function DashboardConfigForm({
   initial,
+  availableRoles,
   onSubmit,
   onCancel,
   loading,
 }: {
   initial?: DashboardEmbedConfig
+  availableRoles: string[]
   onSubmit: (data: DashboardFormValues) => void
   onCancel: () => void
   loading?: boolean
@@ -43,6 +47,7 @@ function DashboardConfigForm({
     guestTokenResourceId: initial.guestTokenResourceId ?? '',
     sortOrder: String(initial.sortOrder),
     enabled: initial.enabled,
+    allowedRoles: initial.allowedRoles,
   } : emptyForm)
 
   useEffect(() => {
@@ -53,6 +58,7 @@ function DashboardConfigForm({
       guestTokenResourceId: initial.guestTokenResourceId ?? '',
       sortOrder: String(initial.sortOrder),
       enabled: initial.enabled,
+      allowedRoles: initial.allowedRoles,
     } : emptyForm)
   }, [initial])
 
@@ -93,6 +99,28 @@ function DashboardConfigForm({
         />
         Enabled for shared viewing
       </label>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Allowed roles</div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {availableRoles.map((role) => (
+            <label key={role} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
+              <input
+                type="checkbox"
+                checked={form.allowedRoles.includes(role)}
+                onChange={(e) => {
+                  setForm((current) => ({
+                    ...current,
+                    allowedRoles: e.target.checked
+                      ? [...current.allowedRoles, role]
+                      : current.allowedRoles.filter((value) => value !== role),
+                  }))
+                }}
+              />
+              {role}
+            </label>
+          ))}
+        </div>
+      </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <Button
           loading={loading}
@@ -127,6 +155,12 @@ export function DashboardsPage() {
     enabled: isAdmin,
   })
 
+  const rolesQuery = useQuery({
+    queryKey: ['dashboard-embeds', 'roles'],
+    queryFn: () => dashboardEmbedsApi.listRoles(),
+    enabled: isAdmin,
+  })
+
   const createMutation = useMutation({
     mutationFn: (data: DashboardFormValues) => dashboardEmbedsApi.create({
       label: data.label.trim(),
@@ -135,6 +169,7 @@ export function DashboardsPage() {
       guestTokenResourceId: data.guestTokenResourceId.trim() || undefined,
       sortOrder: Number(data.sortOrder || 0),
       enabled: data.enabled,
+      allowedRoles: data.allowedRoles,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard-embeds'] })
@@ -151,6 +186,7 @@ export function DashboardsPage() {
       guestTokenResourceId: data.guestTokenResourceId.trim() || undefined,
       sortOrder: Number(data.sortOrder || 0),
       enabled: data.enabled,
+      allowedRoles: data.allowedRoles,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard-embeds'] })
@@ -170,6 +206,7 @@ export function DashboardsPage() {
 
   const dashboards = embedsQuery.data ?? []
   const adminDashboards = adminEmbedsQuery.data ?? dashboards
+  const availableRoles = rolesQuery.data ?? []
   const current = dashboards[active]
 
   useEffect(() => {
@@ -224,6 +261,7 @@ export function DashboardsPage() {
           {showCreate && (
             <Card style={{ marginBottom: '1rem', padding: '1rem' }}>
               <DashboardConfigForm
+                availableRoles={availableRoles}
                 onSubmit={(data) => createMutation.mutate(data)}
                 onCancel={() => setShowCreate(false)}
                 loading={createMutation.isPending}
@@ -237,6 +275,7 @@ export function DashboardsPage() {
                 {editingId === dashboard.id ? (
                   <DashboardConfigForm
                     initial={dashboard}
+                    availableRoles={availableRoles}
                     onSubmit={(data) => updateMutation.mutate({ id: dashboard.id, data })}
                     onCancel={() => setEditingId(null)}
                     loading={updateMutation.isPending}
@@ -254,7 +293,8 @@ export function DashboardsPage() {
                         UUID: <code>{dashboard.dashboardId}</code><br />
                         Guest token resource: <code>{dashboard.guestTokenResourceId ?? dashboard.dashboardId}</code><br />
                         Sort order: <code>{dashboard.sortOrder}</code><br />
-                        Status: <code>{dashboard.enabled ? 'enabled' : 'disabled'}</code>
+                        Status: <code>{dashboard.enabled ? 'enabled' : 'disabled'}</code><br />
+                        Allowed roles: <code>{dashboard.allowedRoles.join(', ') || 'all authenticated roles'}</code>
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>

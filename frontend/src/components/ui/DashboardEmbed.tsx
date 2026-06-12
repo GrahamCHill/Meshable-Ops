@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { embedDashboard } from '@superset-ui/embedded-sdk'
 import api from '../../api/client'
-import { useAuthStore } from '../../hooks/useAuthStore'
 
 interface DashboardEmbedProps {
   dashboardId: string
@@ -22,9 +21,7 @@ export function DashboardEmbed({
   const iframeObserverRef = useRef<MutationObserver | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [errorMsg, setErrorMsg] = useState('')
-  const user = useAuthStore((state) => state.user)
   const resourceId = guestTokenResourceId ?? dashboardId
-  const isAdmin = user?.role === 'ADMIN'
 
   const hideEmbedActions = useCallback(() => {
     const iframe = containerRef.current?.querySelector('iframe')
@@ -45,16 +42,24 @@ export function DashboardEmbed({
       style.textContent = `
         [aria-label*="Share" i],
         [aria-label*="Save as" i],
+        [aria-label*="Edit chart" i],
+        [aria-label*="View query" i],
         [aria-label*="Dashboard view" i],
         [aria-label*="View in dashboard" i],
         [title*="Share" i],
         [title*="Save as" i],
+        [title*="Edit chart" i],
+        [title*="View query" i],
         [title*="Dashboard view" i],
         [title*="View in dashboard" i],
         [data-test*="share" i],
         [data-testid*="share" i],
         [data-test*="save-as" i],
         [data-testid*="save-as" i],
+        [data-test*="edit-chart" i],
+        [data-testid*="edit-chart" i],
+        [data-test*="view-query" i],
+        [data-testid*="view-query" i],
         [data-test*="dashboard-view" i],
         [data-testid*="dashboard-view" i] {
           display: none !important;
@@ -68,10 +73,11 @@ export function DashboardEmbed({
       'share chart',
       'share dashboard',
       'save as',
+      'edit chart',
+      'view query',
       'dashboard view',
       'view in dashboard',
     ])
-    const viewerOnlyBlockedLabels = new Set(['edit chart', 'view query'])
     const actionNodes = doc.querySelectorAll<HTMLElement>('button, a, li, [role="button"], [role="menuitem"]')
     actionNodes.forEach((node) => {
       const text = (node.textContent ?? '').trim().toLowerCase()
@@ -84,23 +90,14 @@ export function DashboardEmbed({
         alwaysBlockedLabels.has(title) ||
         testId.includes('share') ||
         testId.includes('save-as') ||
+        testId.includes('edit-chart') ||
+        testId.includes('view-query') ||
         testId.includes('dashboard-view')
-      const isViewerOnlyBlocked =
-        !isAdmin && (
-          viewerOnlyBlockedLabels.has(text) ||
-          viewerOnlyBlockedLabels.has(aria) ||
-          viewerOnlyBlockedLabels.has(title) ||
-          testId.includes('edit-chart') ||
-          testId.includes('view-query')
-        )
-      if (
-        isAlwaysBlocked ||
-        isViewerOnlyBlocked
-      ) {
+      if (isAlwaysBlocked) {
         node.style.display = 'none'
       }
     })
-  }, [isAdmin])
+  }, [])
 
   const stretchIframe = useCallback(() => {
     const mount = containerRef.current

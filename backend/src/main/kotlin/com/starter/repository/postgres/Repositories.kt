@@ -15,6 +15,9 @@ interface UserRepository : JpaRepository<User, UUID> {
     fun findByUsername(username: String): Optional<User>
     fun existsByEmail(email: String): Boolean
     fun existsByUsername(username: String): Boolean
+
+    @Query("SELECT DISTINCT UPPER(u.role) FROM User u ORDER BY UPPER(u.role)")
+    fun findDistinctRoles(): List<String>
 }
 
 interface ItemRepository : JpaRepository<Item, UUID> {

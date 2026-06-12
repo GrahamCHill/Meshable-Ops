@@ -75,7 +75,7 @@ data class DashboardEmbedConfig(
     @Column(columnDefinition = "TEXT")
     var description: String? = null,
 
-    @Column(name = "dashboard_id", nullable = false, unique = true)
+    @Column(name = "dashboard_id", nullable = false)
     var dashboardId: String = "",
 
     @Column(name = "guest_token_resource_id")
@@ -86,6 +86,11 @@ data class DashboardEmbedConfig(
 
     @Column(nullable = false)
     var enabled: Boolean = true,
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "dashboard_embed_config_roles", joinColumns = [JoinColumn(name = "dashboard_embed_config_id")])
+    @Column(name = "role_name")
+    var allowedRoles: MutableList<String> = mutableListOf(),
 
     @CreatedDate @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: Instant = Instant.now(),
