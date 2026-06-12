@@ -62,6 +62,29 @@ data class EventResponse(
     val createdAt: String?
 )
 
+// Dashboard embeds
+
+data class DashboardEmbedConfigRequest(
+    @field:NotBlank @field:Size(max = 255) val label: String,
+    val description: String? = null,
+    @field:NotBlank @field:Size(max = 255) val dashboardId: String,
+    @field:Size(max = 255) val guestTokenResourceId: String? = null,
+    @field:Min(0) val sortOrder: Int = 0,
+    val enabled: Boolean = true
+)
+
+data class DashboardEmbedConfigResponse(
+    val id: String,
+    val label: String,
+    val description: String?,
+    val dashboardId: String,
+    val guestTokenResourceId: String?,
+    val sortOrder: Int,
+    val enabled: Boolean,
+    val createdAt: String?,
+    val updatedAt: String?
+)
+
 // ─── Generic ─────────────────────────────────────────────────────────────────
 
 data class MessageResponse(val message: String)

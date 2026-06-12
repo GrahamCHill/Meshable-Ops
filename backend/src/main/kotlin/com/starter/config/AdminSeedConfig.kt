@@ -1,6 +1,8 @@
 package com.starter.config
 
+import com.starter.model.postgres.DashboardEmbedConfig
 import com.starter.model.postgres.User
+import com.starter.repository.postgres.DashboardEmbedConfigRepository
 import com.starter.repository.postgres.UserRepository
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -17,6 +19,7 @@ class AdminSeedConfig {
     @Bean
     fun seedUserRunner(
         userRepository: UserRepository,
+        dashboardEmbedConfigRepository: DashboardEmbedConfigRepository,
         passwordEncoder: PasswordEncoder,
         @Value("\${app.seed-admin.email:admin@app.local}") seedEmail: String,
         @Value("\${app.seed-admin.username:admin}") seedUsername: String,
@@ -26,9 +29,14 @@ class AdminSeedConfig {
         @Value("\${app.seed-user.username:user}") standardUsername: String,
         @Value("\${app.seed-user.password:user123}") standardPassword: String,
         @Value("\${app.seed-user.role:USER}") standardRole: String,
+        @Value("\${app.seed-dashboard.label:Metrics Overview}") dashboardLabel: String,
+        @Value("\${app.seed-dashboard.description:Items created over time}") dashboardDescription: String,
+        @Value("\${app.seed-dashboard.id:fdda8aae-c6fb-48fc-9322-5f797764b9dd}") dashboardId: String,
+        @Value("\${app.seed-dashboard.guest-token-resource-id:2}") guestTokenResourceId: String,
     ) = ApplicationRunner {
         seedUser(userRepository, passwordEncoder, seedEmail, seedUsername, seedPassword, seedRole, "admin")
         seedUser(userRepository, passwordEncoder, standardEmail, standardUsername, standardPassword, standardRole, "standard")
+        seedDashboardEmbed(dashboardEmbedConfigRepository, dashboardLabel, dashboardDescription, dashboardId, guestTokenResourceId)
     }
 
     private fun seedUser(
@@ -78,5 +86,29 @@ class AdminSeedConfig {
         }
 
         return existing
+    }
+
+    private fun seedDashboardEmbed(
+        dashboardEmbedConfigRepository: DashboardEmbedConfigRepository,
+        label: String,
+        description: String,
+        dashboardId: String,
+        guestTokenResourceId: String,
+    ) {
+        if (dashboardEmbedConfigRepository.count() > 0L) {
+            return
+        }
+
+        dashboardEmbedConfigRepository.save(
+            DashboardEmbedConfig(
+                label = label,
+                description = description,
+                dashboardId = dashboardId,
+                guestTokenResourceId = guestTokenResourceId,
+                sortOrder = 0,
+                enabled = true,
+            )
+        )
+        seedLog.info("Seeded default dashboard embed {}", dashboardId)
     }
 }

@@ -1,45 +1,182 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { DashboardEmbed } from '../ui/DashboardEmbed'
-import { Info, LayoutDashboard, Shield } from 'lucide-react'
+import { dashboardEmbedsApi, type DashboardEmbedConfig } from '../../api/client'
 import { useAuthStore } from '../../hooks/useAuthStore'
+import { Button, Card, Spinner } from '../ui'
+import { DashboardEmbed } from '../ui/DashboardEmbed'
+import { Check, Info, LayoutDashboard, Pencil, Plus, Shield, Trash2, X } from 'lucide-react'
 
-interface DashboardConfig {
-  id: string
+type DashboardFormValues = {
   label: string
   description: string
-  guestTokenResourceId?: string
+  dashboardId: string
+  guestTokenResourceId: string
+  sortOrder: string
+  enabled: boolean
 }
 
-/**
- * Add your Superset dashboard IDs here.
- *
- * `id` is the embedded dashboard UUID used by the iframe SDK.
- * `guestTokenResourceId` is optional. Use it only when the numeric Superset
- * dashboard id differs from the embed UUID and your backend needs that numeric id
- * to mint the guest token.
- */
-const DASHBOARDS: DashboardConfig[] = [
-  {
-    id: 'fdda8aae-c6fb-48fc-9322-5f797764b9dd',
-    label: 'Metrics Overview',
-    description: 'Items created over time',
-  },
-  {
-    id: 'fdda8aae-c6fb-48fc-9322-5f797764b9dd',
-    label: 'Metrics Overview 22',
-    description: 'Items created over time a second time',
-  },
-  // Add more dashboards:
-  // { id: 'another-uuid', guestTokenResourceId: '2', label: 'Sales', description: 'Sales dashboard' },
-]
+const emptyForm: DashboardFormValues = {
+  label: '',
+  description: '',
+  dashboardId: '',
+  guestTokenResourceId: '',
+  sortOrder: '0',
+  enabled: true,
+}
+
+function DashboardConfigForm({
+  initial,
+  onSubmit,
+  onCancel,
+  loading,
+}: {
+  initial?: DashboardEmbedConfig
+  onSubmit: (data: DashboardFormValues) => void
+  onCancel: () => void
+  loading?: boolean
+}) {
+  const [form, setForm] = useState<DashboardFormValues>(() => initial ? {
+    label: initial.label,
+    description: initial.description ?? '',
+    dashboardId: initial.dashboardId,
+    guestTokenResourceId: initial.guestTokenResourceId ?? '',
+    sortOrder: String(initial.sortOrder),
+    enabled: initial.enabled,
+  } : emptyForm)
+
+  useEffect(() => {
+    setForm(initial ? {
+      label: initial.label,
+      description: initial.description ?? '',
+      dashboardId: initial.dashboardId,
+      guestTokenResourceId: initial.guestTokenResourceId ?? '',
+      sortOrder: String(initial.sortOrder),
+      enabled: initial.enabled,
+    } : emptyForm)
+  }, [initial])
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      <input
+        placeholder="Display label"
+        value={form.label}
+        onChange={(e) => setForm(current => ({ ...current, label: e.target.value }))}
+      />
+      <textarea
+        placeholder="Description"
+        rows={2}
+        value={form.description}
+        onChange={(e) => setForm(current => ({ ...current, description: e.target.value }))}
+      />
+      <input
+        placeholder="Embed UUID"
+        value={form.dashboardId}
+        onChange={(e) => setForm(current => ({ ...current, dashboardId: e.target.value }))}
+      />
+      <input
+        placeholder="Numeric dashboard id for guest token (optional)"
+        value={form.guestTokenResourceId}
+        onChange={(e) => setForm(current => ({ ...current, guestTokenResourceId: e.target.value }))}
+      />
+      <input
+        type="number"
+        placeholder="Sort order"
+        value={form.sortOrder}
+        onChange={(e) => setForm(current => ({ ...current, sortOrder: e.target.value }))}
+      />
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
+        <input
+          type="checkbox"
+          checked={form.enabled}
+          onChange={(e) => setForm(current => ({ ...current, enabled: e.target.checked }))}
+        />
+        Enabled for shared viewing
+      </label>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Button
+          loading={loading}
+          onClick={() => onSubmit(form)}
+        >
+          <Check size={14} /> Save
+        </Button>
+        <Button variant="ghost" onClick={onCancel}>
+          <X size={14} /> Cancel
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 export function DashboardsPage() {
-  const [active, setActive] = useState(0)
+  const queryClient = useQueryClient()
   const { user } = useAuthStore()
+  const isAdmin = user?.role === 'ADMIN'
+  const [active, setActive] = useState(0)
+  const [showCreate, setShowCreate] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
 
-  const current = DASHBOARDS[active]
-  const isPlaceholder = current.id === 'YOUR-DASHBOARD-UUID-HERE'
+  const embedsQuery = useQuery({
+    queryKey: ['dashboard-embeds'],
+    queryFn: () => dashboardEmbedsApi.list(),
+  })
+
+  const adminEmbedsQuery = useQuery({
+    queryKey: ['dashboard-embeds', 'admin'],
+    queryFn: () => dashboardEmbedsApi.listAdmin(),
+    enabled: isAdmin,
+  })
+
+  const createMutation = useMutation({
+    mutationFn: (data: DashboardFormValues) => dashboardEmbedsApi.create({
+      label: data.label.trim(),
+      description: data.description.trim() || undefined,
+      dashboardId: data.dashboardId.trim(),
+      guestTokenResourceId: data.guestTokenResourceId.trim() || undefined,
+      sortOrder: Number(data.sortOrder || 0),
+      enabled: data.enabled,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard-embeds'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-embeds', 'admin'] })
+      setShowCreate(false)
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: DashboardFormValues }) => dashboardEmbedsApi.update(id, {
+      label: data.label.trim(),
+      description: data.description.trim() || undefined,
+      dashboardId: data.dashboardId.trim(),
+      guestTokenResourceId: data.guestTokenResourceId.trim() || undefined,
+      sortOrder: Number(data.sortOrder || 0),
+      enabled: data.enabled,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard-embeds'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-embeds', 'admin'] })
+      setEditingId(null)
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => dashboardEmbedsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard-embeds'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-embeds', 'admin'] })
+      setEditingId(null)
+    },
+  })
+
+  const dashboards = embedsQuery.data ?? []
+  const adminDashboards = adminEmbedsQuery.data ?? dashboards
+  const current = dashboards[active]
+
+  useEffect(() => {
+    if (active > Math.max(dashboards.length - 1, 0)) {
+      setActive(0)
+    }
+  }, [active, dashboards.length])
 
   return (
     <div style={{ width: '100%', maxWidth: 'none' }}>
@@ -61,33 +198,104 @@ export function DashboardsPage() {
           borderRadius: 'var(--radius-sm)',
           background: 'var(--color-surface)',
         }}>
-          <Shield size={13} /> Superset stays internal to Docker
+          <Shield size={13} /> Dashboard embed list is now runtime-managed
         </div>
       </div>
 
-      {user?.role === 'ADMIN' && (
-        <div style={{
-          marginBottom: '1rem',
-          padding: '0.9rem 1rem',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-md)',
-          background: 'var(--color-surface)',
-          color: 'var(--color-text-secondary)',
-          fontSize: '0.85rem',
-        }}>
-          Need to create or edit dashboards? Open the admin workspace at{' '}
-          <Link to="/admin/superset" style={{ color: 'var(--color-accent)', textDecoration: 'none', fontWeight: 600 }}>
-            /admin/superset
-          </Link>.
+      {isAdmin && (
+        <Card style={{ marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Manage shared embeds</div>
+              <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
+                Add, remove, reorder, or disable shared dashboard embeds without rebuilding the frontend.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Button variant="secondary" onClick={() => setShowCreate(true)}>
+                <Plus size={14} /> Add embed
+              </Button>
+              <Link to="/admin/superset" style={{ color: 'var(--color-accent)', textDecoration: 'none', fontWeight: 600, alignSelf: 'center' }}>
+                Open /admin/superset
+              </Link>
+            </div>
+          </div>
+
+          {showCreate && (
+            <Card style={{ marginBottom: '1rem', padding: '1rem' }}>
+              <DashboardConfigForm
+                onSubmit={(data) => createMutation.mutate(data)}
+                onCancel={() => setShowCreate(false)}
+                loading={createMutation.isPending}
+              />
+            </Card>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {adminDashboards.map((dashboard) => (
+              <Card key={dashboard.id} style={{ padding: '1rem' }}>
+                {editingId === dashboard.id ? (
+                  <DashboardConfigForm
+                    initial={dashboard}
+                    onSubmit={(data) => updateMutation.mutate({ id: dashboard.id, data })}
+                    onCancel={() => setEditingId(null)}
+                    loading={updateMutation.isPending}
+                  />
+                ) : (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>{dashboard.label}</div>
+                      {dashboard.description && (
+                        <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', marginBottom: 8 }}>
+                          {dashboard.description}
+                        </div>
+                      )}
+                      <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', lineHeight: 1.7 }}>
+                        UUID: <code>{dashboard.dashboardId}</code><br />
+                        Guest token resource: <code>{dashboard.guestTokenResourceId ?? dashboard.dashboardId}</code><br />
+                        Sort order: <code>{dashboard.sortOrder}</code><br />
+                        Status: <code>{dashboard.enabled ? 'enabled' : 'disabled'}</code>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      <Button variant="ghost" size="sm" onClick={() => setEditingId(dashboard.id)}>
+                        <Pencil size={13} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteMutation.mutate(dashboard.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 size={13} style={{ color: 'var(--color-danger)' }} />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            ))}
+            {isAdmin && adminDashboards.length === 0 && (
+              <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
+                No dashboard embeds configured yet.
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {embedsQuery.isLoading && (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+          <Spinner />
         </div>
       )}
 
-      {DASHBOARDS.length > 1 && (
+      {!embedsQuery.isLoading && dashboards.length > 1 && (
         <div style={{
           display: 'flex', gap: 4, marginBottom: '1rem',
           borderBottom: '1px solid var(--color-border)', paddingBottom: 0,
+          flexWrap: 'wrap',
         }}>
-          {DASHBOARDS.map((dashboard, index) => (
+          {dashboards.map((dashboard, index) => (
             <button key={dashboard.id} onClick={() => setActive(index)} style={{
               padding: '8px 16px',
               fontSize: '0.875rem',
@@ -106,7 +314,7 @@ export function DashboardsPage() {
         </div>
       )}
 
-      {isPlaceholder ? (
+      {!embedsQuery.isLoading && !current && (
         <div style={{
           background: 'var(--color-surface)',
           border: '1px solid var(--color-border)',
@@ -122,9 +330,9 @@ export function DashboardsPage() {
           }}>
             <LayoutDashboard size={22} color="var(--color-accent)" />
           </div>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 8 }}>No dashboard UUID configured</h2>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', maxWidth: 440, margin: '0 auto 1.5rem' }}>
-            Keep Superset internal, enable dashboard embedding there, then paste the embed identifiers into this page.
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 8 }}>No dashboard embeds configured</h2>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', maxWidth: 520, margin: '0 auto 1.5rem' }}>
+            Admins can add shared Superset embeds at runtime on this page without rebuilding the frontend.
           </p>
           <div style={{
             background: 'var(--color-bg)',
@@ -139,22 +347,30 @@ export function DashboardsPage() {
             lineHeight: 1.8,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: 'var(--color-text)', fontWeight: 500 }}>
-              <Info size={14} /> Steps to embed a dashboard
+              <Info size={14} /> Runtime setup
             </div>
-            1. Admins can manage dashboards from the internal Superset admin page.<br />
-            2. Enable embedding for the target dashboard and copy the embed UUID.<br />
-            3. Find the numeric dashboard id for the same dashboard.<br />
-            4. Paste both values into <code style={{ background: 'var(--color-surface-2)', padding: '1px 4px', borderRadius: 3 }}>DashboardsPage.tsx</code>.<br />
-            5. Any authenticated user can view embeds on pages that include them.
+            1. Create or edit dashboards in Superset.<br />
+            2. Enable embedding and copy the embed UUID.<br />
+            3. Use the admin panel on this page to add the shared embed record.<br />
+            4. Any authenticated user can view enabled shared embeds here.
           </div>
         </div>
-      ) : (
-        <DashboardEmbed
-          key={current.id}
-          dashboardId={current.id}
-          guestTokenResourceId={current.guestTokenResourceId}
-          height="calc(100vh - 12rem)"
-        />
+      )}
+
+      {current && (
+        <>
+          {current.description && (
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
+              {current.description}
+            </p>
+          )}
+          <DashboardEmbed
+            key={current.id}
+            dashboardId={current.dashboardId}
+            guestTokenResourceId={current.guestTokenResourceId}
+            height="calc(100vh - 12rem)"
+          />
+        </>
       )}
     </div>
   )

@@ -121,7 +121,10 @@ class SearchController(
 
 @RestController
 @RequestMapping("/api/superset")
-class SupersetController(private val supersetService: SupersetService) {
+class SupersetController(
+    private val supersetService: SupersetService,
+    private val dashboardEmbedConfigService: DashboardEmbedConfigService
+) {
 
     data class GuestTokenRequest(@field:NotEmpty val dashboardIds: List<String>)
 
@@ -130,6 +133,39 @@ class SupersetController(private val supersetService: SupersetService) {
         @AuthenticationPrincipal principal: UserDetails,
         @Valid @RequestBody req: GuestTokenRequest
     ) = mapOf("token" to supersetService.mintGuestToken(req.dashboardIds, principal.username, principal.username))
+
+    @GetMapping("/dashboard-embeds")
+    fun listDashboardEmbeds(@AuthenticationPrincipal principal: UserDetails) =
+        dashboardEmbedConfigService.listEnabled()
+
+    @GetMapping("/dashboard-embeds/admin")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun listAllDashboardEmbeds(@AuthenticationPrincipal principal: UserDetails) =
+        dashboardEmbedConfigService.listAll()
+
+    @PostMapping("/dashboard-embeds")
+    @PreAuthorize("hasRole('ADMIN')")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun createDashboardEmbed(
+        @AuthenticationPrincipal principal: UserDetails,
+        @Valid @RequestBody req: DashboardEmbedConfigRequest
+    ) = dashboardEmbedConfigService.create(req)
+
+    @PutMapping("/dashboard-embeds/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun updateDashboardEmbed(
+        @AuthenticationPrincipal principal: UserDetails,
+        @PathVariable id: UUID,
+        @Valid @RequestBody req: DashboardEmbedConfigRequest
+    ) = dashboardEmbedConfigService.update(id, req)
+
+    @DeleteMapping("/dashboard-embeds/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deleteDashboardEmbed(
+        @AuthenticationPrincipal principal: UserDetails,
+        @PathVariable id: UUID
+    ) = dashboardEmbedConfigService.delete(id)
 }
 
 // ─── Health ───────────────────────────────────────────────────────────────────

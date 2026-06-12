@@ -1,6 +1,7 @@
 package com.starter.repository.postgres
 
 import com.starter.model.postgres.Item
+import com.starter.model.postgres.DashboardEmbedConfig
 import com.starter.model.postgres.User
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -22,4 +23,9 @@ interface ItemRepository : JpaRepository<Item, UUID> {
 
     @Query("SELECT i FROM Item i WHERE i.user.id = :userId AND :tag MEMBER OF i.tags")
     fun findByUserIdAndTag(userId: UUID, tag: String): List<Item>
+}
+
+interface DashboardEmbedConfigRepository : JpaRepository<DashboardEmbedConfig, UUID> {
+    fun findAllByEnabledTrueOrderBySortOrderAscCreatedAtAsc(): List<DashboardEmbedConfig>
+    fun findAllByOrderBySortOrderAscCreatedAtAsc(): List<DashboardEmbedConfig>
 }

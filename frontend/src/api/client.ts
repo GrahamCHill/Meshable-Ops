@@ -73,6 +73,18 @@ export interface HealthStatus {
   qdrant: string
 }
 
+export interface DashboardEmbedConfig {
+  id: string
+  label: string
+  description?: string
+  dashboardId: string
+  guestTokenResourceId?: string
+  sortOrder: number
+  enabled: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 // ─── API calls ───────────────────────────────────────────────────────────────
 
 export const authApi = {
@@ -107,4 +119,29 @@ export const searchApi = {
 
 export const healthApi = {
   check: () => api.get<HealthStatus>('/health').then(r => r.data),
+}
+
+export const dashboardEmbedsApi = {
+  list: () =>
+    api.get<DashboardEmbedConfig[]>('/superset/dashboard-embeds').then(r => r.data),
+  listAdmin: () =>
+    api.get<DashboardEmbedConfig[]>('/superset/dashboard-embeds/admin').then(r => r.data),
+  create: (data: {
+    label: string
+    description?: string
+    dashboardId: string
+    guestTokenResourceId?: string
+    sortOrder: number
+    enabled: boolean
+  }) => api.post<DashboardEmbedConfig>('/superset/dashboard-embeds', data).then(r => r.data),
+  update: (id: string, data: {
+    label: string
+    description?: string
+    dashboardId: string
+    guestTokenResourceId?: string
+    sortOrder: number
+    enabled: boolean
+  }) => api.put<DashboardEmbedConfig>(`/superset/dashboard-embeds/${id}`, data).then(r => r.data),
+  delete: (id: string) =>
+    api.delete(`/superset/dashboard-embeds/${id}`),
 }

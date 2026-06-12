@@ -61,3 +61,35 @@ data class Item(
     @LastModifiedDate @Column(name = "updated_at", nullable = false)
     val updatedAt: Instant = Instant.now()
 )
+
+@Entity
+@Table(name = "dashboard_embed_configs")
+@EntityListeners(AuditingEntityListener::class)
+data class DashboardEmbedConfig(
+    @Id @GeneratedValue(strategy = GenerationType.UUID)
+    val id: UUID = UUID.randomUUID(),
+
+    @Column(nullable = false)
+    var label: String = "",
+
+    @Column(columnDefinition = "TEXT")
+    var description: String? = null,
+
+    @Column(name = "dashboard_id", nullable = false, unique = true)
+    var dashboardId: String = "",
+
+    @Column(name = "guest_token_resource_id")
+    var guestTokenResourceId: String? = null,
+
+    @Column(name = "sort_order", nullable = false)
+    var sortOrder: Int = 0,
+
+    @Column(nullable = false)
+    var enabled: Boolean = true,
+
+    @CreatedDate @Column(name = "created_at", nullable = false, updatable = false)
+    val createdAt: Instant = Instant.now(),
+
+    @LastModifiedDate @Column(name = "updated_at", nullable = false)
+    val updatedAt: Instant = Instant.now()
+)

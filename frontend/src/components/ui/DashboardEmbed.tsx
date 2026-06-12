@@ -26,7 +26,7 @@ export function DashboardEmbed({
   const resourceId = guestTokenResourceId ?? dashboardId
   const isAdmin = user?.role === 'ADMIN'
 
-  const hideShareActions = useCallback(() => {
+  const hideEmbedActions = useCallback(() => {
     const iframe = containerRef.current?.querySelector('iframe')
     if (!iframe) return
 
@@ -38,22 +38,39 @@ export function DashboardEmbed({
     }
     if (!doc) return
 
-    const styleId = 'superset-embed-hide-share'
+    const styleId = 'superset-embed-hide-actions'
     if (!doc.getElementById(styleId)) {
       const style = doc.createElement('style')
       style.id = styleId
       style.textContent = `
         [aria-label*="Share" i],
+        [aria-label*="Save as" i],
+        [aria-label*="Dashboard view" i],
+        [aria-label*="View in dashboard" i],
         [title*="Share" i],
+        [title*="Save as" i],
+        [title*="Dashboard view" i],
+        [title*="View in dashboard" i],
         [data-test*="share" i],
-        [data-testid*="share" i] {
+        [data-testid*="share" i],
+        [data-test*="save-as" i],
+        [data-testid*="save-as" i],
+        [data-test*="dashboard-view" i],
+        [data-testid*="dashboard-view" i] {
           display: none !important;
         }
       `
       doc.head?.appendChild(style)
     }
 
-    const alwaysBlockedLabels = new Set(['share', 'share chart', 'share dashboard'])
+    const alwaysBlockedLabels = new Set([
+      'share',
+      'share chart',
+      'share dashboard',
+      'save as',
+      'dashboard view',
+      'view in dashboard',
+    ])
     const viewerOnlyBlockedLabels = new Set(['edit chart', 'view query'])
     const actionNodes = doc.querySelectorAll<HTMLElement>('button, a, li, [role="button"], [role="menuitem"]')
     actionNodes.forEach((node) => {
@@ -65,7 +82,9 @@ export function DashboardEmbed({
         alwaysBlockedLabels.has(text) ||
         alwaysBlockedLabels.has(aria) ||
         alwaysBlockedLabels.has(title) ||
-        testId.includes('share')
+        testId.includes('share') ||
+        testId.includes('save-as') ||
+        testId.includes('dashboard-view')
       const isViewerOnlyBlocked =
         !isAdmin && (
           viewerOnlyBlockedLabels.has(text) ||
@@ -114,8 +133,8 @@ export function DashboardEmbed({
       node = node.parentElement
     }
 
-    hideShareActions()
-  }, [hideShareActions])
+    hideEmbedActions()
+  }, [hideEmbedActions])
 
   const fetchGuestToken = useCallback(async () => {
     const res = await api.post<{ token: string }>('/superset/guest-token', {
@@ -150,13 +169,13 @@ export function DashboardEmbed({
         })
         const iframe = containerRef.current?.querySelector('iframe')
         if (iframe) {
-          iframeLoadHandler = () => hideShareActions()
+          iframeLoadHandler = () => hideEmbedActions()
           iframe.addEventListener('load', iframeLoadHandler)
           try {
             const doc = iframe.contentDocument
             if (doc?.body) {
               iframeObserverRef.current?.disconnect()
-              iframeObserverRef.current = new MutationObserver(() => hideShareActions())
+              iframeObserverRef.current = new MutationObserver(() => hideEmbedActions())
               iframeObserverRef.current.observe(doc.body, { childList: true, subtree: true })
             }
           } catch {
@@ -192,7 +211,7 @@ export function DashboardEmbed({
       observer.disconnect()
       resizeObserver.disconnect()
     }
-  }, [dashboardId, fetchGuestToken, hideShareActions, onLoad, onError, stretchIframe])
+  }, [dashboardId, fetchGuestToken, hideEmbedActions, onLoad, onError, stretchIframe])
 
   return (
     <div style={{ position: 'relative', width: '100%', height: typeof height === 'number' ? `${height}px` : height, minHeight: 0 }}>
