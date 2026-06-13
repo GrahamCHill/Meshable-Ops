@@ -15,6 +15,7 @@ import java.util.UUID
 class AdminUserService(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
+    private val auditLogService: AuditLogService,
 ) {
 
     @Transactional(readOnly = true)
@@ -23,7 +24,7 @@ class AdminUserService(
             .map(::toSummary)
 
     @Transactional
-    fun createUser(req: AdminCreateUserRequest): UserSummaryResponse {
+    fun createUser(req: AdminCreateUserRequest, actingEmail: String): UserSummaryResponse {
         val email = req.email.trim().lowercase()
         val username = req.username.trim()
         val role = req.role.trim().uppercase()
@@ -43,6 +44,12 @@ class AdminUserService(
                 role = role,
             )
         )
+        auditLogService.record(
+            actingEmail = actingEmail,
+            action = "USER_CREATED",
+            resourceType = "USER",
+            resourceId = created.id.toString(),
+        )
         return toSummary(created)
     }
 
@@ -60,7 +67,14 @@ class AdminUserService(
         }
 
         user.active = false
-        return toSummary(userRepository.save(user))
+        val saved = userRepository.save(user)
+        auditLogService.record(
+            actingEmail = actingEmail,
+            action = "USER_DEACTIVATED",
+            resourceType = "USER",
+            resourceId = saved.id.toString(),
+        )
+        return toSummary(saved)
     }
 
     private fun toSummary(user: User) = UserSummaryResponse(

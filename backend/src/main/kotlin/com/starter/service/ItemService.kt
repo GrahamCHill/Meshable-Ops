@@ -20,7 +20,8 @@ class ItemService(
     private val itemRepository: ItemRepository,
     private val userRepository: UserRepository,
     private val eventRepository: EventRepository,
-    private val vectorService: VectorService
+    private val vectorService: VectorService,
+    private val auditLogService: AuditLogService,
 ) {
     @Value("\${qdrant.vector-size}") private var vectorSize: Int = 384
 
@@ -53,6 +54,12 @@ class ItemService(
                 type = "ITEM_CREATED",
                 payload = mapOf("itemId" to item.id.toString(), "title" to item.title, "actorEmail" to user.email)
             )
+        )
+        auditLogService.record(
+            actingEmail = email,
+            action = "ITEM_CREATED",
+            resourceType = "ITEM",
+            resourceId = item.id.toString(),
         )
 
         return item.toResponse()
@@ -88,6 +95,12 @@ class ItemService(
                 payload = mapOf("itemId" to saved.id.toString(), "title" to saved.title, "actorEmail" to user.email)
             )
         )
+        auditLogService.record(
+            actingEmail = email,
+            action = "ITEM_UPDATED",
+            resourceType = "ITEM",
+            resourceId = saved.id.toString(),
+        )
         return saved.toResponse()
     }
 
@@ -107,6 +120,12 @@ class ItemService(
                 type = "ITEM_DELETED",
                 payload = mapOf("itemId" to itemId.toString(), "title" to item.title, "actorEmail" to user.email)
             )
+        )
+        auditLogService.record(
+            actingEmail = email,
+            action = "ITEM_DELETED",
+            resourceType = "ITEM",
+            resourceId = itemId.toString(),
         )
     }
 

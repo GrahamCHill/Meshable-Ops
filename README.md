@@ -29,6 +29,11 @@ For end users:
 - Superset authoring is available to admins at `/admin/superset-graph-builder`
 - Direct non-embed Superset routes are protected and redirected back through the app
 
+Additional documentation:
+
+- [Architecture Diagram](docs/architecture.md)
+- [Database Layout Diagram](docs/database-layout.md)
+
 ## Services
 
 | Service | Default access | Notes |
@@ -97,6 +102,25 @@ Each shared dashboard record stores:
 
 Non-admin users can view enabled shared dashboards that match their role, but cannot manage them.
 
+## Vector Search Testing
+
+The development seed data now includes a small set of more realistic `items` so vector search is easier to validate.
+
+Example queries to try on the search page:
+
+- `refund policy and billing correction`
+- `employee onboarding and benefits`
+- `release checklist for deployment`
+- `incident response for phishing`
+- `campaign performance and conversions`
+
+These are intentionally varied so the semantic search path has meaningful text to compare.
+
+On an already-running environment with existing PostgreSQL data, you can still test search by:
+
+- creating items through the app
+- running the reindex script after data changes
+
 ## User Access Management
 
 Admins manage access from `/admin`.
@@ -104,6 +128,11 @@ Admins manage access from `/admin`.
 - Create new application users from the admin form
 - Review the current access roster and roles
 - Continue into the `Superset Graph Builder` subpage for embedded authoring
+- Manage object storage connection settings for backup/archive workflows
+- Configure automated vector reindex cadence
+- Trigger manual vector recalculation
+- Export an application backup
+- Review recent audit-log activity
 
 Self-service registration remains disabled. In local development, the default admin and user accounts are still seeded for convenience.
 
@@ -133,11 +162,11 @@ At minimum, review and change these values before deployment:
 
 Current defaults live primarily in:
 
-- [docker-compose.yml](/C:/Users/Graham/Documents/GitHub/superset-docker/docker-compose.yml)
-- [docker-compose.prod.yml](/C:/Users/Graham/Documents/GitHub/superset-docker/docker-compose.prod.yml)
-- [.env.production.example](/C:/Users/Graham/Documents/GitHub/superset-docker/.env.production.example)
-- [backend/src/main/resources/application.properties](/C:/Users/Graham/Documents/GitHub/superset-docker/backend/src/main/resources/application.properties)
-- [superset/superset_config.py](/C:/Users/Graham/Documents/GitHub/superset-docker/superset/superset_config.py)
+- [docker-compose.yml](docker-compose.yml)
+- [docker-compose.prod.yml](docker-compose.prod.yml)
+- [.env.production.example](.env.production.example)
+- [backend/src/main/resources/application.properties](backend/src/main/resources/application.properties)
+- [superset/superset_config.py](superset/superset_config.py)
 
 For production, prefer injecting secrets via environment variables or Docker secrets rather than committing real values into the compose file.
 
@@ -176,6 +205,48 @@ For a modest internal deployment, a good starting point is:
 - SSD-backed disk
 
 If Superset usage, background tasks, or vector workloads grow, scale up RAM first.
+
+### Rough VM Cost Estimate
+
+For planning purposes, a simple starting model is:
+
+| Expected users | Recommended VM specs | Estimated monthly VM cost |
+|---|---|---|
+| `1-10` | `2-4 vCPU`, `8 GB RAM`, SSD-backed disk | `~$40-$90` |
+| `10-50` | `4 vCPU`, `8-16 GB RAM`, SSD-backed disk | `~$60-$180` |
+| `50-150` | `4-8 vCPU`, `16-32 GB RAM`, SSD-backed disk | `~$120-$350` |
+
+These are rough planning estimates for the VM layer only, not live quotes. Actual cost depends on:
+
+- cloud provider and region
+- VM family
+- on-demand vs reserved / savings pricing
+- attached disk size and disk class
+- outbound bandwidth
+- snapshots, backups, and monitoring
+
+Provider pricing references:
+
+- Azure: [Linux Virtual Machines Pricing](https://azure.microsoft.com/en-us/pricing/details/virtual-machines/linux/)
+- AWS: [EC2 On-Demand Instance Pricing](https://aws.amazon.com/ec2/pricing/on-demand/)
+- GCP: [Google Cloud Compute Pricing](https://cloud.google.com/products/compute/pricing)
+
+### Cloud Provider Service Mapping
+
+If you want to deploy this as "one VM running Docker Compose", these are the most natural service choices:
+
+- Azure: `Azure Virtual Machines`
+- AWS: `Amazon EC2`
+- GCP: `Google Compute Engine`
+
+In other words, for this repository I would usually recommend:
+
+- one Linux VM
+- Docker Engine + Docker Compose on that VM
+- Caddy terminating HTTPS on that VM
+- only `80/443` exposed publicly
+
+You do not need Kubernetes or a managed container platform unless you specifically want orchestration, auto-scaling, or a more distributed production setup.
 
 ### HTTPS Recommendation
 
@@ -261,11 +332,11 @@ One practical setup:
 
 This repo now includes example deployment artifacts:
 
-- [docker-compose.prod.yml](/C:/Users/Graham/Documents/GitHub/superset-docker/docker-compose.prod.yml)
-- [.env.production.example](/C:/Users/Graham/Documents/GitHub/superset-docker/.env.production.example)
-- [deploy/caddy/Caddyfile](/C:/Users/Graham/Documents/GitHub/superset-docker/deploy/caddy/Caddyfile)
-- [deploy/nginx/app.example.conf](/C:/Users/Graham/Documents/GitHub/superset-docker/deploy/nginx/app.example.conf)
-- [deploy/Caddyfile.example](/C:/Users/Graham/Documents/GitHub/superset-docker/deploy/Caddyfile.example)
+- [docker-compose.prod.yml](docker-compose.prod.yml)
+- [.env.production.example](.env.production.example)
+- [deploy/caddy/Caddyfile](deploy/caddy/Caddyfile)
+- [deploy/nginx/app.example.conf](deploy/nginx/app.example.conf)
+- [deploy/Caddyfile.example](deploy/Caddyfile.example)
 
 ## Production Deployment Steps
 
@@ -348,7 +419,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 
 The example Nginx config is at:
 
-- [deploy/nginx/app.example.conf](/C:/Users/Graham/Documents/GitHub/superset-docker/deploy/nginx/app.example.conf)
+- [deploy/nginx/app.example.conf](deploy/nginx/app.example.conf)
 
 It assumes:
 
@@ -360,7 +431,7 @@ It assumes:
 
 The active in-stack Caddy config is at:
 
-- [deploy/caddy/Caddyfile](/C:/Users/Graham/Documents/GitHub/superset-docker/deploy/caddy/Caddyfile)
+- [deploy/caddy/Caddyfile](deploy/caddy/Caddyfile)
 
 It uses:
 
@@ -376,7 +447,7 @@ That means changing the domain for a new deployment is just:
 
 The separate example Caddy config is still at:
 
-- [deploy/Caddyfile.example](/C:/Users/Graham/Documents/GitHub/superset-docker/deploy/Caddyfile.example)
+- [deploy/Caddyfile.example](deploy/Caddyfile.example)
 
 Caddy is now the easiest path if you want Compose-managed automatic HTTPS with minimal setup.
 
@@ -412,8 +483,41 @@ Rebuild after code/config changes:
 docker compose up --build -d
 ```
 
+Recalculate stored item vectors from the current item dataset:
+
+```bash
+./scripts/reindex-items.sh
+```
+
+On Windows PowerShell:
+
+```powershell
+./scripts/reindex-items.ps1
+```
+
+Both scripts:
+
+- log in as an app admin
+- call the existing `/api/items/reindex` endpoint
+- support `APP_URL`, `APP_ADMIN_EMAIL`, and `APP_ADMIN_PASSWORD`
+
+This is useful after:
+
+- embedding model changes
+- ML backend changes
+- restoring data
+- changing seeded/demo items
+
 ## Notes
 
 - Superset dashboard embeds are seeded with an empty allowlist and are updated at runtime when the app requests guest tokens.
 - The frontend is the supported way to reach Superset admin pages.
 - Shared dashboard visibility is role-based inside the app.
+- Vector search uses seeded demo items plus the `scripts/reindex-items.*` helpers for repeatable reindexing.
+
+## Docs
+
+The `docs/` folder contains higher-level reference material for the current implementation:
+
+- [docs/architecture.md](docs/architecture.md): current runtime/service architecture with Mermaid
+- [docs/database-layout.md](docs/database-layout.md): current storage layout, cross-store links, and entity relationships with Mermaid

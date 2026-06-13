@@ -70,6 +70,17 @@ export interface Event {
   createdAt: string
 }
 
+export interface AuditLogEntry {
+  id: string
+  userId: string
+  action: string
+  resourceType?: string
+  resourceId?: string
+  ipAddress?: string
+  userAgent?: string
+  timestamp: string
+}
+
 export interface VectorSearchResult {
   pointId: string
   score: number
@@ -92,6 +103,22 @@ export interface DashboardEmbedConfig {
   sortOrder: number
   enabled: boolean
   allowedRoles: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminSettings {
+  id: string
+  storageProvider: 'NONE' | 'S3' | 'AZURE_BLOB'
+  storageBucket?: string
+  storageRegion?: string
+  storageEndpoint?: string
+  storageAccessKey?: string
+  storageSecretKey?: string
+  vectorReindexEnabled: boolean
+  vectorReindexIntervalMinutes: number
+  lastVectorReindexAt?: string
+  lastVectorReindexStatus?: string
   createdAt: string
   updatedAt: string
 }
@@ -143,6 +170,33 @@ export const searchApi = {
 
 export const healthApi = {
   check: () => api.get<HealthStatus>('/health').then(r => r.data),
+}
+
+export const adminSettingsApi = {
+  get: () => api.get<AdminSettings>('/admin/settings').then(r => r.data),
+  update: (data: {
+    storageProvider: 'NONE' | 'S3' | 'AZURE_BLOB'
+    storageBucket?: string
+    storageRegion?: string
+    storageEndpoint?: string
+    storageAccessKey?: string
+    storageSecretKey?: string
+    vectorReindexEnabled: boolean
+    vectorReindexIntervalMinutes: number
+  }) => api.put<AdminSettings>('/admin/settings', data).then(r => r.data),
+}
+
+export const auditLogsApi = {
+  list: (page = 0, size = 20) =>
+    api.get<PageResponse<AuditLogEntry>>('/admin/audit-logs', { params: { page, size } }).then(r => r.data),
+}
+
+export const adminBackupApi = {
+  export: () =>
+    api.post<Blob>('/admin/backup', undefined, { responseType: 'blob' }).then(r => ({
+      blob: r.data,
+      filename: r.headers['content-disposition'] as string | undefined,
+    })),
 }
 
 export const dashboardEmbedsApi = {

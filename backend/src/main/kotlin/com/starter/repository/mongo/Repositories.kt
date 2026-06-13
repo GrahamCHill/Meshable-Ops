@@ -16,5 +16,6 @@ interface EventRepository : MongoRepository<Event, String> {
 }
 
 interface ActivityLogRepository : MongoRepository<ActivityLog, String> {
+    fun findAllByOrderByTimestampDesc(pageable: Pageable): Page<ActivityLog>
     fun findByUserIdOrderByTimestampDesc(userId: String, pageable: Pageable): Page<ActivityLog>
 }

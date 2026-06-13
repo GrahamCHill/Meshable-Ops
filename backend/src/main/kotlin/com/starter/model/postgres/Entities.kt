@@ -101,3 +101,47 @@ data class DashboardEmbedConfig(
     @LastModifiedDate @Column(name = "updated_at", nullable = false)
     val updatedAt: Instant = Instant.now()
 )
+
+@Entity
+@Table(name = "app_settings")
+@EntityListeners(AuditingEntityListener::class)
+data class AppSettings(
+    @Id @GeneratedValue(strategy = GenerationType.UUID)
+    val id: UUID = UUID.randomUUID(),
+
+    @Column(name = "storage_provider", nullable = false)
+    var storageProvider: String = "NONE",
+
+    @Column(name = "storage_bucket")
+    var storageBucket: String? = null,
+
+    @Column(name = "storage_region")
+    var storageRegion: String? = null,
+
+    @Column(name = "storage_endpoint")
+    var storageEndpoint: String? = null,
+
+    @Column(name = "storage_access_key")
+    var storageAccessKey: String? = null,
+
+    @Column(name = "storage_secret_key")
+    var storageSecretKey: String? = null,
+
+    @Column(name = "vector_reindex_enabled", nullable = false)
+    var vectorReindexEnabled: Boolean = false,
+
+    @Column(name = "vector_reindex_interval_minutes", nullable = false)
+    var vectorReindexIntervalMinutes: Int = 1440,
+
+    @Column(name = "last_vector_reindex_at")
+    var lastVectorReindexAt: Instant? = null,
+
+    @Column(name = "last_vector_reindex_status")
+    var lastVectorReindexStatus: String? = null,
+
+    @CreatedDate @Column(name = "created_at", nullable = false, updatable = false)
+    val createdAt: Instant = Instant.now(),
+
+    @LastModifiedDate @Column(name = "updated_at", nullable = false)
+    val updatedAt: Instant = Instant.now()
+)

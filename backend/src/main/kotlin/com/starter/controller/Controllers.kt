@@ -66,8 +66,10 @@ class AdminUserController(private val adminUserService: AdminUserService) {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    fun createUser(@Valid @RequestBody req: AdminCreateUserRequest) =
-        adminUserService.createUser(req)
+    fun createUser(
+        @Valid @RequestBody req: AdminCreateUserRequest,
+        @AuthenticationPrincipal principal: UserDetails
+    ) = adminUserService.createUser(req, principal.username)
 
     @DeleteMapping("/{id}")
     fun deactivateUser(
@@ -78,7 +80,11 @@ class AdminUserController(private val adminUserService: AdminUserService) {
 
 @RestController
 @RequestMapping("/api/items")
-class ItemController(private val itemService: ItemService) {
+class ItemController(
+    private val itemService: ItemService,
+    private val adminSettingsService: AdminSettingsService,
+    private val auditLogService: AuditLogService,
+) {
 
     @GetMapping
     fun list(
@@ -109,8 +115,22 @@ class ItemController(private val itemService: ItemService) {
 
     @PostMapping("/reindex")
     @PreAuthorize("hasRole('ADMIN')")
-    fun reindex(@AuthenticationPrincipal user: UserDetails) =
-        MessageResponse("Reindexed ${itemService.reindexShared()} items")
+    fun reindex(
+        @AuthenticationPrincipal user: UserDetails,
+        request: HttpServletRequest
+    ): MessageResponse {
+        val count = itemService.reindexShared()
+        adminSettingsService.recordReindexRun(count, "manual")
+        auditLogService.record(
+            actingEmail = user.username,
+            action = "VECTOR_REINDEX_MANUAL",
+            resourceType = "ITEM",
+            resourceId = count.toString(),
+            ipAddress = request.remoteAddr,
+            userAgent = request.getHeader("User-Agent"),
+        )
+        return MessageResponse("Reindexed $count items")
+    }
 }
 
 // ─── Events ──────────────────────────────────────────────────────────────────

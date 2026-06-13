@@ -53,10 +53,69 @@ VALUES ('admin@app.local', 'admin',
         '$2a$12$5hHKz9z7P3EivIV3xYkppu.LIEbUY6GHYiMpI1S0N1HLJVfKjBmES', 'ADMIN')
 ON CONFLICT DO NOTHING;
 
--- Seed some sample items so Superset has data to visualise
+-- Seed some realistic items so vector search has more meaningful content.
+-- Only seed them when the items table is still empty.
 INSERT INTO items (user_id, title, description, tags)
-SELECT id, 'Sample Item ' || g, 'Description for item ' || g, ARRAY['demo', 'seed']
-FROM users, generate_series(1, 20) g
-WHERE email = 'admin@app.local';
+SELECT
+    u.id,
+    seed.title,
+    seed.description,
+    seed.tags
+FROM users u
+CROSS JOIN (
+    VALUES
+        (
+            'Customer Support Knowledge Base',
+            'Internal documentation for refunds, billing corrections, password resets, and account recovery workflows.',
+            ARRAY['support', 'docs', 'billing']
+        ),
+        (
+            'Warehouse Inventory Audit',
+            'Quarterly stock reconciliation for laptops, monitors, docking stations, keyboards, and office peripherals.',
+            ARRAY['inventory', 'operations', 'hardware']
+        ),
+        (
+            'Sales Pipeline Forecast',
+            'Regional opportunity tracking for enterprise deals, renewals, upsells, and quarterly revenue forecasting.',
+            ARRAY['sales', 'forecast', 'revenue']
+        ),
+        (
+            'HR Onboarding Checklist',
+            'New employee onboarding tasks covering payroll setup, laptop provisioning, benefits enrollment, and policy acknowledgement.',
+            ARRAY['hr', 'onboarding', 'people']
+        ),
+        (
+            'Marketing Campaign Performance',
+            'Ad campaign results for paid search, social media conversions, email click-through rates, and landing page leads.',
+            ARRAY['marketing', 'campaigns', 'analytics']
+        ),
+        (
+            'Security Incident Runbook',
+            'Step-by-step response plan for phishing reports, credential compromise, malware isolation, and post-incident review.',
+            ARRAY['security', 'incident', 'runbook']
+        ),
+        (
+            'Product Roadmap Notes',
+            'Upcoming feature planning for dashboards, vector search quality, admin permissions, and embedded analytics improvements.',
+            ARRAY['product', 'roadmap', 'planning']
+        ),
+        (
+            'Finance Expense Review',
+            'Monthly review of travel reimbursements, software subscriptions, infrastructure spending, and budget variance notes.',
+            ARRAY['finance', 'expenses', 'budget']
+        ),
+        (
+            'Supplier Contract Tracker',
+            'Renewal dates, pricing terms, support commitments, and procurement contacts for major software and hardware vendors.',
+            ARRAY['procurement', 'vendors', 'contracts']
+        ),
+        (
+            'Engineering Release Checklist',
+            'Pre-release verification for Docker builds, environment variables, migrations, monitoring, and rollback readiness.',
+            ARRAY['engineering', 'release', 'devops']
+        )
+) AS seed(title, description, tags)
+WHERE u.email = 'admin@app.local'
+  AND NOT EXISTS (SELECT 1 FROM items);
 
 RESET ROLE;
