@@ -56,12 +56,13 @@ function UserRow({
   onCancelDelete: () => void
 }) {
   const confirmDelete = pendingDeleteId === user.id
+  const isActive = user.active !== false
 
   return (
     <div style={{
       display: 'flex',
-      gap: 12,
-      alignItems: 'center',
+      gap: 16,
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
       flexWrap: 'wrap',
       padding: '0.9rem 1rem',
@@ -69,49 +70,55 @@ function UserRow({
       borderRadius: 'var(--radius-md)',
       background: 'var(--color-bg)',
     }}>
-      <div style={{ minWidth: 0 }}>
+      <div style={{ minWidth: 0, flex: '1 1 260px' }}>
         <div style={{ fontWeight: 600 }}>{user.email}</div>
         <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem' }}>{user.username}</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+          <Badge color={user.role === 'ADMIN' ? 'accent' : 'default'}>{user.role}</Badge>
+          <Badge color={isActive ? 'success' : 'danger'}>
+            {isActive ? 'Active' : 'Inactive'}
+          </Badge>
+        </div>
+        <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem', marginTop: 8, lineHeight: 1.6 }}>
+          Created {formatDate(user.createdAt)}<br />
+          Updated {formatDate(user.updatedAt)}
+        </div>
       </div>
-      <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
-        Created {formatDate(user.createdAt)}
-      </div>
-      <Badge color={user.role === 'ADMIN' ? 'accent' : 'default'}>{user.role}</Badge>
-      <Badge color={user.active ? 'success' : 'danger'}>
-        {user.active ? 'Active' : 'Inactive'}
-      </Badge>
-      <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
-        Updated {formatDate(user.updatedAt)}
-      </div>
-      {confirmDelete ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem' }}>
-            Delete will deactivate this user and block future logins.
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 220, alignItems: 'flex-end' }}>
+        <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.76rem', fontWeight: 600 }}>
+          User actions
+        </div>
+        {confirmDelete ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', textAlign: 'right' }}>
+              Delete will deactivate this user and block future logins.
+            </div>
+            <Button
+              variant="danger"
+              size="sm"
+              loading={deleting}
+              onClick={() => onDelete(user.id)}
+            >
+              Confirm delete
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onCancelDelete} disabled={deleting}>
+              Cancel
+            </Button>
           </div>
+        ) : (
           <Button
             variant="danger"
             size="sm"
-            loading={deleting}
-            onClick={() => onDelete(user.id)}
+            onClick={() => onRequestDelete(user.id)}
+            disabled={!isActive}
+            title={isActive ? 'Delete user' : 'User is already inactive'}
+            style={{ minWidth: 120, justifyContent: 'center' }}
           >
-            Confirm delete
+            <Trash2 size={14} />
+            {isActive ? 'Delete user' : 'Already deleted'}
           </Button>
-          <Button variant="ghost" size="sm" onClick={onCancelDelete} disabled={deleting}>
-            Cancel
-          </Button>
-        </div>
-      ) : (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onRequestDelete(user.id)}
-          disabled={!user.active}
-          title={user.active ? 'Delete user' : 'User is already inactive'}
-        >
-          <Trash2 size={14} style={{ color: user.active ? 'var(--color-danger)' : 'var(--color-text-tertiary)' }} />
-          {user.active ? 'Delete' : 'Deleted'}
-        </Button>
-      )}
+        )}
+      </div>
     </div>
   )
 }
