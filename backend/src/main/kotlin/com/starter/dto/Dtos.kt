@@ -35,6 +35,7 @@ data class UserSummaryResponse(
     val email: String,
     val username: String,
     val role: String,
+    val active: Boolean,
     val createdAt: String?,
     val updatedAt: String?
 )

@@ -132,6 +132,7 @@ class AdminSeedConfig {
             existing.email != normalizedEmail ||
             existing.username != normalizedUsername ||
             existing.role != normalizedRole ||
+            !existing.active ||
             !passwordEncoder.matches(password, existing.password)
 
         if (needsUpdate) {
@@ -141,6 +142,7 @@ class AdminSeedConfig {
                     username = normalizedUsername,
                     password = encodedPassword,
                     role = normalizedRole,
+                    active = true,
                 )
             )
             seedLog.info("Updated seed {} user {}", label, normalizedEmail)

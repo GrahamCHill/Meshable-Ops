@@ -6,6 +6,14 @@ import { useAuthStore } from '../../hooks/useAuthStore'
 import { Button } from '../ui'
 import { Zap } from 'lucide-react'
 
+function getAuthErrorMessage(error: unknown) {
+  const fallback = 'Invalid email or password'
+  if (!error || typeof error !== 'object') return fallback
+
+  const maybeResponse = (error as { response?: { data?: { message?: string } } }).response
+  return typeof maybeResponse?.data?.message === 'string' ? maybeResponse.data.message : fallback
+}
+
 function AuthCard({ children, title, subtitle }: { children: React.ReactNode; title: string; subtitle: React.ReactNode }) {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
@@ -43,7 +51,7 @@ export function LoginPage() {
   const mutation = useMutation({
     mutationFn: authApi.login,
     onSuccess: data => { login(data.token, data); navigate('/') },
-    onError: () => setError('Invalid email or password'),
+    onError: (loginError) => setError(getAuthErrorMessage(loginError)),
   })
 
   return (

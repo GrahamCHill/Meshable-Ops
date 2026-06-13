@@ -26,6 +26,9 @@ data class User(
     @Column(nullable = false)
     val role: String = "USER",
 
+    @Column(nullable = false)
+    var active: Boolean = true,
+
     @CreatedDate @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: Instant = Instant.now(),
 

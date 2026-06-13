@@ -41,6 +41,7 @@ export interface AdminUser {
   email: string
   username: string
   role: string
+  active: boolean
   createdAt: string
   updatedAt: string
 }
@@ -113,6 +114,8 @@ export const adminUsersApi = {
     api.get<AdminUser[]>('/admin/users').then(r => r.data),
   create: (data: { email: string; username: string; password: string; role: 'ADMIN' | 'USER' }) =>
     api.post<AdminUser>('/admin/users', data).then(r => r.data),
+  deactivate: (id: string) =>
+    api.delete<AdminUser>(`/admin/users/${id}`).then(r => r.data),
 }
 
 export const itemsApi = {

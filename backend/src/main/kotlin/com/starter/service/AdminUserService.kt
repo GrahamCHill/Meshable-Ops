@@ -3,11 +3,13 @@ package com.starter.service
 import com.starter.dto.AdminCreateUserRequest
 import com.starter.dto.UserSummaryResponse
 import com.starter.exception.ConflictException
+import com.starter.exception.NotFoundException
 import com.starter.model.postgres.User
 import com.starter.repository.postgres.UserRepository
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 @Service
 class AdminUserService(
@@ -44,11 +46,29 @@ class AdminUserService(
         return toSummary(created)
     }
 
+    @Transactional
+    fun deactivateUser(userId: UUID, actingEmail: String): UserSummaryResponse {
+        val user = userRepository.findById(userId)
+            .orElseThrow { NotFoundException("User not found") }
+
+        if (user.email.equals(actingEmail.trim(), ignoreCase = true)) {
+            throw ConflictException("You cannot deactivate your own account")
+        }
+
+        if (!user.active) {
+            return toSummary(user)
+        }
+
+        user.active = false
+        return toSummary(userRepository.save(user))
+    }
+
     private fun toSummary(user: User) = UserSummaryResponse(
         id = user.id.toString(),
         email = user.email,
         username = user.username,
         role = user.role,
+        active = user.active,
         createdAt = user.createdAt.toString(),
         updatedAt = user.updatedAt.toString(),
     )

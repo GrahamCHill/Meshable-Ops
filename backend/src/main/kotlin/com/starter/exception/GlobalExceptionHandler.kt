@@ -4,6 +4,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.authentication.BadCredentialsException
+import org.springframework.security.authentication.DisabledException
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.validation.FieldError
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -37,6 +38,10 @@ class GlobalExceptionHandler {
     @ExceptionHandler(BadCredentialsException::class)
     fun handleBadCredentials(ex: BadCredentialsException) =
         ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse("Invalid credentials", 401))
+
+    @ExceptionHandler(DisabledException::class)
+    fun handleDisabled(ex: DisabledException) =
+        ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse("This account has been deactivated", 401))
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun handleValidation(ex: MethodArgumentNotValidException): ResponseEntity<Map<String, String>> {

@@ -87,7 +87,7 @@ class JwtAuthFilter(
             val username = jwtService.extractUsername(token)
             if (username != null && SecurityContextHolder.getContext().authentication == null) {
                 val userDetails = userDetailsService.loadUserByUsername(username)
-                if (jwtService.isTokenValid(token, userDetails)) {
+                if (userDetails.isEnabled && jwtService.isTokenValid(token, userDetails)) {
                     val auth = UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
                     auth.details = WebAuthenticationDetailsSource().buildDetails(req)
                     SecurityContextHolder.getContext().authentication = auth

@@ -19,6 +19,10 @@ class UserDetailsServiceImpl(private val userRepository: UserRepository) : UserD
         return User(
             user.email,
             user.password,
+            user.active,
+            true,
+            true,
+            true,
             listOf(SimpleGrantedAuthority("ROLE_${user.role}"))
         )
     }

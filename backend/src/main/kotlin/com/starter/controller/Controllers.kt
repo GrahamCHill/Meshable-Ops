@@ -68,6 +68,12 @@ class AdminUserController(private val adminUserService: AdminUserService) {
     @ResponseStatus(HttpStatus.CREATED)
     fun createUser(@Valid @RequestBody req: AdminCreateUserRequest) =
         adminUserService.createUser(req)
+
+    @DeleteMapping("/{id}")
+    fun deactivateUser(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal principal: UserDetails
+    ) = adminUserService.deactivateUser(id, principal.username)
 }
 
 @RestController

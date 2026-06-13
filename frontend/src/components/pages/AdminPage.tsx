@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminUsersApi, type AdminUser } from '../../api/client'
 import { Badge, Button, Card, Spinner } from '../ui'
-import { ArrowRight, KeyRound, Shield, Users, Workflow } from 'lucide-react'
+import { ArrowRight, KeyRound, Shield, Trash2, Users, Workflow } from 'lucide-react'
 
 type CreateUserForm = {
   email: string
@@ -40,7 +40,23 @@ function formatDate(value: string) {
   return new Date(value).toLocaleString()
 }
 
-function UserRow({ user }: { user: AdminUser }) {
+function UserRow({
+  user,
+  onDelete,
+  deleting,
+  pendingDeleteId,
+  onRequestDelete,
+  onCancelDelete,
+}: {
+  user: AdminUser
+  onDelete: (id: string) => void
+  deleting: boolean
+  pendingDeleteId: string | null
+  onRequestDelete: (id: string) => void
+  onCancelDelete: () => void
+}) {
+  const confirmDelete = pendingDeleteId === user.id
+
   return (
     <div style={{
       display: 'flex',
@@ -61,9 +77,41 @@ function UserRow({ user }: { user: AdminUser }) {
         Created {formatDate(user.createdAt)}
       </div>
       <Badge color={user.role === 'ADMIN' ? 'accent' : 'default'}>{user.role}</Badge>
+      <Badge color={user.active ? 'success' : 'danger'}>
+        {user.active ? 'Active' : 'Inactive'}
+      </Badge>
       <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
         Updated {formatDate(user.updatedAt)}
       </div>
+      {confirmDelete ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem' }}>
+            Delete will deactivate this user and block future logins.
+          </div>
+          <Button
+            variant="danger"
+            size="sm"
+            loading={deleting}
+            onClick={() => onDelete(user.id)}
+          >
+            Confirm delete
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onCancelDelete} disabled={deleting}>
+            Cancel
+          </Button>
+        </div>
+      ) : (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onRequestDelete(user.id)}
+          disabled={!user.active}
+          title={user.active ? 'Delete user' : 'User is already inactive'}
+        >
+          <Trash2 size={14} style={{ color: user.active ? 'var(--color-danger)' : 'var(--color-text-tertiary)' }} />
+          {user.active ? 'Delete' : 'Deleted'}
+        </Button>
+      )}
     </div>
   )
 }
@@ -71,7 +119,9 @@ function UserRow({ user }: { user: AdminUser }) {
 export function AdminPage() {
   const queryClient = useQueryClient()
   const [form, setForm] = useState<CreateUserForm>(emptyForm)
-  const [error, setError] = useState('')
+  const [createError, setCreateError] = useState('')
+  const [rosterError, setRosterError] = useState('')
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   const usersQuery = useQuery({
     queryKey: ['admin-users'],
@@ -83,10 +133,22 @@ export function AdminPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] })
       setForm(emptyForm)
-      setError('')
+      setCreateError('')
     },
     onError: (mutationError) => {
-      setError(getErrorMessage(mutationError))
+      setCreateError(getErrorMessage(mutationError))
+    },
+  })
+
+  const deactivateUserMutation = useMutation({
+    mutationFn: adminUsersApi.deactivate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+      setPendingDeleteId(null)
+      setRosterError('')
+    },
+    onError: (mutationError) => {
+      setRosterError(getErrorMessage(mutationError))
     },
   })
 
@@ -185,7 +247,7 @@ export function AdminPage() {
                 value={form.email}
                 onChange={(e) => {
                   setForm(current => ({ ...current, email: e.target.value }))
-                  setError('')
+                  setCreateError('')
                 }}
               />
             </div>
@@ -196,7 +258,7 @@ export function AdminPage() {
                 value={form.username}
                 onChange={(e) => {
                   setForm(current => ({ ...current, username: e.target.value }))
-                  setError('')
+                  setCreateError('')
                 }}
               />
             </div>
@@ -208,7 +270,7 @@ export function AdminPage() {
                 value={form.password}
                 onChange={(e) => {
                   setForm(current => ({ ...current, password: e.target.value }))
-                  setError('')
+                  setCreateError('')
                 }}
               />
             </div>
@@ -222,7 +284,7 @@ export function AdminPage() {
                 <option value="ADMIN">ADMIN</option>
               </select>
             </div>
-            {error && <div style={{ color: 'var(--color-danger)', fontSize: '0.82rem' }}>{error}</div>}
+            {createError && <div style={{ color: 'var(--color-danger)', fontSize: '0.82rem' }}>{createError}</div>}
             <Button
               loading={createUserMutation.isPending}
               onClick={() => createUserMutation.mutate({
@@ -244,7 +306,7 @@ export function AdminPage() {
               <div>
                 <div style={{ fontWeight: 600 }}>Access roster</div>
                 <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
-                  Current application accounts and roles.
+                  Current application accounts, roles, and login status.
                 </div>
               </div>
             </div>
@@ -257,8 +319,19 @@ export function AdminPage() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {rosterError && (
+                <div style={{ color: 'var(--color-danger)', fontSize: '0.82rem' }}>{rosterError}</div>
+              )}
               {(usersQuery.data ?? []).map((user) => (
-                <UserRow key={user.id} user={user} />
+                <UserRow
+                  key={user.id}
+                  user={user}
+                  onDelete={(id) => deactivateUserMutation.mutate(id)}
+                  deleting={deactivateUserMutation.isPending && pendingDeleteId === user.id}
+                  pendingDeleteId={pendingDeleteId}
+                  onRequestDelete={setPendingDeleteId}
+                  onCancelDelete={() => setPendingDeleteId(null)}
+                />
               ))}
               {usersQuery.data?.length === 0 && (
                 <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
