@@ -13,7 +13,7 @@ const nav = [
 ]
 
 const adminNav = [
-  { to: '/admin/superset', label: 'Superset Admin', icon: Shield },
+  { to: '/admin', label: 'Admin', icon: Shield },
 ]
 
 export function AppLayout({ children }: { children: ReactNode }) {

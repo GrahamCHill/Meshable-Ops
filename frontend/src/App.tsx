@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppLayout } from './components/layout/AppLayout'
+import { AdminPage } from './components/pages/AdminPage'
 import { DashboardPage } from './components/pages/DashboardPage'
 import { DashboardsPage } from './components/pages/DashboardsPage'
 import { SupersetAdminPage } from './components/pages/SupersetAdminPage'
@@ -38,7 +39,12 @@ function App() {
                 <Routes>
                   <Route path="/" element={<DashboardPage />} />
                   <Route path="/dashboards" element={<DashboardsPage />} />
-                  <Route path="/admin/superset" element={
+                  <Route path="/admin" element={
+                    <AdminRoute>
+                      <AdminPage />
+                    </AdminRoute>
+                  } />
+                  <Route path="/admin/superset-graph-builder" element={
                     <AdminRoute>
                       <SupersetAdminPage />
                     </AdminRoute>

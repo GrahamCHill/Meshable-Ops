@@ -1,2 +1,3 @@
 .claude
 {superset,scripts,docker
+/frontend/node_modules

@@ -57,6 +57,20 @@ class AuthController(private val authService: AuthService) {
 // ─── Items ────────────────────────────────────────────────────────────────────
 
 @RestController
+@RequestMapping("/api/admin/users")
+@PreAuthorize("hasRole('ADMIN')")
+class AdminUserController(private val adminUserService: AdminUserService) {
+
+    @GetMapping
+    fun listUsers() = adminUserService.listUsers()
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    fun createUser(@Valid @RequestBody req: AdminCreateUserRequest) =
+        adminUserService.createUser(req)
+}
+
+@RestController
 @RequestMapping("/api/items")
 class ItemController(private val itemService: ItemService) {
 

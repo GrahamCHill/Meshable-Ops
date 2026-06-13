@@ -252,8 +252,8 @@ export function DashboardsPage() {
               <Button variant="secondary" onClick={() => setShowCreate(true)}>
                 <Plus size={14} /> Add embed
               </Button>
-              <Link to="/admin/superset" style={{ color: 'var(--color-accent)', textDecoration: 'none', fontWeight: 600, alignSelf: 'center' }}>
-                Open /admin/superset
+              <Link to="/admin/superset-graph-builder" style={{ color: 'var(--color-accent)', textDecoration: 'none', fontWeight: 600, alignSelf: 'center' }}>
+                Open Superset Graph Builder
               </Link>
             </div>
           </div>

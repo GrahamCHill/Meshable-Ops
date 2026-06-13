@@ -66,7 +66,7 @@ export function LoginPage() {
           Need access? Contact an administrator for an invite.
         </p>
         <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
-          Seeds: admin@app.local / admin123 and user@app.local / user123
+          Local dev seeds: admin@app.local / admin123 and user@app.local / user123
         </p>
       </div>
     </AuthCard>

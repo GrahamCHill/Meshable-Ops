@@ -1,5 +1,7 @@
 package com.starter.config
 
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.starter.model.postgres.DashboardEmbedConfig
 import com.starter.model.postgres.User
 import com.starter.repository.postgres.DashboardEmbedConfigRepository
@@ -9,15 +11,26 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.env.Environment
+import org.springframework.core.env.Profiles
 import org.springframework.security.crypto.password.PasswordEncoder
 
 private val seedLog = LoggerFactory.getLogger("AdminSeedConfig")
+
+data class BootstrapUserSeed(
+    val email: String,
+    val username: String,
+    val password: String,
+    val role: String = "USER",
+)
 
 @Configuration
 class AdminSeedConfig {
 
     @Bean
     fun seedUserRunner(
+        environment: Environment,
+        objectMapper: ObjectMapper,
         userRepository: UserRepository,
         dashboardEmbedConfigRepository: DashboardEmbedConfigRepository,
         passwordEncoder: PasswordEncoder,
@@ -29,15 +42,60 @@ class AdminSeedConfig {
         @Value("\${app.seed-user.username:user}") standardUsername: String,
         @Value("\${app.seed-user.password:user123}") standardPassword: String,
         @Value("\${app.seed-user.role:USER}") standardRole: String,
+        @Value("\${app.bootstrap-users-json:}") bootstrapUsersJson: String,
         @Value("\${app.seed-dashboard.label:Metrics Overview}") dashboardLabel: String,
         @Value("\${app.seed-dashboard.description:Items created over time}") dashboardDescription: String,
         @Value("\${app.seed-dashboard.id:fdda8aae-c6fb-48fc-9322-5f797764b9dd}") dashboardId: String,
         @Value("\${app.seed-dashboard.guest-token-resource-id:}") guestTokenResourceId: String,
         @Value("\${app.seed-dashboard.allowed-roles:ADMIN,USER}") dashboardAllowedRoles: String,
     ) = ApplicationRunner {
-        seedUser(userRepository, passwordEncoder, seedEmail, seedUsername, seedPassword, seedRole, "admin")
-        seedUser(userRepository, passwordEncoder, standardEmail, standardUsername, standardPassword, standardRole, "standard")
-        seedDashboardEmbed(dashboardEmbedConfigRepository, dashboardLabel, dashboardDescription, dashboardId, guestTokenResourceId, dashboardAllowedRoles)
+        val isProd = environment.acceptsProfiles(Profiles.of("prod"))
+        val bootstrapUsers = parseBootstrapUsers(objectMapper, bootstrapUsersJson)
+
+        when {
+            bootstrapUsers.isNotEmpty() -> {
+                bootstrapUsers.forEachIndexed { index, seed ->
+                    seedUser(
+                        userRepository = userRepository,
+                        passwordEncoder = passwordEncoder,
+                        email = seed.email,
+                        username = seed.username,
+                        password = seed.password,
+                        role = seed.role,
+                        label = "bootstrap-${index + 1}",
+                    )
+                }
+            }
+
+            isProd -> {
+                seedLog.warn("No app.bootstrap-users-json provided for prod profile; skipping user bootstrap")
+            }
+
+            else -> {
+                seedUser(userRepository, passwordEncoder, seedEmail, seedUsername, seedPassword, seedRole, "admin")
+                seedUser(userRepository, passwordEncoder, standardEmail, standardUsername, standardPassword, standardRole, "standard")
+            }
+        }
+
+        seedDashboardEmbed(
+            dashboardEmbedConfigRepository,
+            dashboardLabel,
+            dashboardDescription,
+            dashboardId,
+            guestTokenResourceId,
+            dashboardAllowedRoles,
+        )
+    }
+
+    private fun parseBootstrapUsers(objectMapper: ObjectMapper, bootstrapUsersJson: String): List<BootstrapUserSeed> {
+        if (bootstrapUsersJson.isBlank()) {
+            return emptyList()
+        }
+
+        return objectMapper.readValue(
+            bootstrapUsersJson,
+            object : TypeReference<List<BootstrapUserSeed>>() {},
+        )
     }
 
     private fun seedUser(
@@ -49,40 +107,43 @@ class AdminSeedConfig {
         role: String,
         label: String,
     ): User {
-        val existingByEmail = userRepository.findByEmail(email).orElse(null)
-        val existingByUsername = userRepository.findByUsername(username).orElse(null)
+        val normalizedEmail = email.trim().lowercase()
+        val normalizedUsername = username.trim()
+        val normalizedRole = role.trim().uppercase()
+        val existingByEmail = userRepository.findByEmail(normalizedEmail).orElse(null)
+        val existingByUsername = userRepository.findByUsername(normalizedUsername).orElse(null)
         val existing = existingByEmail ?: existingByUsername
         val encodedPassword = passwordEncoder.encode(password)
 
         if (existing == null) {
             val created = userRepository.save(
                 User(
-                    email = email,
-                    username = username,
+                    email = normalizedEmail,
+                    username = normalizedUsername,
                     password = encodedPassword,
-                    role = role,
+                    role = normalizedRole,
                 )
             )
-            seedLog.info("Created seed {} user {}", label, email)
+            seedLog.info("Created seed {} user {}", label, normalizedEmail)
             return created
         }
 
         val needsUpdate =
-            existing.email != email ||
-            existing.username != username ||
-            existing.role != role ||
+            existing.email != normalizedEmail ||
+            existing.username != normalizedUsername ||
+            existing.role != normalizedRole ||
             !passwordEncoder.matches(password, existing.password)
 
         if (needsUpdate) {
             val updated = userRepository.save(
                 existing.copy(
-                    email = email,
-                    username = username,
+                    email = normalizedEmail,
+                    username = normalizedUsername,
                     password = encodedPassword,
-                    role = role,
+                    role = normalizedRole,
                 )
             )
-            seedLog.info("Updated seed {} user {}", label, email)
+            seedLog.info("Updated seed {} user {}", label, normalizedEmail)
             return updated
         }
 

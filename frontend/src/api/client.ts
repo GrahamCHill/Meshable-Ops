@@ -36,6 +36,15 @@ export interface AuthResponse {
   role: string
 }
 
+export interface AdminUser {
+  id: string
+  email: string
+  username: string
+  role: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface Item {
   id: string
   title: string
@@ -97,6 +106,13 @@ export const authApi = {
     api.post('/auth/session-cookie').then(r => r.data),
   logout: () =>
     api.post('/auth/logout').then(r => r.data),
+}
+
+export const adminUsersApi = {
+  list: () =>
+    api.get<AdminUser[]>('/admin/users').then(r => r.data),
+  create: (data: { email: string; username: string; password: string; role: 'ADMIN' | 'USER' }) =>
+    api.post<AdminUser>('/admin/users', data).then(r => r.data),
 }
 
 export const itemsApi = {

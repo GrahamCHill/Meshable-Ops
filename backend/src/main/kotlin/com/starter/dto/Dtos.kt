@@ -23,6 +23,22 @@ data class AuthResponse(
     val role: String
 )
 
+data class AdminCreateUserRequest(
+    @field:NotBlank @field:Email val email: String,
+    @field:NotBlank @field:Size(min = 3, max = 50) val username: String,
+    @field:NotBlank @field:Size(min = 8, max = 100) val password: String,
+    @field:NotBlank @field:Pattern(regexp = "ADMIN|USER") val role: String = "USER"
+)
+
+data class UserSummaryResponse(
+    val id: String,
+    val email: String,
+    val username: String,
+    val role: String,
+    val createdAt: String?,
+    val updatedAt: String?
+)
+
 // ─── Items ────────────────────────────────────────────────────────────────────
 
 data class ItemRequest(
