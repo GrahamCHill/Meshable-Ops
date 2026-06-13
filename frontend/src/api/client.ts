@@ -33,6 +33,8 @@ export interface AuthResponse {
   id: string
   email: string
   username: string
+  name?: string
+  contactNumber?: string
   role: string
 }
 
@@ -40,6 +42,8 @@ export interface AdminUser {
   id: string
   email: string
   username: string
+  name?: string
+  contactNumber?: string
   role: string
   active: boolean
   createdAt: string
@@ -73,6 +77,9 @@ export interface Event {
 export interface AuditLogEntry {
   id: string
   userId: string
+  userEmail?: string
+  userName?: string
+  userContactNumber?: string
   action: string
   resourceType?: string
   resourceId?: string
@@ -139,7 +146,7 @@ export const authApi = {
 export const adminUsersApi = {
   list: () =>
     api.get<AdminUser[]>('/admin/users').then(r => r.data),
-  create: (data: { email: string; username: string; password: string; role: 'ADMIN' | 'USER' }) =>
+  create: (data: { email: string; username: string; name?: string; contactNumber?: string; password: string; role: 'ADMIN' | 'USER' }) =>
     api.post<AdminUser>('/admin/users', data).then(r => r.data),
   deactivate: (id: string) =>
     api.delete<AdminUser>(`/admin/users/${id}`).then(r => r.data),

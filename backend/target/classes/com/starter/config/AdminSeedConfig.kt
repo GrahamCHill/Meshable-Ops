@@ -20,6 +20,8 @@ private val seedLog = LoggerFactory.getLogger("AdminSeedConfig")
 data class BootstrapUserSeed(
     val email: String,
     val username: String,
+    val name: String? = null,
+    val contactNumber: String? = null,
     val password: String,
     val role: String = "USER",
 )
@@ -60,6 +62,8 @@ class AdminSeedConfig {
                         passwordEncoder = passwordEncoder,
                         email = seed.email,
                         username = seed.username,
+                        name = seed.name,
+                        contactNumber = seed.contactNumber,
                         password = seed.password,
                         role = seed.role,
                         label = "bootstrap-${index + 1}",
@@ -72,8 +76,24 @@ class AdminSeedConfig {
             }
 
             else -> {
-                seedUser(userRepository, passwordEncoder, seedEmail, seedUsername, seedPassword, seedRole, "admin")
-                seedUser(userRepository, passwordEncoder, standardEmail, standardUsername, standardPassword, standardRole, "standard")
+                seedUser(
+                    userRepository = userRepository,
+                    passwordEncoder = passwordEncoder,
+                    email = seedEmail,
+                    username = seedUsername,
+                    password = seedPassword,
+                    role = seedRole,
+                    label = "admin",
+                )
+                seedUser(
+                    userRepository = userRepository,
+                    passwordEncoder = passwordEncoder,
+                    email = standardEmail,
+                    username = standardUsername,
+                    password = standardPassword,
+                    role = standardRole,
+                    label = "standard",
+                )
             }
         }
 
@@ -103,12 +123,16 @@ class AdminSeedConfig {
         passwordEncoder: PasswordEncoder,
         email: String,
         username: String,
+        name: String? = null,
+        contactNumber: String? = null,
         password: String,
         role: String,
         label: String,
     ): User {
         val normalizedEmail = email.trim().lowercase()
         val normalizedUsername = username.trim()
+        val normalizedName = name?.trim()?.ifBlank { null }
+        val normalizedContactNumber = contactNumber?.trim()?.ifBlank { null }
         val normalizedRole = role.trim().uppercase()
         val existingByEmail = userRepository.findByEmail(normalizedEmail).orElse(null)
         val existingByUsername = userRepository.findByUsername(normalizedUsername).orElse(null)
@@ -120,6 +144,8 @@ class AdminSeedConfig {
                 User(
                     email = normalizedEmail,
                     username = normalizedUsername,
+                    name = normalizedName,
+                    contactNumber = normalizedContactNumber,
                     password = encodedPassword,
                     role = normalizedRole,
                 )
@@ -131,6 +157,8 @@ class AdminSeedConfig {
         val needsUpdate =
             existing.email != normalizedEmail ||
             existing.username != normalizedUsername ||
+            existing.name != normalizedName ||
+            existing.contactNumber != normalizedContactNumber ||
             existing.role != normalizedRole ||
             !existing.active ||
             !passwordEncoder.matches(password, existing.password)
@@ -140,6 +168,8 @@ class AdminSeedConfig {
                 existing.copy(
                     email = normalizedEmail,
                     username = normalizedUsername,
+                    name = normalizedName,
+                    contactNumber = normalizedContactNumber,
                     password = encodedPassword,
                     role = normalizedRole,
                     active = true,

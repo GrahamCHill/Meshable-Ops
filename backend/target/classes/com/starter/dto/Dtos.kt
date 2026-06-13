@@ -20,12 +20,16 @@ data class AuthResponse(
     val id: String,
     val email: String,
     val username: String,
+    val name: String?,
+    val contactNumber: String?,
     val role: String
 )
 
 data class AdminCreateUserRequest(
     @field:NotBlank @field:Email val email: String,
     @field:NotBlank @field:Size(min = 3, max = 50) val username: String,
+    @field:Size(max = 120) val name: String? = null,
+    @field:Size(max = 32) val contactNumber: String? = null,
     @field:NotBlank @field:Size(min = 8, max = 100) val password: String,
     @field:NotBlank @field:Pattern(regexp = "ADMIN|USER") val role: String = "USER"
 )
@@ -34,6 +38,8 @@ data class UserSummaryResponse(
     val id: String,
     val email: String,
     val username: String,
+    val name: String?,
+    val contactNumber: String?,
     val role: String,
     val active: Boolean,
     val createdAt: String?,
@@ -70,6 +76,9 @@ data class AdminSettingsResponse(
 data class AuditLogResponse(
     val id: String?,
     val userId: String,
+    val userEmail: String?,
+    val userName: String?,
+    val userContactNumber: String?,
     val action: String,
     val resourceType: String?,
     val resourceId: String?,

@@ -30,6 +30,8 @@ import {
 type CreateUserForm = {
   email: string
   username: string
+  name: string
+  contactNumber: string
   password: string
   role: 'ADMIN' | 'USER'
 }
@@ -48,6 +50,8 @@ type SettingsForm = {
 const emptyForm: CreateUserForm = {
   email: '',
   username: '',
+  name: '',
+  contactNumber: '',
   password: '',
   role: 'USER',
 }
@@ -136,6 +140,12 @@ function UserRow({
       <div style={{ minWidth: 0, flex: '1 1 260px' }}>
         <div style={{ fontWeight: 600 }}>{user.email}</div>
         <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem' }}>{user.username}</div>
+        {(user.name || user.contactNumber) && (
+          <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', marginTop: 4, lineHeight: 1.6 }}>
+            {user.name ? `Name: ${user.name}` : 'Name: Not provided'}<br />
+            {user.contactNumber ? `Contact: ${user.contactNumber}` : 'Contact: Not provided'}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
           <Badge color={user.role === 'ADMIN' ? 'accent' : 'default'}>{user.role}</Badge>
           <Badge color={isActive ? 'success' : 'danger'}>
@@ -407,6 +417,29 @@ export function AdminPage() {
               />
             </div>
             <div>
+              <label style={{ fontSize: '0.8rem', fontWeight: 500, display: 'block', marginBottom: 4 }}>Name</label>
+              <input
+                placeholder="Person Name"
+                value={form.name}
+                onChange={(e) => {
+                  setForm(current => ({ ...current, name: e.target.value }))
+                  setCreateError('')
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.8rem', fontWeight: 500, display: 'block', marginBottom: 4 }}>Contact number</label>
+              <input
+                type="tel"
+                placeholder="+1 555 0100"
+                value={form.contactNumber}
+                onChange={(e) => {
+                  setForm(current => ({ ...current, contactNumber: e.target.value }))
+                  setCreateError('')
+                }}
+              />
+            </div>
+            <div>
               <label style={{ fontSize: '0.8rem', fontWeight: 500, display: 'block', marginBottom: 4 }}>Password</label>
               <input
                 type="password"
@@ -434,6 +467,8 @@ export function AdminPage() {
               onClick={() => createUserMutation.mutate({
                 email: form.email.trim(),
                 username: form.username.trim(),
+                name: form.name.trim() || undefined,
+                contactNumber: form.contactNumber.trim() || undefined,
                 password: form.password,
                 role: form.role,
               })}
@@ -707,10 +742,16 @@ export function AdminPage() {
                   <div>
                     <div style={{ fontWeight: 600 }}>{entry.action}</div>
                     <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
-                      User {entry.userId}
+                      User {entry.userEmail ?? entry.userId}
                       {entry.resourceType ? ` • ${entry.resourceType}` : ''}
                       {entry.resourceId ? ` • ${entry.resourceId}` : ''}
                     </div>
+                    {(entry.userName || entry.userContactNumber) && (
+                      <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.78rem', marginTop: 4, lineHeight: 1.5 }}>
+                        {entry.userName ? `Name: ${entry.userName}` : 'Name: Not provided'}
+                        {entry.userContactNumber ? ` • Contact: ${entry.userContactNumber}` : ''}
+                      </div>
+                    )}
                   </div>
                   <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', textAlign: 'right' }}>
                     {formatDate(entry.timestamp)}<br />

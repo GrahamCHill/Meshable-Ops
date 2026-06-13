@@ -27,6 +27,8 @@ class AdminUserService(
     fun createUser(req: AdminCreateUserRequest, actingEmail: String): UserSummaryResponse {
         val email = req.email.trim().lowercase()
         val username = req.username.trim()
+        val name = req.name?.trim()?.ifBlank { null }
+        val contactNumber = req.contactNumber?.trim()?.ifBlank { null }
         val role = req.role.trim().uppercase()
 
         if (userRepository.existsByEmail(email)) {
@@ -40,6 +42,8 @@ class AdminUserService(
             User(
                 email = email,
                 username = username,
+                name = name,
+                contactNumber = contactNumber,
                 password = passwordEncoder.encode(req.password),
                 role = role,
             )
@@ -81,6 +85,8 @@ class AdminUserService(
         id = user.id.toString(),
         email = user.email,
         username = user.username,
+        name = user.name,
+        contactNumber = user.contactNumber,
         role = user.role,
         active = user.active,
         createdAt = user.createdAt.toString(),

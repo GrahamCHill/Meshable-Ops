@@ -39,7 +39,7 @@ class AuthService(
         val ud = userDetailsService.loadUserByUsername(user.email)
         val token = jwtService.generateToken(ud, mapOf("role" to user.role, "id" to user.id.toString()))
         writeAuthCookie(response, token, expiryMs)
-        return AuthResponse(token, user.id.toString(), user.email, user.username, user.role)
+        return AuthResponse(token, user.id.toString(), user.email, user.username, user.name, user.contactNumber, user.role)
     }
 
     fun login(req: AuthRequest, response: HttpServletResponse): AuthResponse {
@@ -49,7 +49,7 @@ class AuthService(
         val ud = userDetailsService.loadUserByUsername(user.email)
         val token = jwtService.generateToken(ud, mapOf("role" to user.role, "id" to user.id.toString()))
         writeAuthCookie(response, token, expiryMs)
-        return AuthResponse(token, user.id.toString(), user.email, user.username, user.role)
+        return AuthResponse(token, user.id.toString(), user.email, user.username, user.name, user.contactNumber, user.role)
     }
 
     fun refreshAuthCookie(email: String, response: HttpServletResponse) {

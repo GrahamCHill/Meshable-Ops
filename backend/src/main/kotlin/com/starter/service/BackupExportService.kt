@@ -27,6 +27,8 @@ class BackupExportService(
                 "id" to user.id.toString(),
                 "email" to user.email,
                 "username" to user.username,
+                "name" to user.name,
+                "contactNumber" to user.contactNumber,
                 "role" to user.role,
                 "active" to user.active,
                 "createdAt" to user.createdAt.toString(),

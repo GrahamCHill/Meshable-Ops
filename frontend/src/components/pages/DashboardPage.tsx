@@ -22,7 +22,7 @@ export function DashboardPage() {
     <div style={{ maxWidth: 800 }}>
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 4 }}>
-          Welcome back, {user?.username}
+          Welcome back, {user?.name || user?.username}
         </h1>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
           Infrastructure health and quick stats

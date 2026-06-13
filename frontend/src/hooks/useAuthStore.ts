@@ -5,6 +5,8 @@ interface AuthUser {
   id: string
   email: string
   username: string
+  name?: string
+  contactNumber?: string
   role: string
 }
 

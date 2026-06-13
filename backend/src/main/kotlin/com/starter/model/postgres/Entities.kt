@@ -20,6 +20,12 @@ data class User(
     @Column(nullable = false, unique = true)
     val username: String = "",
 
+    @Column(name = "name")
+    val name: String? = null,
+
+    @Column(name = "contact_number")
+    val contactNumber: String? = null,
+
     @Column(nullable = false)
     var password: String = "",
 
