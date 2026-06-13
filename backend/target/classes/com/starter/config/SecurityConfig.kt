@@ -79,16 +79,15 @@ class JwtAuthFilter(
 ) : OncePerRequestFilter() {
 
     override fun doFilterInternal(req: HttpServletRequest, res: HttpServletResponse, chain: FilterChain) {
-        val header = req.getHeader("Authorization")
-        if (header == null || !header.startsWith("Bearer ")) {
+        val token = resolveToken(req)
+        if (token == null) {
             chain.doFilter(req, res); return
         }
         try {
-            val token = header.substring(7)
             val username = jwtService.extractUsername(token)
             if (username != null && SecurityContextHolder.getContext().authentication == null) {
                 val userDetails = userDetailsService.loadUserByUsername(username)
-                if (jwtService.isTokenValid(token, userDetails)) {
+                if (userDetails.isEnabled && jwtService.isTokenValid(token, userDetails)) {
                     val auth = UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
                     auth.details = WebAuthenticationDetailsSource().buildDetails(req)
                     SecurityContextHolder.getContext().authentication = auth
@@ -98,5 +97,16 @@ class JwtAuthFilter(
             log.debug("JWT auth failed: ${e.message}")
         }
         chain.doFilter(req, res)
+    }
+
+    private fun resolveToken(req: HttpServletRequest): String? {
+        val header = req.getHeader("Authorization")
+        if (header != null && header.startsWith("Bearer ")) {
+            return header.substring(7)
+        }
+
+        return req.cookies
+            ?.firstOrNull { it.name == "app_auth_token" && it.value.isNotBlank() }
+            ?.value
     }
 }

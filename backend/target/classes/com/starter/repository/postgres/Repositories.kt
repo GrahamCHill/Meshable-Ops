@@ -1,6 +1,7 @@
 package com.starter.repository.postgres
 
 import com.starter.model.postgres.Item
+import com.starter.model.postgres.AppSettings
 import com.starter.model.postgres.DashboardEmbedConfig
 import com.starter.model.postgres.User
 import org.springframework.data.domain.Page
@@ -15,6 +16,7 @@ interface UserRepository : JpaRepository<User, UUID> {
     fun findByUsername(username: String): Optional<User>
     fun existsByEmail(email: String): Boolean
     fun existsByUsername(username: String): Boolean
+    fun findAllByOrderByRoleAscCreatedAtAsc(): List<User>
 
     @Query("SELECT DISTINCT UPPER(u.role) FROM User u ORDER BY UPPER(u.role)")
     fun findDistinctRoles(): List<String>
@@ -31,4 +33,8 @@ interface ItemRepository : JpaRepository<Item, UUID> {
 interface DashboardEmbedConfigRepository : JpaRepository<DashboardEmbedConfig, UUID> {
     fun findAllByEnabledTrueOrderBySortOrderAscCreatedAtAsc(): List<DashboardEmbedConfig>
     fun findAllByOrderBySortOrderAscCreatedAtAsc(): List<DashboardEmbedConfig>
+}
+
+interface AppSettingsRepository : JpaRepository<AppSettings, UUID> {
+    fun findTopByOrderByCreatedAtAsc(): AppSettings?
 }

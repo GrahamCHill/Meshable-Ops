@@ -1,8 +1,34 @@
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Workflow } from 'lucide-react'
 import { Card } from '../ui'
+import { authApi } from '../../api/client'
 
 export function SupersetAdminPage() {
+  const navigate = useNavigate()
+  const [isPreparingSession, setIsPreparingSession] = useState(true)
+  const supersetEntryUrl = '/superset/dashboard/list/'
+
+  useEffect(() => {
+    let cancelled = false
+
+    authApi.refreshSessionCookie()
+      .catch(() => {
+        if (!cancelled) {
+          navigate('/login', { replace: true })
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsPreparingSession(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [navigate])
+
   return (
     <div style={{ width: '100%', maxWidth: 'none', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
@@ -38,7 +64,7 @@ export function SupersetAdminPage() {
         <div style={{ marginBottom: '0.9rem', padding: '0.25rem 0.25rem 0 0.25rem' }}>
           <div style={{ fontWeight: 600 }}>Embedded workspace</div>
           <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
-            Use the Superset menu inside the frame for navigation. Top-level routes remain protected by the app shell.
+            Use the Superset menu inside the frame for navigation. The frame opens on the proxied dashboard workspace directly, and Superset will present its own sign-in screen there when a Superset session is still needed.
           </div>
         </div>
         <div style={{
@@ -49,11 +75,26 @@ export function SupersetAdminPage() {
           minHeight: 720,
           background: 'white',
         }}>
-          <iframe
-            src="/superset/welcome/"
-            title="Superset Graph Builder"
-            style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
-          />
+          {isPreparingSession ? (
+            <div style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--color-text-secondary)',
+              fontSize: '0.9rem',
+              background: 'var(--color-surface)',
+            }}>
+              Preparing Superset session...
+            </div>
+          ) : (
+            <iframe
+              src={supersetEntryUrl}
+              title="Superset Graph Builder"
+              style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+            />
+          )}
         </div>
       </Card>
     </div>

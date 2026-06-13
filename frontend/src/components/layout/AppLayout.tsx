@@ -22,8 +22,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!token) return
-    authApi.refreshSessionCookie().catch(() => undefined)
-  }, [token])
+    authApi.refreshSessionCookie().catch(() => {
+      logout()
+      navigate('/login', { replace: true })
+    })
+  }, [logout, navigate, token])
 
   const handleLogout = async () => {
     try {

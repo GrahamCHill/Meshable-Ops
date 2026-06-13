@@ -1,3 +1,16 @@
+ALTER TABLE IF EXISTS users
+    ADD COLUMN IF NOT EXISTS active BOOLEAN;
+
+UPDATE users
+SET active = TRUE
+WHERE active IS NULL;
+
+ALTER TABLE IF EXISTS users
+    ALTER COLUMN active SET DEFAULT TRUE;
+
+ALTER TABLE IF EXISTS users
+    ALTER COLUMN active SET NOT NULL;
+
 CREATE TABLE IF NOT EXISTS item_tags (
     item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
     tag     TEXT NOT NULL
@@ -30,3 +43,19 @@ CREATE TABLE IF NOT EXISTS dashboard_embed_config_roles (
 
 CREATE INDEX IF NOT EXISTS idx_dashboard_embed_config_roles_config_id
     ON dashboard_embed_config_roles (dashboard_embed_config_id);
+
+CREATE TABLE IF NOT EXISTS app_settings (
+    id UUID PRIMARY KEY,
+    storage_provider VARCHAR(32) NOT NULL DEFAULT 'NONE',
+    storage_bucket TEXT NULL,
+    storage_region TEXT NULL,
+    storage_endpoint TEXT NULL,
+    storage_access_key TEXT NULL,
+    storage_secret_key TEXT NULL,
+    vector_reindex_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    vector_reindex_interval_minutes INTEGER NOT NULL DEFAULT 1440,
+    last_vector_reindex_at TIMESTAMPTZ NULL,
+    last_vector_reindex_status TEXT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

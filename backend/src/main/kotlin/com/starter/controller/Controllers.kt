@@ -44,9 +44,14 @@ class AuthController(private val authService: AuthService) {
     @PostMapping("/session-cookie")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun refreshSessionCookie(
-        @AuthenticationPrincipal principal: UserDetails,
+        @AuthenticationPrincipal principal: UserDetails?,
         response: HttpServletResponse
-    ) = authService.refreshAuthCookie(principal.username, response)
+    ) {
+        if (principal == null) {
+            throw ForbiddenException("Authentication required")
+        }
+        authService.refreshAuthCookie(principal.username, response)
+    }
 
     @GetMapping("/superset-admin-access")
     @PreAuthorize("hasRole('ADMIN')")

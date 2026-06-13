@@ -5,6 +5,8 @@ import com.starter.exception.ForbiddenException
 import com.starter.repository.mongo.EventRepository
 import com.starter.repository.postgres.UserRepository
 import com.starter.service.*
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotEmpty
 import org.springframework.beans.factory.annotation.Value
@@ -28,19 +30,66 @@ import java.util.UUID
 class AuthController(private val authService: AuthService) {
 
     @PostMapping("/register")
-    fun register(@Valid @RequestBody req: RegisterRequest): AuthResponse {
+    fun register(@Valid @RequestBody req: RegisterRequest, response: HttpServletResponse): AuthResponse {
         throw ForbiddenException("Registration is invite-only")
     }
 
     @PostMapping("/login")
-    fun login(@Valid @RequestBody req: AuthRequest) = authService.login(req)
+    fun login(@Valid @RequestBody req: AuthRequest, response: HttpServletResponse) = authService.login(req, response)
+
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun logout(response: HttpServletResponse) = authService.clearAuthCookie(response)
+
+    @PostMapping("/session-cookie")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun refreshSessionCookie(
+        @AuthenticationPrincipal principal: UserDetails?,
+        response: HttpServletResponse
+    ) {
+        if (principal == null) {
+            throw ForbiddenException("Authentication required")
+        }
+        authService.refreshAuthCookie(principal.username, response)
+    }
+
+    @GetMapping("/superset-admin-access")
+    @PreAuthorize("hasRole('ADMIN')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun supersetAdminAccess(@AuthenticationPrincipal principal: UserDetails) = Unit
 }
 
 // ─── Items ────────────────────────────────────────────────────────────────────
 
 @RestController
+@RequestMapping("/api/admin/users")
+@PreAuthorize("hasRole('ADMIN')")
+class AdminUserController(private val adminUserService: AdminUserService) {
+
+    @GetMapping
+    fun listUsers() = adminUserService.listUsers()
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    fun createUser(
+        @Valid @RequestBody req: AdminCreateUserRequest,
+        @AuthenticationPrincipal principal: UserDetails
+    ) = adminUserService.createUser(req, principal.username)
+
+    @DeleteMapping("/{id}")
+    fun deactivateUser(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal principal: UserDetails
+    ) = adminUserService.deactivateUser(id, principal.username)
+}
+
+@RestController
 @RequestMapping("/api/items")
-class ItemController(private val itemService: ItemService) {
+class ItemController(
+    private val itemService: ItemService,
+    private val adminSettingsService: AdminSettingsService,
+    private val auditLogService: AuditLogService,
+) {
 
     @GetMapping
     fun list(
@@ -51,10 +100,12 @@ class ItemController(private val itemService: ItemService) {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMIN')")
     fun create(@AuthenticationPrincipal user: UserDetails, @Valid @RequestBody req: ItemRequest) =
         itemService.create(user.username, req)
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     fun update(
         @AuthenticationPrincipal user: UserDetails,
         @PathVariable id: UUID,
@@ -63,13 +114,28 @@ class ItemController(private val itemService: ItemService) {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('ADMIN')")
     fun delete(@AuthenticationPrincipal user: UserDetails, @PathVariable id: UUID) =
         itemService.delete(user.username, id)
 
     @PostMapping("/reindex")
     @PreAuthorize("hasRole('ADMIN')")
-    fun reindex(@AuthenticationPrincipal user: UserDetails) =
-        MessageResponse("Reindexed ${itemService.reindexShared()} items")
+    fun reindex(
+        @AuthenticationPrincipal user: UserDetails,
+        request: HttpServletRequest
+    ): MessageResponse {
+        val count = itemService.reindexShared()
+        adminSettingsService.recordReindexRun(count, "manual")
+        auditLogService.record(
+            actingEmail = user.username,
+            action = "VECTOR_REINDEX_MANUAL",
+            resourceType = "ITEM",
+            resourceId = count.toString(),
+            ipAddress = request.remoteAddr,
+            userAgent = request.getHeader("User-Agent"),
+        )
+        return MessageResponse("Reindexed $count items")
+    }
 }
 
 // ─── Events ──────────────────────────────────────────────────────────────────
@@ -126,13 +192,35 @@ class SupersetController(
     private val dashboardEmbedConfigService: DashboardEmbedConfigService
 ) {
 
-    data class GuestTokenRequest(@field:NotEmpty val dashboardIds: List<String>)
+    data class GuestTokenRequest(
+        @field:NotEmpty val dashboardIds: List<String>,
+        val appOrigin: String? = null,
+    )
 
     @PostMapping("/guest-token")
     fun guestToken(
         @AuthenticationPrincipal principal: UserDetails,
+        request: HttpServletRequest,
         @Valid @RequestBody req: GuestTokenRequest
-    ) = mapOf("token" to supersetService.mintGuestToken(req.dashboardIds, principal.username, principal.username))
+    ): Map<String, String> {
+        val appOrigin = req.appOrigin?.trim()?.ifBlank { null } ?: supersetService.resolveAppOrigin(
+            originHeader = request.getHeader("Origin"),
+            refererHeader = request.getHeader("Referer"),
+            forwardedProtoHeader = request.getHeader("X-Forwarded-Proto"),
+            forwardedHostHeader = request.getHeader("X-Forwarded-Host"),
+            hostHeader = request.getHeader("Host"),
+        )
+        val dashboardIdsToSync = dashboardEmbedConfigService.resolveGuestTokenDashboardIds(req.dashboardIds)
+        return mapOf(
+            "token" to supersetService.mintGuestToken(
+                dashboardIds = req.dashboardIds,
+                userEmail = principal.username,
+                username = principal.username,
+                appOrigin = appOrigin,
+                dashboardIdsToSync = dashboardIdsToSync,
+            )
+        )
+    }
 
     @GetMapping("/dashboard-embeds")
     fun listDashboardEmbeds(@AuthenticationPrincipal principal: UserDetails) =
