@@ -31,6 +31,30 @@ class DashboardEmbedConfigService(
     @Transactional(readOnly = true)
     fun listAvailableRoles(): List<String> = userRepository.findDistinctRoles()
 
+    @Transactional(readOnly = true)
+    fun resolveGuestTokenDashboardIds(requestedIds: List<String>): List<String> {
+        if (requestedIds.isEmpty()) return emptyList()
+
+        val configs = dashboardEmbedConfigRepository.findAll()
+        return requestedIds
+            .mapNotNull { requestedId ->
+                val normalizedId = requestedId.trim()
+                when {
+                    normalizedId.isBlank() -> null
+                    normalizedId.all(Char::isDigit) -> normalizedId
+                    else -> configs
+                        .firstOrNull { config ->
+                            config.dashboardId.equals(normalizedId, ignoreCase = true) ||
+                                config.guestTokenResourceId.equals(normalizedId, ignoreCase = true)
+                        }
+                        ?.guestTokenResourceId
+                        ?.trim()
+                        ?.takeIf { it.isNotBlank() && it.all(Char::isDigit) }
+                }
+            }
+            .distinct()
+    }
+
     @Transactional
     fun create(req: DashboardEmbedConfigRequest): DashboardEmbedConfigResponse =
         dashboardEmbedConfigRepository.save(

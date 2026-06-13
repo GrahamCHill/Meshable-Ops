@@ -266,12 +266,10 @@ def main():
 
     # 5. Enable embedding for the dashboard
     embed_payload = {
-        "allowed_domains": [
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-        ]
+        # Leave the initial allowlist empty. The backend guest-token flow adds
+        # the active app origin on demand so localhost and deployed domains work
+        # without editing this bootstrap script.
+        "allowed_domains": []
     }
     r = s.post(f"{BASE}/api/v1/dashboard/{dashboard_id}/embedded", json=embed_payload)
     if r.ok:

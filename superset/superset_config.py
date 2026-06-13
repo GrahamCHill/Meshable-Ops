@@ -78,22 +78,12 @@ TALISMAN_ENABLED = False                     # Disable strict CSP for dev
 WTF_CSRF_ENABLED = False
 WTF_CSRF_EXEMPT_LIST = ["superset.views.core.log"]
 
-# Embedding: origins that are allowed to embed Superset dashboards
-ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://frontend:80",
-]
-
-# HTTP headers required for cross-origin iframe embedding
+# HTTP headers required for iframe embedding through the app proxy. Because the
+# embed is served from the same origin as the app (`/embedded/...` on the app
+# host), `'self'` works for localhost and real domains without extra host lists.
 HTTP_HEADERS = {
-    "X-Frame-Options": "ALLOWALL",   # Override per-request in production
-    "Content-Security-Policy": (
-        "frame-ancestors 'self' http://localhost:3000 http://127.0.0.1:3000 "
-        "http://localhost:5173 http://127.0.0.1:5173 http://frontend:80"
-    ),
+    "X-Frame-Options": "ALLOWALL",
+    "Content-Security-Policy": "frame-ancestors 'self'",
 }
 
 # ─── Guest token (for embedded dashboards) ────────────────────────────────────
@@ -104,9 +94,9 @@ GUEST_TOKEN_JWT_EXP_SECONDS = 300  # 5 minutes; refresh before expiry
 # ─── CORS ─────────────────────────────────────────────────────────────────────
 ENABLE_CORS = True
 CORS_OPTIONS = {
-    "supports_credentials": True,
+    "supports_credentials": False,
     "allow_headers": ["*"],
-    "resources": {"*": {"origins": ALLOWED_ORIGINS}},
+    "resources": {"*": {"origins": "*"}},
 }
 
 # ─── Proxy fix (behind nginx / Docker networking) ─────────────────────────────

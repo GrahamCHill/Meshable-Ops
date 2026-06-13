@@ -43,14 +43,10 @@ export function DashboardEmbed({
         [aria-label*="Save as" i],
         [aria-label*="Edit chart" i],
         [aria-label*="View query" i],
-        [aria-label*="Dashboard view" i],
-        [aria-label*="View in dashboard" i],
         [title*="Share" i],
         [title*="Save as" i],
         [title*="Edit chart" i],
         [title*="View query" i],
-        [title*="Dashboard view" i],
-        [title*="View in dashboard" i],
         [data-test*="share" i],
         [data-testid*="share" i],
         [data-test*="save-as" i],
@@ -58,9 +54,7 @@ export function DashboardEmbed({
         [data-test*="edit-chart" i],
         [data-testid*="edit-chart" i],
         [data-test*="view-query" i],
-        [data-testid*="view-query" i],
-        [data-test*="dashboard-view" i],
-        [data-testid*="dashboard-view" i] {
+        [data-testid*="view-query" i] {
           display: none !important;
         }
       `
@@ -74,8 +68,6 @@ export function DashboardEmbed({
       'save as',
       'edit chart',
       'view query',
-      'dashboard view',
-      'view in dashboard',
     ])
     const actionNodes = doc.querySelectorAll<HTMLElement>('button, a, li, [role="button"], [role="menuitem"]')
     actionNodes.forEach((node) => {
@@ -90,12 +82,65 @@ export function DashboardEmbed({
         testId.includes('share') ||
         testId.includes('save-as') ||
         testId.includes('edit-chart') ||
-        testId.includes('view-query') ||
-        testId.includes('dashboard-view')
+        testId.includes('view-query')
       if (isAlwaysBlocked) {
         node.style.display = 'none'
       }
     })
+  }, [])
+
+  const constrainIframeNavigation = useCallback(() => {
+    const iframe = containerRef.current?.querySelector('iframe')
+    if (!iframe) return
+
+    let doc: Document | null = null
+    let frameWindow: Window | null = null
+    try {
+      doc = iframe.contentDocument
+      frameWindow = iframe.contentWindow
+    } catch {
+      return
+    }
+    if (!doc || !frameWindow) return
+
+    const navHookKey = '__supersetNavigationHooked__'
+    if ((frameWindow as Window & { [navHookKey]?: boolean })[navHookKey]) {
+      doc.querySelectorAll<HTMLAnchorElement>('a[target]').forEach((anchor) => {
+        anchor.target = '_self'
+        anchor.rel = 'noopener noreferrer'
+      })
+      return
+    }
+
+    ;(frameWindow as Window & { [navHookKey]?: boolean })[navHookKey] = true
+
+    try {
+      frameWindow.open = ((url?: string | URL) => {
+        if (typeof url === 'string' && url) {
+          frameWindow!.location.assign(url)
+        } else if (url instanceof URL) {
+          frameWindow!.location.assign(url.toString())
+        }
+        return frameWindow
+      }) as typeof window.open
+    } catch {
+      // Ignore if the browser prevents overriding open on the iframe window.
+    }
+
+    doc.querySelectorAll<HTMLAnchorElement>('a[target]').forEach((anchor) => {
+      anchor.target = '_self'
+      anchor.rel = 'noopener noreferrer'
+    })
+
+    doc.addEventListener('click', (event) => {
+      const target = event.target
+      if (!(target instanceof Element)) return
+      const anchor = target.closest('a[href]') as HTMLAnchorElement | null
+      if (!anchor) return
+      if (anchor.target && anchor.target !== '_self') {
+        anchor.target = '_self'
+      }
+    }, true)
   }, [])
 
   const stretchIframe = useCallback(() => {
@@ -130,7 +175,8 @@ export function DashboardEmbed({
     }
 
     hideEmbedActions()
-  }, [hideEmbedActions])
+    constrainIframeNavigation()
+  }, [constrainIframeNavigation, hideEmbedActions])
 
   const fetchGuestToken = useCallback(async () => {
     const resourceIds = [
@@ -143,6 +189,7 @@ export function DashboardEmbed({
       try {
         const res = await api.post<{ token: string }>('/superset/guest-token', {
           dashboardIds: [resourceId],
+          appOrigin: window.location.origin,
         })
         return res.data.token
       } catch (error) {
@@ -179,13 +226,19 @@ export function DashboardEmbed({
         })
         const iframe = containerRef.current?.querySelector('iframe')
         if (iframe) {
-          iframeLoadHandler = () => hideEmbedActions()
+          iframeLoadHandler = () => {
+            hideEmbedActions()
+            constrainIframeNavigation()
+          }
           iframe.addEventListener('load', iframeLoadHandler)
           try {
             const doc = iframe.contentDocument
             if (doc?.body) {
               iframeObserverRef.current?.disconnect()
-              iframeObserverRef.current = new MutationObserver(() => hideEmbedActions())
+              iframeObserverRef.current = new MutationObserver(() => {
+                hideEmbedActions()
+                constrainIframeNavigation()
+              })
               iframeObserverRef.current.observe(doc.body, { childList: true, subtree: true })
             }
           } catch {
@@ -221,7 +274,7 @@ export function DashboardEmbed({
       observer.disconnect()
       resizeObserver.disconnect()
     }
-  }, [dashboardId, fetchGuestToken, hideEmbedActions, onLoad, onError, stretchIframe])
+  }, [constrainIframeNavigation, dashboardId, fetchGuestToken, hideEmbedActions, onLoad, onError, stretchIframe])
 
   return (
     <div style={{ position: 'relative', width: '100%', height: typeof height === 'number' ? `${height}px` : height, minHeight: 0 }}>

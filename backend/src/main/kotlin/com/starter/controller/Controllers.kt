@@ -5,6 +5,7 @@ import com.starter.exception.ForbiddenException
 import com.starter.repository.mongo.EventRepository
 import com.starter.repository.postgres.UserRepository
 import com.starter.service.*
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotEmpty
@@ -146,13 +147,35 @@ class SupersetController(
     private val dashboardEmbedConfigService: DashboardEmbedConfigService
 ) {
 
-    data class GuestTokenRequest(@field:NotEmpty val dashboardIds: List<String>)
+    data class GuestTokenRequest(
+        @field:NotEmpty val dashboardIds: List<String>,
+        val appOrigin: String? = null,
+    )
 
     @PostMapping("/guest-token")
     fun guestToken(
         @AuthenticationPrincipal principal: UserDetails,
+        request: HttpServletRequest,
         @Valid @RequestBody req: GuestTokenRequest
-    ) = mapOf("token" to supersetService.mintGuestToken(req.dashboardIds, principal.username, principal.username))
+    ): Map<String, String> {
+        val appOrigin = req.appOrigin?.trim()?.ifBlank { null } ?: supersetService.resolveAppOrigin(
+            originHeader = request.getHeader("Origin"),
+            refererHeader = request.getHeader("Referer"),
+            forwardedProtoHeader = request.getHeader("X-Forwarded-Proto"),
+            forwardedHostHeader = request.getHeader("X-Forwarded-Host"),
+            hostHeader = request.getHeader("Host"),
+        )
+        val dashboardIdsToSync = dashboardEmbedConfigService.resolveGuestTokenDashboardIds(req.dashboardIds)
+        return mapOf(
+            "token" to supersetService.mintGuestToken(
+                dashboardIds = req.dashboardIds,
+                userEmail = principal.username,
+                username = principal.username,
+                appOrigin = appOrigin,
+                dashboardIdsToSync = dashboardIdsToSync,
+            )
+        )
+    }
 
     @GetMapping("/dashboard-embeds")
     fun listDashboardEmbeds(@AuthenticationPrincipal principal: UserDetails) =

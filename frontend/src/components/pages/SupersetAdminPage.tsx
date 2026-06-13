@@ -1,17 +1,4 @@
-import { useState } from 'react'
-
-const ADMIN_VIEWS = [
-  { id: 'welcome', label: 'Welcome', src: '/superset/welcome/' },
-  { id: 'databases', label: 'Databases', src: '/databaseview/list/' },
-  { id: 'new-database', label: 'Add Database', src: '/databaseview/add' },
-  { id: 'charts', label: 'Charts', src: '/chart/list/' },
-  { id: 'new-chart', label: 'New Chart', src: '/chart/add' },
-  { id: 'datasets', label: 'Datasets', src: '/tablemodelview/list/' },
-]
-
 export function SupersetAdminPage() {
-  const [activeView, setActiveView] = useState(ADMIN_VIEWS[0])
-
   return (
     <div style={{ width: '100%', maxWidth: 'none' }}>
       <div style={{ marginBottom: '1.25rem' }}>
@@ -20,38 +7,8 @@ export function SupersetAdminPage() {
           Internal dashboard authoring workspace for dashboard makers and admins
         </p>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', marginTop: 6 }}>
-          Use Charts to build visuals, then save them into a new dashboard. The legacy Superset dashboard list route is unstable in this build.
+          Use the Superset menu inside the frame for navigation. Direct top-level Superset pages stay blocked outside this app shell.
         </p>
-      </div>
-
-      <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '0.5rem',
-        marginBottom: '0.9rem',
-      }}>
-        {ADMIN_VIEWS.map(view => {
-          const active = view.id === activeView.id
-          return (
-            <button
-              key={view.id}
-              type="button"
-              onClick={() => setActiveView(view)}
-              style={{
-                border: active ? '1px solid var(--color-accent)' : '1px solid var(--color-border)',
-                background: active ? 'var(--color-accent-soft)' : 'var(--color-surface)',
-                color: 'var(--color-text)',
-                borderRadius: '999px',
-                padding: '0.45rem 0.85rem',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              {view.label}
-            </button>
-          )
-        })}
       </div>
 
       <div style={{
@@ -63,8 +20,7 @@ export function SupersetAdminPage() {
         minHeight: 720,
       }}>
         <iframe
-          key={activeView.src}
-          src={activeView.src}
+          src="/superset/welcome/"
           title="Superset Admin"
           style={{
             width: '100%',

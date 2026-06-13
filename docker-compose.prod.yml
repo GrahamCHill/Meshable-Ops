@@ -1,0 +1,54 @@
+services:
+  postgres:
+    ports: []
+
+  mongodb:
+    ports: []
+
+  qdrant:
+    ports: []
+
+  redis:
+    ports: []
+
+  backend:
+    ports: []
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRY_MS: ${JWT_EXPIRY_MS:-86400000}
+      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD}
+      APP_SEED_ADMIN_EMAIL: ${APP_SEED_ADMIN_EMAIL:-admin@example.com}
+      APP_SEED_ADMIN_USERNAME: ${APP_SEED_ADMIN_USERNAME:-admin}
+      APP_SEED_ADMIN_PASSWORD: ${APP_SEED_ADMIN_PASSWORD}
+      APP_SEED_USER_EMAIL: ${APP_SEED_USER_EMAIL:-user@example.com}
+      APP_SEED_USER_USERNAME: ${APP_SEED_USER_USERNAME:-user}
+      APP_SEED_USER_PASSWORD: ${APP_SEED_USER_PASSWORD}
+
+  superset-init:
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+      GUEST_TOKEN_JWT_SECRET: ${GUEST_TOKEN_JWT_SECRET}
+
+  superset:
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+      GUEST_TOKEN_JWT_SECRET: ${GUEST_TOKEN_JWT_SECRET}
+
+  superset-embed-init:
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+      GUEST_TOKEN_JWT_SECRET: ${GUEST_TOKEN_JWT_SECRET}
+
+  superset-worker:
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+      GUEST_TOKEN_JWT_SECRET: ${GUEST_TOKEN_JWT_SECRET}
+
+  superset-beat:
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+      GUEST_TOKEN_JWT_SECRET: ${GUEST_TOKEN_JWT_SECRET}
+
+  frontend:
+    ports:
+      - "127.0.0.1:3000:80"

@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.*
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
+import java.net.URI
 
 private val log = LoggerFactory.getLogger(SupersetService::class.java)
 
@@ -19,9 +20,17 @@ class SupersetService {
     private val rest = RestTemplate()
     private val mapper = ObjectMapper()
 
-    fun mintGuestToken(dashboardIds: List<String>, userEmail: String, username: String): String {
+    fun mintGuestToken(
+        dashboardIds: List<String>,
+        userEmail: String,
+        username: String,
+        appOrigin: String? = null,
+        dashboardIdsToSync: List<String> = dashboardIds,
+    ): String {
+        val guestUsername = userEmail.ifBlank { username }
         val accessToken = getAdminAccessToken()
         val csrfToken = getCsrfToken(accessToken)
+        syncAllowedDomains(dashboardIdsToSync, appOrigin, accessToken, csrfToken)
 
         val headers = HttpHeaders().apply {
             contentType = MediaType.APPLICATION_JSON
@@ -32,7 +41,7 @@ class SupersetService {
 
         val resources = dashboardIds.map { mapOf("type" to "dashboard", "id" to it) }
         val body = mapOf(
-            "user" to mapOf("username" to username, "first_name" to username, "last_name" to ""),
+            "user" to mapOf("username" to guestUsername, "first_name" to username, "last_name" to ""),
             "resources" to resources,
             "rls" to emptyList<Any>()
         )
@@ -50,6 +59,135 @@ class SupersetService {
             throw RuntimeException("Could not obtain Superset guest token", e)
         }
     }
+
+    fun resolveAppOrigin(
+        originHeader: String?,
+        refererHeader: String?,
+        forwardedProtoHeader: String?,
+        forwardedHostHeader: String?,
+        hostHeader: String?,
+    ): String? {
+        normalizeOrigin(originHeader)?.let { return it }
+
+        refererHeader
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?.let {
+                runCatching {
+                    val uri = URI(it)
+                    if (uri.scheme != null && uri.host != null) {
+                        "${uri.scheme}://${uri.authority}"
+                    } else {
+                        null
+                    }
+                }.getOrNull()
+            }
+            ?.let { return normalizeOrigin(it) }
+
+        val forwardedProto = forwardedProtoHeader?.substringBefore(',')?.trim().orEmpty()
+        val forwardedHost = forwardedHostHeader?.substringBefore(',')?.trim().orEmpty()
+        if (forwardedProto.isNotBlank() && forwardedHost.isNotBlank()) {
+            return normalizeOrigin("$forwardedProto://$forwardedHost")
+        }
+
+        val host = hostHeader?.substringBefore(',')?.trim().orEmpty()
+        if (host.isNotBlank()) {
+            val scheme = if (forwardedProto.equals("https", ignoreCase = true)) "https" else "http"
+            return normalizeOrigin("$scheme://$host")
+        }
+
+        return null
+    }
+
+    private fun syncAllowedDomains(
+        dashboardIds: List<String>,
+        appOrigin: String?,
+        accessToken: String,
+        csrfToken: String,
+    ) {
+        val normalizedOrigin = normalizeOrigin(appOrigin)
+        if (normalizedOrigin == null || dashboardIds.isEmpty()) {
+            return
+        }
+
+        dashboardIds
+            .asSequence()
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .filter { it.all(Char::isDigit) }
+            .distinct()
+            .forEach { dashboardId ->
+                runCatching {
+                    syncAllowedDomain(dashboardId, normalizedOrigin, accessToken, csrfToken)
+                }.onFailure { error ->
+                    log.warn(
+                        "Failed to sync Superset embed allowed_domains for dashboard {} and origin {}: {}",
+                        dashboardId,
+                        normalizedOrigin,
+                        error.message,
+                    )
+                }
+            }
+    }
+
+    private fun syncAllowedDomain(
+        dashboardId: String,
+        appOrigin: String,
+        accessToken: String,
+        csrfToken: String,
+    ) {
+        val headers = HttpHeaders().apply {
+            contentType = MediaType.APPLICATION_JSON
+            setBearerAuth(accessToken)
+            set("X-CSRFToken", csrfToken)
+            set("Referer", baseUrl)
+        }
+
+        val currentResponse = rest.exchange(
+            "$baseUrl/api/v1/dashboard/$dashboardId/embedded",
+            HttpMethod.GET,
+            HttpEntity<Void>(headers),
+            String::class.java
+        )
+        val resultNode = mapper.readTree(currentResponse.body).path("result")
+        if (resultNode.isMissingNode || resultNode.isNull) {
+            log.warn("Superset returned no embedded config payload for dashboard {}", dashboardId)
+            return
+        }
+
+        val existingDomains = resultNode.path("allowed_domains")
+            .takeIf { it.isArray }
+            ?.mapNotNull { node -> normalizeOrigin(node.asText()) }
+            .orEmpty()
+
+        if (existingDomains.any { it.equals(appOrigin, ignoreCase = true) }) {
+            return
+        }
+
+        val updatedDomains = (existingDomains + appOrigin).distinctBy(String::lowercase)
+        rest.exchange(
+            "$baseUrl/api/v1/dashboard/$dashboardId/embedded",
+            HttpMethod.POST,
+            HttpEntity(mapper.writeValueAsString(mapOf("allowed_domains" to updatedDomains)), headers),
+            String::class.java
+        )
+        log.info("Added Superset embed origin {} to dashboard {}", appOrigin, dashboardId)
+    }
+
+    private fun normalizeOrigin(origin: String?): String? =
+        origin
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?.let {
+                runCatching {
+                    val uri = if (it.contains("://")) URI(it) else URI("https://$it")
+                    if (uri.scheme == null || uri.host == null) {
+                        null
+                    } else {
+                        "${uri.scheme.lowercase()}://${uri.authority.lowercase()}"
+                    }
+                }.getOrNull()
+            }
 
     private fun getCsrfToken(accessToken: String): String {
         val headers = HttpHeaders().apply {
