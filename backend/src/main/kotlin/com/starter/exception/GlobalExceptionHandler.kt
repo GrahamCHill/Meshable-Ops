@@ -27,6 +27,10 @@ class GlobalExceptionHandler {
     fun handleConflict(ex: ConflictException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse(ex.message ?: "Conflict", 409))
 
+    @ExceptionHandler(BadRequestException::class)
+    fun handleBadRequest(ex: BadRequestException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse(ex.message ?: "Bad request", 400))
+
     @ExceptionHandler(ForbiddenException::class)
     fun handleForbidden(ex: ForbiddenException) =
         ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErrorResponse(ex.message ?: "Forbidden", 403))

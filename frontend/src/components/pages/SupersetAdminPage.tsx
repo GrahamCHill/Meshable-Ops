@@ -9,7 +9,7 @@ import { applySupersetTheme } from '../../lib/supersetTheme'
 export function SupersetAdminPage() {
   const navigate = useNavigate()
   const [isPreparingSession, setIsPreparingSession] = useState(true)
-  const supersetEntryUrl = '/superset/dashboard/list/'
+  const supersetEntryUrl = '/dashboard/list/'
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const observerRef = useRef<MutationObserver | null>(null)
   const { mode } = useTheme()

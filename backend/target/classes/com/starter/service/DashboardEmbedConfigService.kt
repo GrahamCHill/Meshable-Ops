@@ -43,13 +43,14 @@ class DashboardEmbedConfigService(
                     normalizedId.isBlank() -> null
                     normalizedId.all(Char::isDigit) -> normalizedId
                     else -> configs
-                        .firstOrNull { config ->
+                        .asSequence()
+                        .filter { config ->
                             config.dashboardId.equals(normalizedId, ignoreCase = true) ||
                                 config.guestTokenResourceId.equals(normalizedId, ignoreCase = true)
                         }
-                        ?.guestTokenResourceId
+                        .mapNotNull { it.guestTokenResourceId?.trim() }
+                        .firstOrNull { it.isNotBlank() && it.all(Char::isDigit) }
                         ?.trim()
-                        ?.takeIf { it.isNotBlank() && it.all(Char::isDigit) }
                 }
             }
             .distinct()

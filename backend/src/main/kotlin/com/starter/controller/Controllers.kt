@@ -1,6 +1,7 @@
 package com.starter.controller
 
 import com.starter.dto.*
+import com.starter.exception.BadRequestException
 import com.starter.exception.ForbiddenException
 import com.starter.repository.mongo.EventRepository
 import com.starter.repository.postgres.UserRepository
@@ -210,14 +211,17 @@ class SupersetController(
             forwardedHostHeader = request.getHeader("X-Forwarded-Host"),
             hostHeader = request.getHeader("Host"),
         )
-        val dashboardIdsToSync = dashboardEmbedConfigService.resolveGuestTokenDashboardIds(req.dashboardIds)
+        val resolvedDashboardIds = dashboardEmbedConfigService.resolveGuestTokenDashboardIds(req.dashboardIds)
+        if (resolvedDashboardIds.isEmpty()) {
+            throw BadRequestException("No numeric Superset dashboard id is mapped for the requested embed")
+        }
         return mapOf(
             "token" to supersetService.mintGuestToken(
-                dashboardIds = req.dashboardIds,
+                dashboardIds = resolvedDashboardIds,
                 userEmail = principal.username,
                 username = principal.username,
                 appOrigin = appOrigin,
-                dashboardIdsToSync = dashboardIdsToSync,
+                dashboardIdsToSync = resolvedDashboardIds,
             )
         )
     }
