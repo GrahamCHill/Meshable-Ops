@@ -1,7 +1,8 @@
 import { useEffect, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, BarChart2, Package, Search, Activity, LogOut, Zap, Shield } from 'lucide-react'
+import { LayoutDashboard, BarChart2, Package, Search, Activity, LogOut, Zap, Shield, Moon, Sun } from 'lucide-react'
 import { useAuthStore } from '../../hooks/useAuthStore'
+import { useTheme } from '../../hooks/useTheme'
 import { authApi } from '../../api/client'
 
 const nav = [
@@ -18,6 +19,7 @@ const adminNav = [
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { token, user, logout } = useAuthStore()
+  const { mode, toggleMode } = useTheme()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -67,6 +69,31 @@ export function AppLayout({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div style={{ padding: '1rem 1.25rem 0', borderTop: '1px solid var(--color-border)' }}>
+          <button
+            onClick={toggleMode}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              fontSize: '0.85rem',
+              color: 'var(--color-text)',
+              background: 'var(--color-surface-2)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '0.65rem 0.75rem',
+              marginBottom: 12,
+            }}
+          >
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              {mode === 'dark' ? <Moon size={14} /> : <Sun size={14} />}
+              {mode === 'dark' ? 'Dark mode' : 'Light mode'}
+            </span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>
+              Switch
+            </span>
+          </button>
           <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>{user?.email}</div>
           <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: 'var(--color-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'color 150ms ease' }}
             onMouseOver={e => (e.currentTarget.style.color = 'var(--color-danger)')}

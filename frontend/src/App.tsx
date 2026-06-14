@@ -10,6 +10,7 @@ import { SearchPage } from './components/pages/SearchPage'
 import { EventsPage } from './components/pages/EventsPage'
 import { LoginPage, RegisterPage } from './components/pages/AuthPages'
 import { useAuthStore } from './hooks/useAuthStore'
+import { ThemeProvider } from './hooks/useTheme'
 import './styles/global.css'
 
 const qc = new QueryClient({
@@ -28,37 +29,39 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   return (
-    <QueryClientProvider client={qc}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/*" element={
-            <ProtectedRoute>
-              <AppLayout>
-                <Routes>
-                  <Route path="/" element={<DashboardPage />} />
-                  <Route path="/dashboards" element={<DashboardsPage />} />
-                  <Route path="/admin" element={
-                    <AdminRoute>
-                      <AdminPage />
-                    </AdminRoute>
-                  } />
-                  <Route path="/admin/superset-graph-builder" element={
-                    <AdminRoute>
-                      <SupersetAdminPage />
-                    </AdminRoute>
-                  } />
-                  <Route path="/items" element={<ItemsPage />} />
-                  <Route path="/search" element={<SearchPage />} />
-                  <Route path="/events" element={<EventsPage />} />
-                </Routes>
-              </AppLayout>
-            </ProtectedRoute>
-          } />
-        </Routes>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={qc}>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/*" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Routes>
+                    <Route path="/" element={<DashboardPage />} />
+                    <Route path="/dashboards" element={<DashboardsPage />} />
+                    <Route path="/admin" element={
+                      <AdminRoute>
+                        <AdminPage />
+                      </AdminRoute>
+                    } />
+                    <Route path="/admin/superset-graph-builder" element={
+                      <AdminRoute>
+                        <SupersetAdminPage />
+                      </AdminRoute>
+                    } />
+                    <Route path="/items" element={<ItemsPage />} />
+                    <Route path="/search" element={<SearchPage />} />
+                    <Route path="/events" element={<EventsPage />} />
+                  </Routes>
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ThemeProvider>
   )
 }
 

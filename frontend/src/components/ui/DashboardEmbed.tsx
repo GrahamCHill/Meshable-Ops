@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { embedDashboard } from '@superset-ui/embedded-sdk'
 import api from '../../api/client'
+import { useTheme } from '../../hooks/useTheme'
+import { applySupersetTheme } from '../../lib/supersetTheme'
 
 interface DashboardEmbedProps {
   dashboardId: string
@@ -21,6 +23,22 @@ export function DashboardEmbed({
   const iframeObserverRef = useRef<MutationObserver | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [errorMsg, setErrorMsg] = useState('')
+  const { mode } = useTheme()
+
+  const applyEmbedTheme = useCallback(() => {
+    const iframe = containerRef.current?.querySelector('iframe')
+    if (!iframe) return
+
+    let doc: Document | null = null
+    try {
+      doc = iframe.contentDocument
+    } catch {
+      return
+    }
+    if (!doc) return
+
+    applySupersetTheme(doc, mode)
+  }, [mode])
 
   const hideEmbedActions = useCallback(() => {
     const iframe = containerRef.current?.querySelector('iframe')
@@ -174,9 +192,10 @@ export function DashboardEmbed({
       node = node.parentElement
     }
 
+    applyEmbedTheme()
     hideEmbedActions()
     constrainIframeNavigation()
-  }, [constrainIframeNavigation, hideEmbedActions])
+  }, [applyEmbedTheme, constrainIframeNavigation, hideEmbedActions])
 
   const fetchGuestToken = useCallback(async () => {
     const resourceIds = [
@@ -227,6 +246,7 @@ export function DashboardEmbed({
         const iframe = containerRef.current?.querySelector('iframe')
         if (iframe) {
           iframeLoadHandler = () => {
+            applyEmbedTheme()
             hideEmbedActions()
             constrainIframeNavigation()
           }
@@ -236,6 +256,7 @@ export function DashboardEmbed({
             if (doc?.body) {
               iframeObserverRef.current?.disconnect()
               iframeObserverRef.current = new MutationObserver(() => {
+                applyEmbedTheme()
                 hideEmbedActions()
                 constrainIframeNavigation()
               })
@@ -274,7 +295,11 @@ export function DashboardEmbed({
       observer.disconnect()
       resizeObserver.disconnect()
     }
-  }, [constrainIframeNavigation, dashboardId, fetchGuestToken, hideEmbedActions, onLoad, onError, stretchIframe])
+  }, [applyEmbedTheme, constrainIframeNavigation, dashboardId, fetchGuestToken, hideEmbedActions, mode, onLoad, onError, stretchIframe])
+
+  useEffect(() => {
+    applyEmbedTheme()
+  }, [applyEmbedTheme, mode])
 
   return (
     <div style={{ position: 'relative', width: '100%', height: typeof height === 'number' ? `${height}px` : height, minHeight: 0 }}>

@@ -1,13 +1,33 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Workflow } from 'lucide-react'
 import { Card } from '../ui'
 import { authApi } from '../../api/client'
+import { useTheme } from '../../hooks/useTheme'
+import { applySupersetTheme } from '../../lib/supersetTheme'
 
 export function SupersetAdminPage() {
   const navigate = useNavigate()
   const [isPreparingSession, setIsPreparingSession] = useState(true)
   const supersetEntryUrl = '/superset/dashboard/list/'
+  const iframeRef = useRef<HTMLIFrameElement | null>(null)
+  const observerRef = useRef<MutationObserver | null>(null)
+  const { mode } = useTheme()
+
+  const syncIframeTheme = () => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+
+    let doc: Document | null = null
+    try {
+      doc = iframe.contentDocument
+    } catch {
+      return
+    }
+    if (!doc) return
+
+    applySupersetTheme(doc, mode)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -28,6 +48,12 @@ export function SupersetAdminPage() {
       cancelled = true
     }
   }, [navigate])
+
+  useEffect(() => {
+    syncIframeTheme()
+  }, [mode, isPreparingSession])
+
+  useEffect(() => () => observerRef.current?.disconnect(), [])
 
   return (
     <div style={{ width: '100%', maxWidth: 'none', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -73,7 +99,7 @@ export function SupersetAdminPage() {
           overflow: 'hidden',
           height: 'calc(100vh - 12rem)',
           minHeight: 720,
-          background: 'white',
+          background: 'var(--color-surface)',
         }}>
           {isPreparingSession ? (
             <div style={{
@@ -90,8 +116,18 @@ export function SupersetAdminPage() {
             </div>
           ) : (
             <iframe
+              ref={iframeRef}
               src={supersetEntryUrl}
               title="Superset Graph Builder"
+              onLoad={() => {
+                syncIframeTheme()
+                const doc = iframeRef.current?.contentDocument
+                if (doc?.body) {
+                  observerRef.current?.disconnect()
+                  observerRef.current = new MutationObserver(() => syncIframeTheme())
+                  observerRef.current.observe(doc.body, { childList: true, subtree: true })
+                }
+              }}
               style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
             />
           )}
