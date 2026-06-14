@@ -1,63 +1,91 @@
 # Superset Docker App
 
-This repository runs a small analytics application as one Docker Compose stack:
+A production-oriented Docker Compose application that combines:
 
-- React frontend
-- Spring Boot backend
-- Apache Superset
-- PostgreSQL
-- MongoDB
-- Qdrant
-- Redis
-- Python ML helper service
+- a React frontend
+- a Spring Boot backend
+- Apache Superset for embedded analytics and admin authoring
+- PostgreSQL, MongoDB, and Qdrant for application data
+- a small Python ML helper for vectorization
 
-The app is designed so users interact with the frontend, not with Superset directly. Shared dashboards are embedded inside the app, while Superset authoring remains admin-only through the app shell.
+The application is designed so users work through the app shell, not through a directly exposed Superset instance. Shared dashboards are embedded inside the product, while Superset authoring is available only to admins through `Superset Graph Builder`.
 
-## Architecture
+## What This Repository Provides
 
-The frontend is the only web entrypoint intended for normal use.
+- App-managed authentication and role-based access control
+- Embedded Superset dashboards through the app domain
+- Admin-only Superset authoring at `/admin/superset-graph-builder`
+- User lifecycle management from `/admin`
+- Shared CRUD-style application records
+- Vector search over application content
+- Production deployment with Docker Compose and Caddy-based HTTPS
 
-- `frontend` serves the app on port `3000`
-- `backend` serves the API on port `8080`
-- `superset` is internal-only and is proxied through the frontend
-- `ml-backend` is internal-only
-- `postgres`, `mongodb`, `redis`, and `qdrant` provide storage/runtime services
+## Product Model
 
-For end users:
+This repository is best understood as:
 
-- Dashboard embeds are available inside `/dashboards`
-- Superset authoring is available to admins at `/admin/superset-graph-builder`
-- Direct non-embed Superset routes are protected and redirected back through the app
+- a relatively simple CRUD-style internal application
+- with embedded analytics layered in through Superset
+- with admin operations surfaced through a real app page rather than a separate analytics portal
 
-Additional documentation:
+The current admin information architecture is intentional:
 
-- [Architecture Diagram](docs/architecture.md)
-- [Database Layout Diagram](docs/database-layout.md)
+- `/admin`
+  application access management, audit, backup, settings, and reindex controls
+- `/admin/superset-graph-builder`
+  embedded Superset authoring workspace for admins
 
-## Services
+## Architecture Summary
 
-| Service | Default access | Notes |
+The intended public surface is the frontend application.
+
+- `frontend`
+  main user-facing app
+- `backend`
+  auth, APIs, guest-token minting, admin logic, and vector-search orchestration
+- `superset`
+  internal analytics dependency, proxied through the frontend
+- `ml-backend`
+  internal helper for vectorization
+- `postgres`, `mongodb`, `qdrant`
+  application data stores
+- `redis`
+  currently a Superset-specific runtime dependency
+
+Important access rules:
+
+- all authenticated users can view shared items
+- all authenticated users can view allowed embedded dashboards
+- only admins can manage users, settings, backups, reindexing, dashboard embed configs, and Superset authoring routes
+
+Important routing rule:
+
+- frontend route hiding is not the security boundary for Superset authoring
+- the frontend proxy is the real enforcement point for non-embed Superset route access
+
+Additional architecture detail:
+
+- [Architecture Guide](docs/architecture.md)
+- [Database Layout](docs/database-layout.md)
+- [Deployment Guide](docs/deployment.md)
+
+## Service Map
+
+| Service | Default access | Purpose |
 |---|---|---|
-| Frontend | `http://localhost:3000` | Main user-facing app |
-| Caddy (production) | `https://your-domain` | Public HTTPS entrypoint in production override |
-| Backend API | `http://localhost:8080/api` | Mostly used through frontend proxy |
-| Superset | internal only | Reached through frontend proxy/admin page |
-| ML backend | internal only | Used by backend/services |
-| PostgreSQL | `localhost:5432` | App + Superset metadata/data |
-| MongoDB | `localhost:27017` | App document/event storage |
-| Qdrant | `localhost:6333` | Vector search |
-| Redis | `localhost:6379` | Cache / task coordination |
-
-Default local dev accounts:
-
-- Admin: `admin@app.local` / `admin123`
-- User: `user@app.local` / `user123`
-
-In production, do not rely on these defaults. Production bootstrap users now come only from `.env.production`.
+| Frontend | `http://localhost:3000` | Main application UI |
+| Backend API | `http://localhost:8080/api` | Application APIs, mostly used through the frontend proxy |
+| Superset | internal only | Embedded dashboards and admin authoring |
+| ML backend | internal only | Vectorization helper |
+| PostgreSQL | `localhost:5432` | Application relational data and Superset metadata |
+| MongoDB | `localhost:27017` | Events and audit-style documents |
+| Qdrant | `localhost:6333` | Vector search storage |
+| Redis | `localhost:6379` | Superset cache and task coordination |
+| Caddy | `https://your-domain` | Production HTTPS entrypoint |
 
 ## Quick Start
 
-Start the full stack:
+Start the full local stack:
 
 ```bash
 docker compose up --build -d
@@ -71,42 +99,67 @@ docker compose logs -f backend
 docker compose logs -f superset
 ```
 
-Then open:
+Open:
 
 - `http://localhost:3000`
 - `http://localhost:3000/dashboards`
 - `http://localhost:3000/admin`
 - `http://localhost:3000/admin/superset-graph-builder`
 
-## Dashboard Management
+Default local accounts:
 
-Dashboard embeds are runtime-managed. You do not need to hardcode dashboard definitions in the frontend.
+- Admin: `admin@app.local` / `admin123`
+- User: `user@app.local` / `user123`
 
-Shared dashboards are configured from the app itself:
+These defaults are for local development only.
 
-1. Log in as an admin.
-2. Open `/admin` to manage users and admin access.
-3. Open `/admin/superset-graph-builder` to create or edit dashboards in Superset.
-4. Open `/dashboards`.
-5. Use the admin controls on that page to add/edit enabled shared embeds.
+## Core Workflows
 
-Each shared dashboard record stores:
+### Shared Dashboards
 
-- Display label
-- Description
-- Embed UUID
-- Optional numeric Superset dashboard id for guest-token minting
-- Sort order
-- Enabled state
-- Allowed app roles
+Dashboard embeds are runtime-managed from the application.
 
-Non-admin users can view enabled shared dashboards that match their role, but cannot manage them.
+1. Sign in as an admin.
+2. Open `/admin/superset-graph-builder` to author or edit dashboards in Superset.
+3. Open `/dashboards`.
+4. Use the admin controls there to create or edit shared dashboard embed entries.
 
-## Vector Search Testing
+Each shared dashboard entry stores:
 
-The development seed data now includes a small set of more realistic `items` so vector search is easier to validate.
+- display label
+- description
+- embed UUID
+- optional numeric Superset dashboard id
+- sort order
+- enabled state
+- allowed app roles
 
-Example queries to try on the search page:
+### User Access Management
+
+Admins manage access from `/admin`.
+
+Current admin capabilities include:
+
+- create users
+- review the user roster
+- deactivate users
+- review audit activity
+- manage operational settings
+- trigger vector reindexing
+- export application backups
+
+User lifecycle behavior:
+
+- self-service registration is disabled
+- production bootstrap users come from `APP_BOOTSTRAP_USERS_JSON`
+- deleting a user from the admin UI is a deactivation flow, not a hard delete
+- inactive users can no longer authenticate
+
+### Vector Search
+
+The repository includes seeded data so vector search is easy to validate locally.
+
+Example search queries:
 
 - `refund policy and billing correction`
 - `employee onboarding and benefits`
@@ -114,44 +167,33 @@ Example queries to try on the search page:
 - `incident response for phishing`
 - `campaign performance and conversions`
 
-These are intentionally varied so the semantic search path has meaningful text to compare.
+On an existing environment, you can create new items and then reindex them.
 
-On an already-running environment with existing PostgreSQL data, you can still test search by:
+## Security Model
 
-- creating items through the app
-- running the reindex script after data changes
+The repository is configured so embedded analytics work through the application domain instead of through a separately exposed Superset site.
 
-## User Access Management
+- Superset is not intended to be publicly exposed
+- embedded dashboards load through `/embedded/...`
+- guest tokens are minted by the backend
+- the backend syncs allowed app origins into Superset embedded allowlists
+- admin-only Superset routes are proxied through the frontend and protected by app auth
 
-Admins manage access from `/admin`.
+This keeps the user-facing analytics experience inside the application while preserving a separate admin authoring path.
 
-- Create new application users from the admin form
-- Review the current access roster and roles
-- Continue into the `Superset Graph Builder` subpage for embedded authoring
-- Manage object storage connection settings for backup/archive workflows
-- Configure automated vector reindex cadence
-- Trigger manual vector recalculation
-- Export an application backup
-- Review recent audit-log activity
+## Production Readiness Notes
 
-Self-service registration remains disabled. In local development, the default admin and user accounts are still seeded for convenience.
+### Production Bootstrap Users
 
-## Embed Security Model
+Production access should be explicit and environment-driven.
 
-This stack is set up so embedded dashboards work through the app domain rather than through a separate exposed Superset host.
+- local development can use convenience seed users
+- production should use `APP_BOOTSTRAP_USERS_JSON`
+- if the `prod` profile is active and `APP_BOOTSTRAP_USERS_JSON` is empty, convenience fallback users are not created
 
-- Superset is not published directly to a public host port
-- Embedded dashboards load through the frontend proxy at `/embedded/...`
-- Guest tokens are minted by the backend, not the browser
-- The frontend sends its current `window.location.origin` when requesting a guest token
-- The backend syncs that origin into Superset's embedded `allowed_domains` on demand
-- Admin-only Superset authoring routes are proxied through the frontend and protected by app auth
+### Secrets and Configuration
 
-This means a deployment can move from `localhost` to a real domain without manually rewriting Superset embed allowlists for each dashboard.
-
-## Environment and Secrets
-
-At minimum, review and change these values before deployment:
+Review and replace at minimum:
 
 - `JWT_SECRET`
 - `SUPERSET_SECRET_KEY`
@@ -160,7 +202,7 @@ At minimum, review and change these values before deployment:
 - `APP_BOOTSTRAP_USERS_JSON`
 - database passwords
 
-Current defaults live primarily in:
+Primary config files:
 
 - [docker-compose.yml](docker-compose.yml)
 - [docker-compose.prod.yml](docker-compose.prod.yml)
@@ -168,301 +210,98 @@ Current defaults live primarily in:
 - [backend/src/main/resources/application.properties](backend/src/main/resources/application.properties)
 - [superset/superset_config.py](superset/superset_config.py)
 
-For production, prefer injecting secrets via environment variables or Docker secrets rather than committing real values into the compose file.
+### Deployment Shapes
 
-## Recommended Deployment
+This repository supports three practical production shapes:
 
-The simplest reliable deployment is:
+- full all-in-one VM
+  one VM runs the app, Superset, its supporting Redis, and the data services
+- app host plus offloaded services
+  the VM mainly runs the app and analytics surfaces while core data services move to managed infrastructure
+- existing host-level reverse proxy
+  the stack sits behind a host-managed Caddy or Nginx layer
 
-1. One Linux VM
-2. Docker Engine + Docker Compose plugin
-3. This stack running on a private Docker network
-4. Caddy in front of it for HTTPS
-5. Only HTTP/HTTPS exposed publicly
+### Redis Positioning
 
-Recommended layout:
+Redis is currently part of the Superset runtime footprint, not a general app dependency.
 
-- Public:
-  - `80/tcp`
-  - `443/tcp`
-- Private or admin-only:
-  - SSH `22/tcp`
-- Not publicly exposed:
-  - `3000` from outside the VM
-  - `8080`
-  - `5432`
-  - `27017`
-  - `6333`
-  - `6334`
-  - `6379`
+- the backend does not depend on Redis directly today
+- keeping Redis on the same VM as Superset is a sensible default
+- if the broader application later needs Redis, that should be treated as a separate stack concern
 
-### VM Recommendation
+### VM Sizing Guidance
 
-For a modest internal deployment, a good starting point is:
+Sizing depends on what stays on the VM.
 
-- 4 vCPU
-- 8 to 16 GB RAM
-- SSD-backed disk
+- app host with offloaded stateful services
+  often reasonable around `2-4 vCPU` and `4-8 GB RAM`
+- full all-in-one stack for a very small team
+  `2 vCPU / 4 GB RAM` can be a lean starting point
+- full all-in-one stack with more buffer
+  `4 vCPU / 8-16 GB RAM` is a safer comfort range
 
-If Superset usage, background tasks, or vector workloads grow, scale up RAM first.
+These are planning ranges, not benchmark guarantees. Real usage depends on dashboard concurrency, Superset query mix, vector-search frequency, and background activity.
 
-### Rough VM Cost Estimate
+## Production Deployment
 
-For planning purposes, a simple starting model is:
+The recommended default is:
 
-| Expected users | Recommended VM specs | Estimated monthly VM cost |
-|---|---|---|
-| `1-10` | `2-4 vCPU`, `8 GB RAM`, SSD-backed disk | `~$40-$90` |
-| `10-50` | `4 vCPU`, `8-16 GB RAM`, SSD-backed disk | `~$60-$180` |
-| `50-150` | `4-8 vCPU`, `16-32 GB RAM`, SSD-backed disk | `~$120-$350` |
+1. one Linux VM
+2. Docker Engine and Docker Compose
+3. private Docker networking for internal services
+4. in-stack Caddy for HTTPS
+5. only `80/443` exposed publicly
 
-These are rough planning estimates for the VM layer only, not live quotes. Actual cost depends on:
+Normal public/private posture:
 
-- cloud provider and region
-- VM family
-- on-demand vs reserved / savings pricing
-- attached disk size and disk class
-- outbound bandwidth
-- snapshots, backups, and monitoring
+- public:
+  `80`, `443`
+- private or tightly restricted:
+  `22`
+- not publicly exposed:
+  `3000`, `8080`, `5432`, `27017`, `6333`, `6334`, `6379`
 
-Provider pricing references:
+High-level rollout:
 
-- Azure: [Linux Virtual Machines Pricing](https://azure.microsoft.com/en-us/pricing/details/virtual-machines/linux/)
-- AWS: [EC2 On-Demand Instance Pricing](https://aws.amazon.com/ec2/pricing/on-demand/)
-- GCP: [Google Cloud Compute Pricing](https://cloud.google.com/products/compute/pricing)
-
-### Cloud Provider Service Mapping
-
-If you want to deploy this as "one VM running Docker Compose", these are the most natural service choices:
-
-- Azure: `Azure Virtual Machines`
-- AWS: `Amazon EC2`
-- GCP: `Google Compute Engine`
-
-In other words, for this repository I would usually recommend:
-
-- one Linux VM
-- Docker Engine + Docker Compose on that VM
-- Caddy terminating HTTPS on that VM
-- only `80/443` exposed publicly
-
-You do not need Kubernetes or a managed container platform unless you specifically want orchestration, auto-scaling, or a more distributed production setup.
-
-### HTTPS Recommendation
-
-This repo now includes Caddy inside the production Compose setup so HTTPS can be handled directly by Docker Compose on the VM.
-
-Best pattern:
-
-- Public domain: `https://app.example.com`
-- Caddy listens on `80/443`
-- Caddy proxies to the internal `frontend` service
-- TLS terminates at Caddy
-- The frontend continues proxying backend and Superset traffic internally
-
-That keeps the architecture simple:
-
-- browser -> caddy -> frontend
-- frontend -> backend/superset internally
-
-Only two domain-specific values are required for the HTTPS template:
-
-- `APP_DOMAIN`: the public hostname only, like `app.example.com`
-- `ACME_EMAIL`: the email Caddy should use for Let's Encrypt / ACME
-
-Important:
-
-- use `app.example.com`, not `https://app.example.com`
-- do not include a path
-- point that hostname's DNS record at the VM before first certificate issuance
-
-### Compose Port Advice
-
-For production, I would usually expose only Caddy on the host and keep the rest internal.
-
-A good next step would be to change:
-
-- keep only Caddy public
-- remove direct host publishing for `backend`
-- remove direct host publishing for `postgres`, `mongodb`, `qdrant`, and `redis`
-
-If you still want admin/debug access to those services, restrict them with:
-
-- VM firewall rules
-- private subnet access
-- VPN
-- SSH tunnel only
-
-### Storage and Persistence
-
-Persist Docker volumes for:
-
-- PostgreSQL
-- MongoDB
-- Qdrant
-- Redis
-- Superset home
-
-Also plan for:
-
-- off-box database backups
-- VM snapshots only as a secondary recovery method
-- log rotation
-
-### Security Notes
-
-Before production, I strongly recommend:
-
-1. Replace all default passwords and secrets.
-2. Put the app behind HTTPS only.
-3. Restrict SSH by IP or VPN if possible.
-4. Avoid exposing database/vector/cache ports publicly.
-5. Declare only the production users you actually want in `APP_BOOTSTRAP_USERS_JSON`.
-6. Review `TALISMAN_ENABLED` and broader Superset hardening once the deployment domain is stable.
-
-## Example Production Shape
-
-One practical setup:
-
-1. Ubuntu VM
-2. Docker Compose stack bound to localhost/private interfaces where possible
-3. Caddy in the Compose stack handling TLS for `app.example.com`
-4. Public firewall open only for `80/443`
-5. Admin SSH via VPN or allowlisted IPs
-
-This repo now includes example deployment artifacts:
-
-- [docker-compose.prod.yml](docker-compose.prod.yml)
-- [.env.production.example](.env.production.example)
-- [deploy/caddy/Caddyfile](deploy/caddy/Caddyfile)
-- [deploy/nginx/app.example.conf](deploy/nginx/app.example.conf)
-- [deploy/Caddyfile.example](deploy/Caddyfile.example)
-
-## Production Deployment Steps
-
-1. Provision a Linux VM.
-2. Install Docker Engine and the Docker Compose plugin.
-3. Clone this repository onto the VM.
-4. Copy `.env.production.example` to `.env.production`.
-5. Replace every placeholder secret and password in `.env.production`.
-6. Set `APP_DOMAIN`, `ACME_EMAIL`, and `APP_BOOTSTRAP_USERS_JSON` in `.env.production`.
-   Example:
-   `APP_DOMAIN=app.example.com`
-   `ACME_EMAIL=admin@example.com`
-   `APP_BOOTSTRAP_USERS_JSON=[{"email":"admin@example.com","username":"admin","password":"...","role":"ADMIN"}]`
-7. Point your DNS record, for example `app.example.com`, at the VM.
-8. Make sure ports `80` and `443` reach the VM.
-9. Start the stack with the production override:
+1. Copy `.env.production.example` to `.env.production`.
+2. Replace all placeholder secrets.
+3. Set `APP_DOMAIN`, `ACME_EMAIL`, and `APP_BOOTSTRAP_USERS_JSON`.
+4. Point DNS at the VM.
+5. Make sure `80/443` reach the VM and are not already in use.
+6. Start the production stack:
 
 ```bash
 docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up --build -d
 ```
 
-10. Verify that only `80/443` are reachable publicly.
-11. Log in as admin and confirm `/admin` and `/admin/superset-graph-builder` work through the final domain.
+7. Verify login, `/admin`, and `/admin/superset-graph-builder` on the real domain.
 
-## Cloudflare Note
+For the full deployment guide, including reverse-proxy options, troubleshooting, and verification:
 
-If you put Cloudflare in front of the VM, this setup can still work well.
+- [docs/deployment.md](docs/deployment.md)
 
-Recommended approach:
+## Reverse Proxy and HTTPS
 
-- point your domain at the VM public IP
-- let Caddy terminate HTTPS on the VM
-- use Cloudflare SSL mode `Full (strict)`
+The built-in production path uses:
 
-I would avoid `Flexible` mode because that leaves the Cloudflare-to-origin leg on plain HTTP.
-
-If certificate issuance is ever finicky during first setup, a simple pattern is:
-
-1. point DNS at the VM
-2. make sure ports `80/443` are reachable
-3. bring up Caddy
-4. once certificates are issued and the site is reachable, enable or keep Cloudflare proxying as desired
-
-## Deployment Checklist
-
-- Change all default passwords and secrets.
-- Keep only `80/443` public.
-- Keep SSH restricted by IP, VPN, or bastion host.
-- Keep Docker service ports private.
-- Confirm Caddy can obtain certificates for the final domain.
-- Confirm login works on the real domain.
-- Confirm an embedded dashboard loads on the real domain.
-- Confirm `/admin` and `/admin/superset-graph-builder` work only for admins.
-- Confirm direct Superset authoring routes are not usable outside the app shell.
-- Set up backups for PostgreSQL, MongoDB, and Qdrant if the data matters.
-- Enable log rotation and basic VM monitoring.
-- Review and rotate any bootstrap user passwords stored in `.env.production`.
-
-## Production Files
-
-### `docker-compose.prod.yml`
-
-This override is intended for VM deployments where Caddy terminates HTTPS inside the Compose stack.
-
-It:
-
-- publishes `80/443` from the `caddy` service
-- unpublishes backend and data-service ports
-- keeps the frontend internal to Docker
-- enables the Spring `prod` profile
-- expects secrets to come from `.env.production`
-
-Start it with:
-
-```bash
-docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d --build
-```
-
-### Nginx Example
-
-The example Nginx config is at:
-
-- [deploy/nginx/app.example.conf](deploy/nginx/app.example.conf)
-
-It assumes:
-
-- public domain `app.example.com`
-- TLS certs already installed
-- the app stack is listening behind a host-level reverse proxy model
-
-### Caddy Example
-
-The active in-stack Caddy config is at:
-
+- [docker-compose.prod.yml](docker-compose.prod.yml)
 - [deploy/caddy/Caddyfile](deploy/caddy/Caddyfile)
 
-It uses:
+This gives you:
 
-- `APP_DOMAIN`
-- `ACME_EMAIL`
+- Caddy inside the Compose stack
+- automatic certificate management
+- TLS termination at Caddy
+- proxying from Caddy to the internal frontend service
 
-That means changing the domain for a new deployment is just:
+Use the in-stack Caddy path when you want the simplest production model.
 
-1. copy `.env.production.example` to `.env.production`
-2. set `APP_DOMAIN` to your hostname
-3. set `ACME_EMAIL` to your email
-4. start the production compose stack
+Alternative examples are also included:
 
-The separate example Caddy config is still at:
-
-- [deploy/Caddyfile.example](deploy/Caddyfile.example)
-
-Caddy is now the easiest path if you want Compose-managed automatic HTTPS with minimal setup.
-
-### External Databases
-
-Protecting Superset behind the app does not stop Superset from connecting to external SQL databases.
-
-Superset can still connect to an external Postgres, MySQL, or other supported database as long as:
-
-- the VM and container network can reach that database
-- firewalls allow the traffic
-- the database allows the VM's source IP or network
-- the proper SQLAlchemy driver and connection settings are configured in Superset
-
-This deployment model controls browser access to Superset. It does not block Superset's outbound database connectivity.
+- host-level Caddy:
+  [deploy/Caddyfile.example](deploy/Caddyfile.example)
+- host-level Nginx:
+  [deploy/nginx/app.example.conf](deploy/nginx/app.example.conf)
 
 ## Operations
 
@@ -477,13 +316,13 @@ docker compose restart frontend backend superset
 docker compose down
 ```
 
-Rebuild after code/config changes:
+Rebuild after code or config changes:
 
 ```bash
 docker compose up --build -d
 ```
 
-Recalculate stored item vectors from the current item dataset:
+Reindex stored vectors:
 
 ```bash
 ./scripts/reindex-items.sh
@@ -495,29 +334,24 @@ On Windows PowerShell:
 ./scripts/reindex-items.ps1
 ```
 
-Both scripts:
+Both reindex helpers:
 
 - log in as an app admin
 - call the existing `/api/items/reindex` endpoint
 - support `APP_URL`, `APP_ADMIN_EMAIL`, and `APP_ADMIN_PASSWORD`
 
-This is useful after:
+## Repository Documentation
 
-- embedding model changes
-- ML backend changes
-- restoring data
-- changing seeded/demo items
+- [docs/architecture.md](docs/architecture.md)
+  runtime services, request flow, role boundaries, and proxy behavior
+- [docs/database-layout.md](docs/database-layout.md)
+  data stores, entity layout, persistence boundaries, and backup thinking
+- [docs/deployment.md](docs/deployment.md)
+  production shapes, reverse proxy options, rollout steps, sizing, and troubleshooting
 
 ## Notes
 
-- Superset dashboard embeds are seeded with an empty allowlist and are updated at runtime when the app requests guest tokens.
-- The frontend is the supported way to reach Superset admin pages.
 - Shared dashboard visibility is role-based inside the app.
-- Vector search uses seeded demo items plus the `scripts/reindex-items.*` helpers for repeatable reindexing.
-
-## Docs
-
-The `docs/` folder contains higher-level reference material for the current implementation:
-
-- [docs/architecture.md](docs/architecture.md): current runtime/service architecture with Mermaid
-- [docs/database-layout.md](docs/database-layout.md): current storage layout, cross-store links, and entity relationships with Mermaid
+- The frontend is the supported way to reach Superset admin pages.
+- Superset embed allowlists are updated at runtime as the app requests guest tokens.
+- Redis is currently reserved for Superset runtime behavior.
