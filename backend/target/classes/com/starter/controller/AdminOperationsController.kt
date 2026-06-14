@@ -5,8 +5,8 @@ import com.starter.dto.AdminSettingsRequest
 import com.starter.service.AdminSettingsService
 import com.starter.service.AuditLogService
 import com.starter.service.BackupExportService
+import com.starter.service.StackInfoService
 import jakarta.servlet.http.HttpServletRequest
-import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -30,10 +30,13 @@ class AdminOperationsController(
     private val auditLogService: AuditLogService,
     private val backupExportService: BackupExportService,
     private val objectMapper: ObjectMapper,
+    private val stackInfoService: StackInfoService,
 ) {
-
     @GetMapping("/settings")
     fun getSettings() = adminSettingsService.getSettings()
+
+    @GetMapping("/stack")
+    fun getStackInfo() = stackInfoService.getStackInfo()
 
     @PutMapping("/settings")
     fun updateSettings(

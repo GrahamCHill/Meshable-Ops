@@ -161,6 +161,15 @@ class EventController(
     }
 }
 
+@RestController
+@RequestMapping("/api/stack")
+class StackController(
+    private val stackInfoService: StackInfoService,
+) {
+    @GetMapping
+    fun stack(@AuthenticationPrincipal principal: UserDetails) = stackInfoService.getStackInfo()
+}
+
 // ─── Vector search ───────────────────────────────────────────────────────────
 
 @RestController

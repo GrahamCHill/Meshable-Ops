@@ -74,13 +74,13 @@ Additional architecture detail:
 | Service | Default access | Purpose |
 |---|---|---|
 | Frontend | `http://localhost:3000` | Main application UI |
-| Backend API | `http://localhost:8080/api` | Application APIs, mostly used through the frontend proxy |
+| Backend API | internal only | Application APIs, reached through the frontend proxy |
 | Superset | internal only | Embedded dashboards and admin authoring |
 | ML backend | internal only | Vectorization helper |
-| PostgreSQL | `localhost:5432` | Application relational data and Superset metadata |
-| MongoDB | `localhost:27017` | Events and audit-style documents |
-| Qdrant | `localhost:6333` | Vector search storage |
-| Redis | `localhost:6379` | Superset cache and task coordination |
+| PostgreSQL | internal only | Application relational data and Superset metadata |
+| MongoDB | internal only | Events and audit-style documents |
+| Qdrant | internal only | Vector search storage |
+| Redis | internal only | Superset cache and task coordination |
 | Caddy | `https://your-domain` | Production HTTPS entrypoint |
 
 ## Quick Start
@@ -143,6 +143,7 @@ Current admin capabilities include:
 - create users
 - review the user roster
 - deactivate users
+- review live stack and network-boundary status
 - review audit activity
 - manage operational settings
 - trigger vector reindexing

@@ -101,6 +101,23 @@ export interface HealthStatus {
   qdrant: string
 }
 
+export interface StackServiceInfo {
+  name: string
+  status: string
+  version?: string | null
+  runtime?: string | null
+  internalUrl?: string | null
+  exposedOutsideVm: boolean
+  notes: string[]
+}
+
+export interface StackInfo {
+  timestamp: string
+  publicEntrypoints: string[]
+  privateServices: string[]
+  services: StackServiceInfo[]
+}
+
 export interface DashboardEmbedConfig {
   id: string
   label: string
@@ -179,6 +196,10 @@ export const healthApi = {
   check: () => api.get<HealthStatus>('/health').then(r => r.data),
 }
 
+export const stackApi = {
+  get: () => api.get<StackInfo>('/stack').then(r => r.data),
+}
+
 export const adminSettingsApi = {
   get: () => api.get<AdminSettings>('/admin/settings').then(r => r.data),
   update: (data: {
@@ -191,6 +212,10 @@ export const adminSettingsApi = {
     vectorReindexEnabled: boolean
     vectorReindexIntervalMinutes: number
   }) => api.put<AdminSettings>('/admin/settings', data).then(r => r.data),
+}
+
+export const adminStackApi = {
+  get: () => api.get<StackInfo>('/admin/stack').then(r => r.data),
 }
 
 export const auditLogsApi = {

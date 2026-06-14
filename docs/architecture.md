@@ -200,6 +200,11 @@ For production, the intended public boundary is:
 - frontend behind Caddy
 - backend, Superset, and stateful services private to Docker or private network paths
 
+The default Compose posture in this repository now matches that boundary in local and production runs:
+
+- only the frontend is published on the host by default
+- backend, PostgreSQL, MongoDB, Qdrant, Redis, Superset, and the ML helper stay on Docker-internal service addresses unless you deliberately re-expose them
+
 If data services are offloaded:
 
 - the logical architecture stays the same

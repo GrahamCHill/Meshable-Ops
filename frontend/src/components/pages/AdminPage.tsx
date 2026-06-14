@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   adminBackupApi,
+  adminStackApi,
   adminSettingsApi,
   adminUsersApi,
   auditLogsApi,
@@ -10,6 +11,7 @@ import {
   itemsApi,
   type AdminSettings,
   type AdminUser,
+  type StackServiceInfo,
 } from '../../api/client'
 import { Badge, Button, Card, Spinner } from '../ui'
 import {
@@ -18,7 +20,9 @@ import {
   Download,
   HardDrive,
   HeartPulse,
+  Lock,
   KeyRound,
+  MonitorCog,
   RefreshCcw,
   ScrollText,
   Shield,
@@ -105,6 +109,56 @@ function extractFilename(contentDisposition?: string) {
   if (!contentDisposition) return 'app-backup.json'
   const match = contentDisposition.match(/filename="?(.*?)"?$/i)
   return match?.[1] ?? 'app-backup.json'
+}
+
+function statusBadgeColor(status: string): 'success' | 'danger' | 'warning' | 'default' {
+  if (status === 'UP') return 'success'
+  if (status === 'DOWN') return 'danger'
+  return 'warning'
+}
+
+function StackServiceRow({ service }: { service: StackServiceInfo }) {
+  return (
+    <div style={{
+      padding: '0.9rem 1rem',
+      border: '1px solid var(--color-border)',
+      borderRadius: 'var(--radius-md)',
+      background: 'var(--color-bg)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8,
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontWeight: 600 }}>{service.name}</div>
+          {service.runtime && (
+            <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', marginTop: 2 }}>
+              {service.runtime}
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <Badge color={statusBadgeColor(service.status)}>{service.status}</Badge>
+          <Badge color={service.exposedOutsideVm ? 'warning' : 'accent'}>
+            {service.exposedOutsideVm ? 'Public/host reachable' : 'Internal only'}
+          </Badge>
+        </div>
+      </div>
+
+      {(service.version || service.internalUrl) && (
+        <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem', lineHeight: 1.6 }}>
+          {service.version && <div>Version: <strong>{service.version}</strong></div>}
+          {service.internalUrl && <div>Route: <strong>{service.internalUrl}</strong></div>}
+        </div>
+      )}
+
+      {service.notes.length > 0 && (
+        <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', lineHeight: 1.6 }}>
+          {service.notes.join(' | ')}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function UserRow({
@@ -225,6 +279,12 @@ export function AdminPage() {
   const healthQuery = useQuery({
     queryKey: ['admin-health'],
     queryFn: () => healthApi.check(),
+    refetchInterval: 30000,
+  })
+
+  const stackQuery = useQuery({
+    queryKey: ['admin-stack'],
+    queryFn: () => adminStackApi.get(),
     refetchInterval: 30000,
   })
 
@@ -662,6 +722,75 @@ export function AdminPage() {
           </div>
         </Card>
       </div>
+
+      <Card>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <MonitorCog size={16} />
+            <div>
+              <div style={{ fontWeight: 600 }}>System stack</div>
+              <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
+                Live runtime probes plus the current public-vs-internal network boundary.
+              </div>
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => stackQuery.refetch()} disabled={stackQuery.isFetching}>
+            Refresh
+          </Button>
+        </div>
+
+        {stackQuery.isLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+            <Spinner />
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+              <div style={{
+                padding: '0.95rem 1rem',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--color-bg)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontWeight: 600 }}>
+                  <Shield size={15} /> Public entrypoints
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
+                  {(stackQuery.data?.publicEntrypoints ?? []).map((entry) => (
+                    <div key={entry}>{entry}</div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{
+                padding: '0.95rem 1rem',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--color-bg)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontWeight: 600 }}>
+                  <Lock size={15} /> Private services
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
+                  {(stackQuery.data?.privateServices ?? []).map((entry) => (
+                    <div key={entry}>{entry}</div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem' }}>
+              Checked {formatDate(stackQuery.data?.timestamp)}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.75rem' }}>
+              {(stackQuery.data?.services ?? []).map((service) => (
+                <StackServiceRow key={service.name} service={service} />
+              ))}
+            </div>
+          </div>
+        )}
+      </Card>
 
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
