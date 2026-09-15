@@ -207,6 +207,11 @@ Normal production posture:
 
 The production override already removes direct host publishing for backend and data services. Keep it that way unless you have a specific secured admin-access reason.
 
+For development, layer `docker-compose.dev.yml` over the base Compose file. It adds a
+local MinIO S3 API on port `9000`, its console on `9001`, and an initialization job
+that creates the configured development bucket. The production override does not
+include this service.
+
 ## Sizing Guidance
 
 Sizing depends on whether the VM is carrying only app logic or the full supporting stack.

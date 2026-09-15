@@ -84,18 +84,40 @@ Additional architecture detail:
 
 ## Quick Start
 
-Start the full local stack:
+First-time development setup (also safe to rerun after code changes):
 
 ```bash
-docker compose -f docker-compose.prod.yml up --build -d
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d --remove-orphans
 ```
+
+The development override starts a local S3-compatible MinIO instance and creates the
+`starter-dev` bucket automatically. Its S3 API is at `http://localhost:9000` and its
+browser console is at `http://localhost:9001`.
+
+Development object-storage settings:
+
+- provider: `S3`
+- bucket: `starter-dev`
+- region: `us-east-1`
+- backend/container endpoint: `http://minio:9000`
+- host endpoint: `http://localhost:9000`
+- access key: `minioadmin`
+- secret key: `minioadmin123`
+
+Override the credentials or bucket with `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, and
+`MINIO_BUCKET`. These defaults are development-only.
 
 Useful checks:
 
 ```bash
-docker compose ps
-docker compose logs -f backend
-docker compose logs -f superset
+docker compose -f docker-compose.yml -f docker-compose.dev.yml ps
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f backend frontend
+```
+
+Stop the development stack without deleting its data volumes:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down
 ```
 
 Open:
