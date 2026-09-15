@@ -61,6 +61,32 @@ class VectorService(
         )
     }
 
+    fun upsertDocument(
+        documentId: UUID,
+        vector: List<Float>,
+        payload: Map<String, String>,
+        sourceChecksum: String,
+        embeddingModel: String,
+    ) {
+        jdbcTemplate.update(
+            """
+            INSERT INTO document_vectors (document_id, embedding, payload, source_checksum, embedding_model, updated_at)
+            VALUES (?, CAST(? AS vector), CAST(? AS jsonb), ?, ?, NOW())
+            ON CONFLICT (document_id) DO UPDATE SET
+                embedding = EXCLUDED.embedding,
+                payload = EXCLUDED.payload,
+                source_checksum = EXCLUDED.source_checksum,
+                embedding_model = EXCLUDED.embedding_model,
+                updated_at = NOW()
+            """.trimIndent(),
+            documentId,
+            vector.toPgVector(),
+            objectMapper.writeValueAsString(payload),
+            sourceChecksum,
+            embeddingModel,
+        )
+    }
+
     fun search(
         queryVector: List<Float>,
         limit: Int,
@@ -72,10 +98,20 @@ class VectorService(
             val sql = buildString {
                 append(
                     """
-                    SELECT item_id::text AS id,
-                           (1 - (embedding <=> CAST(? AS vector)))::real AS score,
-                           payload::text AS payload
-                    FROM item_vectors
+                    WITH query_vector AS (SELECT CAST(? AS vector) AS embedding),
+                    points AS (
+                        SELECT item_id::text AS id,
+                               (1 - (iv.embedding <=> q.embedding))::real AS score,
+                               payload
+                        FROM item_vectors iv CROSS JOIN query_vector q
+                        UNION ALL
+                        SELECT document_id::text AS id,
+                               (1 - (dv.embedding <=> q.embedding))::real AS score,
+                               payload
+                        FROM document_vectors dv CROSS JOIN query_vector q
+                    )
+                    SELECT id, score, payload::text AS payload
+                    FROM points
                     """.trimIndent()
                 )
                 parameters += queryVector.toPgVector()
@@ -84,8 +120,7 @@ class VectorService(
                     parameters += filterField
                     parameters += filterValue
                 }
-                append(" ORDER BY embedding <=> CAST(? AS vector) LIMIT ?")
-                parameters += queryVector.toPgVector()
+                append(" ORDER BY score DESC LIMIT ?")
                 parameters += limit
             }
 

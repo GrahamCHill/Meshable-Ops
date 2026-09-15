@@ -10,7 +10,8 @@ services:
       APP_SEED_STORAGE_ENDPOINT: http://minio:9000
       APP_SEED_STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       APP_SEED_STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
-      APP_SEED_STORAGE_FORCE: "true"
+      APP_SEED_STORAGE_ROOT_PATH: ${APP_STORAGE_ROOT_PATH:-folders}
+      APP_SEED_STORAGE_FORCE: ${APP_SEED_STORAGE_FORCE:-false}
 
   minio:
     image: quay.io/minio/minio:latest

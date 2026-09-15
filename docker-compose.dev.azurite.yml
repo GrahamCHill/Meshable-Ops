@@ -10,7 +10,8 @@ services:
       APP_SEED_STORAGE_ENDPOINT: http://azurite:10000/devstoreaccount1
       APP_SEED_STORAGE_ACCESS_KEY: devstoreaccount1
       APP_SEED_STORAGE_SECRET_KEY: ${AZURITE_ACCOUNT_KEY:-Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==}
-      APP_SEED_STORAGE_FORCE: "true"
+      APP_SEED_STORAGE_ROOT_PATH: ${APP_STORAGE_ROOT_PATH:-folders}
+      APP_SEED_STORAGE_FORCE: ${APP_SEED_STORAGE_FORCE:-false}
 
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite:3.37.0

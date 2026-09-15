@@ -102,7 +102,7 @@ function StorageBrowser({ folder, onClose }: { folder: Item; onClose: () => void
       <Card style={{ marginTop: '1rem', background: 'var(--color-surface-2)' }}>
         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
           This view reads child folders and objects directly from {current?.storageProvider ?? folder.storageProvider}.
-          Document extraction, image classification, OCR, and content vectorization remain planned but are not enabled.
+          Document metadata is indexed in pgvector. Content extraction, image classification, OCR, and content-derived vectors remain planned but are not enabled.
         </div>
       </Card>
     </div>
@@ -138,7 +138,7 @@ function StorageEntries({
             : <File size={19} color="var(--color-text-tertiary)" />}
           <span style={{ flex: 1, minWidth: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.name}</span>
           <span style={{ width: 90, textAlign: 'right', color: 'var(--color-text-tertiary)', fontSize: '0.75rem' }}>
-            {entry.type === 'FOLDER' ? 'Folder' : formatSize(entry.size)}
+            {entry.type === 'FOLDER' ? 'Folder' : `${formatSize(entry.size)}${entry.vectorStatus === 'VECTORIZED' ? ' · Vector' : ''}`}
           </span>
           {entry.type === 'FOLDER' && <ChevronRight size={15} color="var(--color-text-tertiary)" />}
         </button>

@@ -69,6 +69,8 @@ export interface StorageEntry {
   size?: number
   contentType?: string
   lastModified?: string
+  documentId?: string
+  vectorStatus?: string
 }
 
 export interface StorageContents {
@@ -159,6 +161,7 @@ export interface AdminSettings {
   storageEndpoint?: string
   storageAccessKey?: string
   storageSecretKey?: string
+  storageRootPath: string
   vectorReindexEnabled: boolean
   vectorReindexIntervalMinutes: number
   lastVectorReindexAt?: string
@@ -231,6 +234,7 @@ export const adminSettingsApi = {
     storageEndpoint?: string
     storageAccessKey?: string
     storageSecretKey?: string
+    storageRootPath: string
     vectorReindexEnabled: boolean
     vectorReindexIntervalMinutes: number
   }) => api.put<AdminSettings>('/admin/settings', data).then(r => r.data),

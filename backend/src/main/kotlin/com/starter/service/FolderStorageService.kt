@@ -48,17 +48,14 @@ private interface ObjectStorageAdapter {
     fun createFolder(prefix: String)
     fun deleteFolderIfEmpty(prefix: String)
     fun browse(rootPrefix: String, relativePath: String): StorageBrowseResult
+    fun listDocuments(rootPrefix: String): List<StorageEntry>
 }
 
 @Service
 class FolderStorageService(
     private val adminSettingsService: AdminSettingsService,
 ) {
-    companion object {
-        private const val FOLDERS_ROOT = "folders/"
-        fun prefixFor(itemId: UUID) = "$FOLDERS_ROOT$itemId/"
-    }
-
+    fun prefixFor(itemId: UUID) = "${adminSettingsService.currentEntity().storageViewPrefix()}$itemId/"
     fun inspectAndEnsureFolders(prefixes: Collection<String>) = adapter().inspectAndEnsureRoots(prefixes)
     fun createFolder(prefix: String) = adapter().createFolder(prefix)
     fun deleteFolderIfEmpty(prefix: String) = adapter().deleteFolderIfEmpty(prefix)
@@ -66,6 +63,11 @@ class FolderStorageService(
     fun browse(rootPrefix: String, path: String): StorageBrowseResult {
         requireManagedRoot(rootPrefix)
         return adapter().browse(rootPrefix, normalizeRelativePath(path))
+    }
+
+    fun listDocuments(rootPrefix: String): List<StorageEntry> {
+        requireManagedRoot(rootPrefix)
+        return adapter().listDocuments(rootPrefix)
     }
 
     private fun adapter(): ObjectStorageAdapter {
@@ -79,8 +81,9 @@ class FolderStorageService(
     }
 
     private fun requireManagedRoot(prefix: String) {
-        val id = prefix.removePrefix(FOLDERS_ROOT).removeSuffix("/")
-        if (!prefix.startsWith(FOLDERS_ROOT) || runCatching { UUID.fromString(id) }.isFailure) {
+        val viewPrefix = adminSettingsService.currentEntity().storageViewPrefix()
+        val id = prefix.removePrefix(viewPrefix).removeSuffix("/")
+        if (!prefix.startsWith(viewPrefix) || '/' in id || runCatching { UUID.fromString(id) }.isFailure) {
             throw BadRequestException("Invalid managed storage root")
         }
     }
@@ -100,6 +103,7 @@ private object NoStorageAdapter : ObjectStorageAdapter {
     override fun deleteFolderIfEmpty(prefix: String) = Unit
     override fun browse(rootPrefix: String, relativePath: String) =
         StorageBrowseResult(provider, relativePath, emptyList())
+    override fun listDocuments(rootPrefix: String) = emptyList<StorageEntry>()
 }
 
 private data class S3StorageConfig(
@@ -108,6 +112,7 @@ private data class S3StorageConfig(
     val endpoint: String?,
     val accessKey: String,
     val secretKey: String,
+    val rootPrefix: String,
 )
 
 private class S3StorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
@@ -118,6 +123,7 @@ private class S3StorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
         endpoint = settings.storageEndpoint,
         accessKey = settings.storageAccessKey ?: throw BadRequestException("S3 access key is not configured"),
         secretKey = settings.storageSecretKey ?: throw BadRequestException("S3 secret key is not configured"),
+        rootPrefix = settings.storageViewPrefix(),
     )
 
     override fun inspectAndEnsureRoots(prefixes: Collection<String>): FolderStorageSnapshot = client().use { client ->
@@ -126,11 +132,11 @@ private class S3StorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
         var token: String? = null
         do {
             val response = client.listObjectsV2(
-                ListObjectsV2Request.builder().bucket(config.bucket).prefix("folders/")
+                ListObjectsV2Request.builder().bucket(config.bucket).prefix(config.rootPrefix)
                     .continuationToken(token).build()
             )
             response.contents().forEach { item ->
-                val root = item.key().managedRoot() ?: return@forEach
+                val root = item.key().managedRoot(config.rootPrefix) ?: return@forEach
                 if (root in counts) {
                     present += root
                     if (!item.key().endsWith('/')) counts[root] = counts.getValue(root) + 1
@@ -142,7 +148,9 @@ private class S3StorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
         FolderStorageSnapshot(provider, counts)
     }
 
-    override fun createFolder(prefix: String) = client().use { putMarker(it, prefix) }
+    override fun createFolder(prefix: String) {
+        client().use { putMarker(it, prefix) }
+    }
 
     override fun deleteFolderIfEmpty(prefix: String) = client().use { client ->
         val objects = client.listObjectsV2(
@@ -150,6 +158,7 @@ private class S3StorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
         ).contents()
         if (objects.any { it.key() != prefix }) throw ConflictException("Folder contains content and cannot be deleted")
         client.deleteObject(DeleteObjectRequest.builder().bucket(config.bucket).key(prefix).build())
+        Unit
     }
 
     override fun browse(rootPrefix: String, relativePath: String): StorageBrowseResult = client().use { client ->
@@ -169,6 +178,26 @@ private class S3StorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
             )
         }
         StorageBrowseResult(provider, relativePath, (folders + objects).sortedEntries())
+    }
+
+    override fun listDocuments(rootPrefix: String): List<StorageEntry> = client().use { client ->
+        val documents = mutableListOf<StorageEntry>()
+        var token: String? = null
+        do {
+            val response = client.listObjectsV2(
+                ListObjectsV2Request.builder().bucket(config.bucket).prefix(rootPrefix)
+                    .continuationToken(token).build()
+            )
+            response.contents().filter { !it.key().endsWith('/') }.forEach { item ->
+                val relative = item.key().removePrefix(rootPrefix)
+                documents += StorageEntry(
+                    name = relative.substringAfterLast('/'), path = relative, type = "OBJECT",
+                    size = item.size(), lastModified = item.lastModified()?.toString(),
+                )
+            }
+            token = response.nextContinuationToken()
+        } while (response.isTruncated == true)
+        documents.sortedEntries()
     }
 
     private fun client(): S3Client {
@@ -196,6 +225,7 @@ private data class AzureBlobConfig(
     val endpoint: String,
     val accountName: String,
     val accountKey: String,
+    val rootPrefix: String,
 )
 
 private class AzureBlobStorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
@@ -205,14 +235,15 @@ private class AzureBlobStorageAdapter(settings: AppSettings) : ObjectStorageAdap
         endpoint = settings.storageEndpoint ?: throw BadRequestException("Azure Blob endpoint is not configured"),
         accountName = settings.storageAccessKey ?: throw BadRequestException("Azure storage account name is not configured"),
         accountKey = settings.storageSecretKey ?: throw BadRequestException("Azure storage account key is not configured"),
+        rootPrefix = settings.storageViewPrefix(),
     )
 
     override fun inspectAndEnsureRoots(prefixes: Collection<String>): FolderStorageSnapshot {
         val container = container()
         val counts = prefixes.associateWith { 0 }.toMutableMap()
         val present = mutableSetOf<String>()
-        container.listBlobs(ListBlobsOptions().setPrefix("folders/"), null).forEach { item ->
-            val root = item.name.managedRoot() ?: return@forEach
+        container.listBlobs(ListBlobsOptions().setPrefix(config.rootPrefix), null).forEach { item ->
+            val root = item.name.managedRoot(config.rootPrefix) ?: return@forEach
             if (root in counts) {
                 present += root
                 if (!item.name.endsWith('/')) counts[root] = counts.getValue(root) + 1
@@ -222,7 +253,9 @@ private class AzureBlobStorageAdapter(settings: AppSettings) : ObjectStorageAdap
         return FolderStorageSnapshot(provider, counts)
     }
 
-    override fun createFolder(prefix: String) = putMarker(container(), prefix)
+    override fun createFolder(prefix: String) {
+        putMarker(container(), prefix)
+    }
 
     override fun deleteFolderIfEmpty(prefix: String) {
         val container = container()
@@ -251,6 +284,18 @@ private class AzureBlobStorageAdapter(settings: AppSettings) : ObjectStorageAdap
         return StorageBrowseResult(provider, relativePath, entries.sortedEntries())
     }
 
+    override fun listDocuments(rootPrefix: String): List<StorageEntry> =
+        container().listBlobs(ListBlobsOptions().setPrefix(rootPrefix), null)
+            .filter { !it.name.endsWith('/') }
+            .map { item ->
+                val relative = item.name.removePrefix(rootPrefix)
+                StorageEntry(
+                    name = relative.substringAfterLast('/'), path = relative, type = "OBJECT",
+                    size = item.properties.contentLength, contentType = item.properties.contentType,
+                    lastModified = item.properties.lastModified?.toString(),
+                )
+            }.toList().sortedEntries()
+
     private fun container(): BlobContainerClient {
         val client = BlobServiceClientBuilder()
             .endpoint(config.endpoint)
@@ -266,10 +311,18 @@ private class AzureBlobStorageAdapter(settings: AppSettings) : ObjectStorageAdap
     }
 }
 
-private fun String.managedRoot(): String? {
-    if (!startsWith("folders/")) return null
-    val id = removePrefix("folders/").substringBefore('/')
-    return id.takeIf { it.isNotBlank() }?.let { "folders/$it/" }
+private fun String.managedRoot(viewPrefix: String): String? {
+    if (!startsWith(viewPrefix)) return null
+    val id = removePrefix(viewPrefix).substringBefore('/')
+    return id.takeIf { it.isNotBlank() }?.let { "$viewPrefix$it/" }
+}
+
+private fun AppSettings.storageViewPrefix(): String {
+    val segments = storageRootPath.ifBlank { "folders" }.replace('\\', '/').trim('/').split('/').filter { it.isNotBlank() }
+    if (segments.isEmpty() || segments.any { it == "." || it == ".." }) {
+        throw BadRequestException("Invalid configured storage view path")
+    }
+    return "${segments.joinToString("/")}/"
 }
 
 private fun List<StorageEntry>.sortedEntries() =

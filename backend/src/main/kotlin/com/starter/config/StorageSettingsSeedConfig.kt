@@ -21,6 +21,7 @@ class StorageSettingsSeedConfig {
         @Value("\${app.seed-storage.endpoint:}") endpoint: String,
         @Value("\${app.seed-storage.access-key:}") accessKey: String,
         @Value("\${app.seed-storage.secret-key:}") secretKey: String,
+        @Value("\${app.seed-storage.root-path:folders}") rootPath: String,
         @Value("\${app.seed-storage.force:false}") force: Boolean,
     ) = ApplicationRunner {
         val normalizedProvider = provider.trim().uppercase()
@@ -38,6 +39,7 @@ class StorageSettingsSeedConfig {
         settings.storageEndpoint = endpoint.trim().ifBlank { null }
         settings.storageAccessKey = accessKey.trim().ifBlank { null }
         settings.storageSecretKey = secretKey.trim().ifBlank { null }
+        settings.storageRootPath = rootPath.replace('\\', '/').trim('/').ifBlank { "folders" }
         repository.save(settings)
         storageSeedLog.info("Seeded {} object-storage settings for bucket {}", normalizedProvider, bucket)
     }

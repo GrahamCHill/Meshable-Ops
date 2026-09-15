@@ -53,6 +53,7 @@ data class AdminSettingsRequest(
     @field:Size(max = 512) val storageEndpoint: String? = null,
     @field:Size(max = 255) val storageAccessKey: String? = null,
     @field:Size(max = 512) val storageSecretKey: String? = null,
+    @field:NotBlank @field:Size(max = 512) val storageRootPath: String = "folders",
     val vectorReindexEnabled: Boolean = false,
     @field:Min(15) @field:Max(10080) val vectorReindexIntervalMinutes: Int = 1440
 )
@@ -65,6 +66,7 @@ data class AdminSettingsResponse(
     val storageEndpoint: String?,
     val storageAccessKey: String?,
     val storageSecretKey: String?,
+    val storageRootPath: String,
     val vectorReindexEnabled: Boolean,
     val vectorReindexIntervalMinutes: Int,
     val lastVectorReindexAt: String?,
@@ -113,7 +115,9 @@ data class StorageEntryResponse(
     val type: String,
     val size: Long?,
     val contentType: String?,
-    val lastModified: String?
+    val lastModified: String?,
+    val documentId: String? = null,
+    val vectorStatus: String? = null,
 )
 
 data class StorageContentsResponse(

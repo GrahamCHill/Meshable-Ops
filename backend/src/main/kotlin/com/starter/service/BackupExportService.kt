@@ -5,6 +5,7 @@ import com.starter.repository.mongo.EventRepository
 import com.starter.repository.postgres.AppSettingsRepository
 import com.starter.repository.postgres.DashboardEmbedConfigRepository
 import com.starter.repository.postgres.ItemRepository
+import com.starter.repository.postgres.StorageDocumentRepository
 import com.starter.repository.postgres.UserRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -14,6 +15,7 @@ import java.time.Instant
 class BackupExportService(
     private val userRepository: UserRepository,
     private val itemRepository: ItemRepository,
+    private val storageDocumentRepository: StorageDocumentRepository,
     private val dashboardEmbedConfigRepository: DashboardEmbedConfigRepository,
     private val appSettingsRepository: AppSettingsRepository,
     private val eventRepository: EventRepository,
@@ -49,6 +51,24 @@ class BackupExportService(
             )
         }
 
+        val storageDocuments = storageDocumentRepository.findAll().map { document ->
+            mapOf(
+                "id" to document.id.toString(),
+                "folderId" to document.item.id.toString(),
+                "storagePath" to document.storagePath,
+                "fileName" to document.fileName,
+                "contentType" to document.contentType,
+                "sizeBytes" to document.sizeBytes,
+                "storageLastModified" to document.storageLastModified,
+                "processingStatus" to document.processingStatus,
+                "sourceChecksum" to document.sourceChecksum,
+                "embeddingModel" to document.embeddingModel,
+                "vectorizedAt" to document.vectorizedAt?.toString(),
+                "createdAt" to document.createdAt.toString(),
+                "updatedAt" to document.updatedAt.toString(),
+            )
+        }
+
         val dashboardEmbeds = dashboardEmbedConfigRepository.findAllByOrderBySortOrderAscCreatedAtAsc().map { config ->
             mapOf(
                 "id" to config.id.toString(),
@@ -73,6 +93,7 @@ class BackupExportService(
                 "storageEndpoint" to setting.storageEndpoint,
                 "storageAccessKey" to setting.storageAccessKey,
                 "storageSecretKey" to setting.storageSecretKey,
+                "storageRootPath" to setting.storageRootPath,
                 "vectorReindexEnabled" to setting.vectorReindexEnabled,
                 "vectorReindexIntervalMinutes" to setting.vectorReindexIntervalMinutes,
                 "lastVectorReindexAt" to setting.lastVectorReindexAt?.toString(),
@@ -110,7 +131,8 @@ class BackupExportService(
             "format" to "superset-docker-app-backup-v1",
             "data" to mapOf(
                 "users" to users,
-                "items" to items,
+            "items" to items,
+            "storageDocuments" to storageDocuments,
                 "dashboardEmbedConfigs" to dashboardEmbeds,
                 "appSettings" to settings,
                 "events" to events,

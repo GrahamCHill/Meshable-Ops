@@ -110,8 +110,8 @@ The main user-visible routes are:
   main application shell
 - `/dashboards`
   embedded shared dashboards
-- `/items`
-  shared CRUD-style records
+- `/storage`
+  registered storage roots and a nested S3/Azure Blob folder browser (`/items` redirects here)
 - `/search`
   vector search UI
 - `/events`

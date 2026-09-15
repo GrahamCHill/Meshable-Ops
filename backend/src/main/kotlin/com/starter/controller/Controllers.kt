@@ -125,17 +125,17 @@ class ItemController(
         @AuthenticationPrincipal user: UserDetails,
         request: HttpServletRequest
     ): MessageResponse {
-        val count = itemService.reindexShared()
-        adminSettingsService.recordReindexRun(count, "manual")
+        val result = itemService.reindexShared()
+        adminSettingsService.recordReindexRun(result.folders, result.documents, "manual")
         auditLogService.record(
             actingEmail = user.username,
             action = "VECTOR_REINDEX_MANUAL",
             resourceType = "FOLDER",
-            resourceId = count.toString(),
+            resourceId = "${result.folders}:${result.documents}",
             ipAddress = request.remoteAddr,
             userAgent = request.getHeader("User-Agent"),
         )
-        return MessageResponse("Reindexed $count folders")
+        return MessageResponse("Reindexed ${result.folders} folders and ${result.documents} documents")
     }
 
     @GetMapping("/{id}/contents")

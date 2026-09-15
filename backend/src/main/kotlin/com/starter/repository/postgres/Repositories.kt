@@ -1,6 +1,7 @@
 package com.starter.repository.postgres
 
 import com.starter.model.postgres.Item
+import com.starter.model.postgres.StorageDocument
 import com.starter.model.postgres.AppSettings
 import com.starter.model.postgres.DashboardEmbedConfig
 import com.starter.model.postgres.User
@@ -28,6 +29,11 @@ interface ItemRepository : JpaRepository<Item, UUID> {
 
     @Query("SELECT i FROM Item i WHERE i.user.id = :userId AND :tag MEMBER OF i.tags")
     fun findByUserIdAndTag(userId: UUID, tag: String): List<Item>
+}
+
+interface StorageDocumentRepository : JpaRepository<StorageDocument, UUID> {
+    fun findByItemIdAndStoragePath(itemId: UUID, storagePath: String): StorageDocument?
+    fun findAllByItemId(itemId: UUID): List<StorageDocument>
 }
 
 interface DashboardEmbedConfigRepository : JpaRepository<DashboardEmbedConfig, UUID> {

@@ -122,6 +122,52 @@ The backend uses the Blob endpoint `http://azurite:10000/devstoreaccount1` and c
 `starter-dev`; override the container with `AZURITE_CONTAINER`. Its well-known development
 account and key are for local testing only.
 
+### Storage view path
+
+The application never browses the whole bucket/container. It exposes only registered
+storage roots beneath a configured prefix such as `contract-management/documents`.
+Configure this persistently from **Admin > Operational Settings > Storage view path**.
+The value is stored in PostgreSQL. Do not use `/`, `.` or `..` as path segments.
+
+For either local provider, set the prefix before startup:
+
+```bash
+APP_STORAGE_ROOT_PATH=contract-management/documents docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
+```
+
+PowerShell:
+
+```powershell
+$env:APP_STORAGE_ROOT_PATH = "contract-management/documents"
+docker compose -f docker-compose.yml -f docker-compose.dev.azurite.yml up --build -d
+```
+
+For a deployed S3 or Azure Blob service, set these runtime variables in `.env.production`:
+
+```dotenv
+APP_SEED_STORAGE_PROVIDER=S3
+APP_SEED_STORAGE_BUCKET=my-bucket
+APP_SEED_STORAGE_REGION=us-east-1
+APP_SEED_STORAGE_ENDPOINT=https://s3.example.com
+APP_SEED_STORAGE_ACCESS_KEY=...
+APP_SEED_STORAGE_SECRET_KEY=...
+APP_SEED_STORAGE_ROOT_PATH=contract-management/documents
+```
+
+For Azure Blob, use `AZURE_BLOB`, the container as the bucket value, the Blob service
+endpoint (for example `https://account.blob.core.windows.net`), and the storage account
+name/key as access/secret values. Startup values seed PostgreSQL only when settings are
+unconfigured. Set `APP_SEED_STORAGE_FORCE=true` to intentionally replace persisted settings.
+Keep credentials as runtime secrets; do not bake them into the backend image.
+
+The development overrides also leave `APP_SEED_STORAGE_FORCE` disabled by default, so an
+administrator's saved provider and storage view path survive container restarts. When switching
+an existing development database between MinIO and Azurite, run that one startup with
+`APP_SEED_STORAGE_FORCE=true`, then remove or unset it again.
+
+Changing the storage view path repoints application roots into the new namespace on the
+next listing/reindex. It does not copy existing objects from the old prefix.
+
 Useful checks:
 
 ```bash
@@ -150,10 +196,12 @@ Default local accounts:
 These defaults are for local development only.
 
 The **Storage** page stores searchable root metadata in PostgreSQL and creates a matching
-`folders/{folder-id}/` prefix in MinIO/S3 or Azure Blob/Azurite. Opening a root explores
-its child virtual folders and objects directly from the configured provider. Root title,
-description, and tags are vectorized in pgvector; document extraction, image classification,
-and OCR are planned extension points and are not enabled. See
+`{configured-storage-view-path}/{folder-id}/` prefix in MinIO/S3 or Azure Blob/Azurite.
+Opening a root explores
+its child virtual folders and objects directly from the configured provider. Root metadata and
+each discovered document's filename/path/content type are vectorized separately in pgvector.
+Document content extraction, image classification, and OCR are planned extension points and are
+not enabled. See
 [Document Folder and Processing Extension](docs/document-processing-extension.md).
 
 ### Superset Login

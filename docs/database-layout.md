@@ -75,6 +75,7 @@ erDiagram
         text storage_endpoint
         text storage_access_key
         text storage_secret_key
+        text storage_root_path
         boolean vector_reindex_enabled
         int vector_reindex_interval_minutes
         timestamptz last_vector_reindex_at
@@ -146,7 +147,7 @@ The application-facing PostgreSQL model is small and centered on a CRUD-style co
 - key fields:
   `user_id`, `title`, `description`, `storage_prefix`
 - notes:
-  each row maps to one object-storage prefix under `folders/{id}/`; all authenticated users can read shared folders, but only admins can create or mutate them in the current permission model
+  each row maps to `{app_settings.storage_root_path}/{id}/`; objects outside that configured path are not exposed by the storage browser; all authenticated users can read registered roots, but only admins can create or mutate them in the current permission model
 
 #### `item_tags`
 
@@ -154,6 +155,15 @@ The application-facing PostgreSQL model is small and centered on a CRUD-style co
   simple tag list for each item
 - notes:
   stored as a separate collection table keyed by `item_id`
+
+#### `storage_documents`
+
+- purpose:
+  persistent identity and processing state for each object discovered beneath a registered root
+- key fields:
+  `item_id`, `storage_path`, `file_name`, `content_type`, `size_bytes`, `processing_status`, `source_checksum`, `embedding_model`, `vectorized_at`
+- notes:
+  `(item_id, storage_path)` is unique; current processing status is `METADATA_ONLY`, leaving extraction/OCR/classification for later processors
 
 #### `dashboard_embed_configs`
 
@@ -176,7 +186,7 @@ The application-facing PostgreSQL model is small and centered on a CRUD-style co
 - purpose:
   admin-managed operational settings
 - key fields:
-  storage connection fields, vector reindex settings, and last reindex status timestamps
+  storage connection fields, `storage_root_path`, vector reindex settings, and last reindex status timestamps
 - notes:
   this is operational configuration state, not end-user business content
 
@@ -213,21 +223,25 @@ Seed/bootstrap behavior currently initializes:
 
 ### pgvector
 
-The backend stores vector search points in the PostgreSQL table:
+The backend stores vector search points in the PostgreSQL tables:
 
 - `item_vectors`
+- `document_vectors`
 
-The table uses a `vector(384)` embedding column and an HNSW cosine-distance index.
+Both tables use a `vector(384)` embedding column and an HNSW cosine-distance index.
 
 Current linkage:
 
 - folder rows in `items` are embedded into vectors and stored in `item_vectors`
 - the JSONB payload includes `itemId`, `folderId`, `entityType`, `title`, and `storagePrefix`
-- the backend can rebuild this vector state from the relational source records through reindexing
+- object metadata is stored in `storage_documents`, then embedded separately into `document_vectors`
+- document payloads identify `entityType=document`, their parent folder, and relative storage path
+- search ranks folder and document vectors together
+- the backend can rebuild both kinds of vector state through reindexing
 
 Operational note:
 
-- `item_vectors` contains derived search data in the same PostgreSQL database
+- `item_vectors` and `document_vectors` contain derived search data in the same PostgreSQL database
 - it can be rebuilt from primary item data rather than treated as the sole source of truth
 
 ### Redis

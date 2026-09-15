@@ -8,18 +8,25 @@ import com.starter.dto.StorageEntryResponse
 import com.starter.exception.NotFoundException
 import com.starter.model.mongo.Event
 import com.starter.model.postgres.Item
+import com.starter.model.postgres.StorageDocument
 import com.starter.repository.mongo.EventRepository
 import com.starter.repository.postgres.ItemRepository
+import com.starter.repository.postgres.StorageDocumentRepository
 import com.starter.repository.postgres.UserRepository
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
+import java.security.MessageDigest
+import java.time.Instant
+
+data class VectorReindexResult(val folders: Int, val documents: Int)
 
 @Service
 class ItemService(
     private val itemRepository: ItemRepository,
+    private val storageDocumentRepository: StorageDocumentRepository,
     private val userRepository: UserRepository,
     private val eventRepository: EventRepository,
     private val vectorService: VectorService,
@@ -44,7 +51,7 @@ class ItemService(
                 tags = req.tags.toMutableList()
             )
         )
-        item.storagePrefix = FolderStorageService.prefixFor(item.id)
+        item.storagePrefix = folderStorageService.prefixFor(item.id)
         itemRepository.saveAndFlush(item)
         folderStorageService.createFolder(item.storagePrefix!!)
 
@@ -74,9 +81,7 @@ class ItemService(
     @Transactional
     fun listShared(page: Int, size: Int): PageResponse<ItemResponse> {
         val p = itemRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, size))
-        p.content.forEach { item ->
-            if (item.storagePrefix == null) item.storagePrefix = FolderStorageService.prefixFor(item.id)
-        }
+        p.content.forEach { it.ensureCurrentPrefix() }
         itemRepository.flush()
         val snapshot = folderStorageService.inspectAndEnsureFolders(p.content.mapNotNull { it.storagePrefix })
         return PageResponse(
@@ -98,6 +103,7 @@ class ItemService(
         item.title = req.title
         item.description = req.description
         item.tags = req.tags.toMutableList()
+        item.ensureCurrentPrefix()
         val saved = itemRepository.save(item)
 
         vectorService.upsert(
@@ -118,7 +124,7 @@ class ItemService(
             resourceType = "FOLDER",
             resourceId = saved.id.toString(),
         )
-        val prefix = saved.storagePrefix ?: FolderStorageService.prefixFor(saved.id).also { saved.storagePrefix = it }
+        val prefix = saved.ensureCurrentPrefix()
         return saved.toResponse(folderStorageService.inspectAndEnsureFolders(listOf(prefix)))
     }
 
@@ -129,7 +135,7 @@ class ItemService(
         val item = itemRepository.findById(itemId)
             .orElseThrow { NotFoundException("Item not found") }
 
-        val prefix = item.storagePrefix ?: FolderStorageService.prefixFor(item.id)
+        val prefix = item.ensureCurrentPrefix()
         folderStorageService.deleteFolderIfEmpty(prefix)
         itemRepository.delete(item)
         vectorService.delete(itemId)
@@ -150,31 +156,37 @@ class ItemService(
     }
 
     @Transactional
-    fun reindexShared(): Int {
+    fun reindexShared(): VectorReindexResult {
         val items = itemRepository.findAllByOrderByCreatedAtDesc()
-        items.forEach { item ->
-            if (item.storagePrefix == null) item.storagePrefix = FolderStorageService.prefixFor(item.id)
-        }
+        items.forEach { it.ensureCurrentPrefix() }
         itemRepository.flush()
         folderStorageService.inspectAndEnsureFolders(items.mapNotNull { it.storagePrefix })
 
+        var documentCount = 0
         items.forEach { item ->
             vectorService.upsert(
                 item.id,
                 vectorService.embedText(buildVectorText(item.title, item.description, item.tags), vectorSize),
                 vectorPayload(item)
             )
+            documentCount += syncDocuments(
+                item,
+                folderStorageService.listDocuments(item.ensureCurrentPrefix()),
+                removeMissing = true,
+                forceVectorize = true,
+            ).size
         }
 
-        return items.size
+        return VectorReindexResult(items.size, documentCount)
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     fun browse(itemId: UUID, path: String): StorageContentsResponse {
         val item = itemRepository.findById(itemId)
             .orElseThrow { NotFoundException("Storage root not found") }
-        val rootPrefix = item.storagePrefix ?: FolderStorageService.prefixFor(item.id)
+        val rootPrefix = folderStorageService.prefixFor(item.id)
         val result = folderStorageService.browse(rootPrefix, path)
+        val documents = syncDocuments(item, result.entries.filter { it.type == "OBJECT" })
         return StorageContentsResponse(
             folderId = item.id.toString(),
             rootPrefix = rootPrefix,
@@ -188,6 +200,10 @@ class ItemService(
                     size = it.size,
                     contentType = it.contentType,
                     lastModified = it.lastModified,
+                    documentId = documents[it.path]?.id?.toString(),
+                    vectorStatus = documents[it.path]?.let { document ->
+                        if (document.vectorizedAt == null) "PENDING" else "VECTORIZED"
+                    },
                 )
             },
         )
@@ -198,14 +214,86 @@ class ItemService(
         "folderId" to item.id.toString(),
         "entityType" to "folder",
         "title" to item.title,
-        "storagePrefix" to (item.storagePrefix ?: FolderStorageService.prefixFor(item.id)),
+        "storagePrefix" to item.ensureCurrentPrefix(),
     )
 
-    private fun Item.toResponse(snapshot: FolderStorageSnapshot) = ItemResponse(
-        id = id.toString(), title = title, description = description, tags = tags.toList(),
-        storagePrefix = storagePrefix ?: FolderStorageService.prefixFor(id),
-        storageProvider = snapshot.provider,
-        documentCount = snapshot.documentCounts[storagePrefix ?: FolderStorageService.prefixFor(id)] ?: 0,
-        createdAt = createdAt?.toString(), updatedAt = updatedAt?.toString()
-    )
+    private fun syncDocuments(
+        item: Item,
+        entries: List<StorageEntry>,
+        removeMissing: Boolean = false,
+        forceVectorize: Boolean = false,
+    ): Map<String, StorageDocument> {
+        val existing = storageDocumentRepository.findAllByItemId(item.id).associateBy { it.storagePath }
+        val seen = entries.map { it.path }.toSet()
+        val synchronized = entries.associate { entry ->
+            val checksum = documentMetadataChecksum(entry)
+            val document = existing[entry.path] ?: StorageDocument(item = item, storagePath = entry.path)
+            val needsVector = forceVectorize || document.sourceChecksum != checksum || document.vectorizedAt == null
+            document.fileName = entry.name
+            document.contentType = entry.contentType
+            document.sizeBytes = entry.size
+            document.storageLastModified = entry.lastModified
+            document.processingStatus = "METADATA_ONLY"
+            val saved = storageDocumentRepository.saveAndFlush(document)
+            if (needsVector) {
+                val model = "metadata-v1"
+                vectorService.upsertDocument(
+                    saved.id,
+                    vectorService.embedText(documentVectorText(saved), vectorSize),
+                    documentVectorPayload(saved),
+                    checksum,
+                    model,
+                )
+                saved.sourceChecksum = checksum
+                saved.embeddingModel = model
+                saved.vectorizedAt = Instant.now()
+                storageDocumentRepository.save(saved)
+            }
+            entry.path to saved
+        }
+        if (removeMissing) {
+            storageDocumentRepository.deleteAll(existing.values.filter { it.storagePath !in seen })
+        }
+        return synchronized
+    }
+
+    private fun documentVectorText(document: StorageDocument) = listOfNotNull(
+        document.fileName,
+        document.storagePath.replace('/', ' '),
+        document.contentType,
+    ).joinToString(" ")
+
+    private fun documentVectorPayload(document: StorageDocument) = buildMap {
+        put("documentId", document.id.toString())
+        put("itemId", document.item.id.toString())
+        put("folderId", document.item.id.toString())
+        put("entityType", "document")
+        put("title", document.fileName)
+        put("storagePath", document.storagePath)
+        document.contentType?.let { put("contentType", it) }
+        put("processingStatus", document.processingStatus)
+    }
+
+    private fun documentMetadataChecksum(entry: StorageEntry): String {
+        val source = listOf(entry.path, entry.name, entry.contentType.orEmpty(), entry.size, entry.lastModified).joinToString("|")
+        return MessageDigest.getInstance("SHA-256").digest(source.toByteArray())
+            .joinToString("") { "%02x".format(it) }
+    }
+
+    private fun Item.toResponse(snapshot: FolderStorageSnapshot): ItemResponse {
+        val prefix = ensureCurrentPrefix()
+        return ItemResponse(
+            id = id.toString(), title = title, description = description, tags = tags.toList(),
+            storagePrefix = prefix,
+            storageProvider = snapshot.provider,
+            documentCount = snapshot.documentCounts[prefix] ?: 0,
+            createdAt = createdAt?.toString(), updatedAt = updatedAt?.toString()
+        )
+    }
+
+    private fun Item.ensureCurrentPrefix(): String {
+        val expected = folderStorageService.prefixFor(id)
+        if (storagePrefix != expected) storagePrefix = expected
+        return expected
+    }
 }

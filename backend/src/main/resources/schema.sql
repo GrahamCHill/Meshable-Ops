@@ -37,6 +37,38 @@ CREATE TABLE IF NOT EXISTS item_vectors (
 CREATE INDEX IF NOT EXISTS idx_item_vectors_embedding_hnsw
     ON item_vectors USING hnsw (embedding vector_cosine_ops);
 
+CREATE TABLE IF NOT EXISTS storage_documents (
+    id UUID PRIMARY KEY,
+    item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    storage_path TEXT NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    content_type VARCHAR(255) NULL,
+    size_bytes BIGINT NULL,
+    storage_last_modified VARCHAR(255) NULL,
+    processing_status VARCHAR(64) NOT NULL DEFAULT 'METADATA_ONLY',
+    source_checksum VARCHAR(64) NULL,
+    embedding_model VARCHAR(255) NULL,
+    vectorized_at TIMESTAMPTZ NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uk_storage_documents_item_path UNIQUE (item_id, storage_path)
+);
+
+CREATE INDEX IF NOT EXISTS idx_storage_documents_item_id
+    ON storage_documents (item_id);
+
+CREATE TABLE IF NOT EXISTS document_vectors (
+    document_id UUID PRIMARY KEY REFERENCES storage_documents(id) ON DELETE CASCADE,
+    embedding vector(384) NOT NULL,
+    payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+    source_checksum VARCHAR(64) NULL,
+    embedding_model VARCHAR(255) NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_vectors_embedding_hnsw
+    ON document_vectors USING hnsw (embedding vector_cosine_ops);
+
 CREATE TABLE IF NOT EXISTS dashboard_embed_configs (
     id UUID PRIMARY KEY,
     label TEXT NOT NULL,
@@ -71,6 +103,7 @@ CREATE TABLE IF NOT EXISTS app_settings (
     storage_endpoint TEXT NULL,
     storage_access_key TEXT NULL,
     storage_secret_key TEXT NULL,
+    storage_root_path TEXT NOT NULL DEFAULT 'folders',
     vector_reindex_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     vector_reindex_interval_minutes INTEGER NOT NULL DEFAULT 1440,
     last_vector_reindex_at TIMESTAMPTZ NULL,
@@ -78,3 +111,6 @@ CREATE TABLE IF NOT EXISTS app_settings (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE IF EXISTS app_settings
+    ADD COLUMN IF NOT EXISTS storage_root_path TEXT NOT NULL DEFAULT 'folders';

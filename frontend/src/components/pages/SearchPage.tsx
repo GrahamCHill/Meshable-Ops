@@ -47,13 +47,13 @@ export function SearchPage() {
           </Button>
           {canReindex && (
             <Button onClick={() => reindex.mutate()} loading={reindex.isPending} variant="secondary" style={{ flexShrink: 0 }}>
-              <RefreshCcw size={14} /> Reindex Folders
+              <RefreshCcw size={14} /> Reindex Storage
             </Button>
           )}
         </div>
         <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>
           Search results show similarity, not exact-match confidence. {canReindex
-            ? 'Reindex existing folder metadata after embedding changes so stored vectors stay in sync.'
+            ? 'Reindex folder and document metadata after embedding or storage changes so vectors stay in sync.'
             : 'Search is shared across all users, while reindexing is restricted to administrators.'}
         </p>
         {reindex.data && (
@@ -75,7 +75,7 @@ export function SearchPage() {
           </div>
           {search.data.length === 0 && (
             <Card style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-secondary)' }}>
-              No results found. Create some folders first.
+              No results found. Create storage roots or add documents first.
             </Card>
           )}
         </div>
@@ -93,7 +93,9 @@ function SearchResult({ result, rank }: { result: VectorSearchResult; rank: numb
           <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--color-surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: 'var(--color-text-tertiary)', flexShrink: 0, marginTop: 2 }}>{rank}</span>
           <div>
             <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: 2 }}>{result.payload.title ?? result.pointId}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>ID: {result.pointId.substring(0, 16)}...</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+              {result.payload.entityType ?? 'item'}{result.payload.storagePath ? ` · ${result.payload.storagePath}` : ''} · ID: {result.pointId.substring(0, 16)}...
+            </div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>

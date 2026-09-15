@@ -26,15 +26,15 @@ class VectorReindexScheduler(
         }
 
         try {
-            val count = itemService.reindexShared()
-            adminSettingsService.recordReindexRun(count, "scheduler")
+            val result = itemService.reindexShared()
+            adminSettingsService.recordReindexRun(result.folders, result.documents, "scheduler")
             auditLogService.record(
                 actingEmail = null,
                 action = "VECTOR_REINDEX_AUTO",
-                resourceType = "ITEM",
-                resourceId = count.toString(),
+                resourceType = "VECTOR_INDEX",
+                resourceId = "${result.folders}:${result.documents}",
             )
-            schedulerLog.info("Auto reindexed {} folders", count)
+            schedulerLog.info("Auto reindexed {} folders and {} documents", result.folders, result.documents)
         } catch (e: Exception) {
             adminSettingsService.recordReindexFailure(e.message ?: "Unknown error", "scheduler")
             schedulerLog.error("Scheduled vector reindex failed: {}", e.message)

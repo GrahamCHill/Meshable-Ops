@@ -47,6 +47,7 @@ type SettingsForm = {
   storageEndpoint: string
   storageAccessKey: string
   storageSecretKey: string
+  storageRootPath: string
   vectorReindexEnabled: boolean
   vectorReindexIntervalMinutes: number
 }
@@ -67,6 +68,7 @@ const emptySettingsForm: SettingsForm = {
   storageEndpoint: '',
   storageAccessKey: '',
   storageSecretKey: '',
+  storageRootPath: 'folders',
   vectorReindexEnabled: false,
   vectorReindexIntervalMinutes: 1440,
 }
@@ -100,6 +102,7 @@ function toSettingsForm(settings: AdminSettings): SettingsForm {
     storageEndpoint: settings.storageEndpoint ?? '',
     storageAccessKey: settings.storageAccessKey ?? '',
     storageSecretKey: settings.storageSecretKey ?? '',
+    storageRootPath: settings.storageRootPath ?? 'folders',
     vectorReindexEnabled: settings.vectorReindexEnabled,
     vectorReindexIntervalMinutes: settings.vectorReindexIntervalMinutes,
   }
@@ -617,6 +620,17 @@ export function AdminPage() {
                   value={settingsForm.storageSecretKey}
                   onChange={(e) => setSettingsForm(current => ({ ...current, storageSecretKey: e.target.value }))}
                 />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 500, display: 'block', marginBottom: 4 }}>Storage view path</label>
+                <input
+                  placeholder="contract-management/documents"
+                  value={settingsForm.storageRootPath}
+                  onChange={(e) => setSettingsForm(current => ({ ...current, storageRootPath: e.target.value }))}
+                />
+                <div style={{ marginTop: 5, color: 'var(--color-text-tertiary)', fontSize: '0.75rem' }}>
+                  Only application roots beneath this bucket/container prefix are exposed in Storage.
+                </div>
               </div>
               <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}>
