@@ -55,8 +55,28 @@ export interface Item {
   title: string
   description?: string
   tags?: string[]
+  storagePrefix: string
+  storageProvider: 'NONE' | 'S3' | 'AZURE_BLOB'
+  documentCount: number
   createdAt: string
   updatedAt: string
+}
+
+export interface StorageEntry {
+  name: string
+  path: string
+  type: 'FOLDER' | 'OBJECT'
+  size?: number
+  contentType?: string
+  lastModified?: string
+}
+
+export interface StorageContents {
+  folderId: string
+  rootPrefix: string
+  path: string
+  storageProvider: 'NONE' | 'S3' | 'AZURE_BLOB'
+  entries: StorageEntry[]
 }
 
 export interface PageResponse<T> {
@@ -180,6 +200,8 @@ export const itemsApi = {
     api.delete(`/items/${id}`),
   reindex: () =>
     api.post<{ message: string }>('/items/reindex').then(r => r.data),
+  contents: (id: string, path = '') =>
+    api.get<StorageContents>(`/items/${id}/contents`, { params: { path } }).then(r => r.data),
 }
 
 export const eventsApi = {

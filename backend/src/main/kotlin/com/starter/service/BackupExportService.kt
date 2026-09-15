@@ -43,6 +43,7 @@ class BackupExportService(
                 "title" to item.title,
                 "description" to item.description,
                 "tags" to item.tags.toList(),
+                "storagePrefix" to item.storagePrefix,
                 "createdAt" to item.createdAt.toString(),
                 "updatedAt" to item.updatedAt.toString(),
             )

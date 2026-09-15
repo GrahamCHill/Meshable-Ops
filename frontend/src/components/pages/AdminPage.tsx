@@ -585,9 +585,10 @@ export function AdminPage() {
                 />
               </div>
               <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 500, display: 'block', marginBottom: 4 }}>Region</label>
+                <label style={{ fontSize: '0.8rem', fontWeight: 500, display: 'block', marginBottom: 4 }}>Region (S3 only)</label>
                 <input
-                  placeholder="us-east-1"
+                  placeholder={settingsForm.storageProvider === 'S3' ? 'us-east-1' : 'Not used by Azure Blob'}
+                  disabled={settingsForm.storageProvider === 'AZURE_BLOB'}
                   value={settingsForm.storageRegion}
                   onChange={(e) => setSettingsForm(current => ({ ...current, storageRegion: e.target.value }))}
                 />
@@ -595,21 +596,21 @@ export function AdminPage() {
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 500, display: 'block', marginBottom: 4 }}>Endpoint</label>
                 <input
-                  placeholder="https://s3.amazonaws.com or blob endpoint"
+                  placeholder={settingsForm.storageProvider === 'AZURE_BLOB' ? 'https://account.blob.core.windows.net' : 'https://s3.amazonaws.com'}
                   value={settingsForm.storageEndpoint}
                   onChange={(e) => setSettingsForm(current => ({ ...current, storageEndpoint: e.target.value }))}
                 />
               </div>
               <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 500, display: 'block', marginBottom: 4 }}>Access key / account</label>
+                <label style={{ fontSize: '0.8rem', fontWeight: 500, display: 'block', marginBottom: 4 }}>{settingsForm.storageProvider === 'AZURE_BLOB' ? 'Storage account name' : 'Access key'}</label>
                 <input
-                  placeholder="Access key"
+                  placeholder={settingsForm.storageProvider === 'AZURE_BLOB' ? 'Storage account name' : 'Access key'}
                   value={settingsForm.storageAccessKey}
                   onChange={(e) => setSettingsForm(current => ({ ...current, storageAccessKey: e.target.value }))}
                 />
               </div>
               <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 500, display: 'block', marginBottom: 4 }}>Secret / credential</label>
+                <label style={{ fontSize: '0.8rem', fontWeight: 500, display: 'block', marginBottom: 4 }}>{settingsForm.storageProvider === 'AZURE_BLOB' ? 'Storage account key' : 'Secret key'}</label>
                 <input
                   type="password"
                   placeholder="Secret key or credential"

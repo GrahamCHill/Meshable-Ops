@@ -1,4 +1,17 @@
 services:
+  backend:
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      APP_SEED_STORAGE_PROVIDER: S3
+      APP_SEED_STORAGE_BUCKET: ${MINIO_BUCKET:-starter-dev}
+      APP_SEED_STORAGE_REGION: us-east-1
+      APP_SEED_STORAGE_ENDPOINT: http://minio:9000
+      APP_SEED_STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      APP_SEED_STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      APP_SEED_STORAGE_FORCE: "true"
+
   minio:
     image: quay.io/minio/minio:latest
     container_name: starter_minio_dev

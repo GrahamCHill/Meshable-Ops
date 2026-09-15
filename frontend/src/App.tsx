@@ -51,7 +51,8 @@ function App() {
                         <SupersetAdminPage />
                       </AdminRoute>
                     } />
-                    <Route path="/items" element={<ItemsPage />} />
+                    <Route path="/storage" element={<ItemsPage />} />
+                    <Route path="/items" element={<Navigate to="/storage" replace />} />
                     <Route path="/search" element={<SearchPage />} />
                     <Route path="/events" element={<EventsPage />} />
                   </Routes>

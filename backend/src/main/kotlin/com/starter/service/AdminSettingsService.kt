@@ -34,10 +34,10 @@ class AdminSettingsService(
     fun currentEntity(): AppSettings = loadOrCreate()
 
     @Transactional
-    fun recordReindexRun(itemCount: Int, trigger: String) {
+    fun recordReindexRun(folderCount: Int, trigger: String) {
         val settings = loadOrCreate()
         settings.lastVectorReindexAt = Instant.now()
-        settings.lastVectorReindexStatus = "OK: Reindexed $itemCount items via $trigger"
+        settings.lastVectorReindexStatus = "OK: Reindexed $folderCount folders via $trigger"
         appSettingsRepository.save(settings)
     }
 

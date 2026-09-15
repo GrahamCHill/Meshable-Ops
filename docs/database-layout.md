@@ -142,11 +142,11 @@ The application-facing PostgreSQL model is small and centered on a CRUD-style co
 #### `items`
 
 - purpose:
-  core CRUD-style app records
+  document-folder metadata (the legacy table and API name are retained for compatibility)
 - key fields:
-  `user_id`, `title`, `description`
+  `user_id`, `title`, `description`, `storage_prefix`
 - notes:
-  all authenticated users can read shared items, but only admins can create or mutate them in the current permission model
+  each row maps to one object-storage prefix under `folders/{id}/`; all authenticated users can read shared folders, but only admins can create or mutate them in the current permission model
 
 #### `item_tags`
 
@@ -221,8 +221,8 @@ The table uses a `vector(384)` embedding column and an HNSW cosine-distance inde
 
 Current linkage:
 
-- `items` are embedded into vectors and stored in `item_vectors`
-- the JSONB payload includes `itemId` and `title`
+- folder rows in `items` are embedded into vectors and stored in `item_vectors`
+- the JSONB payload includes `itemId`, `folderId`, `entityType`, `title`, and `storagePrefix`
 - the backend can rebuild this vector state from the relational source records through reindexing
 
 Operational note:

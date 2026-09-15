@@ -34,7 +34,7 @@ class VectorReindexScheduler(
                 resourceType = "ITEM",
                 resourceId = count.toString(),
             )
-            schedulerLog.info("Auto reindexed {} items", count)
+            schedulerLog.info("Auto reindexed {} folders", count)
         } catch (e: Exception) {
             adminSettingsService.recordReindexFailure(e.message ?: "Unknown error", "scheduler")
             schedulerLog.error("Scheduled vector reindex failed: {}", e.message)

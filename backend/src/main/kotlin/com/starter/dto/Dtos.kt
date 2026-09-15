@@ -100,8 +100,28 @@ data class ItemResponse(
     val title: String,
     val description: String?,
     val tags: List<String>,
+    val storagePrefix: String,
+    val storageProvider: String,
+    val documentCount: Int,
     val createdAt: String?,
     val updatedAt: String?
+)
+
+data class StorageEntryResponse(
+    val name: String,
+    val path: String,
+    val type: String,
+    val size: Long?,
+    val contentType: String?,
+    val lastModified: String?
+)
+
+data class StorageContentsResponse(
+    val folderId: String,
+    val rootPrefix: String,
+    val path: String,
+    val storageProvider: String,
+    val entries: List<StorageEntryResponse>
 )
 
 // ─── Vector search ───────────────────────────────────────────────────────────

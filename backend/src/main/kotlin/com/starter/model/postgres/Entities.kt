@@ -59,6 +59,9 @@ data class Item(
     @Column(columnDefinition = "TEXT")
     var description: String? = null,
 
+    @Column(name = "storage_prefix", unique = true)
+    var storagePrefix: String? = null,
+
     @ElementCollection
     @CollectionTable(name = "item_tags", joinColumns = [JoinColumn(name = "item_id")])
     @Column(name = "tag")

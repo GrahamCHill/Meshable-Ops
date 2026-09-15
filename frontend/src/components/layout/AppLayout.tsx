@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, BarChart2, Package, Search, Activity, LogOut, Zap, Shield, Moon, Sun } from 'lucide-react'
+import { LayoutDashboard, BarChart2, HardDrive, Search, Activity, LogOut, Zap, Shield, Moon, Sun } from 'lucide-react'
 import { useAuthStore } from '../../hooks/useAuthStore'
 import { useTheme } from '../../hooks/useTheme'
 import { authApi } from '../../api/client'
@@ -8,7 +8,7 @@ import { authApi } from '../../api/client'
 const nav = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
   { to: '/dashboards', label: 'Dashboards', icon: BarChart2 },
-  { to: '/items', label: 'Items', icon: Package },
+  { to: '/storage', label: 'Storage', icon: HardDrive },
   { to: '/search', label: 'Vector Search', icon: Search },
   { to: '/events', label: 'Events', icon: Activity },
 ]

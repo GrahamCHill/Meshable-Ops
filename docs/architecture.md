@@ -183,12 +183,20 @@ It is treated as an internal dependency rather than the primary public web app.
   Superset cache and Celery coordination
 - ML helper:
   embedding/vectorization helper used by the backend
+- S3-compatible or Azure Blob object storage:
+  application-managed storage roots and original document objects; development profiles are provided for MinIO and Azurite
 
 Today that means:
 
 - the backend does not depend on Redis directly
 - Redis remains coupled to the Superset web/worker/beat side of the stack
 - a future app-level Redis stack would be an additional architectural concern, not the current default
+
+Folder metadata remains relational and searchable; object storage is the durable document boundary.
+The planned document-processing extension is described in
+[Document Folder and Processing Extension](document-processing-extension.md). Extraction,
+classification, and OCR are not implemented yet. S3-compatible and Azure Blob adapters
+share the same hierarchical browsing contract.
 
 ## Deployment Boundary Notes
 

@@ -5,6 +5,9 @@ import { Card, Spinner, Badge } from '../ui'
 const typeColors: Record<string, 'accent' | 'success' | 'warning' | 'danger' | 'default'> = {
   ITEM_CREATED: 'success',
   ITEM_DELETED: 'danger',
+  FOLDER_CREATED: 'success',
+  FOLDER_UPDATED: 'warning',
+  FOLDER_DELETED: 'danger',
   SYSTEM_START: 'accent',
 }
 

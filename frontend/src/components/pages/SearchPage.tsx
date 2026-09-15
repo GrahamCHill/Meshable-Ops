@@ -47,13 +47,13 @@ export function SearchPage() {
           </Button>
           {canReindex && (
             <Button onClick={() => reindex.mutate()} loading={reindex.isPending} variant="secondary" style={{ flexShrink: 0 }}>
-              <RefreshCcw size={14} /> Reindex Items
+              <RefreshCcw size={14} /> Reindex Folders
             </Button>
           )}
         </div>
         <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>
           Search results show similarity, not exact-match confidence. {canReindex
-            ? 'Reindex existing items after embedding changes so stored vectors stay in sync.'
+            ? 'Reindex existing folder metadata after embedding changes so stored vectors stay in sync.'
             : 'Search is shared across all users, while reindexing is restricted to administrators.'}
         </p>
         {reindex.data && (
@@ -75,7 +75,7 @@ export function SearchPage() {
           </div>
           {search.data.length === 0 && (
             <Card style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-secondary)' }}>
-              No results found. Create some items first.
+              No results found. Create some folders first.
             </Card>
           )}
         </div>

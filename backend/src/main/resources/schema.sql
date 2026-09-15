@@ -13,6 +13,13 @@ ALTER TABLE IF EXISTS users
 ALTER TABLE IF EXISTS users
     ALTER COLUMN active SET NOT NULL;
 
+ALTER TABLE IF EXISTS items
+    ADD COLUMN IF NOT EXISTS storage_prefix TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_items_storage_prefix
+    ON items (storage_prefix)
+    WHERE storage_prefix IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS item_tags (
     item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
     tag     TEXT NOT NULL

@@ -130,13 +130,19 @@ class ItemController(
         auditLogService.record(
             actingEmail = user.username,
             action = "VECTOR_REINDEX_MANUAL",
-            resourceType = "ITEM",
+            resourceType = "FOLDER",
             resourceId = count.toString(),
             ipAddress = request.remoteAddr,
             userAgent = request.getHeader("User-Agent"),
         )
-        return MessageResponse("Reindexed $count items")
+        return MessageResponse("Reindexed $count folders")
     }
+
+    @GetMapping("/{id}/contents")
+    fun contents(
+        @PathVariable id: UUID,
+        @RequestParam(defaultValue = "") path: String,
+    ) = itemService.browse(id, path)
 }
 
 // ─── Events ──────────────────────────────────────────────────────────────────

@@ -13,6 +13,11 @@ x-superset-env: &superset-env
   SUPERSET_ENV: production
   SUPERSET_LOAD_EXAMPLES: "no"
   SUPERSET_SECRET_KEY: "thisISaSECRET_1234_change_in_prod"
+  SUPERSET_ADMIN_USER: ${SUPERSET_ADMIN_USER:-admin}
+  SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:-admin}
+  SUPERSET_ADMIN_EMAIL: ${SUPERSET_ADMIN_EMAIL:-admin@superset.local}
+  SUPERSET_ADMIN_FIRSTNAME: ${SUPERSET_ADMIN_FIRSTNAME:-Admin}
+  SUPERSET_ADMIN_LASTNAME: ${SUPERSET_ADMIN_LASTNAME:-User}
   PYTHONPATH: /app/pythonpath
   CYPRESS_CONFIG: "false"
   FLASK_ENV: production
@@ -207,8 +212,8 @@ services:
       JWT_SECRET: change-me-in-production-use-a-256-bit-key
       JWT_EXPIRY_MS: 86400000
       SUPERSET_BASE_URL: http://superset:8088
-      SUPERSET_ADMIN_USER: admin
-      SUPERSET_ADMIN_PASSWORD: admin
+      SUPERSET_ADMIN_USER: ${SUPERSET_ADMIN_USER:-admin}
+      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:-admin}
     expose:
       - "8080"
     healthcheck:
@@ -255,7 +260,7 @@ services:
       superset-embed-init:
         condition: service_completed_successfully
     ports:
-      - "3000:80"
+      - "3000:8080"
 
 volumes:
   postgres_data:

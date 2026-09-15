@@ -16,8 +16,8 @@ The application is designed so users work through the app shell, not through a d
 - Embedded Superset dashboards through the app domain
 - Admin-only Superset authoring at `/admin/superset-graph-builder`
 - User lifecycle management from `/admin`
-- Shared CRUD-style application records
-- Vector search over application content
+- Shared document folders backed by S3-compatible object storage
+- Vector search over folder metadata
 - Production deployment with Docker Compose and Caddy-based HTTPS
 
 ## Product Model
@@ -54,7 +54,7 @@ The intended public surface is the frontend application.
 
 Important access rules:
 
-- all authenticated users can view shared items
+- all authenticated users can view shared document folders
 - all authenticated users can view allowed embedded dashboards
 - only admins can manage users, settings, backups, reindexing, dashboard embed configs, and Superset authoring routes
 
@@ -90,6 +90,16 @@ First-time development setup (also safe to rerun after code changes):
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d --remove-orphans
 ```
 
+That command uses the local S3-compatible MinIO provider. To run the same development
+stack against Azure Blob-compatible Azurite instead, use:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.azurite.yml up --build -d --remove-orphans
+```
+
+Use one development override at a time. Both profiles force their own development-only
+storage settings into the backend so switching providers works with an existing database.
+
 The development override starts a local S3-compatible MinIO instance and creates the
 `starter-dev` bucket automatically. Its S3 API is at `http://localhost:9000` and its
 browser console is at `http://localhost:9001`.
@@ -106,6 +116,11 @@ Development object-storage settings:
 
 Override the credentials or bucket with `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, and
 `MINIO_BUCKET`. These defaults are development-only.
+
+Azurite exposes Blob, Queue, and Table endpoints at ports `10000`, `10001`, and `10002`.
+The backend uses the Blob endpoint `http://azurite:10000/devstoreaccount1` and container
+`starter-dev`; override the container with `AZURITE_CONTAINER`. Its well-known development
+account and key are for local testing only.
 
 Useful checks:
 
@@ -133,6 +148,45 @@ Default local accounts:
 - User: `user@app.local` / `user123`
 
 These defaults are for local development only.
+
+The **Storage** page stores searchable root metadata in PostgreSQL and creates a matching
+`folders/{folder-id}/` prefix in MinIO/S3 or Azure Blob/Azurite. Opening a root explores
+its child virtual folders and objects directly from the configured provider. Root title,
+description, and tags are vectorized in pgvector; document extraction, image classification,
+and OCR are planned extension points and are not enabled. See
+[Document Folder and Processing Extension](docs/document-processing-extension.md).
+
+### Superset Login
+
+The default Superset authoring account is separate from the application accounts:
+
+- username: `admin`
+- password: `admin`
+
+These defaults apply only when the corresponding variables are absent. If the root
+`.env` already defines `SUPERSET_ADMIN_USER` or `SUPERSET_ADMIN_PASSWORD`, log in with
+those values instead.
+
+Sign into the application as its admin first, then open
+`http://localhost:3000/admin/superset-graph-builder`. If Superset presents its own
+login screen, use the credentials above.
+
+Override the Superset administrator by adding these values to the root `.env` file
+before running the development setup command:
+
+```dotenv
+SUPERSET_ADMIN_USER=admin
+SUPERSET_ADMIN_PASSWORD=choose-a-different-password
+SUPERSET_ADMIN_EMAIL=admin@example.com
+SUPERSET_ADMIN_FIRSTNAME=Admin
+SUPERSET_ADMIN_LASTNAME=User
+```
+
+`SUPERSET_ADMIN_USER` and `SUPERSET_ADMIN_PASSWORD` are also used by the backend for
+Superset API access, so keep one set of values for the whole Compose stack. On startup,
+the Superset initialization job creates the selected user if necessary and refreshes
+that user's password when it already exists. Changing the username creates an additional
+Superset administrator; it does not delete an existing administrator.
 
 ## Core Workflows
 
@@ -189,7 +243,7 @@ Example search queries:
 - `incident response for phishing`
 - `campaign performance and conversions`
 
-On an existing environment, you can create new items and then reindex them.
+On an existing environment, you can create new folders and then reindex their metadata.
 
 ## Security Model
 
