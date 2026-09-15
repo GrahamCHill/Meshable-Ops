@@ -33,6 +33,9 @@ data class User(
     @Column(nullable = false)
     val role: String = "USER",
 
+    @Column(name = "can_upload_documents", nullable = false)
+    var canUploadDocuments: Boolean = false,
+
     @Column(nullable = false)
     var active: Boolean = true,
 

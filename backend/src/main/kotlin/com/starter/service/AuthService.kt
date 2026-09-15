@@ -39,7 +39,7 @@ class AuthService(
         val ud = userDetailsService.loadUserByUsername(user.email)
         val token = jwtService.generateToken(ud, mapOf("role" to user.role, "id" to user.id.toString()))
         writeAuthCookie(response, token, expiryMs)
-        return AuthResponse(token, user.id.toString(), user.email, user.username, user.name, user.contactNumber, user.role)
+        return user.toAuthResponse(token)
     }
 
     fun login(req: AuthRequest, response: HttpServletResponse): AuthResponse {
@@ -49,15 +49,16 @@ class AuthService(
         val ud = userDetailsService.loadUserByUsername(user.email)
         val token = jwtService.generateToken(ud, mapOf("role" to user.role, "id" to user.id.toString()))
         writeAuthCookie(response, token, expiryMs)
-        return AuthResponse(token, user.id.toString(), user.email, user.username, user.name, user.contactNumber, user.role)
+        return user.toAuthResponse(token)
     }
 
-    fun refreshAuthCookie(email: String, response: HttpServletResponse) {
+    fun refreshAuthCookie(email: String, response: HttpServletResponse): AuthResponse {
         val user = userRepository.findByEmail(email)
             .orElseThrow { UsernameNotFoundException("User not found") }
         val ud = userDetailsService.loadUserByUsername(user.email)
         val token = jwtService.generateToken(ud, mapOf("role" to user.role, "id" to user.id.toString()))
         writeAuthCookie(response, token, expiryMs)
+        return user.toAuthResponse(token)
     }
 
     fun clearAuthCookie(response: HttpServletResponse) {
@@ -74,4 +75,15 @@ class AuthService(
             .build()
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString())
     }
+
+    private fun User.toAuthResponse(token: String) = AuthResponse(
+        token = token,
+        id = id.toString(),
+        email = email,
+        username = username,
+        name = name,
+        contactNumber = contactNumber,
+        role = role,
+        canUploadDocuments = canUploadDocuments,
+    )
 }

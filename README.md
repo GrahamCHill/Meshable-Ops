@@ -15,7 +15,7 @@ The application is designed so users work through the app shell, not through a d
 - App-managed authentication and role-based access control
 - Embedded Superset dashboards through the app domain
 - Admin-only Superset authoring at `/admin/superset-graph-builder`
-- User lifecycle management from `/admin`
+- Focused admin workspaces for users, storage, system health, audit/backup, and dashboard links
 - Shared document folders backed by S3-compatible object storage
 - Vector search over folder metadata
 - Production deployment with Docker Compose and Caddy-based HTTPS
@@ -28,10 +28,20 @@ This repository is best understood as:
 - with embedded analytics layered in through Superset
 - with admin operations surfaced through a real app page rather than a separate analytics portal
 
-The current admin information architecture is intentional:
+The admin area is split by responsibility so each page remains focused:
 
 - `/admin`
-  application access management, audit, backup, settings, and reindex controls
+  overview and shortcuts
+- `/admin/users`
+  application user and role management
+- `/admin/storage`
+  S3/Azure Blob scope, credentials, and vector maintenance
+- `/admin/system`
+  health, public entrypoints, private services, and runtime details
+- `/admin/audit`
+  audit history and application backup export
+- `/admin/dashboard-links`
+  app-to-Superset dashboard linking managed through Kotlin
 - `/admin/superset-graph-builder`
   embedded Superset authoring workspace for admins
 
@@ -55,8 +65,10 @@ The intended public surface is the frontend application.
 Important access rules:
 
 - all authenticated users can view shared document folders
+- all authenticated users can download individual documents or folder ZIP archives
 - all authenticated users can view allowed embedded dashboards
-- only admins can manage users, settings, backups, reindexing, dashboard embed configs, and Superset authoring routes
+- only users explicitly granted the upload permission can upload documents or folder trees; it is off by default for USER and ADMIN accounts
+- only admins can manage users and upload permissions, settings, backups, reindexing, dashboard embed configs, and Superset authoring routes
 
 Important routing rule:
 
@@ -126,7 +138,7 @@ account and key are for local testing only.
 
 The application never browses the whole bucket/container. It exposes only registered
 storage roots beneath a configured prefix such as `contract-management/documents`.
-Configure this persistently from **Admin > Operational Settings > Storage view path**.
+Configure this persistently from **Admin > Storage & Vectors > Storage view path**.
 The value is stored in PostgreSQL. Do not use `/`, `.` or `..` as path segments.
 
 For either local provider, set the prefix before startup:
@@ -186,6 +198,7 @@ Open:
 - `http://localhost:3000`
 - `http://localhost:3000/dashboards`
 - `http://localhost:3000/admin`
+- `http://localhost:3000/admin/system`
 - `http://localhost:3000/admin/superset-graph-builder`
 
 Default local accounts:
@@ -203,6 +216,20 @@ each discovered document's filename/path/content type are vectorized separately 
 Document content extraction, image classification, and OCR are planned extension points and are
 not enabled. See
 [Document Folder and Processing Extension](docs/document-processing-extension.md).
+
+Every authenticated account can download a document or a folder as a ZIP archive. Uploading
+files or a folder tree requires the independent **Allow document and folder uploads** permission.
+Admins grant or revoke it from **Admin > Users**; it defaults to disabled even for administrators.
+Upload paths are constrained to the selected application-managed storage root and uploaded
+document metadata is synchronized and vectorized immediately.
+
+Default transfer limits are 50 MB per file and 250 MB per request. Override them at backend
+startup when needed:
+
+```dotenv
+APP_UPLOAD_MAX_FILE_SIZE=100MB
+APP_UPLOAD_MAX_REQUEST_SIZE=500MB
+```
 
 ### Superset Login
 
@@ -259,18 +286,17 @@ Each shared dashboard entry stores:
 
 ### User Access Management
 
-Admins manage access from `/admin`.
+Admins manage access from `/admin/users`.
 
 Current admin capabilities include:
 
 - create users
 - review the user roster
 - deactivate users
-- review live stack and network-boundary status
-- review audit activity
-- manage operational settings
-- trigger vector reindexing
-- export application backups
+- grant or revoke the independent document-upload permission
+- review live stack and network-boundary status from `/admin/system`
+- review audit activity and export backups from `/admin/audit`
+- manage object storage and vector reindexing from `/admin/storage`
 
 User lifecycle behavior:
 

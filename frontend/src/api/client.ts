@@ -36,6 +36,7 @@ export interface AuthResponse {
   name?: string
   contactNumber?: string
   role: string
+  canUploadDocuments: boolean
 }
 
 export interface AdminUser {
@@ -45,6 +46,7 @@ export interface AdminUser {
   name?: string
   contactNumber?: string
   role: string
+  canUploadDocuments: boolean
   active: boolean
   createdAt: string
   updatedAt: string
@@ -185,7 +187,7 @@ export const authApi = {
   login: (data: { email: string; password: string }) =>
     api.post<AuthResponse>('/auth/login', data).then(r => r.data),
   refreshSessionCookie: () =>
-    api.post('/auth/session-cookie').then(r => r.data),
+    api.post<AuthResponse>('/auth/session-cookie').then(r => r.data),
   logout: () =>
     api.post('/auth/logout').then(r => r.data),
 }
@@ -193,8 +195,10 @@ export const authApi = {
 export const adminUsersApi = {
   list: () =>
     api.get<AdminUser[]>('/admin/users').then(r => r.data),
-  create: (data: { email: string; username: string; name?: string; contactNumber?: string; password: string; role: 'ADMIN' | 'USER' }) =>
+  create: (data: { email: string; username: string; name?: string; contactNumber?: string; password: string; role: 'ADMIN' | 'USER'; canUploadDocuments?: boolean }) =>
     api.post<AdminUser>('/admin/users', data).then(r => r.data),
+  updateUploadPermission: (id: string, canUploadDocuments: boolean) =>
+    api.patch<AdminUser>(`/admin/users/${id}/upload-permission`, { canUploadDocuments }).then(r => r.data),
   deactivate: (id: string) =>
     api.delete<AdminUser>(`/admin/users/${id}`).then(r => r.data),
 }
@@ -212,6 +216,17 @@ export const itemsApi = {
     api.post<{ message: string }>('/items/reindex').then(r => r.data),
   contents: (id: string, path = '') =>
     api.get<StorageContents>(`/items/${id}/contents`, { params: { path } }).then(r => r.data),
+  upload: (id: string, path: string, files: File[]) => {
+    const form = new FormData()
+    form.append('path', path)
+    files.forEach(file => {
+      form.append('files', file)
+      form.append('paths', file.webkitRelativePath || file.name)
+    })
+    return api.post<StorageContents>(`/items/${id}/upload`, form, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
+  },
+  download: (id: string, path: string, archive = false) =>
+    api.get<Blob>(`/items/${id}/download`, { params: { path, archive }, responseType: 'blob' }).then(r => r.data),
 }
 
 export const eventsApi = {

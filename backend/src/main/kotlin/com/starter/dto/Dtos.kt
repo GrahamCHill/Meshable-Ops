@@ -22,7 +22,8 @@ data class AuthResponse(
     val username: String,
     val name: String?,
     val contactNumber: String?,
-    val role: String
+    val role: String,
+    val canUploadDocuments: Boolean,
 )
 
 data class AdminCreateUserRequest(
@@ -31,8 +32,11 @@ data class AdminCreateUserRequest(
     @field:Size(max = 120) val name: String? = null,
     @field:Size(max = 32) val contactNumber: String? = null,
     @field:NotBlank @field:Size(min = 8, max = 100) val password: String,
-    @field:NotBlank @field:Pattern(regexp = "ADMIN|USER") val role: String = "USER"
+    @field:NotBlank @field:Pattern(regexp = "ADMIN|USER") val role: String = "USER",
+    val canUploadDocuments: Boolean = false,
 )
+
+data class UpdateUploadPermissionRequest(val canUploadDocuments: Boolean)
 
 data class UserSummaryResponse(
     val id: String,
@@ -41,6 +45,7 @@ data class UserSummaryResponse(
     val name: String?,
     val contactNumber: String?,
     val role: String,
+    val canUploadDocuments: Boolean,
     val active: Boolean,
     val createdAt: String?,
     val updatedAt: String?

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Check, ChevronRight, File, Files, Folder, FolderOpen, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Check, ChevronRight, Download, File, Files, Folder, FolderOpen, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
 import { itemsApi, type Item, type StorageContents } from '../../api/client'
 import { useAuthStore } from '../../hooks/useAuthStore'
 import { Badge, Button, Card, Spinner } from '../ui'
@@ -50,7 +50,12 @@ function formatSize(size?: number) {
 }
 
 function StorageBrowser({ folder, onClose }: { folder: Item; onClose: () => void }) {
+  const qc = useQueryClient()
+  const { user } = useAuthStore()
   const [path, setPath] = useState('')
+  const [transferError, setTransferError] = useState('')
+  const fileInput = useRef<HTMLInputElement | null>(null)
+  const folderInput = useRef<HTMLInputElement | null>(null)
   const contents = useQuery({
     queryKey: ['storage-contents', folder.id, path],
     queryFn: () => itemsApi.contents(folder.id, path),
@@ -58,6 +63,32 @@ function StorageBrowser({ folder, onClose }: { folder: Item; onClose: () => void
   const current = contents.data
   const segments = (current?.path ?? path).split('/').filter(Boolean)
   const parentPath = segments.length > 1 ? `${segments.slice(0, -1).join('/')}/` : ''
+  const upload = useMutation({
+    mutationFn: (files: File[]) => itemsApi.upload(folder.id, path, files),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['storage-contents', folder.id] })
+      qc.invalidateQueries({ queryKey: ['items'] })
+      setTransferError('')
+    },
+    onError: () => setTransferError('Upload failed. Check your permission, file size, and storage settings.'),
+  })
+  const download = useMutation({
+    mutationFn: ({ objectPath, archive }: { objectPath: string; archive: boolean; filename: string }) => itemsApi.download(folder.id, objectPath, archive),
+    onSuccess: (blob, variables) => {
+      const url = window.URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = variables.filename
+      anchor.click()
+      window.URL.revokeObjectURL(url)
+      setTransferError('')
+    },
+    onError: () => setTransferError('Download failed. The object may have moved or storage may be unavailable.'),
+  })
+
+  const selectFiles = (files: FileList | null) => {
+    if (files?.length) upload.mutate(Array.from(files))
+  }
 
   const navigateBreadcrumb = (index: number) => {
     if (index < 0) setPath('')
@@ -66,7 +97,7 @@ function StorageBrowser({ folder, onClose }: { folder: Item; onClose: () => void
 
   return (
     <div style={{ maxWidth: 900 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: '1rem', flexWrap: 'wrap' }}>
         <div>
           <Button variant="ghost" size="sm" onClick={onClose}><ArrowLeft size={14} /> Storage roots</Button>
           <h1 style={{ fontSize: '1.4rem', fontWeight: 700, marginTop: 12 }}>{folder.title}</h1>
@@ -77,7 +108,18 @@ function StorageBrowser({ folder, onClose }: { folder: Item; onClose: () => void
             </span>
           </div>
         </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button variant="secondary" size="sm" loading={download.isPending} onClick={() => download.mutate({ objectPath: path, archive: true, filename: `${segments[segments.length - 1] ?? folder.title}.zip` })}><Download size={14} /> Download folder</Button>
+          {user?.canUploadDocuments && <>
+            <Button variant="secondary" size="sm" loading={upload.isPending} onClick={() => fileInput.current?.click()}><Upload size={14} /> Upload files</Button>
+            <Button size="sm" loading={upload.isPending} onClick={() => folderInput.current?.click()}><FolderOpen size={14} /> Upload folder</Button>
+            <input ref={fileInput} type="file" multiple hidden onChange={event => { selectFiles(event.target.files); event.target.value = '' }} />
+            <input ref={element => { folderInput.current = element; element?.setAttribute('webkitdirectory', '') }} type="file" multiple hidden onChange={event => { selectFiles(event.target.files); event.target.value = '' }} />
+          </>}
+        </div>
       </div>
+
+      {transferError && <div style={{ color: 'var(--color-danger)', fontSize: '0.82rem', marginBottom: '0.75rem' }}>{transferError}</div>}
 
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '0.85rem 1rem', borderBottom: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
@@ -96,7 +138,7 @@ function StorageBrowser({ folder, onClose }: { folder: Item; onClose: () => void
             Could not load this storage path. Check the provider settings and credentials.
           </div>
         )}
-        {current && <StorageEntries contents={current} parentPath={parentPath} onNavigate={setPath} />}
+        {current && <StorageEntries contents={current} parentPath={parentPath} onNavigate={setPath} onDownload={(objectPath, archive, filename) => download.mutate({ objectPath, archive, filename })} downloading={download.isPending} />}
       </Card>
 
       <Card style={{ marginTop: '1rem', background: 'var(--color-surface-2)' }}>
@@ -113,10 +155,14 @@ function StorageEntries({
   contents,
   parentPath,
   onNavigate,
+  onDownload,
+  downloading,
 }: {
   contents: StorageContents
   parentPath: string
   onNavigate: (path: string) => void
+  onDownload: (path: string, archive: boolean, filename: string) => void
+  downloading: boolean
 }) {
   return (
     <div>
@@ -127,12 +173,7 @@ function StorageEntries({
         </button>
       )}
       {contents.entries.map(entry => (
-        <button
-          key={`${entry.type}-${entry.path}`}
-          onClick={() => entry.type === 'FOLDER' && onNavigate(entry.path)}
-          disabled={entry.type !== 'FOLDER'}
-          style={{ ...entryStyle, cursor: entry.type === 'FOLDER' ? 'pointer' : 'default', opacity: 1 }}
-        >
+        <div key={`${entry.type}-${entry.path}`} style={entryStyle}>
           {entry.type === 'FOLDER'
             ? <Folder size={19} color="var(--color-accent)" />
             : <File size={19} color="var(--color-text-tertiary)" />}
@@ -140,8 +181,9 @@ function StorageEntries({
           <span style={{ width: 90, textAlign: 'right', color: 'var(--color-text-tertiary)', fontSize: '0.75rem' }}>
             {entry.type === 'FOLDER' ? 'Folder' : `${formatSize(entry.size)}${entry.vectorStatus === 'VECTORIZED' ? ' · Vector' : ''}`}
           </span>
-          {entry.type === 'FOLDER' && <ChevronRight size={15} color="var(--color-text-tertiary)" />}
-        </button>
+          {entry.type === 'FOLDER' && <Button variant="ghost" size="sm" onClick={() => onNavigate(entry.path)}>Open <ChevronRight size={13} /></Button>}
+          <Button variant="ghost" size="sm" disabled={downloading} onClick={() => onDownload(entry.path, entry.type === 'FOLDER', entry.type === 'FOLDER' ? `${entry.name}.zip` : entry.name)} title={`Download ${entry.name}`}><Download size={14} /></Button>
+        </div>
       ))}
       {contents.entries.length === 0 && (
         <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>This folder is empty.</div>

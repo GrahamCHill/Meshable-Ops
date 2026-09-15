@@ -8,6 +8,7 @@ interface AuthUser {
   name?: string
   contactNumber?: string
   role: string
+  canUploadDocuments: boolean
 }
 
 interface AuthState {
@@ -15,6 +16,8 @@ interface AuthState {
   user: AuthUser | null
   login: (token: string, user: AuthUser) => void
   logout: () => void
+  setUploadPermission: (canUploadDocuments: boolean) => void
+  refreshUser: (user: AuthUser) => void
   isAuthenticated: () => boolean
 }
 
@@ -31,6 +34,10 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem('token')
         set({ token: null, user: null })
       },
+      setUploadPermission: canUploadDocuments => set(state => ({
+        user: state.user ? { ...state.user, canUploadDocuments } : null,
+      })),
+      refreshUser: user => set({ user }),
       isAuthenticated: () => !!get().token,
     }),
     { name: 'auth-storage', partialize: state => ({ token: state.token, user: state.user }) }

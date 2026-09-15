@@ -13,11 +13,17 @@ import jakarta.validation.constraints.NotEmpty
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
+import org.springframework.http.ContentDisposition
+import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
+import org.springframework.core.io.ByteArrayResource
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.multipart.MultipartFile
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.bson.Document
@@ -43,15 +49,14 @@ class AuthController(private val authService: AuthService) {
     fun logout(response: HttpServletResponse) = authService.clearAuthCookie(response)
 
     @PostMapping("/session-cookie")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     fun refreshSessionCookie(
         @AuthenticationPrincipal principal: UserDetails?,
         response: HttpServletResponse
-    ) {
+    ): AuthResponse {
         if (principal == null) {
             throw ForbiddenException("Authentication required")
         }
-        authService.refreshAuthCookie(principal.username, response)
+        return authService.refreshAuthCookie(principal.username, response)
     }
 
     @GetMapping("/superset-admin-access")
@@ -82,6 +87,13 @@ class AdminUserController(private val adminUserService: AdminUserService) {
         @PathVariable id: UUID,
         @AuthenticationPrincipal principal: UserDetails
     ) = adminUserService.deactivateUser(id, principal.username)
+
+    @PatchMapping("/{id}/upload-permission")
+    fun updateUploadPermission(
+        @PathVariable id: UUID,
+        @RequestBody req: UpdateUploadPermissionRequest,
+        @AuthenticationPrincipal principal: UserDetails,
+    ) = adminUserService.updateUploadPermission(id, req, principal.username)
 }
 
 @RestController
@@ -143,6 +155,35 @@ class ItemController(
         @PathVariable id: UUID,
         @RequestParam(defaultValue = "") path: String,
     ) = itemService.browse(id, path)
+
+    @PostMapping("/{id}/upload", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    fun upload(
+        @AuthenticationPrincipal user: UserDetails,
+        @PathVariable id: UUID,
+        @RequestParam(defaultValue = "") path: String,
+        @RequestParam("files") files: List<MultipartFile>,
+        @RequestParam("paths") paths: List<String>,
+    ): StorageContentsResponse {
+        if (files.size != paths.size) throw BadRequestException("Each uploaded file must have a path")
+        val uploads = files.zip(paths).map { (file, relativePath) ->
+            StorageObjectUpload(relativePath, file.contentType, file.bytes)
+        }
+        return itemService.upload(user.username, id, path, uploads)
+    }
+
+    @GetMapping("/{id}/download")
+    fun download(
+        @PathVariable id: UUID,
+        @RequestParam path: String,
+        @RequestParam(defaultValue = "false") archive: Boolean,
+    ): ResponseEntity<ByteArrayResource> {
+        val download = itemService.download(id, path, archive)
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(download.filename).build().toString())
+            .contentType(MediaType.parseMediaType(download.contentType))
+            .contentLength(download.bytes.size.toLong())
+            .body(ByteArrayResource(download.bytes))
+    }
 }
 
 // ─── Events ──────────────────────────────────────────────────────────────────

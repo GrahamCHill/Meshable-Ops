@@ -211,6 +211,44 @@ class ItemService(
         )
     }
 
+    @Transactional
+    fun upload(email: String, itemId: UUID, path: String, uploads: List<StorageObjectUpload>): StorageContentsResponse {
+        val user = userRepository.findByEmail(email)
+            .orElseThrow { org.springframework.security.core.userdetails.UsernameNotFoundException("User not found") }
+        if (!user.canUploadDocuments) {
+            throw com.starter.exception.ForbiddenException("Document upload permission is required")
+        }
+        val item = itemRepository.findById(itemId)
+            .orElseThrow { NotFoundException("Storage root not found") }
+        if (uploads.isEmpty()) throw com.starter.exception.BadRequestException("Select at least one file")
+
+        val rootPrefix = folderStorageService.prefixFor(item.id)
+        folderStorageService.upload(rootPrefix, path, uploads)
+        syncDocuments(item, folderStorageService.listDocuments(rootPrefix))
+        eventRepository.save(
+            Event(
+                userId = user.id.toString(),
+                type = "DOCUMENTS_UPLOADED",
+                payload = mapOf("folderId" to item.id.toString(), "count" to uploads.size, "path" to path, "actorEmail" to user.email),
+            )
+        )
+        auditLogService.record(
+            actingEmail = email,
+            action = "DOCUMENTS_UPLOADED",
+            resourceType = "FOLDER",
+            resourceId = item.id.toString(),
+        )
+        return browse(itemId, path)
+    }
+
+    fun download(itemId: UUID, path: String, archive: Boolean): StorageObjectDownload {
+        val item = itemRepository.findById(itemId)
+            .orElseThrow { NotFoundException("Storage root not found") }
+        val rootPrefix = folderStorageService.prefixFor(item.id)
+        return if (archive) folderStorageService.downloadFolder(rootPrefix, path)
+        else folderStorageService.download(rootPrefix, path)
+    }
+
     private fun vectorPayload(item: Item) = mapOf(
         "itemId" to item.id.toString(),
         "folderId" to item.id.toString(),

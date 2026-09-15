@@ -2,6 +2,7 @@ package com.starter.service
 
 import com.starter.dto.AdminCreateUserRequest
 import com.starter.dto.UserSummaryResponse
+import com.starter.dto.UpdateUploadPermissionRequest
 import com.starter.exception.ConflictException
 import com.starter.exception.NotFoundException
 import com.starter.model.postgres.User
@@ -46,6 +47,7 @@ class AdminUserService(
                 contactNumber = contactNumber,
                 password = passwordEncoder.encode(req.password),
                 role = role,
+                canUploadDocuments = req.canUploadDocuments,
             )
         )
         auditLogService.record(
@@ -81,6 +83,21 @@ class AdminUserService(
         return toSummary(saved)
     }
 
+    @Transactional
+    fun updateUploadPermission(userId: UUID, req: UpdateUploadPermissionRequest, actingEmail: String): UserSummaryResponse {
+        val user = userRepository.findById(userId)
+            .orElseThrow { NotFoundException("User not found") }
+        user.canUploadDocuments = req.canUploadDocuments
+        val saved = userRepository.save(user)
+        auditLogService.record(
+            actingEmail = actingEmail,
+            action = if (req.canUploadDocuments) "DOCUMENT_UPLOAD_GRANTED" else "DOCUMENT_UPLOAD_REVOKED",
+            resourceType = "USER",
+            resourceId = saved.id.toString(),
+        )
+        return toSummary(saved)
+    }
+
     private fun toSummary(user: User) = UserSummaryResponse(
         id = user.id.toString(),
         email = user.email,
@@ -88,6 +105,7 @@ class AdminUserService(
         name = user.name,
         contactNumber = user.contactNumber,
         role = user.role,
+        canUploadDocuments = user.canUploadDocuments,
         active = user.active,
         createdAt = user.createdAt.toString(),
         updatedAt = user.updatedAt.toString(),

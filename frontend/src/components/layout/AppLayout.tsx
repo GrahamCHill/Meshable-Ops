@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, BarChart2, HardDrive, Search, Activity, LogOut, Zap, Shield, Moon, Sun, Link2, Workflow } from 'lucide-react'
+import { LayoutDashboard, BarChart2, HardDrive, Search, Activity, LogOut, Zap, Shield, Moon, Sun, Link2, Workflow, Users, HeartPulse, ScrollText } from 'lucide-react'
 import { useAuthStore } from '../../hooks/useAuthStore'
 import { useTheme } from '../../hooks/useTheme'
 import { authApi } from '../../api/client'
@@ -15,22 +15,28 @@ const nav = [
 
 const adminNav = [
   { to: '/admin', label: 'Admin Overview', icon: Shield },
+  { to: '/admin/users', label: 'Users', icon: Users },
+  { to: '/admin/storage', label: 'Storage & Vectors', icon: HardDrive },
+  { to: '/admin/system', label: 'System', icon: HeartPulse },
+  { to: '/admin/audit', label: 'Audit & Backup', icon: ScrollText },
   { to: '/admin/dashboard-links', label: 'Dashboard Links', icon: Link2 },
   { to: '/admin/superset-graph-builder', label: 'Superset Builder', icon: Workflow },
 ]
 
 export function AppLayout({ children }: { children: ReactNode }) {
-  const { token, user, logout } = useAuthStore()
+  const { token, user, refreshUser, logout } = useAuthStore()
   const { mode, toggleMode } = useTheme()
   const navigate = useNavigate()
 
   useEffect(() => {
     if (!token) return
-    authApi.refreshSessionCookie().catch(() => {
-      logout()
-      navigate('/login', { replace: true })
-    })
-  }, [logout, navigate, token])
+    authApi.refreshSessionCookie()
+      .then(session => refreshUser(session))
+      .catch(() => {
+        logout()
+        navigate('/login', { replace: true })
+      })
+  }, [logout, navigate, refreshUser, token])
 
   const handleLogout = async () => {
     try {
@@ -41,7 +47,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
     logout()
     navigate('/login')
   }
-  const navItems = user?.role === 'ADMIN' ? [...nav, ...adminNav] : nav
+
+  const renderNavItem = ({ to, label, icon: Icon }: typeof nav[number]) => (
+    <NavLink key={to} to={to} end={to === '/' || to === '/admin'} style={({ isActive }) => ({
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '0.6rem 0.75rem', borderRadius: 'var(--radius-sm)',
+      fontSize: '0.875rem', fontWeight: isActive ? 500 : 400,
+      color: isActive ? 'var(--color-text)' : 'var(--color-text-secondary)',
+      background: isActive ? 'var(--color-surface-2)' : 'transparent',
+      textDecoration: 'none', transition: 'all 150ms ease',
+    })}>
+      <Icon size={16} />{label}
+    </NavLink>
+  )
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -56,19 +74,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </div>
           <span style={{ fontWeight: 700, fontSize: '0.95rem', letterSpacing: '-0.02em' }}>Starter</span>
         </div>
-        <nav style={{ flex: 1, padding: '0 0.75rem', display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {navItems.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} end={to === '/'} style={({ isActive }) => ({
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '0.6rem 0.75rem', borderRadius: 'var(--radius-sm)',
-              fontSize: '0.875rem', fontWeight: isActive ? 500 : 400,
-              color: isActive ? 'var(--color-text)' : 'var(--color-text-secondary)',
-              background: isActive ? 'var(--color-surface-2)' : 'transparent',
-              textDecoration: 'none', transition: 'all 150ms ease',
-            })}>
-              <Icon size={16} />{label}
-            </NavLink>
-          ))}
+        <nav style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 0.75rem', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {nav.map(renderNavItem)}
+          {user?.role === 'ADMIN' && (
+            <>
+              <div style={{ padding: '1rem 0.75rem 0.35rem', color: 'var(--color-text-tertiary)', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Administration</div>
+              {adminNav.map(renderNavItem)}
+            </>
+          )}
         </nav>
         <div style={{ padding: '1rem 1.25rem 0', borderTop: '1px solid var(--color-border)' }}>
           <button

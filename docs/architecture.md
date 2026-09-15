@@ -117,7 +117,15 @@ The main user-visible routes are:
 - `/events`
   event log
 - `/admin`
-  access management, backup/settings, audit, and admin operations
+  administration overview and shortcuts
+- `/admin/users`
+  user lifecycle and role management
+- `/admin/storage`
+  object-storage boundary, credentials, and vector maintenance
+- `/admin/system`
+  health, network boundaries, and runtime/service information previously shown on Home
+- `/admin/audit`
+  audit history and application backup export
 - `/admin/dashboard-links`
   admin-only Superset dashboard selection; Kotlin enables embedding and owns the embed UUID
 - `/admin/superset-graph-builder`
@@ -128,9 +136,11 @@ The main user-visible routes are:
 The effective permission split is:
 
 - authenticated users:
-  can sign in, view shared items, run search, and view enabled dashboard embeds allowed for their role
+  can sign in, view shared items, download documents/folder archives, run search, and view enabled dashboard embeds allowed for their role
+- users with `can_upload_documents`:
+  can upload documents and folder trees into application-managed storage roots; this permission is independent of USER/ADMIN and defaults off
 - admins:
-  can manage users, items, dashboard embed configs, admin settings, backups, vector reindexing, audit views, and Superset authoring
+  can manage users and upload permissions, items, dashboard embed configs, admin settings, backups, vector reindexing, audit views, and Superset authoring
 
 Important implementation detail:
 

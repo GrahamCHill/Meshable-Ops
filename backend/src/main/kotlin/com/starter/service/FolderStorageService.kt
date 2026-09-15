@@ -19,9 +19,13 @@ import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.S3Configuration
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest
+import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import java.net.URI
+import java.io.ByteArrayOutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import java.util.UUID
 
 data class FolderStorageSnapshot(
@@ -44,6 +48,9 @@ data class StorageBrowseResult(
     val entries: List<StorageEntry>,
 )
 
+data class StorageObjectUpload(val relativePath: String, val contentType: String?, val bytes: ByteArray)
+data class StorageObjectDownload(val filename: String, val contentType: String, val bytes: ByteArray)
+
 private interface ObjectStorageAdapter {
     val provider: String
     fun inspectAndEnsureRoots(prefixes: Collection<String>): FolderStorageSnapshot
@@ -51,6 +58,8 @@ private interface ObjectStorageAdapter {
     fun deleteFolderIfEmpty(prefix: String)
     fun browse(rootPrefix: String, relativePath: String): StorageBrowseResult
     fun listDocuments(rootPrefix: String): List<StorageEntry>
+    fun upload(rootPrefix: String, relativePath: String, contentType: String?, bytes: ByteArray)
+    fun download(rootPrefix: String, relativePath: String): StorageObjectDownload
 }
 
 @Service
@@ -70,6 +79,37 @@ class FolderStorageService(
     fun listDocuments(rootPrefix: String): List<StorageEntry> {
         requireManagedRoot(rootPrefix)
         return adapter().listDocuments(rootPrefix)
+    }
+
+    fun upload(rootPrefix: String, currentPath: String, objects: List<StorageObjectUpload>) {
+        requireManagedRoot(rootPrefix)
+        val destination = normalizeRelativePath(currentPath)
+        objects.forEach { objectUpload ->
+            val objectPath = normalizeObjectPath(objectUpload.relativePath)
+            adapter().upload(rootPrefix, destination + objectPath, objectUpload.contentType, objectUpload.bytes)
+        }
+    }
+
+    fun download(rootPrefix: String, path: String): StorageObjectDownload {
+        requireManagedRoot(rootPrefix)
+        return adapter().download(rootPrefix, normalizeObjectPath(path))
+    }
+
+    fun downloadFolder(rootPrefix: String, path: String): StorageObjectDownload {
+        requireManagedRoot(rootPrefix)
+        val folderPath = normalizeRelativePath(path)
+        val documents = adapter().listDocuments(rootPrefix).filter { it.path.startsWith(folderPath) }
+        val output = ByteArrayOutputStream()
+        ZipOutputStream(output).use { archive ->
+            documents.forEach { document ->
+                val entryName = document.path.removePrefix(folderPath).ifBlank { document.name }
+                archive.putNextEntry(ZipEntry(entryName))
+                archive.write(adapter().download(rootPrefix, document.path).bytes)
+                archive.closeEntry()
+            }
+        }
+        val folderName = folderPath.trimEnd('/').substringAfterLast('/').ifBlank { "storage-root" }
+        return StorageObjectDownload("$folderName.zip", "application/zip", output.toByteArray())
     }
 
     private fun adapter(): ObjectStorageAdapter {
@@ -95,6 +135,16 @@ class FolderStorageService(
         if (segments.any { it == "." || it == ".." }) throw BadRequestException("Invalid storage path")
         return segments.joinToString("/").let { if (it.isBlank()) "" else "$it/" }
     }
+
+
+    private fun normalizeObjectPath(path: String): String {
+        val normalized = path.replace('\\', '/').trim('/')
+        val segments = normalized.split('/').filter { it.isNotBlank() }
+        if (segments.isEmpty() || segments.any { it == "." || it == ".." }) {
+            throw BadRequestException("Invalid object path")
+        }
+        return segments.joinToString("/")
+    }
 }
 
 private object NoStorageAdapter : ObjectStorageAdapter {
@@ -106,6 +156,10 @@ private object NoStorageAdapter : ObjectStorageAdapter {
     override fun browse(rootPrefix: String, relativePath: String) =
         StorageBrowseResult(provider, relativePath, emptyList())
     override fun listDocuments(rootPrefix: String) = emptyList<StorageEntry>()
+    override fun upload(rootPrefix: String, relativePath: String, contentType: String?, bytes: ByteArray) =
+        throw BadRequestException("Object storage is not configured")
+    override fun download(rootPrefix: String, relativePath: String): StorageObjectDownload =
+        throw BadRequestException("Object storage is not configured")
 }
 
 private data class S3StorageConfig(
@@ -200,6 +254,26 @@ private class S3StorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
             token = response.nextContinuationToken()
         } while (response.isTruncated == true)
         documents.sortedEntries()
+    }
+
+    override fun upload(rootPrefix: String, relativePath: String, contentType: String?, bytes: ByteArray) = client().use { client ->
+        client.putObject(
+            PutObjectRequest.builder().bucket(config.bucket).key(rootPrefix + relativePath)
+                .contentType(contentType ?: "application/octet-stream").build(),
+            RequestBody.fromBytes(bytes),
+        )
+        Unit
+    }
+
+    override fun download(rootPrefix: String, relativePath: String): StorageObjectDownload = client().use { client ->
+        val response = client.getObjectAsBytes(
+            GetObjectRequest.builder().bucket(config.bucket).key(rootPrefix + relativePath).build()
+        )
+        StorageObjectDownload(
+            filename = relativePath.substringAfterLast('/'),
+            contentType = response.response().contentType() ?: "application/octet-stream",
+            bytes = response.asByteArray(),
+        )
     }
 
     private fun client(): S3Client {
@@ -303,6 +377,25 @@ private class AzureBlobStorageAdapter(settings: AppSettings) : ObjectStorageAdap
                     lastModified = item.properties.lastModified?.toString(),
                 )
             }.toList().sortedEntries()
+
+    override fun upload(rootPrefix: String, relativePath: String, contentType: String?, bytes: ByteArray) {
+        container().getBlobClient(rootPrefix + relativePath)
+            .upload(BinaryData.fromBytes(bytes), true)
+        if (contentType != null) {
+            container().getBlobClient(rootPrefix + relativePath).setHttpHeaders(
+                com.azure.storage.blob.models.BlobHttpHeaders().setContentType(contentType)
+            )
+        }
+    }
+
+    override fun download(rootPrefix: String, relativePath: String): StorageObjectDownload {
+        val blob = container().getBlobClient(rootPrefix + relativePath)
+        return StorageObjectDownload(
+            filename = relativePath.substringAfterLast('/'),
+            contentType = blob.properties.contentType ?: "application/octet-stream",
+            bytes = blob.downloadContent().toBytes(),
+        )
+    }
 
     private fun container(): BlobContainerClient {
         val builder = BlobServiceClientBuilder().endpoint(config.endpoint)
