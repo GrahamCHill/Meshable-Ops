@@ -4,3 +4,4 @@
 /frontend/dist
 .vscode
 /backend/targe/*
+.env

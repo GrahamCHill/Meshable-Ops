@@ -88,7 +88,7 @@ Additional architecture detail:
 Start the full local stack:
 
 ```bash
-docker compose up --build -d
+docker compose -f docker-compose.prod.yml up --build -d
 ```
 
 Useful checks:
