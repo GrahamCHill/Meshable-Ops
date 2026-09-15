@@ -5,7 +5,7 @@
     tls {$ACME_EMAIL}
     encode gzip zstd
 
-    reverse_proxy frontend:80 {
+    reverse_proxy frontend:8080 {
         header_up Host {host}
         header_up X-Forwarded-Proto {scheme}
         header_up X-Forwarded-Host {host}
