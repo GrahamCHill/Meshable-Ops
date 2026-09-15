@@ -16,7 +16,7 @@ One Linux VM runs:
 - Superset
 - PostgreSQL
 - MongoDB
-- Qdrant
+- pgvector inside PostgreSQL
 - Redis for Superset
 - ML helper
 
@@ -42,7 +42,7 @@ Stateful dependencies can be moved out to managed services:
 
 - PostgreSQL
 - MongoDB
-- Qdrant
+- pgvector-capable PostgreSQL
 - object storage
 
 The current Redis instance is intentionally not listed there as a core app dependency because today it is only supporting Superset. If a broader app-level Redis stack is introduced later, that should be documented as a separate concern.
@@ -78,7 +78,7 @@ That keeps the browser path simple:
 - browser -> caddy -> frontend
 - frontend -> backend internally
 - frontend -> superset internally
-- backend -> postgres/mongo/qdrant/ml internally
+- backend -> postgres/mongo/ml internally
 - frontend/superset runtime -> superset/redis internally
 
 ## Reverse Proxy Options
@@ -154,7 +154,7 @@ If you offload services, also override any relevant connection settings for:
 
 - PostgreSQL
 - MongoDB
-- Qdrant
+- pgvector data as part of PostgreSQL
 - object storage
 
 For the current stack, Redis usually stays grouped with Superset unless you are deliberately externalizing Superset's own runtime dependencies too.
@@ -203,7 +203,7 @@ Normal production posture:
 - private or tightly restricted:
   `22`
 - not publicly exposed:
-  `3000`, `8080`, `5432`, `27017`, `6333`, `6334`, `6379`
+  `3000`, `8080`, `5432`, `27017`, `6379`
 
 The production override already removes direct host publishing for backend and data services. Keep it that way unless you have a specific secured admin-access reason.
 

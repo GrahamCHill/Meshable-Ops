@@ -79,7 +79,7 @@ export function ItemsPage() {
         <div>
           <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Items</h1>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
-            Stored in PostgreSQL and indexed in Qdrant
+            Stored and vector-indexed in PostgreSQL
           </p>
           {!isAdmin && (
             <p style={{ color: 'var(--color-text-tertiary)', fontSize: '0.8rem', marginTop: 6 }}>

@@ -5,7 +5,7 @@ A production-oriented Docker Compose application that combines:
 - a React frontend
 - a Spring Boot backend
 - Apache Superset for embedded analytics and admin authoring
-- PostgreSQL, MongoDB, and Qdrant for application data
+- PostgreSQL with pgvector, plus MongoDB, for application data
 - a small Python ML helper for vectorization
 
 The application is designed so users work through the app shell, not through a directly exposed Superset instance. Shared dashboards are embedded inside the product, while Superset authoring is available only to admins through `Superset Graph Builder`.
@@ -47,7 +47,7 @@ The intended public surface is the frontend application.
   internal analytics dependency, proxied through the frontend
 - `ml-backend`
   internal helper for vectorization
-- `postgres`, `mongodb`, `qdrant`
+- `postgres` with pgvector, `mongodb`
   application data stores
 - `redis`
   currently a Superset-specific runtime dependency
@@ -77,9 +77,8 @@ Additional architecture detail:
 | Backend API | internal only | Application APIs, reached through the frontend proxy |
 | Superset | internal only | Embedded dashboards and admin authoring |
 | ML backend | internal only | Vectorization helper |
-| PostgreSQL | internal only | Application relational data and Superset metadata |
+| PostgreSQL + pgvector | internal only | Application relational data, Superset metadata, and vector search storage |
 | MongoDB | internal only | Events and audit-style documents |
-| Qdrant | internal only | Vector search storage |
 | Redis | internal only | Superset cache and task coordination |
 | Caddy | `https://your-domain` | Production HTTPS entrypoint |
 
@@ -260,7 +259,7 @@ Normal public/private posture:
 - private or tightly restricted:
   `22`
 - not publicly exposed:
-  `3000`, `8080`, `5432`, `27017`, `6333`, `6334`, `6379`
+  `3000`, `8080`, `5432`, `27017`, `6379`
 
 High-level rollout:
 

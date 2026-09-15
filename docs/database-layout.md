@@ -6,16 +6,14 @@ This document describes the current data layout used by the application stack.
 
 The stack currently uses multiple storage systems:
 
-- PostgreSQL for application relational data and Superset metadata
+- PostgreSQL with pgvector for application relational data, Superset metadata, and vector search
 - MongoDB for event and activity-style documents
-- Qdrant for vector search storage
 - Redis for Superset cache/task coordination
 
 This split is intentional. The business application is not trying to force every concern into one database:
 
-- PostgreSQL handles the relational application model
+- PostgreSQL handles the relational application model and vector similarity search through pgvector
 - MongoDB handles append-style event and audit documents
-- Qdrant handles vector similarity search
 - Redis supports Superset runtime behavior rather than core business records
 - Redis is currently Superset-specific, not a shared application cache layer
 
@@ -94,6 +92,7 @@ flowchart LR
         users["users"]
         items["items"]
         itemTags["item_tags"]
+        itemVectors["item_vectors (vector(384))"]
         embedConfigs["dashboard_embed_configs"]
         embedRoles["dashboard_embed_config_roles"]
         appSettings["app_settings"]
@@ -104,15 +103,11 @@ flowchart LR
         activityLogs["activity_logs"]
     end
 
-    subgraph qdrant["Qdrant"]
-        starterVectors["starter_vectors collection"]
-    end
-
     users --> items
     items --> itemTags
     embedConfigs --> embedRoles
 
-    items -. "embedded text\n(title + description + tags)" .-> starterVectors
+    items -. "embedded text\n(title + description + tags)" .-> itemVectors
     users -. "user actions" .-> events
     users -. "audit/activity" .-> activityLogs
 ```
@@ -216,24 +211,24 @@ Seed/bootstrap behavior currently initializes:
 
 - `events`
 
-### Qdrant
+### pgvector
 
-The backend stores vector search points in a Qdrant collection named:
+The backend stores vector search points in the PostgreSQL table:
 
-- `starter_vectors`
+- `item_vectors`
 
-The collection is managed by backend startup logic and is used for semantic search over indexed app data.
+The table uses a `vector(384)` embedding column and an HNSW cosine-distance index.
 
 Current linkage:
 
-- `items` are embedded into vectors and stored in `starter_vectors`
-- the current Qdrant payload includes `itemId` and `title`
+- `items` are embedded into vectors and stored in `item_vectors`
+- the JSONB payload includes `itemId` and `title`
 - the backend can rebuild this vector state from the relational source records through reindexing
 
 Operational note:
 
-- Qdrant is a derived-search store in this application
-- if it is lost, it can be rebuilt from primary item data rather than treated as the sole source of truth
+- `item_vectors` contains derived search data in the same PostgreSQL database
+- it can be rebuilt from primary item data rather than treated as the sole source of truth
 
 ### Redis
 
@@ -257,7 +252,7 @@ At a high level:
 
 - user, item, and embed-configuration records live in PostgreSQL
 - event/audit-style documents live in MongoDB
-- vector embeddings live in Qdrant
+- vector embeddings live in the PostgreSQL `item_vectors` table
 - Superset metadata stays in its own PostgreSQL database within the same Postgres service
 
 Another useful way to think about the boundary is:
@@ -267,7 +262,7 @@ Another useful way to think about the boundary is:
 - source-of-truth event/audit documents:
   MongoDB
 - derived search state:
-  Qdrant
+  PostgreSQL with pgvector
 - cache/task runtime state:
   Redis
 
@@ -279,8 +274,8 @@ Not every store should be treated the same way operationally.
   high-value source-of-truth data, should be backed up directly
 - MongoDB:
   operational and audit history, should also be backed up if those logs matter
-- Qdrant:
-  useful but rebuildable from item data in this app
+- pgvector data:
+  useful but rebuildable from item data in this app and covered by PostgreSQL operations
 - Redis:
   runtime-oriented, usually recoverable by restarting services and warming caches
 
@@ -288,7 +283,7 @@ If you offload services to managed offerings, these same boundaries still apply 
 
 ## Offloaded-Service Interpretation
 
-If PostgreSQL, MongoDB, Qdrant, or storage are moved off the VM:
+If PostgreSQL, MongoDB, or storage are moved off the VM:
 
 - the application data model does not change
 - only the network location of those stores changes

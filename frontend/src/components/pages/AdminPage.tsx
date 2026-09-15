@@ -693,7 +693,7 @@ export function AdminPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.82rem' }}>
                   <div>PostgreSQL: <strong>{healthQuery.data?.postgres}</strong></div>
                   <div>MongoDB: <strong>{healthQuery.data?.mongodb}</strong></div>
-                  <div>Qdrant: <strong>{healthQuery.data?.qdrant}</strong></div>
+                  <div>pgvector: <strong>{healthQuery.data?.pgvector}</strong></div>
                   <div style={{ color: 'var(--color-text-secondary)' }}>Checked {formatDate(healthQuery.data?.timestamp)}</div>
                 </div>
               )}

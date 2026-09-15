@@ -14,7 +14,7 @@ In practice, the architecture can be run in two main ways:
 - all-in-one:
   the VM carries the frontend, backend, Superset, and the supporting data services
 - app host plus offloaded state:
-  the VM mainly carries the app logic and proxy layers while PostgreSQL, MongoDB, Qdrant, or storage live elsewhere
+  the VM mainly carries the app logic and proxy layers while PostgreSQL, MongoDB, or storage live elsewhere
 
 The current Redis service is best thought of as part of the Superset runtime side, not as a general app-runtime dependency.
 
@@ -40,7 +40,6 @@ flowchart LR
 
     pg["PostgreSQL cluster"]
     mongo["MongoDB"]
-    qdrant["Qdrant"]
     redis["Redis"]
 
     user -->|"HTTPS / HTTP"| caddy
@@ -51,9 +50,8 @@ flowchart LR
     frontend -->|"/embedded/*"| superset
     frontend -->|"/superset/* admin authoring"| superset
 
-    backend -->|JPA app data| pg
+    backend -->|JPA app data + pgvector search| pg
     backend -->|event/activity docs| mongo
-    backend -->|vector search| qdrant
     backend -->|ML inference / embeddings| ml
     backend -->|Superset admin API + guest tokens| superset
 
@@ -80,7 +78,7 @@ flowchart LR
 1. Browser requests hit Caddy in production.
 2. Caddy forwards traffic to the `frontend` container.
 3. The frontend serves the SPA and proxies `/api/*` to the backend.
-4. The backend reads and writes app data in PostgreSQL, MongoDB, and Qdrant.
+4. The backend reads and writes app data in PostgreSQL (including pgvector) and MongoDB.
 
 ### Authentication and session flow
 
@@ -179,8 +177,8 @@ It is treated as an internal dependency rather than the primary public web app.
   application relational data and Superset metadata databases
 - MongoDB:
   events and audit-style activity documents
-- Qdrant:
-  vector index storage
+- pgvector:
+  vector index storage inside the application PostgreSQL database
 - Redis:
   Superset cache and Celery coordination
 - ML helper:
@@ -203,7 +201,7 @@ For production, the intended public boundary is:
 The default Compose posture in this repository now matches that boundary in local and production runs:
 
 - only the frontend is published on the host by default
-- backend, PostgreSQL, MongoDB, Qdrant, Redis, Superset, and the ML helper stay on Docker-internal service addresses unless you deliberately re-expose them
+- backend, PostgreSQL, MongoDB, Redis, Superset, and the ML helper stay on Docker-internal service addresses unless you deliberately re-expose them
 
 If data services are offloaded:
 

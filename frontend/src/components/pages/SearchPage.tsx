@@ -26,7 +26,7 @@ export function SearchPage() {
       <div style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 4 }}>Vector Search</h1>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
-          Semantic similarity search via Qdrant and the internal ML embedding service
+          Semantic similarity search via pgvector and the internal ML embedding service
         </p>
       </div>
 

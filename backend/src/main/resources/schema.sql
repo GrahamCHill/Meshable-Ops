@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS vector;
+
 ALTER TABLE IF EXISTS users
     ADD COLUMN IF NOT EXISTS active BOOLEAN;
 
@@ -17,6 +19,16 @@ CREATE TABLE IF NOT EXISTS item_tags (
 );
 
 CREATE INDEX IF NOT EXISTS idx_item_tags_item_id ON item_tags (item_id);
+
+CREATE TABLE IF NOT EXISTS item_vectors (
+    item_id UUID PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
+    embedding vector(384) NOT NULL,
+    payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_item_vectors_embedding_hnsw
+    ON item_vectors USING hnsw (embedding vector_cosine_ops);
 
 CREATE TABLE IF NOT EXISTS dashboard_embed_configs (
     id UUID PRIMARY KEY,

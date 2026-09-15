@@ -1,13 +1,14 @@
 package com.starter.service
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import com.starter.config.QdrantConfig
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
-import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
 import java.util.UUID
@@ -16,14 +17,10 @@ import kotlin.random.Random
 
 private val log = LoggerFactory.getLogger(VectorService::class.java)
 
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class QdrantSearchResponse(val result: List<QdrantScoredPoint> = emptyList())
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class QdrantScoredPoint(
-    val id: String = "",
-    val score: Float = 0f,
-    val payload: Map<String, String> = emptyMap()
+data class VectorSearchPoint(
+    val id: String,
+    val score: Float,
+    val payload: Map<String, String>
 )
 
 data class MlVectorizeRequest(
@@ -40,45 +37,28 @@ data class MlVectorizeResponse(
 
 @Service
 class VectorService(
-    private val rest: RestTemplate,
-    private val qdrantConfig: QdrantConfig
+    private val jdbcTemplate: JdbcTemplate,
+    private val objectMapper: ObjectMapper,
+    private val restTemplate: RestTemplate,
 ) {
-    @Value("\${qdrant.base-url:http://qdrant:6333}") private lateinit var baseUrl: String
-    @Value("\${qdrant.collection-name}") private lateinit var collection: String
     @Value("\${ml.base-url:http://ml-backend:8000}") private lateinit var mlBaseUrl: String
 
     private val headers get() = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON }
-    private var collectionReady = false
-
-    private fun ensureCollection() {
-        if (!collectionReady) {
-            qdrantConfig.ensureCollection(rest)
-            collectionReady = true
-        }
-    }
 
     fun upsert(pointId: UUID, vector: List<Float>, payload: Map<String, String>) {
-        ensureCollection()
-        try {
-            val payloadJson = payload.entries.joinToString(",") { (k, v) -> "\"$k\":\"$v\"" }
-            val body = """
-                {"points":[
-                  {
-                    "id":"$pointId",
-                    "vector":${vector.joinToString(",", "[", "]")},
-                    "payload":{$payloadJson}
-                  }
-                ]}
-            """.trimIndent()
-            rest.exchange(
-                "$baseUrl/collections/$collection/points?wait=true",
-                HttpMethod.PUT,
-                HttpEntity(body, headers),
-                String::class.java
-            )
-        } catch (e: Exception) {
-            log.error("Qdrant upsert failed for $pointId: ${e.message}")
-        }
+        jdbcTemplate.update(
+            """
+            INSERT INTO item_vectors (item_id, embedding, payload, updated_at)
+            VALUES (?, CAST(? AS vector), CAST(? AS jsonb), NOW())
+            ON CONFLICT (item_id) DO UPDATE SET
+                embedding = EXCLUDED.embedding,
+                payload = EXCLUDED.payload,
+                updated_at = NOW()
+            """.trimIndent(),
+            pointId,
+            vector.toPgVector(),
+            objectMapper.writeValueAsString(payload),
+        )
     }
 
     fun search(
@@ -86,54 +66,53 @@ class VectorService(
         limit: Int,
         filterField: String? = null,
         filterValue: String? = null
-    ): List<QdrantScoredPoint> {
-        ensureCollection()
+    ): List<VectorSearchPoint> {
         return try {
-            val filterClause = if (filterField != null && filterValue != null) {
-                ""","filter":{"must":[{"key":"$filterField","match":{"value":"$filterValue"}}]}"""
-            } else ""
-
-            val body = """
-                {
-                  "vector":${queryVector.joinToString(",", "[", "]")},
-                  "limit":$limit,
-                  "with_payload":true
-                  $filterClause
+            val parameters = mutableListOf<Any>()
+            val sql = buildString {
+                append(
+                    """
+                    SELECT item_id::text AS id,
+                           (1 - (embedding <=> CAST(? AS vector)))::real AS score,
+                           payload::text AS payload
+                    FROM item_vectors
+                    """.trimIndent()
+                )
+                parameters += queryVector.toPgVector()
+                if (filterField != null && filterValue != null) {
+                    append(" WHERE payload ->> ? = ?")
+                    parameters += filterField
+                    parameters += filterValue
                 }
-            """.trimIndent()
+                append(" ORDER BY embedding <=> CAST(? AS vector) LIMIT ?")
+                parameters += queryVector.toPgVector()
+                parameters += limit
+            }
 
-            val response = rest.exchange(
-                "$baseUrl/collections/$collection/points/search",
-                HttpMethod.POST,
-                HttpEntity(body, headers),
-                QdrantSearchResponse::class.java
-            )
-            response.body?.result ?: emptyList()
+            jdbcTemplate.query(sql, { rs, _ ->
+                VectorSearchPoint(
+                    id = rs.getString("id"),
+                    score = rs.getFloat("score"),
+                    payload = objectMapper.readValue(
+                        rs.getString("payload"),
+                        object : TypeReference<Map<String, String>>() {},
+                    ),
+                )
+            }, *parameters.toTypedArray())
         } catch (e: Exception) {
-            log.error("Qdrant search failed: ${e.message}")
+            log.error("pgvector search failed: ${e.message}")
             emptyList()
         }
     }
 
     fun delete(pointId: UUID) {
-        ensureCollection()
-        try {
-            val body = """{"points":["$pointId"]}"""
-            rest.exchange(
-                "$baseUrl/collections/$collection/points/delete?wait=true",
-                HttpMethod.POST,
-                HttpEntity(body, headers),
-                String::class.java
-            )
-        } catch (e: Exception) {
-            log.error("Qdrant delete failed for $pointId: ${e.message}")
-        }
+        jdbcTemplate.update("DELETE FROM item_vectors WHERE item_id = ?", pointId)
     }
 
     fun embedText(text: String, size: Int): List<Float> {
         val normalized = text.trim().ifBlank { "empty" }
         return try {
-            val response = rest.postForEntity(
+            val response = restTemplate.postForEntity(
                 "$mlBaseUrl/api/v1/ml/vectorize",
                 HttpEntity(MlVectorizeRequest(listOf(normalized), size), headers),
                 MlVectorizeResponse::class.java
@@ -157,4 +136,6 @@ class VectorService(
         val norm = sqrt(raw.sumOf { (it * it).toDouble() }.toFloat())
         return raw.map { it / norm }
     }
+
+    private fun List<Float>.toPgVector() = joinToString(",", "[", "]")
 }

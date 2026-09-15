@@ -6,6 +6,8 @@ CREATE DATABASE app_db OWNER app_user;
 
 \connect app_db
 
+CREATE EXTENSION IF NOT EXISTS vector;
+
 SET ROLE app_user;
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -36,6 +38,16 @@ CREATE TABLE IF NOT EXISTS item_tags (
 );
 
 CREATE INDEX IF NOT EXISTS idx_item_tags_item_id ON item_tags (item_id);
+
+CREATE TABLE IF NOT EXISTS item_vectors (
+    item_id UUID PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
+    embedding vector(384) NOT NULL,
+    payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_item_vectors_embedding_hnsw
+    ON item_vectors USING hnsw (embedding vector_cosine_ops);
 
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$

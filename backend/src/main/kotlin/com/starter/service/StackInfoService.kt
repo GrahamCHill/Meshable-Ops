@@ -39,7 +39,6 @@ class StackInfoService(
     private val restTemplate: RestTemplate,
     @Value("\${spring.application.name}") private val applicationName: String,
     @Value("\${server.port}") private val serverPort: String,
-    @Value("\${qdrant.base-url:http://qdrant:6333}") private val qdrantBaseUrl: String,
     @Value("\${ml.base-url:http://ml-backend:8000}") private val mlBaseUrl: String,
     @Value("\${superset.base-url:http://superset:8088}") private val supersetBaseUrl: String,
     @Value("\${spring.data.mongodb.uri}") private val mongoUri: String,
@@ -59,7 +58,6 @@ class StackInfoService(
             "ml-backend:http://ml-backend:8000",
             "postgres:postgres:5432",
             "mongodb:mongodb:27017",
-            "qdrant:http://qdrant:6333",
             "redis:redis:6379",
         ),
         services = listOf(
@@ -69,7 +67,6 @@ class StackInfoService(
             mlBackendServiceInfo(),
             postgresServiceInfo(),
             mongoServiceInfo(),
-            qdrantServiceInfo(),
             redisServiceInfo(),
         ),
     )
@@ -157,13 +154,20 @@ class StackInfoService(
     private fun postgresServiceInfo(): StackServiceInfo = try {
         jdbcTemplate.queryForObject("SELECT version()", String::class.java)
         val serverVersion = jdbcTemplate.queryForObject("SHOW server_version", String::class.java)
+        val pgvectorVersion = jdbcTemplate.queryForObject(
+            "SELECT extversion FROM pg_extension WHERE extname = 'vector'",
+            String::class.java,
+        )
         StackServiceInfo(
-            name = "PostgreSQL",
+            name = "PostgreSQL + pgvector",
             status = "UP",
             version = serverVersion,
             internalUrl = postgresJdbcUrl,
             exposedOutsideVm = false,
-            notes = listOf("Application data and Superset metadata"),
+            notes = listOf(
+                "Application data, Superset metadata, and vector index storage",
+                "pgvector $pgvectorVersion",
+            ),
         )
     } catch (exc: Exception) {
         StackServiceInfo(
@@ -192,30 +196,6 @@ class StackInfoService(
             internalUrl = mongoUri.substringBefore("?"),
             exposedOutsideVm = false,
             notes = listOf(exc.message ?: "MongoDB probe failed"),
-        )
-    }
-
-    private fun qdrantServiceInfo(): StackServiceInfo = try {
-        restTemplate.exchange(
-            "$qdrantBaseUrl/collections",
-            HttpMethod.GET,
-            null,
-            Map::class.java,
-        )
-        StackServiceInfo(
-            name = "Qdrant",
-            status = "UP",
-            internalUrl = qdrantBaseUrl,
-            exposedOutsideVm = false,
-            notes = listOf("Vector index storage"),
-        )
-    } catch (exc: Exception) {
-        StackServiceInfo(
-            name = "Qdrant",
-            status = "DOWN",
-            internalUrl = qdrantBaseUrl,
-            exposedOutsideVm = false,
-            notes = listOf(exc.message ?: "Qdrant probe failed"),
         )
     }
 

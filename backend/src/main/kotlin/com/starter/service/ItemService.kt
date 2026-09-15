@@ -23,7 +23,7 @@ class ItemService(
     private val vectorService: VectorService,
     private val auditLogService: AuditLogService,
 ) {
-    @Value("\${qdrant.vector-size}") private var vectorSize: Int = 384
+    @Value("\${vector.dimensions}") private var vectorSize: Int = 384
 
     private fun buildVectorText(title: String, description: String?, tags: List<String>): String =
         listOf(title, description.orEmpty(), tags.joinToString(" ")).joinToString(" ").trim()
@@ -33,7 +33,7 @@ class ItemService(
         val user = userRepository.findByEmail(email)
             .orElseThrow { org.springframework.security.core.userdetails.UsernameNotFoundException("User not found") }
 
-        val item = itemRepository.save(
+        val item = itemRepository.saveAndFlush(
             Item(
                 user = user,
                 title = req.title,
@@ -129,7 +129,7 @@ class ItemService(
         )
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     fun reindexShared(): Int {
         val items = itemRepository.findAllByOrderByCreatedAtDesc()
 

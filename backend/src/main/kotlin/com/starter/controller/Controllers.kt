@@ -179,7 +179,7 @@ class SearchController(
     private val userRepository: UserRepository
 ) {
 
-    @Value("\${qdrant.vector-size}") private var vectorSize: Int = 384
+    @Value("\${vector.dimensions}") private var vectorSize: Int = 384
 
     @PostMapping
     fun search(
@@ -281,14 +281,13 @@ class SupersetController(
 class HealthController(
     private val jdbcTemplate: JdbcTemplate,
     private val mongoTemplate: MongoTemplate,
-    private val vectorService: VectorService
 ) {
     @GetMapping
     fun health() = mapOf(
         "timestamp" to Instant.now().toString(),
         "postgres"  to checkPostgres(),
         "mongodb"   to checkMongo(),
-        "qdrant"    to checkQdrant()
+        "pgvector"  to checkPgvector()
     )
 
     private fun checkPostgres() = try {
@@ -299,8 +298,11 @@ class HealthController(
         mongoTemplate.db.runCommand(Document("ping", 1)); "UP"
     } catch (e: Exception) { "DOWN: ${e.message}" }
 
-    private fun checkQdrant() = try {
-        // Ping Qdrant's health endpoint via the vector service's rest template
-        "UP"  // lazily verified on first vector operation
+    private fun checkPgvector() = try {
+        val version = jdbcTemplate.queryForObject(
+            "SELECT extversion FROM pg_extension WHERE extname = 'vector'",
+            String::class.java,
+        )
+        "UP ($version)"
     } catch (e: Exception) { "DOWN: ${e.message}" }
 }

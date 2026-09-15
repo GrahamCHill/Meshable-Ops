@@ -98,7 +98,7 @@ export interface HealthStatus {
   timestamp: string
   postgres: string
   mongodb: string
-  qdrant: string
+  pgvector: string
 }
 
 export interface StackServiceInfo {
