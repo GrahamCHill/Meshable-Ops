@@ -1,12 +1,17 @@
 package com.starter.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.starter.dto.SupersetDashboardOptionResponse
+import com.starter.exception.BadRequestException
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.*
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
 import java.net.URI
+import org.springframework.web.client.HttpClientErrorException
+
+data class SupersetDashboardLink(val numericId: String, val embedUuid: String)
 
 private val log = LoggerFactory.getLogger(SupersetService::class.java)
 
@@ -19,6 +24,78 @@ class SupersetService {
 
     private val rest = RestTemplate()
     private val mapper = ObjectMapper()
+
+    fun listDashboardOptions(): List<SupersetDashboardOptionResponse> {
+        val token = getAdminAccessToken()
+        val headers = adminHeaders(token)
+        val response = rest.exchange(
+            "$baseUrl/api/v1/dashboard/?q=(page_size:100,order_column:dashboard_title,order_direction:asc)",
+            HttpMethod.GET,
+            HttpEntity<Void>(headers),
+            String::class.java,
+        )
+        return mapper.readTree(response.body).path("result").map { dashboard ->
+            val id = dashboard.path("id").asInt()
+            SupersetDashboardOptionResponse(
+                id = id,
+                title = dashboard.path("dashboard_title").asText("Dashboard $id"),
+                published = dashboard.path("published").asBoolean(false),
+                embeddingEnabled = getEmbeddedUuid(id.toString(), headers) != null,
+            )
+        }
+    }
+
+    fun resolveDashboardLink(dashboardId: Int): SupersetDashboardLink {
+        val token = getAdminAccessToken()
+        val headers = adminHeaders(token)
+        try {
+            rest.exchange(
+                "$baseUrl/api/v1/dashboard/$dashboardId",
+                HttpMethod.GET,
+                HttpEntity<Void>(headers),
+                String::class.java,
+            )
+        } catch (error: HttpClientErrorException.NotFound) {
+            throw BadRequestException("Superset dashboard $dashboardId does not exist")
+        }
+
+        val numericId = dashboardId.toString()
+        val existingUuid = getEmbeddedUuid(numericId, headers)
+        if (existingUuid != null) return SupersetDashboardLink(numericId, existingUuid)
+
+        val csrfToken = getCsrfToken(token)
+        val writeHeaders = adminHeaders(token).apply {
+            contentType = MediaType.APPLICATION_JSON
+            set("X-CSRFToken", csrfToken)
+            set("Referer", baseUrl)
+        }
+        rest.exchange(
+            "$baseUrl/api/v1/dashboard/$dashboardId/embedded",
+            HttpMethod.POST,
+            HttpEntity(mapper.writeValueAsString(mapOf("allowed_domains" to emptyList<String>())), writeHeaders),
+            String::class.java,
+        )
+        val uuid = getEmbeddedUuid(numericId, headers)
+            ?: throw BadRequestException("Superset did not return an embed UUID for dashboard $dashboardId")
+        return SupersetDashboardLink(numericId, uuid)
+    }
+
+    private fun getEmbeddedUuid(dashboardId: String, headers: HttpHeaders): String? = try {
+        val response = rest.exchange(
+            "$baseUrl/api/v1/dashboard/$dashboardId/embedded",
+            HttpMethod.GET,
+            HttpEntity<Void>(headers),
+            String::class.java,
+        )
+        mapper.readTree(response.body).path("result").path("uuid").asText().ifBlank { null }
+    } catch (_: HttpClientErrorException.NotFound) {
+        null
+    }
+
+    private fun adminHeaders(accessToken: String) = HttpHeaders().apply {
+        setBearerAuth(accessToken)
+        accept = listOf(MediaType.APPLICATION_JSON)
+    }
 
     fun mintGuestToken(
         dashboardIds: List<String>,

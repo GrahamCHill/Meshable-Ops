@@ -137,6 +137,8 @@ class ItemService(
 
         val prefix = item.ensureCurrentPrefix()
         folderStorageService.deleteFolderIfEmpty(prefix)
+        storageDocumentRepository.deleteAll(storageDocumentRepository.findAllByItemId(itemId))
+        storageDocumentRepository.flush()
         itemRepository.delete(item)
         vectorService.delete(itemId)
 

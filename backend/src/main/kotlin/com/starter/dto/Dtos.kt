@@ -155,11 +155,17 @@ data class EventResponse(
 data class DashboardEmbedConfigRequest(
     @field:NotBlank @field:Size(max = 255) val label: String,
     val description: String? = null,
-    @field:NotBlank @field:Size(max = 255) val dashboardId: String,
-    @field:Size(max = 255) val guestTokenResourceId: String? = null,
+    @field:Min(1) val supersetDashboardId: Int,
     @field:Min(0) val sortOrder: Int = 0,
     val enabled: Boolean = true,
     val allowedRoles: List<@NotBlank String> = emptyList()
+)
+
+data class SupersetDashboardOptionResponse(
+    val id: Int,
+    val title: String,
+    val published: Boolean,
+    val embeddingEnabled: Boolean,
 )
 
 data class DashboardEmbedConfigResponse(

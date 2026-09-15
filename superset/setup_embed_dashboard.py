@@ -15,6 +15,7 @@ import os
 import requests
 import psycopg2
 import uuid
+from urllib.parse import quote_plus
 
 BASE = os.environ.get("SUPERSET_INTERNAL_URL", "http://superset:8088")
 
@@ -125,11 +126,13 @@ def sync_backend_dashboard_embed(embed_uuid: str, dashboard_id: int) -> None:
 
 def login():
     s = requests.Session()
-    r = s.post(f"{BASE}/login/", data={"username": "admin", "password": "admin"})
+    username = os.environ.get("SUPERSET_ADMIN_USER", "admin")
+    password = os.environ.get("SUPERSET_ADMIN_PASSWORD", "admin")
+    r = s.post(f"{BASE}/login/", data={"username": username, "password": password})
     r.raise_for_status()
     me = s.get(f"{BASE}/api/v1/me/")
     me.raise_for_status()
-    assert me.json()["result"]["username"] == "admin", me.text
+    assert me.json()["result"]["username"] == username, me.text
     return s
 
 
@@ -145,7 +148,11 @@ def main():
     else:
         db_payload = {
             "database_name": "App DB",
-            "sqlalchemy_uri": "postgresql+psycopg2://superset_user:superset_pass@postgres:5432/app_db",
+            "sqlalchemy_uri": "postgresql+psycopg2://{}:{}@postgres:5432/{}".format(
+                quote_plus(os.environ.get("APP_POSTGRES_USER", "superset_user")),
+                quote_plus(os.environ.get("APP_POSTGRES_PASSWORD", "superset_pass")),
+                quote_plus(os.environ.get("APP_POSTGRES_DB", "app_db")),
+            ),
             "expose_in_sqllab": True,
         }
         r = s.post(f"{BASE}/api/v1/database/", json=db_payload)

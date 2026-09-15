@@ -23,6 +23,7 @@
     <jjwt.version>0.12.6</jjwt.version>
     <aws.sdk.version>2.49.3</aws.sdk.version>
     <azure.storage.blob.version>12.35.0</azure.storage.blob.version>
+    <azure.identity.version>1.18.6</azure.identity.version>
   </properties>
 
   <dependencies>
@@ -45,6 +46,7 @@
     <dependency><groupId>software.amazon.awssdk</groupId><artifactId>s3</artifactId><version>${aws.sdk.version}</version></dependency>
     <dependency><groupId>software.amazon.awssdk</groupId><artifactId>url-connection-client</artifactId><version>${aws.sdk.version}</version></dependency>
     <dependency><groupId>com.azure</groupId><artifactId>azure-storage-blob</artifactId><version>${azure.storage.blob.version}</version></dependency>
+    <dependency><groupId>com.azure</groupId><artifactId>azure-identity</artifactId><version>${azure.identity.version}</version></dependency>
 
     <!-- MongoDB -->
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-data-mongodb</artifactId></dependency>

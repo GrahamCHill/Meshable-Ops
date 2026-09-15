@@ -244,15 +244,15 @@ Dashboard embeds are runtime-managed from the application.
 
 1. Sign in as an admin.
 2. Open `/admin/superset-graph-builder` to author or edit dashboards in Superset.
-3. Open `/dashboards`.
-4. Use the admin controls there to create or edit shared dashboard embed entries.
+3. Open `/admin/dashboard-links`.
+4. Select a Superset dashboard and configure its label, order, state, and allowed roles.
 
 Each shared dashboard entry stores:
 
 - display label
 - description
-- embed UUID
-- optional numeric Superset dashboard id
+- the selected numeric Superset dashboard id
+- an embed UUID resolved and refreshed internally by Kotlin (not editable in the browser)
 - sort order
 - enabled state
 - allowed app roles
@@ -465,6 +465,8 @@ Both reindex helpers:
 - support `APP_URL`, `APP_ADMIN_EMAIL`, and `APP_ADMIN_PASSWORD`
 
 ## Repository Documentation
+
+- [Terraform deployment examples](infra/README.md) for AWS (EC2/S3) and Azure (VM/Blob)
 
 - [docs/architecture.md](docs/architecture.md)
   runtime services, request flow, role boundaries, and proxy behavior

@@ -5,12 +5,14 @@ import com.azure.core.util.BinaryData
 import com.azure.storage.blob.BlobContainerClient
 import com.azure.storage.blob.BlobServiceClientBuilder
 import com.azure.storage.blob.models.ListBlobsOptions
+import com.azure.identity.DefaultAzureCredentialBuilder
 import com.starter.exception.BadRequestException
 import com.starter.exception.ConflictException
 import com.starter.model.postgres.AppSettings
 import org.springframework.stereotype.Service
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient
 import software.amazon.awssdk.regions.Region
@@ -110,8 +112,8 @@ private data class S3StorageConfig(
     val bucket: String,
     val region: String,
     val endpoint: String?,
-    val accessKey: String,
-    val secretKey: String,
+    val accessKey: String?,
+    val secretKey: String?,
     val rootPrefix: String,
 )
 
@@ -121,8 +123,8 @@ private class S3StorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
         bucket = settings.storageBucket ?: throw BadRequestException("S3 bucket is not configured"),
         region = settings.storageRegion ?: "us-east-1",
         endpoint = settings.storageEndpoint,
-        accessKey = settings.storageAccessKey ?: throw BadRequestException("S3 access key is not configured"),
-        secretKey = settings.storageSecretKey ?: throw BadRequestException("S3 secret key is not configured"),
+        accessKey = settings.storageAccessKey,
+        secretKey = settings.storageSecretKey,
         rootPrefix = settings.storageViewPrefix(),
     )
 
@@ -204,7 +206,13 @@ private class S3StorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
         val builder = S3Client.builder()
             .region(Region.of(config.region))
             .httpClientBuilder(UrlConnectionHttpClient.builder())
-            .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(config.accessKey, config.secretKey)))
+            .credentialsProvider(
+                if (config.accessKey != null && config.secretKey != null) {
+                    StaticCredentialsProvider.create(AwsBasicCredentials.create(config.accessKey, config.secretKey))
+                } else {
+                    DefaultCredentialsProvider.create()
+                }
+            )
         if (config.endpoint != null) {
             builder.endpointOverride(URI.create(config.endpoint))
                 .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
@@ -223,8 +231,8 @@ private class S3StorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
 private data class AzureBlobConfig(
     val container: String,
     val endpoint: String,
-    val accountName: String,
-    val accountKey: String,
+    val accountName: String?,
+    val accountKey: String?,
     val rootPrefix: String,
 )
 
@@ -233,8 +241,8 @@ private class AzureBlobStorageAdapter(settings: AppSettings) : ObjectStorageAdap
     private val config = AzureBlobConfig(
         container = settings.storageBucket ?: throw BadRequestException("Azure Blob container is not configured"),
         endpoint = settings.storageEndpoint ?: throw BadRequestException("Azure Blob endpoint is not configured"),
-        accountName = settings.storageAccessKey ?: throw BadRequestException("Azure storage account name is not configured"),
-        accountKey = settings.storageSecretKey ?: throw BadRequestException("Azure storage account key is not configured"),
+        accountName = settings.storageAccessKey,
+        accountKey = settings.storageSecretKey,
         rootPrefix = settings.storageViewPrefix(),
     )
 
@@ -297,10 +305,13 @@ private class AzureBlobStorageAdapter(settings: AppSettings) : ObjectStorageAdap
             }.toList().sortedEntries()
 
     private fun container(): BlobContainerClient {
-        val client = BlobServiceClientBuilder()
-            .endpoint(config.endpoint)
-            .credential(AzureNamedKeyCredential(config.accountName, config.accountKey))
-            .buildClient()
+        val builder = BlobServiceClientBuilder().endpoint(config.endpoint)
+        if (config.accountName != null && config.accountKey != null) {
+            builder.credential(AzureNamedKeyCredential(config.accountName, config.accountKey))
+        } else {
+            builder.credential(DefaultAzureCredentialBuilder().build())
+        }
+        val client = builder.buildClient()
             .getBlobContainerClient(config.container)
         client.createIfNotExists()
         return client

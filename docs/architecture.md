@@ -118,6 +118,8 @@ The main user-visible routes are:
   event log
 - `/admin`
   access management, backup/settings, audit, and admin operations
+- `/admin/dashboard-links`
+  admin-only Superset dashboard selection; Kotlin enables embedding and owns the embed UUID
 - `/admin/superset-graph-builder`
   embedded Superset authoring workspace
 

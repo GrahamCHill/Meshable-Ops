@@ -1,0 +1,25 @@
+#cloud-config
+package_update: true
+packages: [git, docker.io, docker-compose-v2]
+write_files:
+  - path: /opt/contract-app.env
+    permissions: "0600"
+    content: |
+      APP_DOMAIN=${app_domain}
+      ACME_EMAIL=${acme_email}
+      JWT_SECRET=${jwt_secret}
+      SUPERSET_SECRET_KEY=${superset_secret_key}
+      GUEST_TOKEN_JWT_SECRET=${guest_token_jwt_secret}
+      SUPERSET_ADMIN_USER=admin
+      SUPERSET_ADMIN_PASSWORD=${superset_admin_password}
+      APP_BOOTSTRAP_USERS_JSON=${bootstrap_users_json}
+      APP_SEED_STORAGE_PROVIDER=S3
+      APP_SEED_STORAGE_BUCKET=${storage_bucket}
+      APP_SEED_STORAGE_REGION=${storage_region}
+      APP_SEED_STORAGE_ROOT_PATH=${storage_root_path}
+      APP_SEED_STORAGE_FORCE=false
+runcmd:
+  - systemctl enable --now docker
+  - [sh, -c, "git clone --branch '${repository_ref}' '${repository_url}' /opt/contract-app"]
+  - [sh, -c, "cp /opt/contract-app.env /opt/contract-app/.env.production"]
+  - [sh, -c, "cd /opt/contract-app && docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up --build -d"]

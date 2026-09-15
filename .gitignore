@@ -1,7 +1,10 @@
 .claude
-{superset,scripts,docker
 /frontend/node_modules
 /frontend/dist
 .vscode
 /backend/target/
 .env
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars

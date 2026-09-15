@@ -153,6 +153,13 @@ export interface DashboardEmbedConfig {
   updatedAt: string
 }
 
+export interface SupersetDashboardOption {
+  id: number
+  title: string
+  published: boolean
+  embeddingEnabled: boolean
+}
+
 export interface AdminSettings {
   id: string
   storageProvider: 'NONE' | 'S3' | 'AZURE_BLOB'
@@ -265,8 +272,7 @@ export const dashboardEmbedsApi = {
   create: (data: {
     label: string
     description?: string
-    dashboardId: string
-    guestTokenResourceId?: string
+    supersetDashboardId: number
     sortOrder: number
     enabled: boolean
     allowedRoles: string[]
@@ -274,8 +280,7 @@ export const dashboardEmbedsApi = {
   update: (id: string, data: {
     label: string
     description?: string
-    dashboardId: string
-    guestTokenResourceId?: string
+    supersetDashboardId: number
     sortOrder: number
     enabled: boolean
     allowedRoles: string[]
@@ -284,4 +289,6 @@ export const dashboardEmbedsApi = {
     api.delete(`/superset/dashboard-embeds/${id}`),
   listRoles: () =>
     api.get<string[]>('/superset/dashboard-embeds/roles').then(r => r.data),
+  listAvailable: () =>
+    api.get<SupersetDashboardOption[]>('/superset/dashboards/available').then(r => r.data),
 }

@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, BarChart2, HardDrive, Search, Activity, LogOut, Zap, Shield, Moon, Sun } from 'lucide-react'
+import { LayoutDashboard, BarChart2, HardDrive, Search, Activity, LogOut, Zap, Shield, Moon, Sun, Link2, Workflow } from 'lucide-react'
 import { useAuthStore } from '../../hooks/useAuthStore'
 import { useTheme } from '../../hooks/useTheme'
 import { authApi } from '../../api/client'
@@ -14,7 +14,9 @@ const nav = [
 ]
 
 const adminNav = [
-  { to: '/admin', label: 'Admin', icon: Shield },
+  { to: '/admin', label: 'Admin Overview', icon: Shield },
+  { to: '/admin/dashboard-links', label: 'Dashboard Links', icon: Link2 },
+  { to: '/admin/superset-graph-builder', label: 'Superset Builder', icon: Workflow },
 ]
 
 export function AppLayout({ children }: { children: ReactNode }) {

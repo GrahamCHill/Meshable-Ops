@@ -14,19 +14,20 @@ import java.util.UUID
 class DashboardEmbedConfigService(
     private val dashboardEmbedConfigRepository: DashboardEmbedConfigRepository,
     private val userRepository: UserRepository,
+    private val supersetService: SupersetService,
 ) {
 
-    @Transactional(readOnly = true)
+    @Transactional
     fun listEnabledForRole(role: String): List<DashboardEmbedConfigResponse> =
         dashboardEmbedConfigRepository.findAllByEnabledTrueOrderBySortOrderAscCreatedAtAsc()
             .filter { config ->
                 config.allowedRoles.isEmpty() || config.allowedRoles.any { it.equals(role, ignoreCase = true) }
             }
-            .map { it.toResponse() }
+            .map { refreshLink(it).toResponse() }
 
-    @Transactional(readOnly = true)
+    @Transactional
     fun listAll(): List<DashboardEmbedConfigResponse> =
-        dashboardEmbedConfigRepository.findAllByOrderBySortOrderAscCreatedAtAsc().map { it.toResponse() }
+        dashboardEmbedConfigRepository.findAllByOrderBySortOrderAscCreatedAtAsc().map { refreshLink(it).toResponse() }
 
     @Transactional(readOnly = true)
     fun listAvailableRoles(): List<String> = userRepository.findDistinctRoles()
@@ -57,18 +58,20 @@ class DashboardEmbedConfigService(
     }
 
     @Transactional
-    fun create(req: DashboardEmbedConfigRequest): DashboardEmbedConfigResponse =
-        dashboardEmbedConfigRepository.save(
+    fun create(req: DashboardEmbedConfigRequest): DashboardEmbedConfigResponse {
+        val link = supersetService.resolveDashboardLink(req.supersetDashboardId)
+        return dashboardEmbedConfigRepository.save(
             DashboardEmbedConfig(
                 label = req.label.trim(),
                 description = req.description?.trim()?.ifBlank { null },
-                dashboardId = req.dashboardId.trim(),
-                guestTokenResourceId = req.guestTokenResourceId?.trim()?.ifBlank { null },
+                dashboardId = link.embedUuid,
+                guestTokenResourceId = link.numericId,
                 sortOrder = req.sortOrder,
                 enabled = req.enabled,
                 allowedRoles = normalizeRoles(req.allowedRoles).toMutableList(),
             )
         ).toResponse()
+    }
 
     @Transactional
     fun update(id: UUID, req: DashboardEmbedConfigRequest): DashboardEmbedConfigResponse {
@@ -77,8 +80,9 @@ class DashboardEmbedConfigService(
 
         config.label = req.label.trim()
         config.description = req.description?.trim()?.ifBlank { null }
-        config.dashboardId = req.dashboardId.trim()
-        config.guestTokenResourceId = req.guestTokenResourceId?.trim()?.ifBlank { null }
+        val link = supersetService.resolveDashboardLink(req.supersetDashboardId)
+        config.dashboardId = link.embedUuid
+        config.guestTokenResourceId = link.numericId
         config.sortOrder = req.sortOrder
         config.enabled = req.enabled
         config.allowedRoles = normalizeRoles(req.allowedRoles).toMutableList()
@@ -95,6 +99,17 @@ class DashboardEmbedConfigService(
 
     private fun normalizeRoles(roles: List<String>): List<String> =
         roles.map { it.trim().uppercase() }.filter { it.isNotBlank() }.distinct()
+
+    private fun refreshLink(config: DashboardEmbedConfig): DashboardEmbedConfig {
+        val numericId = config.guestTokenResourceId?.toIntOrNull() ?: return config
+        val link = supersetService.resolveDashboardLink(numericId)
+        if (config.dashboardId != link.embedUuid || config.guestTokenResourceId != link.numericId) {
+            config.dashboardId = link.embedUuid
+            config.guestTokenResourceId = link.numericId
+            return dashboardEmbedConfigRepository.save(config)
+        }
+        return config
+    }
 
     private fun DashboardEmbedConfig.toResponse() = DashboardEmbedConfigResponse(
         id = id.toString(),

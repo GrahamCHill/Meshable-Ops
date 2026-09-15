@@ -5,6 +5,7 @@ import { AdminPage } from './components/pages/AdminPage'
 import { DashboardPage } from './components/pages/DashboardPage'
 import { DashboardsPage } from './components/pages/DashboardsPage'
 import { SupersetAdminPage } from './components/pages/SupersetAdminPage'
+import { AdminDashboardLinksPage } from './components/pages/AdminDashboardLinksPage'
 import { ItemsPage } from './components/pages/ItemsPage'
 import { SearchPage } from './components/pages/SearchPage'
 import { EventsPage } from './components/pages/EventsPage'
@@ -49,6 +50,11 @@ function App() {
                     <Route path="/admin/superset-graph-builder" element={
                       <AdminRoute>
                         <SupersetAdminPage />
+                      </AdminRoute>
+                    } />
+                    <Route path="/admin/dashboard-links" element={
+                      <AdminRoute>
+                        <AdminDashboardLinksPage />
                       </AdminRoute>
                     } />
                     <Route path="/storage" element={<ItemsPage />} />

@@ -1,5 +1,9 @@
 # Deployment Guide
 
+Runnable single-VM Terraform examples for AWS and Azure are available under [`infra/`](../infra/README.md).
+They provision cloud object storage and use EC2 instance roles or Azure managed identity rather
+than long-lived storage keys.
+
 This guide explains the practical deployment shapes supported by this repository and how the built-in reverse-proxy setup is intended to be used.
 
 ## Deployment Shapes
