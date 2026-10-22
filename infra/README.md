@@ -24,6 +24,31 @@ Both examples clone a configurable Git repository/ref and run:
 docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up --build -d
 ```
 
+## File layout
+
+Each provider directory is a single Terraform root module. Terraform loads all of its `.tf`
+files together; run commands from `aws/` or `azure/` as before. Resource addresses and settings
+are unchanged by the file organization, so no Terraform state migration is needed.
+
+| File | Contents |
+| --- | --- |
+| `compute.tf` | VM, image selection, SSH keys, and cloud-init configuration |
+| `networking.tf` | VPC/VNet, subnets, network interfaces, and the AWS Elastic IP |
+| `network-security.tf` | Ingress/egress rules and network security group associations |
+| `identity.tf` | AWS instance role/profile and account lookup, or Azure storage role assignment |
+| `storage.tf` | Document storage, access policies, and S3 access logging |
+| `providers.tf` | Provider configuration |
+| `versions.tf` | Terraform and provider version constraints |
+| `variables.tf` | Module inputs |
+| `outputs.tf` | Deployment outputs |
+| `cloud-init.tftpl` | VM bootstrap template |
+| `tests/security.tftest.hcl` | Mocked security regression checks |
+
+Azure also has `resource-group.tf` for the resource group and `load-balancer.tf` for the
+public IP, load balancer, backend pool membership, probes, forwarding rules, and outbound rule.
+S3 buckets and their logging resources stay together in `storage.tf` so Sonar can resolve
+both the logging source and its destination.
+
 ## Usage
 
 ```bash
