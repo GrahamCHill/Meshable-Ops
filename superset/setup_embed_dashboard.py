@@ -18,6 +18,7 @@ import uuid
 from urllib.parse import quote_plus
 
 BASE = os.environ.get("SUPERSET_INTERNAL_URL", "http://superset:8088")
+DASHBOARD_TITLE = "Metrics Overview"
 
 
 def grant_public_datasource_access(database_name: str, table_name: str, dataset_id: int) -> None:
@@ -75,7 +76,7 @@ def sync_backend_dashboard_embed(embed_uuid: str, dashboard_id: int) -> None:
                 ORDER BY created_at ASC
                 LIMIT 1
                 """,
-                ("Metrics Overview", embed_uuid),
+                (DASHBOARD_TITLE, embed_uuid),
             )
             row = cur.fetchone()
             config_id = row[0] if row else str(uuid.uuid4())
@@ -93,7 +94,7 @@ def sync_backend_dashboard_embed(embed_uuid: str, dashboard_id: int) -> None:
                         updated_at = NOW()
                     WHERE id = %s
                     """,
-                    ("Metrics Overview", "Items created over time", embed_uuid, str(dashboard_id), config_id),
+                    (DASHBOARD_TITLE, "Items created over time", embed_uuid, str(dashboard_id), config_id),
                 )
             else:
                 cur.execute(
@@ -108,7 +109,7 @@ def sync_backend_dashboard_embed(embed_uuid: str, dashboard_id: int) -> None:
                         enabled
                     ) VALUES (%s, %s, %s, %s, %s, 0, TRUE)
                     """,
-                    (config_id, "Metrics Overview", "Items created over time", embed_uuid, str(dashboard_id)),
+                    (config_id, DASHBOARD_TITLE, "Items created over time", embed_uuid, str(dashboard_id)),
                 )
 
             cur.execute("DELETE FROM dashboard_embed_config_roles WHERE dashboard_embed_config_id = %s", (config_id,))
@@ -211,14 +212,14 @@ def main():
     print("chart_id", chart_id)
 
     # 4. Dashboard containing the chart
-    r = s.get(f"{BASE}/api/v1/dashboard/?q=(filters:!((col:dashboard_title,opr:eq,value:'Metrics Overview')))")
+    r = s.get(f"{BASE}/api/v1/dashboard/?q=(filters:!((col:dashboard_title,opr:eq,value:'{DASHBOARD_TITLE}')))")
     r.raise_for_status()
     existing = r.json()["result"]
     if existing:
         dashboard_id = existing[0]["id"]
     else:
         dash_payload = {
-            "dashboard_title": "Metrics Overview",
+            "dashboard_title": DASHBOARD_TITLE,
             "slug": "metrics-overview",
             "published": True,
         }

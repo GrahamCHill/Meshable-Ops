@@ -8,7 +8,7 @@ import { Button, Card, Spinner } from '../ui'
 type FormValues = { label: string; description: string; supersetDashboardId: string; sortOrder: string; enabled: boolean; allowedRoles: string[] }
 const emptyForm: FormValues = { label: '', description: '', supersetDashboardId: '', sortOrder: '0', enabled: true, allowedRoles: [] }
 
-function LinkForm({ initial, dashboards, roles, loading, onSubmit, onCancel }: { initial?: DashboardEmbedConfig; dashboards: SupersetDashboardOption[]; roles: string[]; loading: boolean; onSubmit: (value: FormValues) => void; onCancel: () => void }) {
+function LinkForm({ initial, dashboards, roles, loading, onSubmit, onCancel }: Readonly<{ initial?: DashboardEmbedConfig; dashboards: SupersetDashboardOption[]; roles: string[]; loading: boolean; onSubmit: (value: FormValues) => void; onCancel: () => void }>) {
   const initialValue = (): FormValues => initial ? { label: initial.label, description: initial.description ?? '', supersetDashboardId: initial.guestTokenResourceId ?? '', sortOrder: String(initial.sortOrder), enabled: initial.enabled, allowedRoles: initial.allowedRoles } : emptyForm
   const [form, setForm] = useState<FormValues>(initialValue)
   useEffect(() => setForm(initialValue()), [initial])

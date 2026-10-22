@@ -47,7 +47,8 @@ are unchanged by the file organization, so no Terraform state migration is neede
 Azure also has `resource-group.tf` for the resource group and `load-balancer.tf` for the
 public IP, load balancer, backend pool membership, probes, forwarding rules, and outbound rule.
 S3 buckets and their logging resources stay together in `storage.tf` so Sonar can resolve
-both the logging source and its destination.
+both the logging source and its destination. The destination uses an `aws_iam_policy_document`
+with an explicit S3 logging service principal so analyzers recognize it as a log delivery bucket.
 
 ## Usage
 

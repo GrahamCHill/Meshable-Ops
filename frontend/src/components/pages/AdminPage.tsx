@@ -25,6 +25,7 @@ export function AdminPage() {
   const healthQuery = useQuery({ queryKey: ['admin-health'], queryFn: healthApi.check, refetchInterval: 30_000 })
   const stackQuery = useQuery({ queryKey: ['admin-stack'], queryFn: adminStackApi.get, refetchInterval: 30_000 })
   const servicesUp = stackQuery.data?.services.filter(service => service.status === 'UP').length ?? 0
+  const serviceHealthLabel = healthQuery.data?.postgres === 'UP' ? 'Operational' : 'Needs attention'
 
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -44,7 +45,7 @@ export function AdminPage() {
           <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.78rem', marginBottom: 6 }}>Service health</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
             <span style={{ width: 9, height: 9, borderRadius: '50%', background: statusColor(healthQuery.data?.postgres) }} />
-            {healthQuery.isLoading ? 'Checking…' : healthQuery.data?.postgres === 'UP' ? 'Operational' : 'Needs attention'}
+            {healthQuery.isLoading ? 'Checking…' : serviceHealthLabel}
           </div>
         </Card>
         <Card style={{ padding: '1rem' }}>

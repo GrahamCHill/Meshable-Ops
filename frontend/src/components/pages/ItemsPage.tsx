@@ -10,12 +10,12 @@ function FolderForm({
   onSubmit,
   onCancel,
   loading,
-}: {
+}: Readonly<{
   initial?: Partial<Item>
   onSubmit: (data: { title: string; description?: string; tags?: string[] }) => void
   onCancel: () => void
   loading?: boolean
-}) {
+}>) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [tagsRaw, setTagsRaw] = useState(initial?.tags?.join(', ') ?? '')
@@ -49,7 +49,7 @@ function formatSize(size?: number) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`
 }
 
-function StorageBrowser({ folder, onClose }: { folder: Item; onClose: () => void }) {
+function StorageBrowser({ folder, onClose }: Readonly<{ folder: Item; onClose: () => void }>) {
   const qc = useQueryClient()
   const { user } = useAuthStore()
   const [path, setPath] = useState('')
@@ -157,13 +157,13 @@ function StorageEntries({
   onNavigate,
   onDownload,
   downloading,
-}: {
+}: Readonly<{
   contents: StorageContents
   parentPath: string
   onNavigate: (path: string) => void
   onDownload: (path: string, archive: boolean, filename: string) => void
   downloading: boolean
-}) {
+}>) {
   return (
     <div>
       {contents.path && (
@@ -172,19 +172,23 @@ function StorageEntries({
           <span style={{ flex: 1, textAlign: 'left' }}>..</span>
         </button>
       )}
-      {contents.entries.map(entry => (
-        <div key={`${entry.type}-${entry.path}`} style={entryStyle}>
-          {entry.type === 'FOLDER'
-            ? <Folder size={19} color="var(--color-accent)" />
-            : <File size={19} color="var(--color-text-tertiary)" />}
-          <span style={{ flex: 1, minWidth: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.name}</span>
-          <span style={{ width: 90, textAlign: 'right', color: 'var(--color-text-tertiary)', fontSize: '0.75rem' }}>
-            {entry.type === 'FOLDER' ? 'Folder' : `${formatSize(entry.size)}${entry.vectorStatus === 'VECTORIZED' ? ' · Vector' : ''}`}
-          </span>
-          {entry.type === 'FOLDER' && <Button variant="ghost" size="sm" onClick={() => onNavigate(entry.path)}>Open <ChevronRight size={13} /></Button>}
-          <Button variant="ghost" size="sm" disabled={downloading} onClick={() => onDownload(entry.path, entry.type === 'FOLDER', entry.type === 'FOLDER' ? `${entry.name}.zip` : entry.name)} title={`Download ${entry.name}`}><Download size={14} /></Button>
-        </div>
-      ))}
+      {contents.entries.map(entry => {
+        const vectorLabel = entry.vectorStatus === 'VECTORIZED' ? ' · Vector' : ''
+        const detail = entry.type === 'FOLDER' ? 'Folder' : `${formatSize(entry.size)}${vectorLabel}`
+        return (
+          <div key={`${entry.type}-${entry.path}`} style={entryStyle}>
+            {entry.type === 'FOLDER'
+              ? <Folder size={19} color="var(--color-accent)" />
+              : <File size={19} color="var(--color-text-tertiary)" />}
+            <span style={{ flex: 1, minWidth: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.name}</span>
+            <span style={{ width: 90, textAlign: 'right', color: 'var(--color-text-tertiary)', fontSize: '0.75rem' }}>
+              {detail}
+            </span>
+            {entry.type === 'FOLDER' && <Button variant="ghost" size="sm" onClick={() => onNavigate(entry.path)}>Open <ChevronRight size={13} /></Button>}
+            <Button variant="ghost" size="sm" disabled={downloading} onClick={() => onDownload(entry.path, entry.type === 'FOLDER', entry.type === 'FOLDER' ? `${entry.name}.zip` : entry.name)} title={`Download ${entry.name}`}><Download size={14} /></Button>
+          </div>
+        )
+      })}
       {contents.entries.length === 0 && (
         <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>This folder is empty.</div>
       )}

@@ -28,6 +28,8 @@ export default api
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+export type StorageProvider = 'NONE' | 'S3' | 'AZURE_BLOB'
+
 export interface AuthResponse {
   token: string
   id: string
@@ -58,7 +60,7 @@ export interface Item {
   description?: string
   tags?: string[]
   storagePrefix: string
-  storageProvider: 'NONE' | 'S3' | 'AZURE_BLOB'
+  storageProvider: StorageProvider
   documentCount: number
   createdAt: string
   updatedAt: string
@@ -79,7 +81,7 @@ export interface StorageContents {
   folderId: string
   rootPrefix: string
   path: string
-  storageProvider: 'NONE' | 'S3' | 'AZURE_BLOB'
+  storageProvider: StorageProvider
   entries: StorageEntry[]
 }
 
@@ -164,7 +166,7 @@ export interface SupersetDashboardOption {
 
 export interface AdminSettings {
   id: string
-  storageProvider: 'NONE' | 'S3' | 'AZURE_BLOB'
+  storageProvider: StorageProvider
   storageBucket?: string
   storageRegion?: string
   storageEndpoint?: string
@@ -250,7 +252,7 @@ export const stackApi = {
 export const adminSettingsApi = {
   get: () => api.get<AdminSettings>('/admin/settings').then(r => r.data),
   update: (data: {
-    storageProvider: 'NONE' | 'S3' | 'AZURE_BLOB'
+    storageProvider: StorageProvider
     storageBucket?: string
     storageRegion?: string
     storageEndpoint?: string

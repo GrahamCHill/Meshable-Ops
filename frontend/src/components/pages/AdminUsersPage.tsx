@@ -19,7 +19,7 @@ type CreateUserForm = {
 
 const emptyForm: CreateUserForm = { email: '', username: '', name: '', contactNumber: '', password: '', role: 'USER', canUploadDocuments: false }
 
-function UserRow({ user, pending, deleting, requestDelete, cancelDelete, deactivate, updatingPermission, toggleUploadPermission }: {
+function UserRow({ user, pending, deleting, requestDelete, cancelDelete, deactivate, updatingPermission, toggleUploadPermission }: Readonly<{
   user: AdminUser
   pending: boolean
   deleting: boolean
@@ -28,7 +28,7 @@ function UserRow({ user, pending, deleting, requestDelete, cancelDelete, deactiv
   deactivate: () => void
   updatingPermission: boolean
   toggleUploadPermission: () => void
-}) {
+}>) {
   const active = user.active !== false
   return (
     <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', padding: '0.9rem 1rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)' }}>

@@ -92,7 +92,7 @@ export function DashboardEmbed({
       const text = (node.textContent ?? '').trim().toLowerCase()
       const aria = (node.getAttribute('aria-label') ?? '').trim().toLowerCase()
       const title = (node.getAttribute('title') ?? '').trim().toLowerCase()
-      const testId = `${node.getAttribute('data-test') ?? ''} ${node.getAttribute('data-testid') ?? ''}`.toLowerCase()
+      const testId = `${node.dataset.test ?? ''} ${node.dataset.testid ?? ''}`.toLowerCase()
       const isAlwaysBlocked =
         alwaysBlockedLabels.has(text) ||
         alwaysBlockedLabels.has(aria) ||

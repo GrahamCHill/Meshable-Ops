@@ -1,4 +1,9 @@
-mock_provider "aws" {}
+mock_provider "aws" {
+  # Mock JSON rendering only; the assertions inspect the actual policy inputs.
+  mock_data "aws_iam_policy_document" {
+    defaults = { json = "{}" }
+  }
+}
 
 override_data {
   target = data.aws_subnets.default
@@ -42,16 +47,30 @@ run "secure_storage_and_explicit_networking" {
   }
 
   assert {
-    condition = alltrue([
-      for policy in [aws_s3_bucket_policy.documents.policy, aws_s3_bucket_policy.access_logs.policy] :
-      anytrue([
-        for statement in jsondecode(policy).Statement :
-        statement.Effect == "Deny" && statement.Principal == "*" &&
-        statement.Action == "s3:*" &&
-        try(statement.Condition.Bool["aws:SecureTransport"], "") == "false"
-      ])
+    condition = anytrue([
+      for statement in jsondecode(aws_s3_bucket_policy.documents.policy).Statement :
+      statement.Effect == "Deny" && statement.Principal == "*" &&
+      statement.Action == "s3:*" &&
+      try(statement.Condition.Bool["aws:SecureTransport"], "") == "false"
     ])
-    error_message = "Both S3 buckets must deny all operations over insecure transport for every principal."
+    error_message = "The document bucket must deny all operations over insecure transport for every principal."
+  }
+
+  assert {
+    condition = (
+      aws_s3_bucket_policy.access_logs.policy == data.aws_iam_policy_document.access_logs.json &&
+      data.aws_iam_policy_document.access_logs.statement[1].effect == "Deny" &&
+      data.aws_iam_policy_document.access_logs.statement[1].actions == toset(["s3:*"]) &&
+      one(data.aws_iam_policy_document.access_logs.statement[1].principals).type == "*" &&
+      one(data.aws_iam_policy_document.access_logs.statement[1].principals).identifiers == toset(["*"]) &&
+      one(data.aws_iam_policy_document.access_logs.statement[1].condition).test == "Bool" &&
+      one(data.aws_iam_policy_document.access_logs.statement[1].condition).variable == "aws:SecureTransport" &&
+      one(data.aws_iam_policy_document.access_logs.statement[1].condition).values == tolist(["false"]) &&
+      data.aws_iam_policy_document.access_logs.statement[1].resources == toset([
+        aws_s3_bucket.access_logs.arn, "${aws_s3_bucket.access_logs.arn}/*"
+      ])
+    )
+    error_message = "The log bucket policy must deny insecure transport for the bucket and every object."
   }
 
   assert {
@@ -80,11 +99,17 @@ run "secure_storage_and_explicit_networking" {
 
   assert {
     condition = (
-      jsondecode(aws_s3_bucket_policy.access_logs.policy).Statement[0].Principal.Service == "logging.s3.amazonaws.com" &&
-      jsondecode(aws_s3_bucket_policy.access_logs.policy).Statement[0].Action == "s3:PutObject" &&
-      jsondecode(aws_s3_bucket_policy.access_logs.policy).Statement[0].Resource == "${aws_s3_bucket.access_logs.arn}/documents/*" &&
-      jsondecode(aws_s3_bucket_policy.access_logs.policy).Statement[0].Condition.ArnLike["aws:SourceArn"] == aws_s3_bucket.documents.arn &&
-      jsondecode(aws_s3_bucket_policy.access_logs.policy).Statement[0].Condition.StringEquals["aws:SourceAccount"] == "123456789012"
+      data.aws_iam_policy_document.access_logs.statement[0].effect == "Allow" &&
+      one(data.aws_iam_policy_document.access_logs.statement[0].principals).type == "Service" &&
+      one(data.aws_iam_policy_document.access_logs.statement[0].principals).identifiers == toset(["logging.s3.amazonaws.com"]) &&
+      data.aws_iam_policy_document.access_logs.statement[0].actions == toset(["s3:PutObject"]) &&
+      data.aws_iam_policy_document.access_logs.statement[0].resources == toset(["${aws_s3_bucket.access_logs.arn}/documents/*"]) &&
+      { for condition in data.aws_iam_policy_document.access_logs.statement[0].condition : condition.test => {
+        (condition.variable) = one(condition.values)
+        } } == {
+        ArnLike      = { "aws:SourceArn" = aws_s3_bucket.documents.arn }
+        StringEquals = { "aws:SourceAccount" = "123456789012" }
+      }
     )
     error_message = "Log delivery must be limited to S3 logging for this document bucket and account."
   }

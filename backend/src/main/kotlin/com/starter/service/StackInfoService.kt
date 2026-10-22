@@ -207,9 +207,7 @@ class StackInfoService(
             writer.write(redisCommand("PING"))
             writer.flush()
             val pong = reader.readLine()
-            if (pong != "+PONG") {
-                throw IllegalStateException("Unexpected Redis ping response: $pong")
-            }
+            check(pong == "+PONG") { "Unexpected Redis ping response: $pong" }
         }
 
         StackServiceInfo(

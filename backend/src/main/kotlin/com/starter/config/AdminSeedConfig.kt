@@ -7,8 +7,8 @@ import com.starter.model.postgres.User
 import com.starter.repository.postgres.DashboardEmbedConfigRepository
 import com.starter.repository.postgres.UserRepository
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ApplicationRunner
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.env.Environment
@@ -27,6 +27,7 @@ data class BootstrapUserSeed(
 )
 
 @Configuration
+@EnableConfigurationProperties(AdminSeedProperties::class)
 class AdminSeedConfig {
 
     @Bean
@@ -36,23 +37,10 @@ class AdminSeedConfig {
         userRepository: UserRepository,
         dashboardEmbedConfigRepository: DashboardEmbedConfigRepository,
         passwordEncoder: PasswordEncoder,
-        @Value("\${app.seed-admin.email:admin@app.local}") seedEmail: String,
-        @Value("\${app.seed-admin.username:admin}") seedUsername: String,
-        @Value("\${app.seed-admin.password:admin123}") seedPassword: String,
-        @Value("\${app.seed-admin.role:ADMIN}") seedRole: String,
-        @Value("\${app.seed-user.email:user@app.local}") standardEmail: String,
-        @Value("\${app.seed-user.username:user}") standardUsername: String,
-        @Value("\${app.seed-user.password:user123}") standardPassword: String,
-        @Value("\${app.seed-user.role:USER}") standardRole: String,
-        @Value("\${app.bootstrap-users-json:}") bootstrapUsersJson: String,
-        @Value("\${app.seed-dashboard.label:Metrics Overview}") dashboardLabel: String,
-        @Value("\${app.seed-dashboard.description:Items created over time}") dashboardDescription: String,
-        @Value("\${app.seed-dashboard.id:fdda8aae-c6fb-48fc-9322-5f797764b9dd}") dashboardId: String,
-        @Value("\${app.seed-dashboard.guest-token-resource-id:}") guestTokenResourceId: String,
-        @Value("\${app.seed-dashboard.allowed-roles:ADMIN,USER}") dashboardAllowedRoles: String,
+        settings: AdminSeedProperties,
     ) = ApplicationRunner {
         val isProd = environment.acceptsProfiles(Profiles.of("prod"))
-        val bootstrapUsers = parseBootstrapUsers(objectMapper, bootstrapUsersJson)
+        val bootstrapUsers = parseBootstrapUsers(objectMapper, settings.bootstrapUsersJson)
 
         when {
             bootstrapUsers.isNotEmpty() -> {
@@ -60,12 +48,7 @@ class AdminSeedConfig {
                     seedUser(
                         userRepository = userRepository,
                         passwordEncoder = passwordEncoder,
-                        email = seed.email,
-                        username = seed.username,
-                        name = seed.name,
-                        contactNumber = seed.contactNumber,
-                        password = seed.password,
-                        role = seed.role,
+                        seed = seed,
                         label = "bootstrap-${index + 1}",
                     )
                 }
@@ -79,19 +62,13 @@ class AdminSeedConfig {
                 seedUser(
                     userRepository = userRepository,
                     passwordEncoder = passwordEncoder,
-                    email = seedEmail,
-                    username = seedUsername,
-                    password = seedPassword,
-                    role = seedRole,
+                    seed = settings.seedAdmin.toSeed(),
                     label = "admin",
                 )
                 seedUser(
                     userRepository = userRepository,
                     passwordEncoder = passwordEncoder,
-                    email = standardEmail,
-                    username = standardUsername,
-                    password = standardPassword,
-                    role = standardRole,
+                    seed = settings.seedUser.toSeed(),
                     label = "standard",
                 )
             }
@@ -99,11 +76,11 @@ class AdminSeedConfig {
 
         seedDashboardEmbed(
             dashboardEmbedConfigRepository,
-            dashboardLabel,
-            dashboardDescription,
-            dashboardId,
-            guestTokenResourceId,
-            dashboardAllowedRoles,
+            settings.seedDashboard.label,
+            settings.seedDashboard.description,
+            settings.seedDashboard.id,
+            settings.seedDashboard.guestTokenResourceId,
+            settings.seedDashboard.allowedRoles,
         )
     }
 
@@ -121,23 +98,18 @@ class AdminSeedConfig {
     private fun seedUser(
         userRepository: UserRepository,
         passwordEncoder: PasswordEncoder,
-        email: String,
-        username: String,
-        name: String? = null,
-        contactNumber: String? = null,
-        password: String,
-        role: String,
+        seed: BootstrapUserSeed,
         label: String,
     ): User {
-        val normalizedEmail = email.trim().lowercase()
-        val normalizedUsername = username.trim()
-        val normalizedName = name?.trim()?.ifBlank { null }
-        val normalizedContactNumber = contactNumber?.trim()?.ifBlank { null }
-        val normalizedRole = role.trim().uppercase()
+        val normalizedEmail = seed.email.trim().lowercase()
+        val normalizedUsername = seed.username.trim()
+        val normalizedName = seed.name?.trim()?.ifBlank { null }
+        val normalizedContactNumber = seed.contactNumber?.trim()?.ifBlank { null }
+        val normalizedRole = seed.role.trim().uppercase()
         val existingByEmail = userRepository.findByEmail(normalizedEmail).orElse(null)
         val existingByUsername = userRepository.findByUsername(normalizedUsername).orElse(null)
         val existing = existingByEmail ?: existingByUsername
-        val encodedPassword = passwordEncoder.encode(password)
+        val encodedPassword = passwordEncoder.encode(seed.password)
 
         if (existing == null) {
             val created = userRepository.save(
@@ -161,7 +133,7 @@ class AdminSeedConfig {
             existing.contactNumber != normalizedContactNumber ||
             existing.role != normalizedRole ||
             !existing.active ||
-            !passwordEncoder.matches(password, existing.password)
+            !passwordEncoder.matches(seed.password, existing.password)
 
         if (needsUpdate) {
             val updated = userRepository.save(

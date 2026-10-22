@@ -7,7 +7,7 @@ function statusColor(status: string): 'success' | 'danger' | 'warning' {
   return 'warning'
 }
 
-export function StackServiceCard({ service }: { service: StackServiceInfo }) {
+export function StackServiceCard({ service }: Readonly<{ service: StackServiceInfo }>) {
   return (
     <Card style={{ padding: '1rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 10 }}>

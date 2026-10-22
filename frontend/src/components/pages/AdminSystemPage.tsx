@@ -6,8 +6,10 @@ import { StackServiceCard } from '../admin/StackServiceCard'
 import { formatDate } from '../admin/adminUtils'
 import { Globe, HeartPulse, Lock, RefreshCcw, Server } from 'lucide-react'
 
-function HealthValue({ label, value }: { label: string; value?: string }) {
-  const color = value === 'UP' ? 'var(--color-success)' : value === 'DOWN' ? 'var(--color-danger)' : 'var(--color-warning)'
+function HealthValue({ label, value }: Readonly<{ label: string; value?: string }>) {
+  let color = 'var(--color-warning)'
+  if (value === 'UP') color = 'var(--color-success)'
+  else if (value === 'DOWN') color = 'var(--color-danger)'
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '0.65rem 0', borderBottom: '1px solid var(--color-border)' }}>
       <span>{label}</span>

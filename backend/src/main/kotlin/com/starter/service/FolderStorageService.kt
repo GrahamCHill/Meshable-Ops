@@ -10,6 +10,7 @@ import com.starter.exception.BadRequestException
 import com.starter.exception.ConflictException
 import com.starter.model.postgres.AppSettings
 import org.springframework.stereotype.Service
+import org.springframework.http.MediaType
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
@@ -259,7 +260,7 @@ private class S3StorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
     override fun upload(rootPrefix: String, relativePath: String, contentType: String?, bytes: ByteArray) = client().use { client ->
         client.putObject(
             PutObjectRequest.builder().bucket(config.bucket).key(rootPrefix + relativePath)
-                .contentType(contentType ?: "application/octet-stream").build(),
+                .contentType(contentType ?: MediaType.APPLICATION_OCTET_STREAM_VALUE).build(),
             RequestBody.fromBytes(bytes),
         )
         Unit
@@ -271,7 +272,7 @@ private class S3StorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
         )
         StorageObjectDownload(
             filename = relativePath.substringAfterLast('/'),
-            contentType = response.response().contentType() ?: "application/octet-stream",
+            contentType = response.response().contentType() ?: MediaType.APPLICATION_OCTET_STREAM_VALUE,
             bytes = response.asByteArray(),
         )
     }
@@ -392,7 +393,7 @@ private class AzureBlobStorageAdapter(settings: AppSettings) : ObjectStorageAdap
         val blob = container().getBlobClient(rootPrefix + relativePath)
         return StorageObjectDownload(
             filename = relativePath.substringAfterLast('/'),
-            contentType = blob.properties.contentType ?: "application/octet-stream",
+            contentType = blob.properties.contentType ?: MediaType.APPLICATION_OCTET_STREAM_VALUE,
             bytes = blob.downloadContent().toBytes(),
         )
     }

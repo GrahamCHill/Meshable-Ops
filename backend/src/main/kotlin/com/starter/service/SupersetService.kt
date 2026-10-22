@@ -14,6 +14,7 @@ import org.springframework.web.client.HttpClientErrorException
 data class SupersetDashboardLink(val numericId: String, val embedUuid: String)
 
 private val log = LoggerFactory.getLogger(SupersetService::class.java)
+private const val CSRF_TOKEN_HEADER = "X-CSRFToken"
 
 @Service
 class SupersetService {
@@ -31,7 +32,7 @@ class SupersetService {
         val response = rest.exchange(
             "$baseUrl/api/v1/dashboard/?q=(page_size:100,order_column:dashboard_title,order_direction:asc)",
             HttpMethod.GET,
-            HttpEntity<Void>(headers),
+            HttpEntity<Unit>(headers),
             String::class.java,
         )
         return mapper.readTree(response.body).path("result").map { dashboard ->
@@ -52,7 +53,7 @@ class SupersetService {
             rest.exchange(
                 "$baseUrl/api/v1/dashboard/$dashboardId",
                 HttpMethod.GET,
-                HttpEntity<Void>(headers),
+                HttpEntity<Unit>(headers),
                 String::class.java,
             )
         } catch (error: HttpClientErrorException.NotFound) {
@@ -66,7 +67,7 @@ class SupersetService {
         val csrfToken = getCsrfToken(token)
         val writeHeaders = adminHeaders(token).apply {
             contentType = MediaType.APPLICATION_JSON
-            set("X-CSRFToken", csrfToken)
+            set(CSRF_TOKEN_HEADER, csrfToken)
             set("Referer", baseUrl)
         }
         rest.exchange(
@@ -84,7 +85,7 @@ class SupersetService {
         val response = rest.exchange(
             "$baseUrl/api/v1/dashboard/$dashboardId/embedded",
             HttpMethod.GET,
-            HttpEntity<Void>(headers),
+            HttpEntity<Unit>(headers),
             String::class.java,
         )
         mapper.readTree(response.body).path("result").path("uuid").asText().ifBlank { null }
@@ -112,7 +113,7 @@ class SupersetService {
         val headers = HttpHeaders().apply {
             contentType = MediaType.APPLICATION_JSON
             setBearerAuth(accessToken)
-            set("X-CSRFToken", csrfToken)
+            set(CSRF_TOKEN_HEADER, csrfToken)
             set("Referer", baseUrl)
         }
 
@@ -216,14 +217,14 @@ class SupersetService {
         val headers = HttpHeaders().apply {
             contentType = MediaType.APPLICATION_JSON
             setBearerAuth(accessToken)
-            set("X-CSRFToken", csrfToken)
+            set(CSRF_TOKEN_HEADER, csrfToken)
             set("Referer", baseUrl)
         }
 
         val currentResponse = rest.exchange(
             "$baseUrl/api/v1/dashboard/$dashboardId/embedded",
             HttpMethod.GET,
-            HttpEntity<Void>(headers),
+            HttpEntity<Unit>(headers),
             String::class.java
         )
         val resultNode = mapper.readTree(currentResponse.body).path("result")
@@ -277,7 +278,7 @@ class SupersetService {
             val response = rest.exchange(
                 "$baseUrl/api/v1/security/csrf_token/",
                 HttpMethod.GET,
-                HttpEntity<Void>(headers),
+                HttpEntity<Unit>(headers),
                 String::class.java
             )
             mapper.readTree(response.body).get("result").asText()

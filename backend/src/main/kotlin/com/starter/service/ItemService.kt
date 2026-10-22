@@ -23,6 +23,8 @@ import java.time.Instant
 
 data class VectorReindexResult(val folders: Int, val documents: Int)
 
+private const val STORAGE_ROOT_NOT_FOUND = "Storage root not found"
+
 @Service
 class ItemService(
     private val itemRepository: ItemRepository,
@@ -185,7 +187,7 @@ class ItemService(
     @Transactional
     fun browse(itemId: UUID, path: String): StorageContentsResponse {
         val item = itemRepository.findById(itemId)
-            .orElseThrow { NotFoundException("Storage root not found") }
+            .orElseThrow { NotFoundException(STORAGE_ROOT_NOT_FOUND) }
         val rootPrefix = folderStorageService.prefixFor(item.id)
         val result = folderStorageService.browse(rootPrefix, path)
         val documents = syncDocuments(item, result.entries.filter { it.type == "OBJECT" })
@@ -219,7 +221,7 @@ class ItemService(
             throw com.starter.exception.ForbiddenException("Document upload permission is required")
         }
         val item = itemRepository.findById(itemId)
-            .orElseThrow { NotFoundException("Storage root not found") }
+            .orElseThrow { NotFoundException(STORAGE_ROOT_NOT_FOUND) }
         if (uploads.isEmpty()) throw com.starter.exception.BadRequestException("Select at least one file")
 
         val rootPrefix = folderStorageService.prefixFor(item.id)
@@ -243,7 +245,7 @@ class ItemService(
 
     fun download(itemId: UUID, path: String, archive: Boolean): StorageObjectDownload {
         val item = itemRepository.findById(itemId)
-            .orElseThrow { NotFoundException("Storage root not found") }
+            .orElseThrow { NotFoundException(STORAGE_ROOT_NOT_FOUND) }
         val rootPrefix = folderStorageService.prefixFor(item.id)
         return if (archive) folderStorageService.downloadFolder(rootPrefix, path)
         else folderStorageService.download(rootPrefix, path)

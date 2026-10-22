@@ -18,7 +18,7 @@ function resolveInitialMode(): ThemeMode {
   return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
 }
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
+export function ThemeProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [mode, setMode] = useState<ThemeMode>(() => resolveInitialMode())
 
   useEffect(() => {

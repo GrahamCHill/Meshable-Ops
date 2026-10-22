@@ -20,6 +20,6 @@ export function formatDate(value?: string | null) {
 
 export function extractFilename(contentDisposition?: string) {
   if (!contentDisposition) return 'app-backup.json'
-  const match = contentDisposition.match(/filename="?(.*?)"?$/i)
+  const match = /filename="?(.*?)"?$/i.exec(contentDisposition)
   return match?.[1] ?? 'app-backup.json'
 }

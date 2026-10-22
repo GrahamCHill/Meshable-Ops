@@ -5,12 +5,12 @@ export function AdminPageHeader({
   description,
   icon: Icon,
   actions,
-}: {
+}: Readonly<{
   title: string
   description: string
   icon: LucideIcon
   actions?: React.ReactNode
-}) {
+}>) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
