@@ -27,7 +27,8 @@ variable "ssh_public_key" {
   type = string
 }
 variable "admin_cidr" {
-  type = string
+  type        = string
+  description = "Source CIDR allowed to SSH over private connectivity to the VNet (for example, a VPN client subnet)."
 }
 variable "storage_root_path" {
   type    = string

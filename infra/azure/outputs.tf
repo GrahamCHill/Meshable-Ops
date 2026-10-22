@@ -1,6 +1,9 @@
 output "public_ip" {
   value = azurerm_public_ip.app.ip_address
 }
+output "private_ip" {
+  value = azurerm_network_interface.app.private_ip_address
+}
 output "application_url" {
   value = "https://${var.app_domain}"
 }

@@ -1,4 +1,7 @@
 #cloud-config
+# The Elastic IP is attached after EC2 starts. Wait before package installation.
+bootcmd:
+  - [sh, -c, "for attempt in $(seq 1 60); do timeout 5 bash -c 'exec 3<>/dev/tcp/archive.ubuntu.com/80' && exit 0; sleep 5; done; exit 1"]
 package_update: true
 packages: [git, docker.io, docker-compose-v2]
 write_files:

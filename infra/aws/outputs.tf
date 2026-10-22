@@ -7,3 +7,6 @@ output "application_url" {
 output "document_bucket" {
   value = aws_s3_bucket.documents.id
 }
+output "access_log_bucket" {
+  value = aws_s3_bucket.access_logs.id
+}

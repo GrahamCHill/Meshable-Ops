@@ -1,6 +1,7 @@
 data "aws_vpc" "default" {
   default = true
 }
+data "aws_caller_identity" "current" {}
 data "aws_subnets" "default" {
   filter {
     name   = "vpc-id"
@@ -35,6 +36,84 @@ resource "aws_s3_bucket_public_access_block" "documents" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
+}
+resource "aws_s3_bucket_policy" "documents" {
+  bucket = aws_s3_bucket.documents.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "DenyInsecureTransport"
+      Effect    = "Deny"
+      Principal = "*"
+      Action    = "s3:*"
+      Resource  = [aws_s3_bucket.documents.arn, "${aws_s3_bucket.documents.arn}/*"]
+      Condition = { Bool = { "aws:SecureTransport" = "false" } }
+    }]
+  })
+}
+# This is the terminal log destination. Logging this bucket would create a log loop.
+resource "aws_s3_bucket" "access_logs" {
+  bucket_prefix = "${var.name}-access-logs-"
+}
+resource "aws_s3_bucket_public_access_block" "access_logs" {
+  bucket                  = aws_s3_bucket.access_logs.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+resource "aws_s3_bucket_ownership_controls" "access_logs" {
+  bucket = aws_s3_bucket.access_logs.id
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
+resource "aws_s3_bucket_server_side_encryption_configuration" "access_logs" {
+  bucket = aws_s3_bucket.access_logs.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+resource "aws_s3_bucket_policy" "access_logs" {
+  bucket = aws_s3_bucket.access_logs.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "AllowDocumentAccessLogDelivery"
+        Effect    = "Allow"
+        Principal = { Service = "logging.s3.amazonaws.com" }
+        Action    = "s3:PutObject"
+        Resource  = "${aws_s3_bucket.access_logs.arn}/documents/*"
+        Condition = {
+          ArnLike      = { "aws:SourceArn" = aws_s3_bucket.documents.arn }
+          StringEquals = { "aws:SourceAccount" = data.aws_caller_identity.current.account_id }
+        }
+      },
+      {
+        Sid       = "DenyInsecureTransport"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource  = [aws_s3_bucket.access_logs.arn, "${aws_s3_bucket.access_logs.arn}/*"]
+        Condition = { Bool = { "aws:SecureTransport" = "false" } }
+      }
+    ]
+  })
+}
+resource "aws_s3_bucket_logging" "documents" {
+  bucket        = aws_s3_bucket.documents.id
+  target_bucket = aws_s3_bucket.access_logs.id
+  target_prefix = "documents/"
+
+  depends_on = [
+    aws_s3_bucket_policy.access_logs,
+    aws_s3_bucket_ownership_controls.access_logs,
+    aws_s3_bucket_server_side_encryption_configuration.access_logs,
+    aws_s3_bucket_public_access_block.access_logs,
+  ]
 }
 resource "aws_iam_role" "app" {
   name_prefix = "${var.name}-"
@@ -94,12 +173,13 @@ resource "aws_security_group" "app" {
   }
 }
 resource "aws_instance" "app" {
-  ami                    = data.aws_ami.ubuntu.id
-  instance_type          = var.instance_type
-  subnet_id              = data.aws_subnets.default.ids[0]
-  vpc_security_group_ids = [aws_security_group.app.id]
-  iam_instance_profile   = aws_iam_instance_profile.app.name
-  key_name               = aws_key_pair.app.key_name
+  ami                         = data.aws_ami.ubuntu.id
+  instance_type               = var.instance_type
+  subnet_id                   = data.aws_subnets.default.ids[0]
+  associate_public_ip_address = false
+  vpc_security_group_ids      = [aws_security_group.app.id]
+  iam_instance_profile        = aws_iam_instance_profile.app.name
+  key_name                    = aws_key_pair.app.key_name
   root_block_device {
     volume_type = "gp3"
     volume_size = 80

@@ -21,6 +21,57 @@ resource "azurerm_public_ip" "app" {
   allocation_method   = "Static"
   sku                 = "Standard"
 }
+resource "azurerm_lb" "app" {
+  # Detach the public IP from an existing NIC before reusing it on the load balancer.
+  depends_on = [azurerm_network_interface.app]
+
+  name                = "${var.name}-lb"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.app.name
+  sku                 = "Standard"
+
+  frontend_ip_configuration {
+    name                 = "public"
+    public_ip_address_id = azurerm_public_ip.app.id
+  }
+}
+resource "azurerm_lb_backend_address_pool" "app" {
+  name            = "app"
+  loadbalancer_id = azurerm_lb.app.id
+}
+# Probe HTTP so certificate issuance can start before HTTPS becomes available.
+resource "azurerm_lb_probe" "app" {
+  name            = "http"
+  loadbalancer_id = azurerm_lb.app.id
+  protocol        = "Tcp"
+  port            = 80
+}
+resource "azurerm_lb_rule" "web" {
+  for_each = { http = 80, https = 443 }
+
+  name                           = each.key
+  loadbalancer_id                = azurerm_lb.app.id
+  protocol                       = "Tcp"
+  frontend_port                  = each.value
+  backend_port                   = each.value
+  frontend_ip_configuration_name = "public"
+  backend_address_pool_ids       = [azurerm_lb_backend_address_pool.app.id]
+  probe_id                       = azurerm_lb_probe.app.id
+  disable_outbound_snat          = true
+}
+# Explicit SNAT keeps package downloads, Git, and ACME working on the private NIC.
+resource "azurerm_lb_outbound_rule" "app" {
+  name                    = "outbound"
+  loadbalancer_id         = azurerm_lb.app.id
+  protocol                = "All"
+  backend_address_pool_id = azurerm_lb_backend_address_pool.app.id
+
+  frontend_ip_configuration {
+    name = "public"
+  }
+
+  depends_on = [azurerm_lb_rule.web]
+}
 resource "azurerm_network_security_group" "app" {
   name                = "${var.name}-nsg"
   location            = var.location
@@ -67,12 +118,16 @@ resource "azurerm_network_interface" "app" {
     name                          = "primary"
     subnet_id                     = azurerm_subnet.app.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.app.id
   }
 }
 resource "azurerm_network_interface_security_group_association" "app" {
   network_interface_id      = azurerm_network_interface.app.id
   network_security_group_id = azurerm_network_security_group.app.id
+}
+resource "azurerm_network_interface_backend_address_pool_association" "app" {
+  network_interface_id    = azurerm_network_interface.app.id
+  ip_configuration_name   = "primary"
+  backend_address_pool_id = azurerm_lb_backend_address_pool.app.id
 }
 resource "random_id" "suffix" {
   byte_length = 4
@@ -84,7 +139,11 @@ resource "azurerm_storage_account" "documents" {
   account_tier                    = "Standard"
   account_replication_type        = "LRS"
   min_tls_version                 = "TLS1_2"
+  https_traffic_only_enabled      = true
   allow_nested_items_to_be_public = false
+  identity {
+    type = "SystemAssigned"
+  }
 }
 resource "azurerm_storage_container" "documents" {
   name                  = "documents"
@@ -92,6 +151,13 @@ resource "azurerm_storage_container" "documents" {
   container_access_type = "private"
 }
 resource "azurerm_linux_virtual_machine" "app" {
+  # Establish outbound connectivity and the firewall before cloud-init starts.
+  depends_on = [
+    azurerm_network_interface_security_group_association.app,
+    azurerm_network_interface_backend_address_pool_association.app,
+    azurerm_lb_outbound_rule.app,
+  ]
+
   name                  = "${var.name}-vm"
   resource_group_name   = azurerm_resource_group.app.name
   location              = var.location
