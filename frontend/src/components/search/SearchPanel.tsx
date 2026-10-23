@@ -22,19 +22,17 @@ export function SearchPanel({ compact = false, onNavigate }: { compact?: boolean
   const ask = () => { if (query.trim()) { search.reset(); answer.mutate(query.trim()) } }
   const settingsLink = admin && <Link to="/admin/ai" onClick={onNavigate}>Search and AI settings</Link>
 
-  if (status.data?.searchEnabled === false) return <div className="page-stack"><p>Search is disabled by an administrator.</p>{settingsLink}</div>
+  if (!status.data?.searchEnabled || (compact && !askEnabled)) return null
   return <div className="page-stack">
-    {!compact && <div className="page-heading"><div><h1>Search & AI</h1><p>Search accessible folders and documents. AI answers are optional.</p></div>{settingsLink}</div>}
-    <form className="page-stack" onSubmit={event => { event.preventDefault(); runSearch() }}>
-      <label htmlFor={compact ? 'assistant-query' : 'storage-search-query'}>{askEnabled ? 'Search or ask about your documents' : 'Search your documents'}</label>
+    {!compact && <div className="page-heading"><div><h1>Search storage</h1><p>Find accessible folders and documents.</p></div>{settingsLink}</div>}
+    <form className="page-stack" onSubmit={event => { event.preventDefault(); if (compact) ask(); else runSearch() }}>
+      <label htmlFor={compact ? 'assistant-query' : 'storage-search-query'}>{compact ? 'Ask about your documents' : 'Search your documents'}</label>
       <input id={compact ? 'assistant-query' : 'storage-search-query'} autoFocus={compact} placeholder={askEnabled ? 'Which contracts renew this quarter?' : 'Search folders and documents'} maxLength={4000} value={query} onChange={event => setQuery(event.target.value)} />
-      <div className="inline-actions"><Button type="submit" disabled={!query.trim() || busy}>Search documents</Button>{askEnabled && <Button type="button" variant="secondary" disabled={!query.trim() || busy} onClick={ask}>Ask AI</Button>}<label htmlFor={compact ? 'assistant-limit' : 'search-limit'}>Results</label><select id={compact ? 'assistant-limit' : 'search-limit'} value={limit} onChange={event => setLimit(Number(event.target.value))} style={{ width: 72 }}>{[5, 10, 20, 50].map(value => <option key={value} value={value}>{value}</option>)}</select></div>
-      {!askEnabled && <p className="field-help">AI answers are off or not configured. Search remains available.</p>}
-      {status.data?.embeddingProvider === 'LOCAL' && <p className="field-help">Local text matching needs no AI provider or API key.</p>}
+      <div className="inline-actions"><Button type="submit" disabled={!query.trim() || busy}>{compact ? 'Ask AI' : 'Search documents'}</Button>{!compact && askEnabled && <Button type="button" variant="secondary" disabled={!query.trim() || busy} onClick={ask}>Ask AI</Button>}{!compact && <><label htmlFor="search-limit">Results</label><select id="search-limit" value={limit} onChange={event => setLimit(Number(event.target.value))} style={{ width: 72 }}>{[5, 10, 20, 50].map(value => <option key={value} value={value}>{value}</option>)}</select></>}</div>
     </form>
     {busy && <p role="status"><Spinner /> {answer.isPending ? 'Finding excerpts and preparing an answer…' : 'Searching…'}</p>}
     {(search.isError || answer.isError) && <p role="alert" className="feedback error">{getErrorMessage(search.error ?? answer.error)}</p>}
-    {answer.data && <><p className="field-help">Question: {answer.variables}</p><AiAnswerPanel answer={answer.data} onNavigate={onNavigate} /></>}
+    {askEnabled && answer.data && <><p className="field-help">Question: {answer.variables}</p><AiAnswerPanel answer={answer.data} onNavigate={onNavigate} /></>}
     {search.data && <section className="page-stack" aria-label="Search results"><p className="field-help">{search.data.results.length} results for “{search.variables?.query}”</p>{search.data.notice && <p role="status" className="field-help">{search.data.notice}</p>}{search.data.results.map((result, index) => <SearchResult key={result.pointId} result={result} rank={index + 1} keyword={search.data.mode === 'KEYWORD'} onNavigate={onNavigate} />)}{!search.data.results.length && <p>No matches found. Try another query or ask an administrator to reindex storage.</p>}</section>}
     {compact && settingsLink}
   </div>

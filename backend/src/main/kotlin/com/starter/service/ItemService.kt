@@ -3,7 +3,6 @@ package com.starter.service
 import com.starter.service.storage.FolderStorageSnapshot
 import com.starter.service.storage.StorageEntry
 import com.starter.service.storage.StorageObjectUpload
-import com.starter.service.storage.StorageObjectDownload
 import com.starter.ai.DocumentIndexService
 import com.starter.ai.AiUnavailableException
 import com.starter.ai.DocumentFingerprints
@@ -247,13 +246,6 @@ class ItemService(
             resourceId = item.id.toString(),
         )
         return browse(itemId, path)
-    }
-
-    @Transactional(readOnly = true)
-    fun download(itemId: UUID, path: String, archive: Boolean): StorageObjectDownload {
-        val item = itemRepository.findById(itemId)
-            .orElseThrow { NotFoundException(STORAGE_ROOT_NOT_FOUND) }
-        return folderStorageService.download(item, path, archive)
     }
 
     @Transactional(readOnly = true)

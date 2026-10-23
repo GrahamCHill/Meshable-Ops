@@ -237,3 +237,11 @@ The export identifies itself as `superset-docker-app-backup-v2` and `credentials
 - [MongoDB bootstrap](../docker/mongo/init.js)
 - [Backup export](../backend/src/main/kotlin/com/starter/service/BackupExportService.kt)
 - [Search and job guide](search-and-indexing.md)
+
+### Document access settings
+
+`document_access_settings` uses singleton ID `1`: `pdf_preview_enabled` defaults true, `download_mode` defaults `NORMAL` (`NORMAL`, `WATERMARKED`, or `DISABLED`), and `watermark_text` defaults `CONFIDENTIAL`. An absent row uses those defaults; the first admin save persists it. Hibernate creates the table on upgrade. These settings are not included in the existing JSON backup export; use database backups.
+
+### Email settings
+
+`email_settings` uses singleton ID `1`. It stores `source` (`ENVIRONMENT` or `ADMIN`), `enabled` (initially false), `provider`, sender/reply-to fields, SMTP host/port/security/authentication, API base URL, and Mailgun domain. `smtp_username`, `smtp_password` (also app password/OAuth2 token), and `api_key` are encrypted TEXT columns, never returned by settings APIs. Startup secret rotation includes all three columns. Environment credentials remain outside the row. Hibernate creates the table; an absent row selects the disabled environment defaults. Message bodies, delivery queues, and sent history are not persisted. The existing JSON export excludes this table; use PostgreSQL backups and preserve wrapping keys. See [email delivery](email-delivery.md).

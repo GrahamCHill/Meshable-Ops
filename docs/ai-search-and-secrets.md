@@ -2,12 +2,12 @@
 
 ## Start with search only
 
-Search and its bottom-right launcher default to enabled. AI answers and content indexing default to disabled. Leave embeddings on **Internal text matcher** to search metadata with no AI credentials, model download, or ML container. Add/share storage folders and reindex them; first-volume PostgreSQL initialization supplies sample folder metadata, not original document content.
+Storage search defaults to enabled. The chat launcher preference is on, but the floating button is hidden while AI answers or content indexing are disabled or a chat model is absent. AI answers and content indexing default to disabled. Leave embeddings on **Internal text matcher** to search metadata with no AI credentials, model download, or ML container. Add/share storage folders and reindex them; first-volume PostgreSQL initialization supplies sample folder metadata, not original document content.
 
 1. For local Compose, copy `.env.example` to the untracked `.env`. For production, use `.env.production.example` and the [deployment guide](deployment.md).
 2. Configure a persistent wrapping key before saving credentials or running the MinIO/Azurite development profiles. Generate it once with `openssl rand -base64 32`, set `APP_SECRETS_ENCRYPTION_KEY`, and keep a separate secure copy. Development storage seeds also save keys and need this value even when AI is off.
 3. Rebuild/start the stack, configure accessible folders, and run **Reindex now** under **Administration > Storage connections > Search index**.
-4. Open the bottom-right **Search & AI** button. **Administration > AI & search** independently controls search, launcher visibility, AI answers, and content indexing.
+4. Use the ordinary search field in **Storage**. Once AI answers and content indexing are configured, the bottom-right **Ask your documents** button opens chat. **Administration > AI & search** independently controls search, launcher visibility, AI answers, and content indexing.
 
 On Windows PowerShell without OpenSSL, generate a new wrapping-key value with:
 

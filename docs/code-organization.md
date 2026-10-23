@@ -13,8 +13,9 @@ Files are grouped by feature and responsibility. Page components compose the scr
 | `frontend/src/components/storage/` | Folder metadata form, document browser, and file listing. |
 | `frontend/src/components/admin/storage/` | Connection form/cards, folder selection and access controls, default settings, and search-index settings. |
 | `frontend/src/components/admin/ai/` and `frontend/src/components/search/` | Provider configuration fields, source links, search matches, and sourced answers. |
-| `frontend/src/components/search/SearchLauncher.tsx` and `SearchPanel.tsx` | Floating chat/search launcher and reusable search UI; the full `/search` page uses the same panel. |
+| `frontend/src/components/search/SearchLauncher.tsx` and `SearchPanel.tsx` | Optional floating AI chat and dedicated search UI; `StorageSearch.tsx` provides scoped ordinary search directly in Storage. |
 | `frontend/src/components/admin/storage/ReindexScheduleSettings.tsx` | Calendar, interval, and changed-file indexing schedule controls. |
+| `frontend/src/components/admin/useCredentialRequest.ts` | Write-only credential requests that avoid the shared mutation cache and retain safe error messages. |
 | `frontend/src/components/admin/storage/useStorageSettings.ts` | Default-connection draft, validation, saving, connection tests, and reindex mutations. It stays mounted when switching storage tabs to preserve unsaved changes. |
 | `frontend/src/hooks/useDashboardEmbed.ts` | Superset SDK lifecycle, guest tokens, loading/error state, observers, and cleanup. |
 | `frontend/src/lib/superset/` | Iframe sizing, restricted embed actions, and iframe navigation rules. |
@@ -34,6 +35,7 @@ Add feature-specific API calls and types beside their existing domain. Keep reus
 | `backend/src/main/kotlin/com/starter/service/FolderStorageService.kt` | Folder access boundaries, managed roots, upload/download orchestration, and ZIP archives. |
 | `backend/src/main/kotlin/com/starter/service/storage/` | Storage models, adapter contract/factory, shared path helpers, and separate S3 and Azure Blob implementations. |
 | `backend/src/main/kotlin/com/starter/ai/` | Provider configuration, protocol adapters, embedding validation, document indexing, extraction requests, and grounded answers. |
+| `backend/src/main/kotlin/com/starter/ai/LocalTextVectors.kt` | Default deterministic local matcher, independent of provider APIs and the ML helper. |
 | `backend/src/main/kotlin/com/starter/service/{SearchService,KeywordSearchService,ReindexSchedule,VectorReindexScheduler}.kt` | Search availability/fallback, access-checked keywords, timezone-aware schedule calculation, and persisted indexing jobs. |
 | `backend/src/main/kotlin/com/starter/security/` | Credential encryption/conversion/migration and password encoding/validation. |
 | `ml-backend/app/document_text.py` | Isolated, bounded text/PDF/DOCX extraction. |
@@ -42,4 +44,12 @@ Provider implementations handle cloud operations. Keep application visibility an
 
 ## Checks after a refactor
 
-Run `npm run build` from `frontend/` and `mvn test` from `backend/` with Java 21. When changing storage or embedding, also check the relevant UI flow: connection draft persistence across tabs, folder browsing, dashboard switching, reload/expand, and return navigation. These checks complement the backend access-control and provider regression tests.
+Run `npm run build` from `frontend/` and `mvn test` from `backend/` with Java 21. When changing extraction, install `ml-backend/requirements.txt` in a virtual environment and run `python -m unittest discover -s tests -v` from `ml-backend/`.
+
+Check the relevant UI flow after implementation changes: connection draft persistence across tabs, folder browsing/revocation, dashboard switching/reload/expand, and return navigation. Search changes should cover the absent launcher with AI off, hidden/disabled switches, optional sourced answers, and keyword fallback. Schedule changes should cover weekday/timezone calculations, repeated-change coalescing, saved due state, and disabled/manual jobs. Unit/provider mocks and fixture UI checks complement, rather than replace, a live deployment check.
+
+For documentation-only changes, validate relative links, headings/fences, API paths, and configuration names against the checked-in sources. See the [documentation index](README.md) and [API reference](api.md).
+
+PDF delivery policy lives in `DocumentAccessService`/`DocumentDeliveryService`; bounded raster rendering and watermarking live in `PdfService`. The frontend separates `AdminDocumentAccessPage`, `PdfViewer`, and the document-access API/hook. Tests cover direct-route restrictions, policy/access changes during processing, ZIP transforms, multiple/rotated PDF pages, and unsupported input.
+
+Optional mail lives in `backend/src/main/kotlin/com/starter/email/`: configuration/validation, encrypted settings selection, a reusable optional delivery service, and SMTP/API adapters. `AdminEmailController` owns the admin endpoints. Frontend files are `api/email.ts`, `AdminEmailPage.tsx`, `admin/email/EmailTransportForm.tsx`, and `EmailSendPanel.tsx`. Email tests use loopback SMTP/HTTP fixtures and check STARTTLS refusal, provider payloads/redirects, credential redaction/binding, disabled behavior, and admin authorization. [Email setup](email-delivery.md) describes integration and operational limits.

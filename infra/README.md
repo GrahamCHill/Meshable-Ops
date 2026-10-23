@@ -76,3 +76,16 @@ The examples accept application secrets as sensitive Terraform variables for cla
 values are still stored in Terraform state. Use an encrypted remote backend and replace cloud-init
 secret delivery with AWS Secrets Manager/SSM or Azure Key Vault before production use.
 
+## Application configuration after bootstrap
+
+The cloud-init templates seed the default connection with the VM's storage identity and no stored storage keys. They do not currently provision `APP_SECRETS_ENCRYPTION_KEY`, AI credentials, named folder selections, or an indexing schedule.
+
+After bootstrap:
+
+1. Review the deployed user roster, including accounts created by first-volume PostgreSQL SQL initialization. The production Spring profile only controls its own user runner.
+2. If credentials will be saved through Admin, add a persistent 32-byte base64 `APP_SECRETS_ENCRYPTION_KEY` to the server's protected runtime configuration and recreate the backend with the same Compose/env files. Preserve a separate secure copy for recovery; do not generate a different key for each restart.
+3. Configure shared folders, feature controls, and optional AI through the app. Search uses a local matcher without API keys by default. Multiple named connections can use the existing server identity when it has suitable access.
+4. Reindex once, then save a daily, weekly, interval, or next-time-after-change job. Jobs run in the backend, require the server to stay running, and assume one backend instance.
+
+The examples do not replace production database credential review or recovery backups. See the [deployment and upgrade guide](../docs/deployment.md), [credential setup](../docs/ai-search-and-secrets.md), and [indexing jobs](../docs/search-and-indexing.md). No Terraform resources or MongoDB schema changes are required for these UI/job controls.
+

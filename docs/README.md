@@ -10,6 +10,8 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Understand services, access rules, and data flow | [Architecture](architecture.md) |
 | Configure search, its launcher, or indexing schedules | [Search and indexing jobs](search-and-indexing.md) |
 | Set up optional AI, protect credentials, or rotate wrapping keys | [AI search and credential security](ai-search-and-secrets.md) |
+| Control PDF viewing, downloads, and watermarks | [Document access](document-access.md) |
+| Configure SMTP/app passwords or transactional email services | [Email delivery](email-delivery.md) |
 | Inspect extraction formats, limits, and processing states | [Document processing](document-processing-extension.md) |
 | Understand tables, MongoDB collections, and backup boundaries | [Database layout](database-layout.md) |
 | Deploy, upgrade, verify, or troubleshoot the stack | [Deployment](deployment.md) |
@@ -19,7 +21,9 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 
 ## Current operational defaults
 
-- Search and its bottom-right launcher are enabled; AI answers and content indexing are disabled.
+- Storage search is enabled. The launcher preference is on, but the chat button stays hidden until AI answers, content indexing, and a chat model are configured.
+- PDF viewing and normal downloads are enabled; admins can select watermark or disabled download mode.
+- Outbound email is disabled until configured; SMTP and API provider credentials can come from the environment or encrypted admin settings.
 - Local text matching runs inside the backend without an AI provider or ML container.
 - Scheduled indexing is disabled until an admin saves a job. Calendar jobs initially use `00:00`, Friday for weekly jobs, and `Africa/Johannesburg`; each value is editable.
 - `ADMIN` is the existing super-admin role for connection, folder-access, feature, and job settings. There is no separate `SUPER_ADMIN` role.

@@ -18,6 +18,7 @@ class StoredSecretMigration(private val jdbc: JdbcTemplate, private val encrypti
             "app_settings" to listOf("storage_access_key", "storage_secret_key"),
             "storage_connections" to listOf("access_key", "secret_key"),
             "ai_settings" to listOf("chat_api_key", "embedding_api_key"),
+            "email_settings" to listOf("smtp_username", "smtp_password", "api_key"),
         )) {
             jdbc.queryForList("SELECT id, ${columns.joinToString()} FROM $table").forEach { row ->
                 columns.forEach { column ->

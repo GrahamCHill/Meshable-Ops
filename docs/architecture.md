@@ -95,7 +95,7 @@ flowchart LR
 
 ### Search and optional AI
 
-1. The floating bottom-right launcher opens a reusable search panel; `/search` remains a dedicated route. The left navigation has no search item.
+1. Storage exposes ordinary similarity search, scoped to the current folder/path when browsing. The floating bottom-right launcher opens AI chat only when its features and chat model are configured; `/search` remains a dedicated search route. The left navigation has no search item.
 2. The backend checks the search feature switch before vector or keyword queries. Launcher visibility is a separate UI switch; disabling AI answers leaves search enabled.
 3. Default local feature hashing runs within Kotlin and needs no AI provider, model download, API key, or running ML container. PostgreSQL/pgvector still provides persistence and ranking.
 4. Folder, document, and chunk queries join live folder visibility and connection state. If configured embeddings are unavailable, access-checked keyword queries provide ordinary search. Different model identities are never compared as if their vectors were compatible.
@@ -142,7 +142,7 @@ The main user-visible routes are:
 - `/storage`
   registered storage roots and a nested S3/Azure Blob folder browser (`/items` redirects here)
 - `/search`
-  dedicated search panel, also available from the bottom-right launcher
+  dedicated search panel; ordinary search is also available directly in Storage
 - `/events`
   event log
 - `/admin`
@@ -266,3 +266,11 @@ If data services are offloaded:
 - the logical architecture stays the same
 - only the network destination of those backend dependencies changes
 - the app VM can be sized more like an application host and less like a full data-and-analytics node
+
+### Document delivery
+
+`DocumentDeliveryService` enforces the global PostgreSQL document policy on the authenticated download and PDF preview routes. `PdfService` uses server-side PDFBox to render bounded page images and create watermarked copies without modifying cloud originals. Folder ZIP downloads transform each PDF before adding it. Disabled downloads reject both object and archive requests; preview permission is independent. Visibility and policy are rechecked before returning processed bytes. See [document access](document-access.md).
+
+### Optional email delivery
+
+`EmailSettingsService` selects an independent environment/admin source. Admin credentials are encrypted by the shared entity converter and participate in wrapping-key rotation. `EmailDeliveryService` validates a single plain-text message and returns optional delivery status; `EmailProviderClient` handles SMTP (including app passwords and externally managed OAuth2 tokens) or Resend/SendGrid/Mailgun HTTP APIs. SMTP enforces TLS for authentication and API requests reject redirects. Provider errors are sanitized. The `ADMIN`-only `/api/admin/email` routes provide settings, test messages, and explicit sends; disabled delivery hides the sending controls and rejects direct sends. This module does not add automatic email to existing workflows. See [email delivery](email-delivery.md).

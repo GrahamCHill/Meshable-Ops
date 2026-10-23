@@ -1,5 +1,6 @@
 import type { StorageContents } from '../../api/items'
 import { Button } from '../ui'
+import { canDownload, type DocumentAccessPolicy } from '../../api/documentAccess'
 
 function formatSize(size?: number) {
   if (size == null) return '—'
@@ -14,12 +15,16 @@ export function StorageEntries({
   onNavigate,
   onDownload,
   downloading,
+  policy,
+  onOpenPdf,
 }: Readonly<{
   contents: StorageContents
   parentPath: string
   onNavigate: (path: string) => void
   onDownload: (path: string, archive: boolean, filename: string) => void
   downloading: boolean
+  policy?: DocumentAccessPolicy
+  onOpenPdf: (path: string) => void
 }>) {
   return (
     <div>
@@ -40,7 +45,8 @@ export function StorageEntries({
               {detail}
             </span>
             {entry.type === 'FOLDER' && <Button variant="ghost" size="sm" onClick={() => onNavigate(entry.path)}>Open </Button>}
-            <Button variant="ghost" size="sm" disabled={downloading} onClick={() => onDownload(entry.path, entry.type === 'FOLDER', entry.type === 'FOLDER' ? `${entry.name}.zip` : entry.name)} title={`Download ${entry.name}`}>Download</Button>
+            {entry.type === 'OBJECT' && (entry.name.toLowerCase().endsWith('.pdf') || entry.contentType?.split(';')[0] === 'application/pdf') && policy?.pdfPreviewEnabled && <Button variant="ghost" size="sm" onClick={() => onOpenPdf(entry.path)}>Open PDF</Button>}
+            {canDownload(policy) && <Button variant="ghost" size="sm" disabled={downloading} onClick={() => onDownload(entry.path, entry.type === 'FOLDER', entry.type === 'FOLDER' ? `${entry.name}.zip` : entry.name)} title={`Download ${entry.name}`}>{policy?.downloadMode === 'WATERMARKED' && (entry.type === 'FOLDER' || entry.name.toLowerCase().endsWith('.pdf') || entry.contentType?.split(';')[0] === 'application/pdf') ? 'Download with watermark' : 'Download'}</Button>}
           </div>
         )
       })}

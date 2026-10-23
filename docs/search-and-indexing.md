@@ -1,19 +1,21 @@
-# Search launcher and indexing jobs
+# Storage search, AI chat, and indexing jobs
 
 ## Feature controls
 
-**Administration > AI & search** has independent switches for search, the bottom-right launcher, and AI answers. Disable search to hide the launcher and reject search/chat API requests. Disable only the launcher to keep the dedicated `/search` page and API available. Disable AI answers to keep ordinary document search without generated answers. These switches follow the selected environment/admin configuration source.
+**Storage** has an ordinary search field, independent of AI answers. At the root it searches all accessible shared folders; inside a folder it searches that folder and its current subfolder tree. It uses the selected embedding model and cosine similarity, with access-checked keyword fallback when embeddings are unavailable or the index is empty. The default local matcher is deterministic text matching; configure external embeddings for semantic model embeddings.
+
+**Administration > AI & search** controls these features independently:
 
 | Control | Default | Effect |
 | --- | --- | --- |
-| Enable search | On | Gates ordinary search and chat on the backend; off returns HTTP 403 and hides the launcher |
-| Show bottom-right search and chat launcher | On | Controls the floating button; off leaves the enabled `/search` page/API available |
-| Enable AI answers | Off | Enables optional chat generation when a model and content indexing are configured |
-| Index document content | Off | Enables bounded extraction/chunks; off excludes stored chunks immediately and keeps metadata search |
+| Enable similarity search in Storage | On | Shows storage search fields; off hides them and rejects search/chat requests with HTTP 403 |
+| Show bottom-right AI chat launcher | On | Allows the floating chat button when search, AI, content indexing, and a chat model are configured |
+| Enable AI answers | Off | Shows optional AI controls and allows answer generation; off hides the chat launcher while ordinary storage search remains available |
+| Index document content | Off | Enables bounded extraction/chunks; off excludes stored chunks immediately and hides the chat launcher, retaining metadata search |
 
-These are application-wide settings. `ADMIN` can change them; an environment-sourced configuration is read-only until the admin selects the separate **Admin settings** source. The launcher refreshes status about every 30 seconds, and saves in the current browser invalidate that status immediately. Backend search checks use current settings even if another browser still displays the button.
+These are application-wide settings. `ADMIN` can change them; environment values are read-only until **Admin settings** is selected. UI controls refresh status about every 30 seconds; saving in the current browser updates them immediately. Backend checks always use current settings. The dedicated `/search` route remains available only when search is enabled.
 
-The launcher is available in the authenticated app shell, outside the left navigation. Close it with **Close**, the launcher button, or Escape. Its draft/results remain while the same mounted panel is closed; this is not a persistent chat history or a long-term conversation store. Opening a source resolves the normal authenticated Storage route.
+The chat launcher sits outside the left navigation. Close it with **Close**, the launcher button, or Escape. Its draft/results remain while the mounted panel is closed; switching the feature off unmounts the panel. Chat history is not persisted. Source links resolve the authenticated Storage route. Chat provider fields and tests are hidden in admin while AI is off; embedding controls remain available when ordinary search is on.
 
 Environment switches are `APP_SEARCH_ENABLED=true`, `APP_SEARCH_LAUNCHER_ENABLED=true`, and `AI_ENABLED=false`. No AI account, model download, API key, or ML container is needed for the default local text matcher. Document text extraction remains a separate optional ML service; if it is down, browsing and metadata indexing continue. Existing indexed text remains searchable. MongoDB, events, and audit logs are outside search; MongoDB integration is deferred.
 
@@ -47,6 +49,8 @@ Save the job with **Save settings**; changing controls alone does not change the
 
 ## API and failure behavior
 
-`POST /api/search` now returns `{ results, mode, notice }`, where `mode` is `VECTOR` or `KEYWORD`. Storage and content results obey the same live visibility checks in both paths.
+`POST /api/search` accepts optional `folderId` and relative folder `path` to scope a search. A path requires a folder ID. The backend validates folder visibility and path traversal before embedding, and both SQL paths apply a literal directory prefix before ranking and limiting. `%` and `_` in folder names are treated literally.
+
+`POST /api/search` returns `{ results, mode, notice }`, where `mode` is `VECTOR` or `KEYWORD`. Storage and content results obey the same live visibility checks in both paths.
 
 `GET /api/search/status` reports configured feature state, not a live provider-health probe. `POST /api/search/ask` returns `grounded: false` guidance if chat is absent/unavailable or no relevant excerpts exist. An explicit search disable returns 403, and access revoked during generation also returns 403. PostgreSQL remains a required application dependency; keyword fallback is not a replacement database. See [API contracts](api.md#search-and-answers).

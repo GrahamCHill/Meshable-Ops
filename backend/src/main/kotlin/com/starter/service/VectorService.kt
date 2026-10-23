@@ -50,6 +50,11 @@ class VectorService(
         return search(batch.vectors.single(), limit, filterField, filterValue, batch.model)
     }
 
+    fun searchTextScoped(text: String, limit: Int, scope: SearchScope): List<VectorSearchPoint> {
+        val batch = embeddings.batch(listOf(text))
+        return search(batch.vectors.single(), limit, model = batch.model, scope = scope)
+    }
+
     fun upsertDocument(
         documentId: UUID,
         vector: List<Float>,
@@ -82,23 +87,26 @@ class VectorService(
         filterField: String? = null,
         filterValue: String? = null,
         model: String = embeddings.fingerprint(),
+        scope: SearchScope = SearchScope(),
     ): List<VectorSearchPoint> {
         return try {
-            val parameters = mutableListOf<Any>()
+            val parameters = mutableListOf<Any?>()
             val sql = buildString {
                 append(
                     """
                     WITH query_vector AS (SELECT CAST(? AS vector) AS embedding),
                     active_model AS (SELECT CAST(? AS text) AS id),
+                    requested_scope AS (SELECT CAST(? AS uuid) AS folder_id, CAST(? AS text) AS path_prefix),
                     points AS (
                         SELECT item_id::text AS id,
                                (1 - (iv.embedding <=> q.embedding))::real AS score,
                                iv.payload
                         FROM item_vectors iv JOIN items i ON i.id = iv.item_id
                         LEFT JOIN storage_connections sc ON sc.id = i.storage_connection_id
-                        CROSS JOIN query_vector q CROSS JOIN active_model m
+                        CROSS JOIN query_vector q CROSS JOIN active_model m CROSS JOIN requested_scope s
                         WHERE i.accessible = TRUE AND (sc.id IS NULL OR sc.enabled = TRUE)
                           AND iv.embedding_model = m.id
+                          AND (s.folder_id IS NULL OR i.id = s.folder_id) AND s.path_prefix = ''
                         UNION ALL
                         SELECT document_id::text AS id,
                                (1 - (dv.embedding <=> q.embedding))::real AS score,
@@ -106,9 +114,11 @@ class VectorService(
                         FROM document_vectors dv JOIN storage_documents d ON d.id = dv.document_id
                         JOIN items i ON i.id = d.item_id
                         LEFT JOIN storage_connections sc ON sc.id = i.storage_connection_id
-                        CROSS JOIN query_vector q CROSS JOIN active_model m
+                        CROSS JOIN query_vector q CROSS JOIN active_model m CROSS JOIN requested_scope s
                         WHERE i.accessible = TRUE AND (sc.id IS NULL OR sc.enabled = TRUE)
                           AND dv.embedding_model = m.id
+                          AND (s.folder_id IS NULL OR i.id = s.folder_id)
+                          AND left(d.storage_path, length(s.path_prefix)) = s.path_prefix
                         UNION ALL
                         SELECT dc.id::text AS id,
                                (1 - (dc.embedding <=> q.embedding))::real AS score,
@@ -118,9 +128,11 @@ class VectorService(
                         FROM document_chunks dc JOIN storage_documents d ON d.id = dc.document_id
                         JOIN items i ON i.id = d.item_id
                         LEFT JOIN storage_connections sc ON sc.id = i.storage_connection_id
-                        CROSS JOIN query_vector q CROSS JOIN active_model m
+                        CROSS JOIN query_vector q CROSS JOIN active_model m CROSS JOIN requested_scope s
                         WHERE i.accessible = TRUE AND (sc.id IS NULL OR sc.enabled = TRUE)
                           AND dc.embedding_model = m.id AND ?
+                          AND (s.folder_id IS NULL OR i.id = s.folder_id)
+                          AND left(d.storage_path, length(s.path_prefix)) = s.path_prefix
                     )
                     SELECT id, score, payload::text AS payload
                     FROM points
@@ -128,6 +140,8 @@ class VectorService(
                 )
                 parameters += queryVector.toPgVector()
                 parameters += model
+                parameters += scope.folderId
+                parameters += scope.pathPrefix
                 parameters += embeddings.contentEnabled()
                 if (filterField != null && filterValue != null) {
                     append(" WHERE payload ->> ? = ?")

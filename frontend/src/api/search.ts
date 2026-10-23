@@ -9,6 +9,6 @@ export interface VectorSearchResult {
 export interface SearchResponse { results: VectorSearchResult[]; mode: 'VECTOR' | 'KEYWORD'; notice?: string }
 
 export const searchApi = {
-  search: (query: string, limit = 10) =>
-    api.post<SearchResponse>('/search', { query, limit }).then(r => r.data),
+  search: (query: string, limit = 10, folderId?: string, path = '') =>
+    api.post<SearchResponse>('/search', { query, limit, folderId, path }).then(r => r.data),
 }

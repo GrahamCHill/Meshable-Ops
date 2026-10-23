@@ -19,6 +19,9 @@ data class ErrorResponse(val message: String, val status: Int, val timestamp: In
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
+    @ExceptionHandler(com.starter.email.EmailDeliveryException::class)
+    fun handleEmailUnavailable(ex: com.starter.email.EmailDeliveryException) =
+        ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(ErrorResponse(ex.message ?: "Email delivery unavailable", 503))
 
     @ExceptionHandler(AiUnavailableException::class)
     fun handleAiUnavailable(ex: AiUnavailableException) =

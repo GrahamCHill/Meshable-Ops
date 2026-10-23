@@ -4,12 +4,17 @@ import { itemsApi, type Item } from '../../api/items'
 import { useAuthStore } from '../../hooks/useAuthStore'
 import { Badge, Button, Card, Spinner } from '../ui'
 import { StorageEntries } from './StorageEntries'
+import { PdfViewer } from './PdfViewer'
+import { StorageSearch } from '../search/StorageSearch'
+import { useDocumentAccess } from '../../api/documentAccess'
 
 export function StorageBrowser({ folder, onClose, initialPath = '' }: Readonly<{ folder: Item; onClose: () => void; initialPath?: string }>) {
   const qc = useQueryClient()
   const { user } = useAuthStore()
   const [path, setPath] = useState(initialPath)
   const [transferError, setTransferError] = useState('')
+  const [pdfPath, setPdfPath] = useState<string>()
+  const access = useDocumentAccess()
   const fileInput = useRef<HTMLInputElement | null>(null)
   const folderInput = useRef<HTMLInputElement | null>(null)
   const contents = useQuery({
@@ -65,7 +70,7 @@ export function StorageBrowser({ folder, onClose, initialPath = '' }: Readonly<{
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Button variant="secondary" size="sm" loading={download.isPending} onClick={() => download.mutate({ objectPath: path, archive: true, filename: `${segments[segments.length - 1] ?? folder.title}.zip` })}> Download folder</Button>
+          {access.data && access.data.downloadMode !== 'DISABLED' && <Button variant="secondary" size="sm" loading={download.isPending} onClick={() => download.mutate({ objectPath: path, archive: true, filename: `${segments[segments.length - 1] ?? folder.title}.zip` })}> Download folder</Button>}
           {user?.canUploadDocuments && <>
             <Button variant="secondary" size="sm" loading={upload.isPending} onClick={() => fileInput.current?.click()}> Upload files</Button>
             <Button size="sm" loading={upload.isPending} onClick={() => folderInput.current?.click()}> Upload folder</Button>
@@ -76,6 +81,8 @@ export function StorageBrowser({ folder, onClose, initialPath = '' }: Readonly<{
       </div>
 
       {transferError && <div style={{ color: 'var(--color-danger)', fontSize: '0.82rem', marginBottom: '0.75rem' }}>{transferError}</div>}
+      {access.isError && <p role="alert">Document controls are unavailable. Try refreshing the page.</p>}
+      <StorageSearch key={`${folder.id}-${path}`} folderId={folder.id} path={path} onOpenPdf={access.data?.pdfPreviewEnabled ? setPdfPath : undefined} />
 
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '0.85rem 1rem', flexWrap: 'wrap' }}>
@@ -94,14 +101,15 @@ export function StorageBrowser({ folder, onClose, initialPath = '' }: Readonly<{
             Could not load this storage path. Check the provider settings and credentials.
           </div>
         )}
-        {current && <StorageEntries contents={current} parentPath={parentPath} onNavigate={setPath} onDownload={(objectPath, archive, filename) => download.mutate({ objectPath, archive, filename })} downloading={download.isPending} />}
+        {current && <StorageEntries contents={current} parentPath={parentPath} onNavigate={setPath} onDownload={(objectPath, archive, filename) => download.mutate({ objectPath, archive, filename })} downloading={download.isPending} policy={access.data} onOpenPdf={setPdfPath} />}
       </Card>
 
       <Card style={{ marginTop: '1rem', background: 'var(--color-surface-2)' }}>
         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-          Browse and download files within this shared folder. Search includes metadata and any document content indexed by your administrator.
+          Browse files within this shared folder.
         </div>
       </Card>
+      {pdfPath && access.data?.pdfPreviewEnabled && <PdfViewer key={pdfPath} folderId={folder.id} path={pdfPath} policy={access.data} onClose={() => setPdfPath(undefined)} onDownload={(objectPath, archive, filename) => download.mutate({ objectPath, archive, filename })} downloading={download.isPending} />}
     </div>
   )
 }

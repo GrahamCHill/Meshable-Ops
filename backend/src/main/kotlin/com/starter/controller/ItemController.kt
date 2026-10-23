@@ -25,6 +25,7 @@ class ItemController(
     private val itemService: ItemService,
     private val adminSettingsService: AdminSettingsService,
     private val auditLogService: AuditLogService,
+    private val documentDelivery: DocumentDeliveryService,
 ) {
 
     @GetMapping("/{id}") fun get(@PathVariable id: UUID) = itemService.getShared(id)
@@ -99,12 +100,14 @@ class ItemController(
 
     @GetMapping("/{id}/download")
     fun download(
+        @AuthenticationPrincipal user: UserDetails,
         @PathVariable id: UUID,
         @RequestParam path: String,
         @RequestParam(defaultValue = "false") archive: Boolean,
     ): ResponseEntity<ByteArrayResource> {
-        val download = itemService.download(id, path, archive)
+        val download = documentDelivery.download(id, path, archive, user.username)
         return ResponseEntity.ok()
+            .cacheControl(org.springframework.http.CacheControl.noStore())
             .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(download.filename).build().toString())
             .contentType(MediaType.parseMediaType(download.contentType))
             .contentLength(download.bytes.size.toLong())

@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query
 import java.util.UUID
 
 interface ItemRepository : JpaRepository<Item, UUID> {
+    @Query("SELECT count(i) FROM Item i LEFT JOIN i.storageConnection c WHERE i.id = :id AND i.accessible = true AND (c IS NULL OR c.enabled = true)")
+    fun countVisibleById(id: UUID): Long
     @Query("SELECT i FROM Item i LEFT JOIN i.storageConnection c WHERE i.accessible = true AND (c IS NULL OR c.enabled = true) AND ((:connectionId IS NULL AND c IS NULL) OR c.id = :connectionId) ORDER BY i.createdAt DESC")
     fun findVisibleByConnection(connectionId: UUID?, pageable: Pageable): Page<Item>
 

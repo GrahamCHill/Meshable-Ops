@@ -32,17 +32,25 @@ class FolderStorageService(
         val paths = objects.map { normalizeStorageObject(it.relativePath) }
         objects.zip(paths).forEach { (file, objectPath) -> adapter.upload(prefixFor(item), destination + objectPath, file.contentType, file.bytes) }
     }
-    fun download(item: Item, path: String, archive: Boolean): StorageObjectDownload {
+    fun download(item: Item, path: String, archive: Boolean): StorageObjectDownload =
+        downloadTransformed(item, path, archive, null) { it }
+
+    fun downloadTransformed(item: Item, path: String, archive: Boolean, maxPdfBytes: Int?, transform: (StorageObjectDownload) -> StorageObjectDownload): StorageObjectDownload {
         val adapter = scopedAdapter(item)
         val prefix = prefixFor(item)
-        if (!archive) return adapter.download(prefix, normalizeStorageObject(path))
+        fun read(root: String, objectPath: String): StorageObjectDownload {
+            val source = if (maxPdfBytes != null && objectPath.endsWith(".pdf", ignoreCase = true)) adapter.download(root, objectPath, maxPdfBytes)
+                else adapter.download(root, objectPath)
+            return transform(source)
+        }
+        if (!archive) return read(prefix, normalizeStorageObject(path))
         val folder = normalizeStorageFolder(path)
         val output = ByteArrayOutputStream()
         ZipOutputStream(output).use { zip ->
             adapter.listDocuments(prefix + folder).forEach { document ->
                 val safePath = normalizeStorageObject(document.path)
                 zip.putNextEntry(ZipEntry(safePath))
-                zip.write(adapter.download(prefix + folder, safePath).bytes)
+                zip.write(read(prefix + folder, safePath).bytes)
                 zip.closeEntry()
             }
         }

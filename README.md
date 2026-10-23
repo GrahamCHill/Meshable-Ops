@@ -18,7 +18,7 @@ The application is designed so users work through the app shell, not through a d
 - Card-based admin workspaces for users, storage, AI/search, system health, audit/backup, and dashboard links
 - Multiple named S3-compatible buckets or Azure Blob containers with explicit shared-folder selections
 - Vector search over folder/document metadata and indexed content, with sourced AI answers
-- A bottom-right search/chat launcher with admin controls and indexing schedules; search also works without AI
+- Storage similarity search, optional bottom-right AI chat, and admin-controlled indexing schedules
 - Production deployment with Docker Compose and Caddy-based HTTPS
 
 ## Product Model
@@ -85,6 +85,8 @@ Additional architecture detail:
 - [Code Organization](docs/code-organization.md)
 - [AI Search and Credential Security](docs/ai-search-and-secrets.md)
 - [Search Controls and Indexing Jobs](docs/search-and-indexing.md)
+- [PDF Viewing and Downloads](docs/document-access.md)
+- [SMTP and Email Services](docs/email-delivery.md)
 - [Database Layout](docs/database-layout.md)
 - [Deployment Guide](docs/deployment.md)
 - [API Reference](docs/api.md)
@@ -361,7 +363,7 @@ User lifecycle behavior:
 
 ### Search, Optional AI, and Indexing Jobs
 
-Use the bottom-right **Search & AI** button. The left navigation has no search submenu.
+Use the regular search field in **Storage** to find documents. Inside a folder, search is scoped to the current folder and its subfolders. The bottom-right **Ask your documents** launcher appears only when AI answers, search, content indexing, and a chat model are configured. The left navigation has no search submenu.
 The dedicated `/search` page remains available when search is enabled. Ordinary search uses
 the backend's deterministic `local-feature-hash-v2` matcher by default: no model, AI key,
 or running ML helper is needed. Fresh PostgreSQL volume initialization can create sample
@@ -370,7 +372,7 @@ local matching, and add/share actual documents before testing sourced answers.
 
 **Administration > AI & search** independently controls search, launcher visibility,
 AI answers, and content indexing. Turning search off also rejects search/chat API requests.
-Hiding just the launcher keeps `/search` and the API available. AI answers are off by default.
+Disabling a feature hides its matching UI. Hiding just the launcher keeps Storage search, `/search`, and the API available. AI answers are off by default.
 To enable them, configure chat and optional external embeddings, enable content indexing,
 and reindex storage. Chat and embeddings can use different providers. Saved admin keys are
 encrypted; environment settings and admin settings are separate configuration sources.
@@ -532,22 +534,23 @@ Alternative examples are also included:
 
 ## Operations
 
-Common commands:
+Use the same env file and Compose overrides as startup for operations, rather than silently
+switching an existing deployment back to the base file alone. For example, in production:
 
 ```bash
-docker compose ps
-docker compose logs -f frontend
-docker compose logs -f backend
-docker compose logs -f superset
-docker compose restart frontend backend superset
-docker compose down
+docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml ps
+docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml logs -f backend frontend
 ```
 
-Rebuild after code or config changes:
+Rebuild after code/configuration changes:
 
 ```bash
-docker compose up --build -d
+docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up --build -d
 ```
+
+For development use the appropriate MinIO or Azurite override from Quick Start. Preserve
+the configured wrapping key and named volumes across restarts; see the
+[upgrade procedure](docs/deployment.md#upgrading-an-existing-installation).
 
 Reindex stored vectors:
 
@@ -586,3 +589,11 @@ Start with the [documentation index](docs/README.md) for operator, developer, an
 - The frontend is the supported way to reach Superset admin pages.
 - Superset embed allowlists are updated at runtime as the app requests guest tokens.
 - Redis is currently reserved for Superset runtime behavior.
+
+### PDF Viewing and Downloads
+
+PDF files open inside Storage with page navigation. **Administration > Document access** controls PDF viewing and downloads: normal originals, watermarked PDFs, or downloads disabled. In watermark mode other formats download normally; folder ZIPs stamp every PDF and preserve other files. Watermarks include configurable text, the signed-in user, and UTC time. Originals remain unchanged. Previewing/watermarking support unencrypted PDFs up to 25 MB and 200 pages without an AI or ML service. See [document access](docs/document-access.md) for enforcement and limits.
+
+### SMTP and Email Services
+
+**Administration > Email delivery** configures optional SMTP delivery (password, app password, OAuth2 token, or relay), Resend, SendGrid, or Mailgun. Choose server environment values or separate encrypted admin settings, configure the sender, save, and send a test message. Admins can also send a single plain-text email. Delivery is disabled by default; the sending controls hide when it is off. SMTP credentials and API keys are write-only and encrypted with the existing server wrapping key. OAuth2 token acquisition/renewal is external. See [email setup and security](docs/email-delivery.md), [environment variables](.env.example), and [API contracts](docs/api.md#email-delivery).

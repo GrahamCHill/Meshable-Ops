@@ -2,6 +2,8 @@ export const adminGroups = [
   { label: 'Manage', items: [
     { to: '/admin/users', label: 'Users & access', description: 'Manage accounts, roles, and upload permissions.' },
     { to: '/admin/storage', label: 'Storage connections', description: 'Connect S3 or Azure Blob and maintain the search index.' },
+    { to: '/admin/documents', label: 'Document access', description: 'Control PDF viewing, downloads, and watermarks.' },
+    { to: '/admin/email', label: 'Email delivery', description: 'Configure SMTP, app passwords, or email services and send messages.' },
   ] },
   { label: 'Analytics', items: [
     { to: '/admin/ai', label: 'AI & search', description: 'Configure AI providers, protect API keys, and index shared documents.' },

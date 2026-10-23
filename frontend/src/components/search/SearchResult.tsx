@@ -3,7 +3,7 @@ import type { VectorSearchResult } from '../../api/search'
 import { Card } from '../ui'
 import { storageLink } from './storageLink'
 
-export function SearchResult({ result, rank, keyword = false, onNavigate }: { result: VectorSearchResult; rank: number; keyword?: boolean; onNavigate?: () => void }) {
+export function SearchResult({ result, rank, keyword = false, onNavigate, onOpenPdf }: { result: VectorSearchResult; rank: number; keyword?: boolean; onNavigate?: () => void; onOpenPdf?: (path: string) => void }) {
   const payload = result.payload
   return <Card>
     <div className="page-heading">
@@ -12,5 +12,6 @@ export function SearchResult({ result, rank, keyword = false, onNavigate }: { re
     </div>
     {payload.text && <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', margin: '12px 0', fontSize: '0.85rem' }}>{payload.text}</p>}
     {payload.folderId && <Link to={storageLink(payload.folderId, payload.storagePath)} onClick={onNavigate}>Open in Storage</Link>}
+    {onOpenPdf && payload.storagePath?.toLowerCase().endsWith('.pdf') && <button className="utility-button" style={{ marginLeft: 12 }} onClick={() => onOpenPdf(payload.storagePath)}>Open PDF</button>}
   </Card>
 }

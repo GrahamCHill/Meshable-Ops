@@ -8,6 +8,7 @@ import { useAuthStore } from '../../hooks/useAuthStore'
 import { Badge, Button, Card, Spinner } from '../ui'
 import { FolderForm } from '../storage/FolderForm'
 import { StorageBrowser } from '../storage/StorageBrowser'
+import { StorageSearch } from '../search/StorageSearch'
 
 export function ItemsPage() {
   const qc = useQueryClient()
@@ -67,6 +68,7 @@ export function ItemsPage() {
       </div>
 
       {isAdmin && showCreate && <Card style={{ marginBottom: '1rem' }}><FolderForm onSubmit={create.mutate} onCancel={() => setShowCreate(false)} loading={create.isPending} /></Card>}
+      <StorageSearch />
       {!connectionId && <section className="page-stack" aria-label="Cloud storage locations" style={{ marginBottom: 24 }}>
         {locations.isLoading && <div role="status"><Spinner /> Loading locations…</div>}
         {locations.isError && <div role="alert" className="feedback error">Unable to load shared locations. <Button variant="ghost" size="sm" onClick={() => locations.refetch()}>Retry</Button></div>}
