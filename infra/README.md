@@ -89,3 +89,5 @@ After bootstrap:
 
 The examples do not replace production database credential review or recovery backups. See the [deployment and upgrade guide](../docs/deployment.md), [credential setup](../docs/ai-search-and-secrets.md), and [indexing jobs](../docs/search-and-indexing.md). No Terraform resources or MongoDB schema changes are required for these UI/job controls.
 
+Optional outbound email is configured after bootstrap through **Administration > Email delivery** or the `APP_EMAIL_*` environment values forwarded by Compose. The templates do not provision an SMTP account, email API key, or verified sender/domain. Use the persistent wrapping key for admin-saved credentials and allow backend egress to the chosen SMTP/HTTPS endpoint. See [SMTP and transactional email setup](../docs/email-delivery.md).
+
