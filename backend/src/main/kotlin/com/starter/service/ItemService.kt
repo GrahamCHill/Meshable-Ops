@@ -1,5 +1,13 @@
 package com.starter.service
 
+import com.starter.service.storage.FolderStorageSnapshot
+import com.starter.service.storage.StorageEntry
+import com.starter.service.storage.StorageObjectUpload
+import com.starter.service.storage.StorageObjectDownload
+import com.starter.ai.DocumentIndexService
+import com.starter.ai.AiUnavailableException
+import com.starter.ai.DocumentFingerprints
+import com.starter.exception.BadRequestException
 import com.starter.dto.ItemRequest
 import com.starter.dto.ItemResponse
 import com.starter.dto.PageResponse
@@ -14,15 +22,12 @@ import com.starter.repository.mongo.EventRepository
 import com.starter.repository.postgres.ItemRepository
 import com.starter.repository.postgres.StorageDocumentRepository
 import com.starter.repository.postgres.UserRepository
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
-import java.security.MessageDigest
-import java.time.Instant
 
-data class VectorReindexResult(val folders: Int, val documents: Int)
+data class VectorReindexResult(val folders: Int, val documents: Int, val contentDocuments: Int = 0, val failures: Int = 0)
 
 private const val STORAGE_ROOT_NOT_FOUND = "Storage root not found"
 
@@ -35,9 +40,8 @@ class ItemService(
     private val vectorService: VectorService,
     private val folderStorageService: FolderStorageService,
     private val auditLogService: AuditLogService,
+    private val documentIndex: DocumentIndexService,
 ) {
-    @Value("\${vector.dimensions}") private var vectorSize: Int = 384
-
     private fun buildVectorText(title: String, description: String?, tags: List<String>): String =
         listOf(title, description.orEmpty(), tags.joinToString(" ")).joinToString(" ").trim()
 
@@ -58,11 +62,7 @@ class ItemService(
         itemRepository.saveAndFlush(item)
         folderStorageService.createFolder(item.storagePrefix!!)
 
-        vectorService.upsert(
-            item.id,
-            vectorService.embedText(buildVectorText(req.title, req.description, req.tags), vectorSize),
-            vectorPayload(item)
-        )
+        indexFolder(item)
 
         eventRepository.save(
             Event(
@@ -109,11 +109,7 @@ class ItemService(
         item.ensureCurrentPrefix()
         val saved = itemRepository.save(item)
 
-        vectorService.upsert(
-            saved.id,
-            vectorService.embedText(buildVectorText(req.title, req.description, req.tags), vectorSize),
-            vectorPayload(saved)
-        )
+        indexFolder(saved)
         eventRepository.save(
             Event(
                 userId = user.id.toString(),
@@ -167,21 +163,34 @@ class ItemService(
         legacySnapshot(items)
 
         var documentCount = 0
+        var contentCount = 0
+        var failures = 0
         items.forEach { item ->
-            vectorService.upsert(
+            try { vectorService.upsertText(
                 item.id,
-                vectorService.embedText(buildVectorText(item.title, item.description, item.tags), vectorSize),
+                buildVectorText(item.title, item.description, item.tags),
                 vectorPayload(item)
-            )
-            documentCount += syncDocuments(
+            ) } catch (_: AiUnavailableException) { failures++ }
+              catch (_: BadRequestException) { failures++ }
+            val indexed = syncDocuments(
                 item,
                 folderStorageService.listDocuments(item),
                 removeMissing = true,
                 forceVectorize = true,
-            ).size
+            )
+            documentCount += indexed.size
+            contentCount += indexed.values.count { it.processingStatus in setOf("CONTENT_INDEXED", "CONTENT_TRUNCATED") }
+            failures += indexed.values.count { it.processingStatus in setOf("INDEX_ERROR", "CONTENT_UNAVAILABLE") }
         }
 
-        return VectorReindexResult(items.size, documentCount)
+        return VectorReindexResult(items.size, documentCount, contentCount, failures)
+    }
+
+    @Transactional(readOnly = true)
+    fun hasStorageChanges(): Boolean = itemRepository.findAllVisible().any { item ->
+        val current = folderStorageService.listDocuments(item)
+        val indexed = storageDocumentRepository.findAllByItemId(item.id).associateBy { it.storagePath }
+        current.size != indexed.size || current.any { indexed[it.path]?.sourceChecksum != DocumentFingerprints.metadata(it) }
     }
 
     @Transactional
@@ -205,9 +214,7 @@ class ItemService(
                     contentType = it.contentType,
                     lastModified = it.lastModified,
                     documentId = documents[it.path]?.id?.toString(),
-                    vectorStatus = documents[it.path]?.let { document ->
-                        if (document.vectorizedAt == null) "PENDING" else "VECTORIZED"
-                    },
+                    vectorStatus = documents[it.path]?.processingStatus,
                 )
             },
         )
@@ -249,6 +256,13 @@ class ItemService(
         return folderStorageService.download(item, path, archive)
     }
 
+    @Transactional(readOnly = true)
+    fun getShared(itemId: UUID): ItemResponse {
+        val item = itemRepository.findById(itemId).orElseThrow { NotFoundException(STORAGE_ROOT_NOT_FOUND) }
+        if (!item.accessible || item.storageConnection?.enabled == false) throw NotFoundException(STORAGE_ROOT_NOT_FOUND)
+        return item.toResponse(FolderStorageSnapshot(item.storageConnection?.provider ?: "NONE", emptyMap()))
+    }
+
     @Transactional
     fun registerSharedFolder(email: String, connection: StorageConnection, prefix: String, nickname: String, accessible: Boolean): ItemResponse {
         val user = userRepository.findByEmail(email).orElseThrow { NotFoundException("User not found") }
@@ -256,7 +270,7 @@ class ItemService(
             user = user, title = nickname, storagePrefix = prefix,
             storageConnection = connection, accessible = accessible,
         ))
-        vectorService.upsert(folder.id, vectorService.embedText(nickname, vectorSize), vectorPayload(folder))
+        indexFolder(folder)
         auditLogService.record(actingEmail = email, action = "STORAGE_FOLDER_SHARED", resourceType = "FOLDER", resourceId = folder.id.toString())
         return folder.toResponse(FolderStorageSnapshot(connection.provider, emptyMap()))
     }
@@ -265,7 +279,22 @@ class ItemService(
         folder.title = nickname
         folder.accessible = accessible
         itemRepository.saveAndFlush(folder)
-        vectorService.upsert(folder.id, vectorService.embedText(buildVectorText(folder.title, folder.description, folder.tags), vectorSize), vectorPayload(folder))
+        indexFolder(folder)
+    }
+
+    private fun indexFolder(folder: Item) {
+        if (!folder.accessible || folder.storageConnection?.enabled == false) {
+            vectorService.delete(folder.id)
+            return
+        }
+        try {
+            vectorService.upsertText(folder.id, buildVectorText(folder.title, folder.description, folder.tags), vectorPayload(folder))
+        } catch (_: AiUnavailableException) {
+            // Sharing and storage changes must remain available when an optional AI service is down.
+            vectorService.delete(folder.id)
+        } catch (_: BadRequestException) {
+            vectorService.delete(folder.id)
+        }
     }
 
     private fun legacySnapshot(items: List<Item>): FolderStorageSnapshot {
@@ -286,63 +315,7 @@ class ItemService(
         entries: List<StorageEntry>,
         removeMissing: Boolean = false,
         forceVectorize: Boolean = false,
-    ): Map<String, StorageDocument> {
-        val existing = storageDocumentRepository.findAllByItemId(item.id).associateBy { it.storagePath }
-        val seen = entries.map { it.path }.toSet()
-        val synchronized = entries.associate { entry ->
-            val checksum = documentMetadataChecksum(entry)
-            val document = existing[entry.path] ?: StorageDocument(item = item, storagePath = entry.path)
-            val needsVector = forceVectorize || document.sourceChecksum != checksum || document.vectorizedAt == null
-            document.fileName = entry.name
-            document.contentType = entry.contentType
-            document.sizeBytes = entry.size
-            document.storageLastModified = entry.lastModified
-            document.processingStatus = "METADATA_ONLY"
-            val saved = storageDocumentRepository.saveAndFlush(document)
-            if (needsVector) {
-                val model = "metadata-v1"
-                vectorService.upsertDocument(
-                    saved.id,
-                    vectorService.embedText(documentVectorText(saved), vectorSize),
-                    documentVectorPayload(saved),
-                    checksum,
-                    model,
-                )
-                saved.sourceChecksum = checksum
-                saved.embeddingModel = model
-                saved.vectorizedAt = Instant.now()
-                storageDocumentRepository.save(saved)
-            }
-            entry.path to saved
-        }
-        if (removeMissing) {
-            storageDocumentRepository.deleteAll(existing.values.filter { it.storagePath !in seen })
-        }
-        return synchronized
-    }
-
-    private fun documentVectorText(document: StorageDocument) = listOfNotNull(
-        document.fileName,
-        document.storagePath.replace('/', ' '),
-        document.contentType,
-    ).joinToString(" ")
-
-    private fun documentVectorPayload(document: StorageDocument) = buildMap {
-        put("documentId", document.id.toString())
-        put("itemId", document.item.id.toString())
-        put("folderId", document.item.id.toString())
-        put("entityType", "document")
-        put("title", document.fileName)
-        put("storagePath", document.storagePath)
-        document.contentType?.let { put("contentType", it) }
-        put("processingStatus", document.processingStatus)
-    }
-
-    private fun documentMetadataChecksum(entry: StorageEntry): String {
-        val source = listOf(entry.path, entry.name, entry.contentType.orEmpty(), entry.size, entry.lastModified).joinToString("|")
-        return MessageDigest.getInstance("SHA-256").digest(source.toByteArray())
-            .joinToString("") { "%02x".format(it) }
-    }
+    ): Map<String, StorageDocument> = documentIndex.sync(item, entries, removeMissing, forceVectorize)
 
     private fun Item.toResponse(snapshot: FolderStorageSnapshot): ItemResponse {
         val prefix = ensureCurrentPrefix()

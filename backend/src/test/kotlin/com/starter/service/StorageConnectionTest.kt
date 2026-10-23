@@ -16,7 +16,7 @@ import java.util.Base64
 
 class StorageConnectionTest {
     private val repository = mock(AppSettingsRepository::class.java)
-    private val settings = AdminSettingsService(repository)
+    private val settings = AdminSettingsService(repository, com.starter.security.testEncryption())
     private val storage = FolderStorageService(settings)
 
     @Test

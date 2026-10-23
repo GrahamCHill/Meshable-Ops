@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { adminBackupApi, auditLogsApi } from '../../api/client'
+import { adminBackupApi, auditLogsApi } from '../../api/audit'
 import { Button, Card, Spinner } from '../ui'
 import { AdminPageHeader } from '../admin/AdminPageHeader'
 import { extractFilename, formatDate, getErrorMessage } from '../admin/adminUtils'
@@ -37,7 +37,7 @@ export function AdminAuditPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: '1rem' }}>
           <div>
             <div style={{ fontWeight: 600 }}>Recent activity</div>
-            <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', marginTop: 3 }}>Backup includes relational data, dashboard links, admin settings, events, and audit logs.</div>
+            <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', marginTop: 3 }}>Backup includes relational data, dashboard links, non-secret settings, events, and audit logs. Credentials and password hashes are excluded.</div>
           </div>
           <Button variant="ghost" size="sm" disabled={audit.isFetching} onClick={() => audit.refetch()}> Refresh</Button>
         </div>

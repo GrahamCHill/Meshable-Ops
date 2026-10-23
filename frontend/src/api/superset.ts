@@ -1,4 +1,4 @@
-// Append to existing client.ts — add these exports
+import api from './http'
 
 export const supersetApi = {
   /**
@@ -6,9 +6,7 @@ export const supersetApi = {
    * The backend authenticates as admin service-to-service; the browser
    * never sees admin credentials.
    */
-  guestToken: (dashboardIds: string[]): Promise<string> =>
-    import('./client').then(({ default: api }) =>
-      api.post<{ token: string }>('/superset/guest-token', { dashboardIds })
-        .then(r => r.data.token)
-    ),
+  guestToken: (dashboardIds: string[], appOrigin?: string): Promise<string> =>
+    api.post<{ token: string }>('/superset/guest-token', { dashboardIds, appOrigin })
+      .then(r => r.data.token),
 }

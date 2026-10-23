@@ -1,0 +1,52 @@
+# Search launcher and indexing jobs
+
+## Feature controls
+
+**Administration > AI & search** has independent switches for search, the bottom-right launcher, and AI answers. Disable search to hide the launcher and reject search/chat API requests. Disable only the launcher to keep the dedicated `/search` page and API available. Disable AI answers to keep ordinary document search without generated answers. These switches follow the selected environment/admin configuration source.
+
+| Control | Default | Effect |
+| --- | --- | --- |
+| Enable search | On | Gates ordinary search and chat on the backend; off returns HTTP 403 and hides the launcher |
+| Show bottom-right search and chat launcher | On | Controls the floating button; off leaves the enabled `/search` page/API available |
+| Enable AI answers | Off | Enables optional chat generation when a model and content indexing are configured |
+| Index document content | Off | Enables bounded extraction/chunks; off excludes stored chunks immediately and keeps metadata search |
+
+These are application-wide settings. `ADMIN` can change them; an environment-sourced configuration is read-only until the admin selects the separate **Admin settings** source. The launcher refreshes status about every 30 seconds, and saves in the current browser invalidate that status immediately. Backend search checks use current settings even if another browser still displays the button.
+
+The launcher is available in the authenticated app shell, outside the left navigation. Close it with **Close**, the launcher button, or Escape. Its draft/results remain while the same mounted panel is closed; this is not a persistent chat history or a long-term conversation store. Opening a source resolves the normal authenticated Storage route.
+
+Environment switches are `APP_SEARCH_ENABLED=true`, `APP_SEARCH_LAUNCHER_ENABLED=true`, and `AI_ENABLED=false`. No AI account, model download, API key, or ML container is needed for the default local text matcher. Document text extraction remains a separate optional ML service; if it is down, browsing and metadata indexing continue. Existing indexed text remains searchable. MongoDB, events, and audit logs are outside search; MongoDB integration is deferred.
+
+Local feature hashing now runs inside the Kotlin backend as `local-feature-hash-v2`. It is deterministic text matching, not a semantic language-model embedding. Reindex once when upgrading from the former Python matcher. Until reindexing completes, keyword search can use the current metadata and existing content chunks. External model identities remain distinct: the app never substitutes local vectors into an external model's index.
+
+If a configured embedding service is unavailable or not fully configured, regular search returns access-checked keyword matches with an explanatory notice. An unavailable chat provider returns guidance and accessible source excerpts, without inventing an answer. Disabling search is enforced by the backend even when a browser has stale settings.
+
+## Indexing schedule
+
+Open **Administration > Storage connections > Search index**, or use **Manage indexing jobs and schedules** on the AI settings page. Enable scheduled indexing, choose a schedule, and save:
+
+- **Every day**: a chosen local time, such as `00:00`.
+- **Every week**: a weekday and local time, such as Friday at `00:00`.
+- **At the next scheduled time when files change**: poll visible storage each minute and queue one run at the next chosen time. Set `00:00` for the next midnight after detection. Repeated detections preserve the pending deadline.
+- **At a fixed interval**: the existing 15-minute to 7-day interval.
+
+The timezone is an explicit IANA name, initially `Africa/Johannesburg`. Calendar schedules respect daylight-saving changes. The admin page shows the next run in the saved timezone, last result, and whether changes are queued. Uploads/browsing also queue detected changes, even if their initial indexing already completed.
+
+Schedule configuration, pending state, and the next run are saved in PostgreSQL and survive backend restarts. A previously queued overdue job runs once after the application starts; the next calendar occurrence is then calculated. New changes first discovered after startup queue the next future time. Failed/partial runs are reported and retried at the next scheduled occurrence. The server must remain running to detect changes and execute jobs; this is an application job, not an operating-system scheduler. This scheduler assumes one backend instance.
+
+Change detection compares selected folder paths and each object's name, content type, size, and modification time. It detects additions, modifications, and removals; providers that change bytes without updating metadata require a manual reindex. Jobs only inspect accessible folders on enabled storage connections. **Reindex now** remains available when scheduled jobs are disabled.
+
+| Desired job | Run choice | Day/time/timezone |
+| --- | --- | --- |
+| Every local midnight | Every day | `00:00`, `Africa/Johannesburg` |
+| Friday midnight | Every week | `FRIDAY`, `00:00`, `Africa/Johannesburg` |
+| Next midnight after a file change | At the next scheduled time when files change | `00:00`, `Africa/Johannesburg` |
+| Every two hours | At a fixed interval | `120` minutes |
+
+Save the job with **Save settings**; changing controls alone does not change the active schedule. All day/time/zone fields are validated. The scheduler polls approximately once per minute after the previous check finishes, so due jobs are not exact-second alarms. A scheduled full reindex is distinct from the immediate metadata/content synchronization performed during browsing and uploads.
+
+## API and failure behavior
+
+`POST /api/search` now returns `{ results, mode, notice }`, where `mode` is `VECTOR` or `KEYWORD`. Storage and content results obey the same live visibility checks in both paths.
+
+`GET /api/search/status` reports configured feature state, not a live provider-health probe. `POST /api/search/ask` returns `grounded: false` guidance if chat is absent/unavailable or no relevant excerpts exist. An explicit search disable returns 403, and access revoked during generation also returns 403. PostgreSQL remains a required application dependency; keyword fallback is not a replacement database. See [API contracts](api.md#search-and-answers).

@@ -1,5 +1,6 @@
 package com.starter.service
 
+import com.starter.service.storage.StorageObjectUpload
 import com.starter.exception.BadRequestException
 import com.starter.exception.NotFoundException
 import com.starter.model.postgres.Item
@@ -21,6 +22,40 @@ import java.util.Optional
 class SharedStorageAccessTest {
     private val settings = mock(AdminSettingsService::class.java)
     private val storage = FolderStorageService(settings)
+
+    @Test
+    fun `revoking a folder never calls the embedding provider`() {
+        val items = mock(ItemRepository::class.java)
+        val vectors = mock(VectorService::class.java)
+        val service = ItemService(items, mock(StorageDocumentRepository::class.java), mock(UserRepository::class.java),
+            mock(EventRepository::class.java), vectors, mock(FolderStorageService::class.java),
+            mock(AuditLogService::class.java), mock(com.starter.ai.DocumentIndexService::class.java))
+        val folder = Item(title = "Legal", storagePrefix = "legal/")
+        service.configureSharing(folder, "Legal archive", false)
+        assertThat(folder.accessible).isFalse()
+        verify(items).saveAndFlush(folder)
+        verify(vectors).delete(folder.id)
+        verifyNoMoreInteractions(vectors)
+    }
+
+    @Test
+    fun `a provider outage does not roll back folder sharing changes`() {
+        val items = mock(ItemRepository::class.java)
+        val vectors = mock(VectorService::class.java)
+        val gateway = mock(FolderStorageService::class.java)
+        val folder = Item(title = "Legal", storagePrefix = "legal/", accessible = false)
+        `when`(gateway.prefixFor(folder)).thenReturn("legal/")
+        doThrow(com.starter.ai.AiUnavailableException("Embedding service unavailable")).`when`(vectors)
+            .upsertText(eq(folder.id) ?: folder.id, anyString(), anyMap())
+        val service = ItemService(items, mock(StorageDocumentRepository::class.java), mock(UserRepository::class.java),
+            mock(EventRepository::class.java), vectors, gateway, mock(AuditLogService::class.java),
+            mock(com.starter.ai.DocumentIndexService::class.java))
+        service.configureSharing(folder, "Legal archive", true)
+        assertThat(folder.accessible).isTrue()
+        assertThat(folder.title).isEqualTo("Legal archive")
+        verify(items).saveAndFlush(folder)
+        verify(vectors).delete(folder.id)
+    }
 
     @Test
     fun `hidden folders and disabled connections deny browse download and upload before accessing storage`() {
@@ -91,7 +126,7 @@ class SharedStorageAccessTest {
         `when`(items.findById(folder.id)).thenReturn(Optional.of(folder))
         `when`(users.findByEmail(user.email)).thenReturn(Optional.of(user))
         `when`(gateway.prefixFor(folder)).thenReturn("legal/")
-        val service = ItemService(items, documents, users, mock(EventRepository::class.java), vector, gateway, mock(AuditLogService::class.java))
+        val service = ItemService(items, documents, users, mock(EventRepository::class.java), vector, gateway, mock(AuditLogService::class.java), mock(com.starter.ai.DocumentIndexService::class.java))
         service.delete(user.email, folder.id)
         verify(items).delete(folder)
         verify(vector).delete(folder.id)

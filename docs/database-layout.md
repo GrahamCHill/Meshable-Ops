@@ -1,28 +1,28 @@
-# Database Layout
+# Database layout
 
-This document describes the current data layout used by the application stack.
+PostgreSQL stores application identity, storage metadata, feature/provider configuration, indexing jobs, and derived search content. S3/Azure Blob stores original files. MongoDB retains events and audit history; it is not a search source. Redis supports Superset.
 
-## Overview
+## Stores and ownership
 
-The stack currently uses multiple storage systems:
+| Store | Contents | Search participation |
+| --- | --- | --- |
+| PostgreSQL `app_db` | Users, shared folders, connections, settings, document identities/chunks, and pgvector indexes | Folder/document metadata and enabled extracted content |
+| PostgreSQL `superset` | Superset's own metadata | Outside application document search |
+| S3-compatible bucket or Azure Blob container | Original document objects beneath selected prefixes | Read through authenticated storage adapters for discovery/extraction |
+| MongoDB `app_db` | `events`, `activity_logs` | Excluded from search and AI retrieval; integration deferred |
+| Redis | Superset cache and Celery broker/results | Outside application search |
 
-- PostgreSQL with pgvector for application relational data, Superset metadata, and vector search
-- MongoDB for event and activity-style documents
-- Redis for Superset cache/task coordination
-
-This split is intentional. The business application is not trying to force every concern into one database:
-
-- PostgreSQL handles the relational application model and vector similarity search through pgvector
-- MongoDB handles append-style event and audit documents
-- Redis supports Superset runtime behavior rather than core business records
-- Redis is currently Superset-specific, not a shared application cache layer
-
-## Mermaid Diagram
+## Relational relationships
 
 ```mermaid
 erDiagram
-    USERS ||--o{ ITEMS : owns
-    ITEMS ||--o{ ITEM_TAGS : tagged_with
+    USERS ||--o{ ITEMS : creates
+    STORAGE_CONNECTIONS o|--o{ ITEMS : maps
+    ITEMS ||--o{ ITEM_TAGS : has
+    ITEMS ||--o| ITEM_VECTORS : indexes
+    ITEMS ||--o{ STORAGE_DOCUMENTS : contains
+    STORAGE_DOCUMENTS ||--o| DOCUMENT_VECTORS : indexes_metadata
+    STORAGE_DOCUMENTS ||--o{ DOCUMENT_CHUNKS : contains
     DASHBOARD_EMBED_CONFIGS ||--o{ DASHBOARD_EMBED_CONFIG_ROLES : allows
 
     USERS {
@@ -32,304 +32,208 @@ erDiagram
         varchar password
         varchar role
         boolean active
-        timestamptz created_at
-        timestamptz updated_at
+        boolean can_upload_documents
     }
-
+    STORAGE_CONNECTIONS {
+        uuid id PK
+        varchar nickname
+        varchar provider
+        varchar bucket
+        text endpoint
+        text access_key
+        text secret_key
+        text base_path
+        boolean enabled
+    }
     ITEMS {
         uuid id PK
         uuid user_id FK
+        uuid storage_connection_id FK
         varchar title
         text description
-        timestamptz created_at
-        timestamptz updated_at
+        text storage_prefix
+        boolean accessible
     }
-
     ITEM_TAGS {
         uuid item_id FK
         text tag
     }
-
-    DASHBOARD_EMBED_CONFIGS {
+    ITEM_VECTORS {
+        uuid item_id PK,FK
+        vector embedding
+        jsonb payload
+        varchar embedding_model
+    }
+    STORAGE_DOCUMENTS {
         uuid id PK
-        text label
-        text description
-        text dashboard_id
-        text guest_token_resource_id
-        int sort_order
-        boolean enabled
-        timestamptz created_at
-        timestamptz updated_at
+        uuid item_id FK
+        text storage_path
+        varchar file_name
+        bigint size_bytes
+        varchar processing_status
+        varchar source_checksum
+        varchar embedding_model
+        timestamptz vectorized_at
     }
-
-    DASHBOARD_EMBED_CONFIG_ROLES {
-        uuid dashboard_embed_config_id FK
-        text role_name
+    DOCUMENT_VECTORS {
+        uuid document_id PK,FK
+        vector embedding
+        jsonb payload
+        varchar source_checksum
+        varchar embedding_model
     }
-
+    DOCUMENT_CHUNKS {
+        uuid id PK
+        uuid document_id FK
+        int chunk_index
+        text content
+        vector embedding
+        varchar source_checksum
+        varchar embedding_model
+    }
     APP_SETTINGS {
         uuid id PK
         varchar storage_provider
         text storage_bucket
-        text storage_region
-        text storage_endpoint
         text storage_access_key
         text storage_secret_key
         text storage_root_path
         boolean vector_reindex_enabled
-        int vector_reindex_interval_minutes
-        timestamptz last_vector_reindex_at
-        text last_vector_reindex_status
-        timestamptz created_at
-        timestamptz updated_at
+        varchar vector_reindex_schedule
+        varchar vector_reindex_time
+        varchar vector_reindex_day_of_week
+        varchar vector_reindex_time_zone
+        timestamptz vector_reindex_next_run_at
+        boolean vector_reindex_pending_changes
+        timestamptz vector_reindex_last_check_at
+    }
+    AI_SETTINGS {
+        bigint id PK
+        varchar source
+        boolean search_enabled
+        boolean launcher_enabled
+        boolean enabled
+        boolean index_content
+        varchar chat_provider
+        text chat_base_url
+        varchar chat_model
+        text chat_api_key
+        varchar embedding_provider
+        text embedding_base_url
+        varchar embedding_model
+        text embedding_api_key
+        boolean embedding_send_dimensions
+    }
+    DASHBOARD_EMBED_CONFIGS {
+        uuid id PK
+        text label
+        text dashboard_id
+        text guest_token_resource_id
+        int sort_order
+        boolean enabled
+    }
+    DASHBOARD_EMBED_CONFIG_ROLES {
+        uuid dashboard_embed_config_id FK
+        text role_name
     }
 ```
 
-## Storage Relationship View
-
-```mermaid
-flowchart LR
-    subgraph postgres["PostgreSQL app_db"]
-        users["users"]
-        items["items"]
-        itemTags["item_tags"]
-        itemVectors["item_vectors (vector(384))"]
-        embedConfigs["dashboard_embed_configs"]
-        embedRoles["dashboard_embed_config_roles"]
-        appSettings["app_settings"]
-    end
-
-    subgraph mongo["MongoDB app_db"]
-        events["events"]
-        activityLogs["activity_logs"]
-    end
-
-    users --> items
-    items --> itemTags
-    embedConfigs --> embedRoles
-
-    items -. "embedded text\n(title + description + tags)" .-> itemVectors
-    users -. "user actions" .-> events
-    users -. "audit/activity" .-> activityLogs
-```
+Vector columns are `vector(384)`; the diagram omits timestamps and some descriptive fields for readability. Settings tables hold application-wide configuration rather than per-user preferences.
 
-## Storage Breakdown
+## Identity and storage
 
-### PostgreSQL
+`users` contains login/profile data, the stored bcrypt password hash, role, activation state, and independent upload grant. The existing `ADMIN` role provides super-admin configuration access. Deactivation retains the record and denies authentication; the UI does not hard-delete users.
 
-There are effectively two PostgreSQL concerns in the stack:
+`items` retains the legacy name for shared folder roots. `title` is the in-app nickname, `storage_prefix` is the saved object prefix, and `accessible` controls publication. `user_id` records the creating user; visibility is shared rather than limited to that owner.
 
-- `app_db` for the Java/Spring application data
-- `superset` for Superset metadata
+- A null `storage_connection_id` identifies an application-managed root on the default connection: `{app_settings.storage_root_path}/{folder-id}/`.
+- A non-null reference identifies an explicitly selected prefix on a named S3/Azure connection. `base_path` limits the administrator's folder picker.
+- Prefix uniqueness is scoped to each connection, with a separate partial unique index for legacy roots. Matching paths can therefore exist in different buckets/containers.
+- Parent/child selections in one connection cannot overlap. A new connection shares no folder automatically.
+- Hidden selections and disabled connections are checked before browse/upload/download and again in search SQL. Revocation does not require deleting cached vectors.
 
-The application-facing PostgreSQL model is small and centered on a CRUD-style core:
+`storage_connections` stores nicknames, provider/bucket/container, optional endpoint/region, boundary, enablement, and encrypted credentials. Nicknames never rename cloud objects. Removing a mapped selection removes metadata/index rows and leaves original objects in storage. Location changes are blocked while that connection still has selected folders.
 
-- `users`
-- `items`
-- `item_tags`
-- `dashboard_embed_configs`
-- `dashboard_embed_config_roles`
-- `app_settings`
+`item_tags` is the current JPA collection table. The initial PostgreSQL bootstrap also contains a legacy array column; application code uses the collection mapping.
 
-#### `users`
+## Document and vector state
 
-- purpose:
-  application login identity and role assignment
-- key fields:
-  `email`, `username`, `name`, `contact_number`, `role`, `active`
-- notes:
-  the `active` flag drives deactivation without physically deleting the record
+`storage_documents` identifies each discovered object by unique `(item_id, storage_path)`. It records filename, content type, size, provider modification time, metadata fingerprint (`source_checksum`), model identity, processing state, and last successful vectorization time.
 
-#### `items`
+| Processing status | Meaning |
+| --- | --- |
+| `METADATA_ONLY` | Content indexing is off; metadata is indexed |
+| `CONTENT_INDEXED` | Extracted text chunks were indexed |
+| `CONTENT_TRUNCATED` | Only the bounded portion of the document was indexed |
+| `UNSUPPORTED_FORMAT` | Filename format has no supported extractor; metadata remains searchable |
+| `CONTENT_TOO_LARGE` | Size is unknown or above the 5 MiB content-read limit |
+| `NO_EXTRACTABLE_TEXT` | Extraction returned no text, such as a scanned PDF needing OCR |
+| `CONTENT_UNAVAILABLE` | Extraction/read failed; metadata indexing can still succeed |
+| `INDEX_ERROR` | Vector/configuration indexing failed; a later reindex retries |
 
-- purpose:
-  document-folder metadata (the legacy table and API name are retained for compatibility)
-- key fields:
-  `user_id`, `title`, `description`, `storage_prefix`
-- notes:
-  each row maps to `{app_settings.storage_root_path}/{id}/`; objects outside that configured path are not exposed by the storage browser; all authenticated users can read registered roots, but only admins can create or mutate them in the current permission model
+Three derived search tables use 384-dimensional vectors and HNSW cosine indexes:
 
-#### `item_tags`
+- `item_vectors`: folder title/description/tags and identifying payload.
+- `document_vectors`: per-object metadata vector and parent folder/path payload.
+- `document_chunks`: ordered extracted content, original-byte SHA-256 checksum, model identity, and vector. `(document_id, chunk_index)` is unique.
 
-- purpose:
-  simple tag list for each item
-- notes:
-  stored as a separate collection table keyed by `item_id`
+Document vectors/chunks have cascading foreign keys to their document; documents belong to their selected folder. Full reindexing removes documents missing from storage. Browsing and uploading synchronize discovered objects; normal metadata change detection uses path/name/type/size/modification time. Run a full reindex if bytes changed without changed provider metadata.
 
-#### `storage_documents`
+Each vector carries an embedding-model fingerprint. Queries only compare matching fingerprints. Default local matching is `local-feature-hash-v2` inside Kotlin; earlier/local or different-provider vectors require reindexing. Keyword fallback can use current metadata and permitted existing chunks without comparing incompatible vectors. Content chunks are excluded immediately when content indexing is disabled.
 
-- purpose:
-  persistent identity and processing state for each object discovered beneath a registered root
-- key fields:
-  `item_id`, `storage_path`, `file_name`, `content_type`, `size_bytes`, `processing_status`, `source_checksum`, `embedding_model`, `vectorized_at`
-- notes:
-  `(item_id, storage_path)` is unique; current processing status is `METADATA_ONLY`, leaving extraction/OCR/classification for later processors
+Both vector and keyword queries join live folder visibility and connection enablement for all result types. AI generation uses content chunks and checks their access before and after the provider call. No event or audit collection is indexed.
 
-#### `dashboard_embed_configs`
+## Configuration and schedule state
 
-- purpose:
-  runtime-managed configuration for shared embedded dashboards
-- key fields:
-  `label`, `description`, `dashboard_id`, `guest_token_resource_id`, `sort_order`, `enabled`
-- notes:
-  this is how the app decides which shared dashboards to surface without hardcoding them into the frontend
+`app_settings` holds the default storage connection and operational job settings. The service uses the first settings row by creation time. Relevant job columns are:
 
-#### `dashboard_embed_config_roles`
+| Column | Purpose |
+| --- | --- |
+| `vector_reindex_enabled` | Enables scheduled work; manual reindex remains available when false |
+| `vector_reindex_schedule` | `INTERVAL`, `DAILY`, `WEEKLY`, or `ON_CHANGE` |
+| `vector_reindex_interval_minutes` | Interval length, 15 to 10080 minutes |
+| `vector_reindex_time` | Local `HH:mm`, initially `00:00` |
+| `vector_reindex_day_of_week` | Weekly day, initially `FRIDAY` |
+| `vector_reindex_time_zone` | Valid IANA timezone, initially `Africa/Johannesburg` |
+| `vector_reindex_next_run_at` | Persisted due instant; null while an enabled change job awaits changes |
+| `vector_reindex_pending_changes` | Coalesced work awaiting the selected change-job time |
+| `vector_reindex_last_check_at` | Most recent change poll |
+| `last_vector_reindex_at`, `last_vector_reindex_status` | Last outcome and timestamp |
 
-- purpose:
-  allowed application roles per dashboard embed config
-- notes:
-  allows the same app to expose different shared dashboards to different roles
+`ai_settings` uses singleton ID `1`. `source` selects `ENVIRONMENT` or `ADMIN`. It stores independent search, launcher, AI-answer, and content-indexing switches plus separate chat/embedding endpoints, models, and encrypted keys. Environment values are read from server configuration and are not copied into saved admin keys.
 
-#### `app_settings`
+`dashboard_embed_configs` and its role collection determine the enabled dashboards visible to each role. The linked Superset dashboard ID and backend-resolved embed UUID are distinct. Selection/order/labels are runtime-managed; the browser does not edit embed UUIDs.
 
-- purpose:
-  admin-managed operational settings
-- key fields:
-  storage connection fields, `storage_root_path`, vector reindex settings, and last reindex status timestamps
-- notes:
-  this is operational configuration state, not end-user business content
+## Credential storage and startup
 
-Notes:
+Storage access/secret fields and AI API-key fields are encrypted TEXT using AES-256-GCM with a fresh nonce per write. JPA converts ciphertext to server-side values; API responses expose configured flags. Password hashes and credentials are excluded from entity JSON/debug output. Wrapping keys stay outside PostgreSQL in the server environment.
 
-- `items.user_id` references `users.id`
-- `item_tags.item_id` references `items.id`
-- `dashboard_embed_config_roles.dashboard_embed_config_id` references `dashboard_embed_configs.id`
-- `dashboard_embed_configs.dashboard_id` stores the linked Superset dashboard identifier as text
-- `dashboard_embed_configs.guest_token_resource_id` stores the embedded resource UUID used for guest-token access
-- schema bootstrapping in `schema.sql` also backfills and enforces `users.active`
+Hibernate currently uses `ddl-auto=update`; supplemental [schema.sql](../backend/src/main/resources/schema.sql) runs after JPA initialization to create pgvector objects, indexes, and compatibility changes. `StoredSecretMigration` then encrypts legacy plaintext/rewraps credentials before seed runners; scheduled work waits until application startup completes. This is the current startup mechanism, not a versioned Flyway/Liquibase migration system. Existing encrypted rows require the matching wrapping key. See [upgrade and key rotation](deployment.md#upgrading-an-existing-installation).
 
-### MongoDB
+## MongoDB and Redis
 
-Current application document collections:
+MongoDB collections remain `events` (`userId`, `type`, `payload`, `createdAt`) and `activity_logs` (`userId`, `action`, resource/client metadata, `timestamp`). Existing event viewing, audit viewing, and admin export remain intact. There is no OCR-text collection or MongoDB vector-search integration in this change.
 
-- `events`
-- `activity_logs`
+Redis remains a Superset cache/Celery concern. The application backend does not use it for indexing jobs, vector storage, or search sessions.
 
-Observed document intent:
+## Backups and recovery
 
-- `events` stores app/system events with `userId`, `type`, `payload`, and `createdAt`
-- `activity_logs` stores audit-style activity records with `userId`, `action`, resource fields, client metadata, and `timestamp`
+| Artifact | Contains | Recovery limits |
+| --- | --- | --- |
+| Admin JSON export v2 | Selected user/profile metadata, folders/connections, document metadata/status, dashboard definitions, non-secret AI/settings/job configuration, events, audit logs | Omits password hashes, credentials/ciphertext, original objects, content chunks, vectors, pending-job runtime state, and per-user upload grants; no application import/restore endpoint |
+| PostgreSQL database backup | Relational state, bcrypt hashes, encrypted credential fields, content chunks, vectors, and persisted job state | Stored credentials need the matching separately retained wrapping key |
+| MongoDB backup | Event/audit history | Does not restore PostgreSQL configuration or original documents |
+| Object-storage backup/versioning | Original files and prefixes | Does not restore application nicknames, publication rules, or login identities |
+| Wrapping-key backup | Current/required previous server keys | Retain separately from database backups and with restricted access; losing the matching key prevents decryption |
 
-Document-model rationale:
+The export identifies itself as `superset-docker-app-backup-v2` and `credentialsIncluded: false`. It is a useful metadata export, not a complete disaster-recovery backup. Derived vectors can be rebuilt from folder metadata and original objects, with extraction/embedding dependencies available. Do not delete primary database records just because vectors are rebuildable.
 
-- these records are append-heavy
-- they are useful for operational visibility and audit trails
-- they do not need the same relational lifecycle as core application rows
+## Implementation sources
 
-Seed/bootstrap behavior currently initializes:
-
-- `events`
-
-### pgvector
-
-The backend stores vector search points in the PostgreSQL tables:
-
-- `item_vectors`
-- `document_vectors`
-
-Both tables use a `vector(384)` embedding column and an HNSW cosine-distance index.
-
-Current linkage:
-
-- folder rows in `items` are embedded into vectors and stored in `item_vectors`
-- the JSONB payload includes `itemId`, `folderId`, `entityType`, `title`, and `storagePrefix`
-- object metadata is stored in `storage_documents`, then embedded separately into `document_vectors`
-- document payloads identify `entityType=document`, their parent folder, and relative storage path
-- search ranks folder and document vectors together
-- the backend can rebuild both kinds of vector state through reindexing
-
-Operational note:
-
-- `item_vectors` and `document_vectors` contain derived search data in the same PostgreSQL database
-- it can be rebuilt from primary item data rather than treated as the sole source of truth
-
-### Redis
-
-Redis is not a primary business-data store here. It currently supports:
-
-- Superset cache state
-- Superset Celery broker/result backend behavior
-- async task coordination
-
-Important scope note:
-
-- this Redis instance is currently part of the Superset runtime footprint
-- the application backend does not use Redis directly today
-- if the broader application later needs Redis, that should be treated as a separate stack concern rather than assumed to be the same service
-
-That means Redis loss is operationally important, but conceptually different from losing the primary relational or document stores.
-
-## Current Data Boundaries
-
-At a high level:
-
-- user, item, and embed-configuration records live in PostgreSQL
-- event/audit-style documents live in MongoDB
-- vector embeddings live in the PostgreSQL `item_vectors` table
-- Superset metadata stays in its own PostgreSQL database within the same Postgres service
-
-Another useful way to think about the boundary is:
-
-- source-of-truth business data:
-  PostgreSQL
-- source-of-truth event/audit documents:
-  MongoDB
-- derived search state:
-  PostgreSQL with pgvector
-- cache/task runtime state:
-  Redis
-
-## Persistence and Backup Thinking
-
-Not every store should be treated the same way operationally.
-
-- PostgreSQL:
-  high-value source-of-truth data, should be backed up directly
-- MongoDB:
-  operational and audit history, should also be backed up if those logs matter
-- pgvector data:
-  useful but rebuildable from item data in this app and covered by PostgreSQL operations
-- Redis:
-  runtime-oriented, usually recoverable by restarting services and warming caches
-
-If you offload services to managed offerings, these same boundaries still apply even though the physical infrastructure changes.
-
-## Offloaded-Service Interpretation
-
-If PostgreSQL, MongoDB, or storage are moved off the VM:
-
-- the application data model does not change
-- only the network location of those stores changes
-- the VM becomes much closer to an application host than a full stateful stack node
-
-The current Superset-specific Redis service is the main exception to that simplification: it often still makes sense to leave it beside Superset on the same VM unless you are explicitly decomposing the Superset runtime as well.
-
-That is why the repo can reasonably be deployed either as:
-
-- a compact all-in-one stack
-- or a lighter app host with managed stateful dependencies
-
-## Implementation Sources
-
-The current diagram is based on these files:
-
-- [backend/src/main/kotlin/com/starter/model/postgres/Entities.kt](../backend/src/main/kotlin/com/starter/model/postgres/Entities.kt)
-- [backend/src/main/kotlin/com/starter/model/mongo/Documents.kt](../backend/src/main/kotlin/com/starter/model/mongo/Documents.kt)
-- [backend/src/main/resources/schema.sql](../backend/src/main/resources/schema.sql)
-- [docker/postgres/init.sql](../docker/postgres/init.sql)
-- [docker/mongo/init.js](../docker/mongo/init.js)
-
-Named cloud storage connections are stored in `storage_connections` with a nickname,
-provider, bucket/container, optional region and endpoint, credentials, start-folder prefix,
-and enabled flag. An `items.storage_connection_id` reference identifies an explicitly
-selected external folder; `items.title` is its in-app nickname and `items.accessible`
-controls publication. Null connection references preserve the original application-managed
-folder behavior. Existing folders default to accessible when the column is added.
-
-`items.storage_prefix` is unique within a connection, with a separate partial unique index
-for legacy folders. Shared browse, download, and upload requests resolve the connection
-from the saved folder ID and constrain every relative path to that selected prefix.
-Folder and document vector searches join current item/connection visibility, so cached
-embeddings cannot reveal a revoked selection. Backups include connection definitions,
-folder references, nicknames, and visibility.
+- [PostgreSQL entities](../backend/src/main/kotlin/com/starter/model/postgres/)
+- [MongoDB document models](../backend/src/main/kotlin/com/starter/model/mongo/Documents.kt)
+- [Supplemental schema](../backend/src/main/resources/schema.sql)
+- [First-volume PostgreSQL bootstrap](../docker/postgres/init.sql)
+- [MongoDB bootstrap](../docker/mongo/init.js)
+- [Backup export](../backend/src/main/kotlin/com/starter/service/BackupExportService.kt)
+- [Search and job guide](search-and-indexing.md)

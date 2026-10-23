@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import java.time.Instant
+import com.starter.ai.AiUnavailableException
 
 private val log = LoggerFactory.getLogger("GlobalExceptionHandler")
 
@@ -18,6 +19,10 @@ data class ErrorResponse(val message: String, val status: Int, val timestamp: In
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
+
+    @ExceptionHandler(AiUnavailableException::class)
+    fun handleAiUnavailable(ex: AiUnavailableException) =
+        ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(ErrorResponse(ex.message ?: "AI service unavailable", 503))
 
     @ExceptionHandler(NotFoundException::class)
     fun handleNotFound(ex: NotFoundException) =

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { adminStackApi, adminUsersApi, healthApi } from '../../api/client'
+import { adminStackApi, healthApi } from '../../api/system'
+import { adminUsersApi } from '../../api/users'
 import { Badge, Card, Spinner } from '../ui'
 import { AdminPageHeader } from '../admin/AdminPageHeader'
 
@@ -14,13 +15,26 @@ export function AdminPage() {
   const serviceHealthLabel = healthQuery.data?.postgres === 'UP' ? 'Operational' : 'Needs attention'
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div className="page-stack">
       <AdminPageHeader
         title="Administration"
-        description="Manage your workspace, connect services, and publish analytics for your team."
-
+        description="Choose a section to manage your workspace."
         actions={<Badge color="accent">Admin only</Badge>}
       />
+
+      <nav className="page-stack" aria-label="Administration menu">
+        {adminGroups.map(group => <section key={group.label}>
+          <h2 className="card-title">{group.label}</h2>
+          <div className="admin-cards">
+            {group.items.map(({ to, label, description }) => (
+              <Link className="admin-area-link" key={to} to={to}>
+                <h3>{label}</h3>
+                <p>{description}</p>
+              </Link>
+            ))}
+          </div>
+        </section>)}
+      </nav>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.75rem' }}>
         <Card style={{ padding: '1rem' }}>
@@ -40,25 +54,6 @@ export function AdminPage() {
         </Card>
       </div>
 
-      <nav className="page-stack" aria-label="Administration menu">
-      {adminGroups.map(group => <section key={group.label}>
-        <h2 className="card-title">{group.label}</h2>
-        <div className="admin-cards">
-          {group.items.map(({ to, label, description }) => (
-            <Link className="admin-area-link" key={to} to={to} style={{ textDecoration: 'none', color: 'inherit' }}>
-              <Card style={{ height: '100%', padding: '1.1rem', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 650, marginBottom: 5 }}>{label}</div>
-                  <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem', lineHeight: 1.5 }}>{description}</div>
-                </div>
-
-              </Card>
-            </Link>
-          ))}
-        </div>
-      </section>)}
-      </nav>
     </div>
   )
 }

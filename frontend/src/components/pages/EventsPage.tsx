@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { eventsApi, type Event } from '../../api/client'
+import { eventsApi, type Event } from '../../api/events'
 import { Card, Spinner, Badge } from '../ui'
 
 const typeColors: Record<string, 'accent' | 'success' | 'warning' | 'danger' | 'default'> = {

@@ -3,13 +3,13 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuthStore } from '../../hooks/useAuthStore'
 import { useTheme } from '../../hooks/useTheme'
-import { authApi } from '../../api/client'
+import { authApi } from '../../api/auth'
+import { SearchLauncher } from '../search/SearchLauncher'
 
 const nav = [
   { to: '/', label: 'Home' },
   { to: '/dashboards', label: 'Dashboards' },
   { to: '/storage', label: 'Storage' },
-  { to: '/search', label: 'Vector search' },
   { to: '/events', label: 'Events' },
 ]
 
@@ -79,6 +79,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
       <main className="app-main">{children}</main>
+      <SearchLauncher />
     </div>
   )
 }

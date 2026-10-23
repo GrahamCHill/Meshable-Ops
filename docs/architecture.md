@@ -6,7 +6,7 @@ This document describes the current runtime architecture of the application as i
 
 - End users access the React frontend.
 - The frontend proxies backend API calls, embedded Superset dashboards, and admin-only Superset authoring routes.
-- The backend owns application auth, app APIs, guest-token minting, and embed configuration management.
+- The backend owns application auth, storage boundaries, search/indexing jobs, optional AI calls, guest-token minting, and embed configuration management.
 - Superset remains internal to the stack and is not intended to be exposed directly to users.
 
 In practice, the architecture can be run in two main ways:
@@ -30,7 +30,9 @@ flowchart LR
     caddy["Caddy\nproduction HTTPS entrypoint"]
     frontend["Frontend\nReact + nginx proxy"]
     backend["Backend\nSpring Boot API"]
-    ml["ML Backend\nFastAPI helper"]
+    ml["ML Backend\noptional bounded text extraction"]
+    objects["S3 / Azure Blob\noriginal documents"]
+    ai["Optional chat / embedding provider"]
 
     superset["Apache Superset\nweb app"]
     supersetInit["Superset Init Job"]
@@ -52,7 +54,9 @@ flowchart LR
 
     backend -->|JPA app data + pgvector search| pg
     backend -->|event/activity docs| mongo
-    backend -->|ML inference / embeddings| ml
+    backend -->|selected folder boundaries| objects
+    backend -.->|content extraction when enabled| ml
+    backend -.->|server-side calls when configured| ai
     backend -->|Superset admin API + guest tokens| superset
 
     superset -->|metadata DB| pg
@@ -80,6 +84,30 @@ flowchart LR
 3. The frontend serves the SPA and proxies `/api/*` to the backend.
 4. The backend reads and writes app data in PostgreSQL (including pgvector) and MongoDB.
 
+### Storage and content indexing
+
+1. Admins add named S3/Azure connections and select accessible folders. `ADMIN` is the existing super-admin role; this is not a new role name.
+2. Storage exposes enabled connections and their accessible selections as named folders. Nicknames stay inside the app.
+3. Browse, upload, download, and ZIP requests resolve the saved folder ID and constrain relative paths to its selected prefix. Uploads also require the separate upload grant.
+4. PostgreSQL stores folder/document identities and metadata. Original files stay in object storage.
+5. If content indexing is enabled, the extraction service supplies bounded text from supported text, PDF, and DOCX files. The backend stores overlapping chunks and vectors in PostgreSQL. Extraction failures retain metadata indexing.
+6. Explicit reindexing, upload/discovery, and saved indexing jobs synchronize derived search data. A full reindex removes documents no longer present in storage.
+
+### Search and optional AI
+
+1. The floating bottom-right launcher opens a reusable search panel; `/search` remains a dedicated route. The left navigation has no search item.
+2. The backend checks the search feature switch before vector or keyword queries. Launcher visibility is a separate UI switch; disabling AI answers leaves search enabled.
+3. Default local feature hashing runs within Kotlin and needs no AI provider, model download, API key, or running ML container. PostgreSQL/pgvector still provides persistence and ranking.
+4. Folder, document, and chunk queries join live folder visibility and connection state. If configured embeddings are unavailable, access-checked keyword queries provide ordinary search. Different model identities are never compared as if their vectors were compatible.
+5. Optional AI answers retrieve relevant document chunks and send excerpts to the selected chat provider. The backend rechecks access before generation and before returning the answer and source links. Provider failure returns guidance rather than fabricated content.
+6. MongoDB events and audit logs remain outside search and AI retrieval. OCR/MongoDB document-search integration is deferred.
+
+### Indexing jobs
+
+`VectorReindexScheduler` checks enabled jobs after application startup, once per minute after each check completes. PostgreSQL stores the schedule, selected IANA timezone, next run, pending-change flag, and last result. Jobs support daily times, weekly day/time, fixed intervals, and the next selected time after file changes. Discovery/upload also queues changed files. Repeated changes do not postpone an existing pending deadline.
+
+These are synchronous application jobs for one backend instance, not Superset Celery jobs. The backend must be running to detect changes and execute a job. Persisted overdue work runs once after startup; new changes discovered after startup queue the next future time. See [search and indexing jobs](search-and-indexing.md).
+
 ### Authentication and session flow
 
 1. The browser signs in through `/api/auth/login`.
@@ -93,6 +121,7 @@ flowchart LR
 2. The backend mints Superset guest tokens.
 3. The backend also syncs the active app origin into Superset embedded allowlists.
 4. Superset serves the embedded dashboard without being exposed as a separate public host.
+5. The viewer lists the available dashboard names, preserves selection in `/dashboards?dashboard=<app-dashboard-id>`, and provides previous/next, reload, and expanded-view controls.
 
 ### Admin Superset authoring
 
@@ -113,15 +142,17 @@ The main user-visible routes are:
 - `/storage`
   registered storage roots and a nested S3/Azure Blob folder browser (`/items` redirects here)
 - `/search`
-  vector search UI
+  dedicated search panel, also available from the bottom-right launcher
 - `/events`
   event log
 - `/admin`
-  administration overview and shortcuts
+  card-based administration menu; sections provide a back link instead of sidebar child items
 - `/admin/users`
   user lifecycle and role management
 - `/admin/storage`
-  object-storage boundary, credentials, and vector maintenance
+  named connections, folder publication, default storage, and indexing jobs (`?tab=vectors`)
+- `/admin/ai`
+  independent search/launcher/AI switches, content indexing, provider configuration, and connection tests
 - `/admin/system`
   health, network boundaries, and runtime/service information previously shown on Home
 - `/admin/audit`
@@ -136,9 +167,9 @@ The main user-visible routes are:
 The effective permission split is:
 
 - authenticated users:
-  can sign in, view shared items, download documents/folder archives, run search, and view enabled dashboard embeds allowed for their role
+  can sign in, browse accessible folders, download documents/folder archives, run enabled search, and view enabled dashboard embeds allowed for their role
 - users with `can_upload_documents`:
-  can upload documents and folder trees into application-managed storage roots; this permission is independent of USER/ADMIN and defaults off
+  can upload documents and folder trees within an accessible selected storage root; this permission is independent of USER/ADMIN and defaults off
 - admins:
   can manage users and upload permissions, items, dashboard embed configs, admin settings, backups, vector reindexing, audit views, and Superset authoring
 
@@ -147,6 +178,7 @@ Important implementation detail:
 - hiding links in the frontend is not the security boundary
 - the nginx proxy in the frontend container is the real boundary for non-embed Superset route exposure
 - `/embedded/...` remains intentionally accessible for allowed application users
+- storage visibility and the search feature switch are enforced by backend services, not only by hidden controls
 
 ## Service Responsibilities
 
@@ -160,6 +192,7 @@ The frontend does more than serve the SPA:
 - proxies approved admin-authoring Superset routes
 - enforces admin-only authoring access through `auth_request`
 - rewrites some legacy or mixed Superset routes so the embedded admin workspace remains usable
+- composes plain admin cards/back navigation, visible dashboard navigation, and the floating search panel
 
 ### Backend
 
@@ -171,7 +204,9 @@ The backend is the application control plane:
 - item CRUD and shared reads
 - dashboard embed configuration
 - guest-token minting
-- vector-search orchestration
+- local or external embeddings, pgvector/keyword search, bounded document chunk indexing, and optional sourced answers
+- calendar/interval/change-triggered indexing jobs and saved feature controls
+- write-only encrypted provider credentials, startup migration, and salted password hashing
 - admin settings, audit logs, and backup export
 
 ### Superset
@@ -186,7 +221,7 @@ It is treated as an internal dependency rather than the primary public web app.
 ### Storage and Runtime Services
 
 - PostgreSQL:
-  application relational data and Superset metadata databases
+  application relational data, configuration, schedule state, extracted chunks, and vectors; Superset metadata uses its separate database
 - MongoDB:
   events and audit-style activity documents
 - pgvector:
@@ -194,7 +229,7 @@ It is treated as an internal dependency rather than the primary public web app.
 - Redis:
   Superset cache and Celery coordination
 - ML helper:
-  embedding/vectorization helper used by the backend
+  optional text/PDF/DOCX extraction, plus a legacy vectorization endpoint unused by default local search
 - S3-compatible or Azure Blob object storage:
   application-managed storage roots and original document objects; development profiles are provided for MinIO and Azurite
 
@@ -205,10 +240,13 @@ Today that means:
 - a future app-level Redis stack would be an additional architectural concern, not the current default
 
 Folder metadata remains relational and searchable; object storage is the durable document boundary.
-The planned document-processing extension is described in
-[Document Folder and Processing Extension](document-processing-extension.md). Extraction,
-classification, and OCR are not implemented yet. S3-compatible and Azure Blob adapters
-share the same hierarchical browsing contract.
+[Document processing](document-processing-extension.md) describes implemented text extraction and chunk indexing. OCR, image classification, and an asynchronous indexing worker remain future work. S3-compatible and Azure Blob adapters share the same hierarchical browsing contract.
+
+## Credential boundary
+
+Admin-entered AI keys and both storage credential fields are encrypted with AES-256-GCM before database writes. The wrapping key is configured separately as `APP_SECRETS_ENCRYPTION_KEY`; responses expose configured flags, never saved keys. A startup migration encrypts legacy plaintext/rewraps old ciphertext before seed runners and scheduled jobs. A database with stored credentials needs the matching server wrapping key to start.
+
+Application access passwords use bcrypt at cost 12 with a per-password random salt; hashes do not appear in entity JSON or application exports. Production cookies use Secure, HttpOnly, and SameSite=Lax. See [credential setup and rotation](ai-search-and-secrets.md) and [database backup boundaries](database-layout.md#backups-and-recovery).
 
 ## Deployment Boundary Notes
 

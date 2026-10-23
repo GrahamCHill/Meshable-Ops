@@ -1,0 +1,13 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-family: var(--font); background: var(--color-bg); color: var(--color-text); }
+body { min-height: 100vh; line-height: 1.5; }
+a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: none; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+input, textarea, select { width: 100%; border: 0; border-radius: 0; padding: 8px 10px; background: var(--color-surface-2); font-size: 0.875rem; }
+input::placeholder, textarea::placeholder { color: var(--color-text-tertiary); }
+input[type='checkbox'], input[type='radio'] { width: auto; accent-color: var(--color-text); }
+fieldset { border: 0; min-width: 0; }

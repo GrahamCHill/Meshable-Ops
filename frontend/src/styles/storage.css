@@ -1,0 +1,72 @@
+.section-tabs { display: flex; gap: 16px; flex-wrap: wrap; }
+.section-tabs button { padding: 8px 0; font-size: 0.85rem; color: var(--color-text-secondary); }
+.section-tabs button.is-active { color: var(--color-text); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+.storage-layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(270px, 1fr); gap: 28px; align-items: start; }
+.step-heading { display: flex; align-items: flex-start; gap: 10px; margin: 24px 0 14px; }
+.step-heading:first-child { margin-top: 0; }
+.step-heading > span { color: var(--color-text-secondary); font-size: 0.85rem; }
+.step-heading h2 { font-size: 0.95rem; font-weight: 600; }
+.step-heading p { color: var(--color-text-secondary); font-size: 0.8rem; margin-top: 2px; }
+.provider-options { display: flex; flex-wrap: wrap; gap: 20px; }
+.provider-option { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 6px 0; text-align: left; color: var(--color-text-secondary); }
+.provider-option strong { font-size: 0.85rem; font-weight: 400; }
+.provider-option small { font-size: 0.75rem; }
+.provider-option.is-selected { color: var(--color-text); }
+.provider-option.is-selected strong { font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.form-field { min-width: 0; }
+.form-field label { display: block; font-size: 0.8rem; margin-bottom: 6px; }
+.form-field small { display: block; font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 6px; }
+.full-width { grid-column: 1 / -1; }
+.segmented-control { display: flex; gap: 16px; flex-wrap: wrap; }
+.segmented-control button { padding: 6px 0; font-size: 0.8rem; color: var(--color-text-secondary); }
+.segmented-control .is-active { font-weight: 600; color: var(--color-text); text-decoration: underline; text-underline-offset: 4px; }
+.field-help { font-size: 0.8rem; color: var(--color-text-secondary); margin: 10px 0 16px; }
+.secret-input { display: flex; align-items: center; gap: 8px; }
+.secret-input input { min-width: 0; }
+.connection-preview { margin-top: 16px; }
+.connection-preview span { display: block; font-size: 0.75rem; color: var(--color-text-secondary); margin-bottom: 6px; }
+.connection-preview code { font-size: 0.8rem; overflow-wrap: anywhere; }
+.feedback { font-size: 0.8rem; margin-top: 12px; }
+.feedback.error { color: var(--color-danger); }
+.feedback.success { color: var(--color-success); }
+.feedback.warning { color: var(--color-warning); }
+.save-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px 0; }
+.save-bar > span { color: var(--color-text-secondary); font-size: 0.8rem; }
+.checkbox-label { display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+
+.connection-heading { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.shared-folder-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; flex-wrap: wrap; }
+.shared-folder-name { flex: 1; min-width: 180px; }
+.shared-folder-name small { display: block; color: var(--color-text-secondary); font-size: 0.75rem; padding-top: 4px; overflow-wrap: anywhere; }
+.shared-folder-row .feedback { flex-basis: 100%; }
+.folder-picker { margin-top: 20px; padding: 12px 0; gap: 14px; }
+.folder-breadcrumbs, .folder-breadcrumbs span { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.folder-breadcrumbs button { font-size: 0.8rem; text-decoration: underline; text-underline-offset: 3px; }
+.folder-picker-entry { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+.folder-open { flex: 1; min-width: 0; text-align: left; font-size: 0.85rem; }
+.folder-open:hover { text-decoration: underline; }
+.share-folder-form { padding: 16px 0; }
+.storage-location-grid { display: flex; flex-direction: column; gap: 12px; }
+.storage-location-card { display: block; text-align: left; padding: 8px 0; }
+.storage-location-card strong { display: block; overflow-wrap: anywhere; font-size: 0.95rem; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+.storage-location-card small { display: block; color: var(--color-text-secondary); font-size: 0.8rem; margin-top: 4px; }
+
+@media (max-width: 1150px) {
+  .storage-layout { grid-template-columns: minmax(0, 1fr); }
+  .storage-layout > .page-stack { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+}
+
+@media (max-width: 760px) {
+  .storage-layout > .page-stack { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 600px) {
+  .shared-folder-row { gap: 8px; }
+  .shared-folder-name { flex-basis: 100%; }
+  .section-tabs { gap: 12px; }
+  .section-tabs button { font-size: 0.8rem; }
+}
+@media (max-width: 440px) {
+  .form-grid { grid-template-columns: minmax(0, 1fr); }
+}

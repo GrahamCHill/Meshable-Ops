@@ -1,54 +1,18 @@
-# Document Folder and Processing Extension
+# Document folders, content indexing, and processing
 
-## Implemented now
+Original files remain in S3-compatible storage or Azure Blob. Application-managed folders use the configured prefix plus the folder UUID; external shared folders reference an administrator-selected connection and prefix. PostgreSQL owns identities, nicknames, visibility, processing state, metadata vectors, and extracted chunks. Hidden folders and disabled connections are excluded from search and AI retrieval.
 
-The existing `items` table and `/api/items` route are retained for compatibility, but each item now represents an application-managed document folder.
+Each discovered object has a `storage_documents` row and a `document_vectors` metadata embedding. When content indexing is enabled, the bounded extraction service produces text for supported UTF-8 formats, PDF text, and DOCX paragraphs. `DocumentIndexService` chunks the text and stores `document_chunks` with source checksum and embedding-model identity. Upload, browsing, and explicit or scheduled reindexing synchronize the index. Full reindexing removes metadata for deleted objects.
 
-Each folder has:
+The responsibility boundaries are:
 
-- a PostgreSQL row containing its title, description, tags, owner, and derived `storage_prefix`
-- an object-storage prefix in the form `{configured-storage-view-path}/{folder-id}/`
-- one pgvector row built from the folder's title, description, and tags
-- a live document count derived from objects below its storage prefix
+- `FolderStorageService`: selected-prefix validation, bounded object reads, browsing, uploads, downloads, and ZIP archives.
+- `DocumentTextService` plus `ml-backend/app/document_text.py`: isolated extraction with size, time, and Linux resource limits.
+- `DocumentIndexService`: discovery/checksums, processing status, changed document/chunk indexing, and missing-document cleanup.
+- `EmbeddingService`: internal text matching or external embedding providers, fixed dimension validation, normalization, and model identity.
+- `VectorService`: PostgreSQL vector persistence and queries with live visibility joins.
+- `AiAnswerService`: relevant accessible excerpts, source attribution, provider generation, and access rechecks before returning answers.
 
-Each discovered object also has a `storage_documents` PostgreSQL row and a separate
-`document_vectors` pgvector row. The current document embedding uses filename, relative path,
-and content type. A metadata checksum prevents unchanged documents from being embedded again;
-full reindexing also removes database rows for objects that no longer exist.
+Processing states distinguish content indexed, partially indexed, metadata only, unsupported format, over-limit files, no extractable text, unavailable extraction, and indexing errors. Missing extraction retains metadata search; default feature hashing runs within the backend without AI or the ML container. Scanned PDFs need OCR, which is not implemented. Image classification and an asynchronous indexing queue also remain future extensions. Current indexing runs synchronously, and reindex results report content counts and failures. [Calendar and change-triggered jobs](search-and-indexing.md) control scheduled reindexing; MongoDB integration remains deferred.
 
-The default development profile uses MinIO through the S3 adapter. The alternate `docker-compose.dev.azurite.yml` profile uses the Azure Blob adapter against Azurite. `NONE` remains valid for deployments that have not configured object storage.
-
-Object stores do not have conventional directories, so both adapters create a zero-byte marker ending in `/`. The storage-root list is the joined application view: PostgreSQL supplies identity and searchable metadata, while object storage supplies the root marker and live object count. Opening a root uses provider-native delimiter listing to navigate immediate child folders and objects recursively. A root containing child content cannot be deleted.
-
-The persisted `storage_root_path` setting is a security and product boundary: browser APIs
-validate registered roots beneath it and never offer container-wide listing. Changing the
-setting repoints registered roots; it does not migrate objects between prefixes.
-
-## Planned extension boundary (not implemented)
-
-Document processing should be added behind a processor interface instead of inside the folder service. A future processor can declare the media types it supports and emit normalized document metadata and text chunks. This keeps these concerns independent:
-
-- object storage: durable original files
-- PostgreSQL: folder/document identity, processing state, provenance, and errors
-- pgvector: derived embeddings and searchable payloads
-- processors: text extraction, image classification, or OCR
-
-The existing `storage_documents` table is the extension point for fields such as:
-
-- `id`, `folder_id`, `object_key`, `media_type`, `size_bytes`, and object `etag`/version
-- processing status, selected processor kind/version, attempt timestamps, and error details
-- normalized metadata (`jsonb`) and references to extracted artifacts
-
-Document vectors already use `document_vectors` rather than overloading folder vectors, and store
-an embedding model/version plus stable source checksum. Future extracted chunks should use their
-own child table with processor and source provenance.
-
-The eventual flow should be asynchronous:
-
-1. Discover an uploaded object under a known folder prefix (implemented for browsing/reindexing).
-2. Persist its document row and metadata vector (implemented); enqueue content work using the object version as the idempotency key (planned).
-3. Select a processor by media type (plain-text extraction, image classification, or OCR).
-4. Persist normalized results and chunk provenance.
-5. Embed changed chunks and atomically publish their searchable state.
-
-Text extraction, image classification, OCR, uploads, and background jobs are deliberately outside the current implementation.
+See [AI setup, limits, provider configuration, and credential protection](ai-search-and-secrets.md) for the complete operational guide.

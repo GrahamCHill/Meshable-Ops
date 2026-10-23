@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { Button, Spinner } from '../ui'
 import { AdminPageHeader } from '../admin/AdminPageHeader'
-import { authApi } from '../../api/client'
+import { authApi } from '../../api/auth'
 import { useTheme } from '../../hooks/useTheme'
 import { applySupersetTheme } from '../../lib/supersetTheme'
 

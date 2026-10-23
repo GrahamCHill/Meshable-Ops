@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { dashboardEmbedsApi } from '../../api/client'
+import { dashboardEmbedsApi } from '../../api/dashboards'
 import { useAuthStore } from '../../hooks/useAuthStore'
 import { Button, Card, Spinner } from '../ui'
 import { DashboardEmbed } from '../ui/DashboardEmbed'

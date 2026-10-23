@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { adminUsersApi, type AdminUser } from '../../api/client'
+import { adminUsersApi, type AdminUser } from '../../api/users'
 import { Badge, Button, Card, Spinner } from '../ui'
 import { AdminPageHeader } from '../admin/AdminPageHeader'
 import { formatDate, getErrorMessage } from '../admin/adminUtils'

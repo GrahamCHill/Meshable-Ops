@@ -15,10 +15,10 @@ import java.util.Optional
 class StorageConnectionServiceTest {
     private val connections = mock(StorageConnectionRepository::class.java)
     private val items = mock(ItemRepository::class.java)
-    private val settings = AdminSettingsService(mock(com.starter.repository.postgres.AppSettingsRepository::class.java))
+    private val settings = AdminSettingsService(mock(com.starter.repository.postgres.AppSettingsRepository::class.java), com.starter.security.testEncryption())
     private val itemService = mock(ItemService::class.java)
     private val audit = mock(AuditLogService::class.java)
-    private val service = StorageConnectionService(connections, items, settings, itemService, audit)
+    private val service = StorageConnectionService(connections, items, settings, itemService, audit, com.starter.security.testEncryption())
 
     @Test
     fun `ordinary storage listing exposes nicknames and counts but no connection secrets or physical paths`() {
@@ -41,7 +41,7 @@ class StorageConnectionServiceTest {
         assertThat(existing.secretKey).isEqualTo("private-secret")
         assertThat(result.nickname).isEqualTo("New nickname")
         assertThat(result.secretConfigured).isTrue()
-        assertThat(jacksonObjectMapper().writeValueAsString(result)).doesNotContain("private-secret")
+        assertThat(jacksonObjectMapper().writeValueAsString(result)).doesNotContain("private-secret", "account")
     }
 
     @Test
@@ -59,7 +59,7 @@ class StorageConnectionServiceTest {
         val existing = StorageConnection(bucket = "original")
         `when`(connections.findById(existing.id)).thenReturn(Optional.of(existing))
         `when`(items.findAllByStorageConnectionIdOrderByTitleAsc(existing.id)).thenReturn(listOf(Item(storageConnection = existing, storagePrefix = "shared/")))
-        assertThatThrownBy { service.save(existing.id, StorageConnectionRequest("Archive", "S3", "different"), "admin@test.local") }.isInstanceOf(ConflictException::class.java)
+        assertThatThrownBy { service.save(existing.id, StorageConnectionRequest("Archive", "S3", "different", useServerIdentity = true), "admin@test.local") }.isInstanceOf(ConflictException::class.java)
         assertThat(existing.bucket).isEqualTo("original")
         verify(connections, never()).save(any(StorageConnection::class.java))
     }

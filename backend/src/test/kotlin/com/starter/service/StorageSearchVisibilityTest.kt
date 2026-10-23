@@ -18,9 +18,9 @@ class StorageSearchVisibilityTest {
                 emptyList<VectorSearchPoint>()
             } else Answers.RETURNS_DEFAULTS.answer(invocation)
         }
-        VectorService(jdbc, jacksonObjectMapper(), mock(RestTemplate::class.java)).search(listOf(1f, 0f), 10)
+        VectorService(jdbc, jacksonObjectMapper(), mock(com.starter.ai.EmbeddingService::class.java).also { org.mockito.Mockito.`when`(it.fingerprint()).thenReturn("test-model") }).search(listOf(1f, 0f), 10)
         val sql = statements.single()
         assertThat(sql).contains("JOIN items i ON i.id = iv.item_id", "JOIN items i ON i.id = d.item_id")
-        assertThat(Regex("i.accessible = TRUE AND \\(sc.id IS NULL OR sc.enabled = TRUE\\)").findAll(sql).count()).isEqualTo(2)
+        assertThat(Regex("i.accessible = TRUE AND \\(sc.id IS NULL OR sc.enabled = TRUE\\)").findAll(sql).count()).isEqualTo(3)
     }
 }

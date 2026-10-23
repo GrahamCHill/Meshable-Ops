@@ -26,6 +26,7 @@ class AuthService(
     private val userDetailsService: UserDetailsServiceImpl
 ) {
     @Value("\${jwt.expiry-ms}") private var expiryMs: Long = 86_400_000L
+    @Value("\${app.auth-cookie-secure:false}") private var secureCookie: Boolean = false
 
     @Transactional
     fun register(req: RegisterRequest, response: HttpServletResponse): AuthResponse {
@@ -46,6 +47,10 @@ class AuthService(
         authManager.authenticate(UsernamePasswordAuthenticationToken(req.email, req.password))
         val user = userRepository.findByEmail(req.email)
             .orElseThrow { UsernameNotFoundException("User not found") }
+        if (passwordEncoder.upgradeEncoding(user.password)) {
+            user.password = passwordEncoder.encode(req.password)
+            userRepository.save(user)
+        }
         val ud = userDetailsService.loadUserByUsername(user.email)
         val token = jwtService.generateToken(ud, mapOf("role" to user.role, "id" to user.id.toString()))
         writeAuthCookie(response, token, expiryMs)
@@ -68,7 +73,7 @@ class AuthService(
     private fun writeAuthCookie(response: HttpServletResponse, token: String, maxAgeMs: Long) {
         val cookie = ResponseCookie.from("app_auth_token", token)
             .httpOnly(true)
-            .secure(false)
+            .secure(secureCookie)
             .sameSite("Lax")
             .path("/")
             .maxAge(maxAgeMs / 1000)

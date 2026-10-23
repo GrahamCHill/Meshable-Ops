@@ -7,6 +7,7 @@ import { DashboardsPage } from './components/pages/DashboardsPage'
 import { SupersetAdminPage } from './components/pages/SupersetAdminPage'
 import { AdminDashboardLinksPage } from './components/pages/AdminDashboardLinksPage'
 import { AdminUsersPage } from './components/pages/AdminUsersPage'
+import { AdminAiPage } from './components/pages/AdminAiPage'
 import { AdminStoragePage } from './components/pages/AdminStoragePage'
 import { AdminSystemPage } from './components/pages/AdminSystemPage'
 import { AdminAuditPage } from './components/pages/AdminAuditPage'
@@ -52,6 +53,7 @@ function App() {
                       </AdminRoute>
                     } />
                     <Route path="/admin/users" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
+                    <Route path="/admin/ai" element={<AdminRoute><AdminAiPage /></AdminRoute>} />
                     <Route path="/admin/storage" element={<AdminRoute><AdminStoragePage /></AdminRoute>} />
                     <Route path="/admin/system" element={<AdminRoute><AdminSystemPage /></AdminRoute>} />
                     <Route path="/admin/audit" element={<AdminRoute><AdminAuditPage /></AdminRoute>} />

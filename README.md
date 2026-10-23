@@ -6,7 +6,7 @@ A production-oriented Docker Compose application that combines:
 - a Spring Boot backend
 - Apache Superset for embedded analytics and admin authoring
 - PostgreSQL with pgvector, plus MongoDB, for application data
-- a small Python ML helper for vectorization
+- a small Python helper for optional document text extraction
 
 The application is designed so users work through the app shell, not through a directly exposed Superset instance. Shared dashboards are embedded inside the product, while Superset authoring is available only to admins through `Superset Graph Builder`.
 
@@ -15,9 +15,10 @@ The application is designed so users work through the app shell, not through a d
 - App-managed authentication and role-based access control
 - Embedded Superset dashboards through the app domain
 - Admin-only Superset authoring at `/admin/superset-graph-builder`
-- Focused admin workspaces for users, storage, system health, audit/backup, and dashboard links
-- Shared document folders backed by S3-compatible object storage
-- Vector search over folder metadata
+- Card-based admin workspaces for users, storage, AI/search, system health, audit/backup, and dashboard links
+- Multiple named S3-compatible buckets or Azure Blob containers with explicit shared-folder selections
+- Vector search over folder/document metadata and indexed content, with sourced AI answers
+- A bottom-right search/chat launcher with admin controls and indexing schedules; search also works without AI
 - Production deployment with Docker Compose and Caddy-based HTTPS
 
 ## Product Model
@@ -35,7 +36,9 @@ The admin area is split by responsibility so each page remains focused:
 - `/admin/users`
   application user and role management
 - `/admin/storage`
-  S3/Azure Blob scope, credentials, and vector maintenance
+  S3/Azure Blob scope, credentials, and interval/calendar/change-triggered indexing jobs
+- `/admin/ai`
+  search/launcher/AI switches and optional provider configuration
 - `/admin/system`
   health, public entrypoints, private services, and runtime details
 - `/admin/audit`
@@ -56,7 +59,7 @@ The intended public surface is the frontend application.
 - `superset`
   internal analytics dependency, proxied through the frontend
 - `ml-backend`
-  internal helper for vectorization
+  optional document extraction and legacy vectorization helper; default local search runs inside the backend
 - `postgres` with pgvector, `mongodb`
   application data stores
 - `redis`
@@ -78,8 +81,13 @@ Important routing rule:
 Additional architecture detail:
 
 - [Architecture Guide](docs/architecture.md)
+- [Documentation Index](docs/README.md)
+- [Code Organization](docs/code-organization.md)
+- [AI Search and Credential Security](docs/ai-search-and-secrets.md)
+- [Search Controls and Indexing Jobs](docs/search-and-indexing.md)
 - [Database Layout](docs/database-layout.md)
 - [Deployment Guide](docs/deployment.md)
+- [API Reference](docs/api.md)
 
 ## Service Map
 
@@ -88,7 +96,7 @@ Additional architecture detail:
 | Frontend | `http://localhost:3000` | Main application UI |
 | Backend API | internal only | Application APIs, reached through the frontend proxy |
 | Superset | internal only | Embedded dashboards and admin authoring |
-| ML backend | internal only | Vectorization helper |
+| ML backend | internal only | Optional text/PDF/DOCX extraction; legacy vectorization endpoint |
 | PostgreSQL + pgvector | internal only | Application relational data, Superset metadata, and vector search storage |
 | MongoDB | internal only | Events and audit-style documents |
 | Redis | internal only | Superset cache and task coordination |
@@ -97,6 +105,11 @@ Additional architecture detail:
 ## Quick Start
 
 First-time development setup (also safe to rerun after code changes):
+
+Before starting, copy `.env.example` to the untracked `.env` and set
+`APP_SECRETS_ENCRYPTION_KEY` once. Generate a 32-byte key with `openssl rand -base64 32`
+and retain it securely across restarts. It is required to save provider credentials or
+upgrade a database containing existing storage keys. See the [setup guide](docs/ai-search-and-secrets.md).
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d --remove-orphans
@@ -109,8 +122,9 @@ stack against Azure Blob-compatible Azurite instead, use:
 docker compose -f docker-compose.yml -f docker-compose.dev.azurite.yml up --build -d --remove-orphans
 ```
 
-Use one development override at a time. Both profiles force their own development-only
-storage settings into the backend so switching providers works with an existing database.
+Use one development override at a time. Both profiles provide development storage seed
+values. Persisted settings take precedence unless `APP_SEED_STORAGE_FORCE=true` is explicitly
+set for that startup; the overrides leave it disabled by default.
 
 The development override starts a local S3-compatible MinIO instance and creates the
 `starter-dev` bucket automatically. Its S3 API is at `http://localhost:9000` and its
@@ -160,8 +174,9 @@ scoped per connection so matching folder paths can be shared from different buck
 
 ### Default storage view path
 
-The application never browses the whole bucket/container. It exposes only registered
-storage roots beneath a configured prefix such as `contract-management/documents`.
+The default connection exposes registered, application-managed storage roots beneath a
+configured prefix such as `contract-management/documents`. Named connections expose only
+the folders explicitly selected by an admin, within their optional start-folder boundary.
 Configure this persistently from **Administration > Storage connections > Default connection > Storage view path**.
 The value is stored in PostgreSQL. Do not use `/`, `.` or `..` as path segments.
 
@@ -243,14 +258,14 @@ The **Storage** page stores searchable root metadata in PostgreSQL and creates a
 Opening a root explores
 its child virtual folders and objects directly from the configured provider. Root metadata and
 each discovered document's filename/path/content type are vectorized separately in pgvector.
-Document content extraction, image classification, and OCR are planned extension points and are
-not enabled. See
+Content extraction for supported text, PDF, and DOCX files can be enabled from **Administration > AI & search**.
+Chat and embedding providers can use environment settings or encrypted admin settings. OCR and image classification remain extension points. See
 [Document Folder and Processing Extension](docs/document-processing-extension.md).
 
-Every authenticated account can download a document or a folder as a ZIP archive. Uploading
+Every authenticated account can download documents and folder ZIPs from accessible selections. Uploading
 files or a folder tree requires the independent **Allow document and folder uploads** permission.
-Admins grant or revoke it from **Admin > Users**; it defaults to disabled even for administrators.
-Upload paths are constrained to the selected application-managed storage root and uploaded
+Admins grant or revoke it from **Administration > Users & access**; it defaults to disabled even for administrators.
+Upload paths are constrained to the selected storage root and uploaded
 document metadata is synchronized and vectorized immediately.
 
 Default transfer limits are 50 MB per file and 250 MB per request. Override them at backend
@@ -260,6 +275,9 @@ startup when needed:
 APP_UPLOAD_MAX_FILE_SIZE=100MB
 APP_UPLOAD_MAX_REQUEST_SIZE=500MB
 ```
+
+The frontend nginx request limit is currently `250m`; update that proxy limit as well when
+increasing the backend request size. Upload limits are separate from the 5 MiB content-indexing limit.
 
 ### Superset Login
 
@@ -341,19 +359,35 @@ User lifecycle behavior:
 - deleting a user from the admin UI is a deactivation flow, not a hard delete
 - inactive users can no longer authenticate
 
-### Vector Search
+### Search, Optional AI, and Indexing Jobs
 
-The repository includes seeded data so vector search is easy to validate locally.
+Use the bottom-right **Search & AI** button. The left navigation has no search submenu.
+The dedicated `/search` page remains available when search is enabled. Ordinary search uses
+the backend's deterministic `local-feature-hash-v2` matcher by default: no model, AI key,
+or running ML helper is needed. Fresh PostgreSQL volume initialization can create sample
+folder metadata; it does not populate original document content. Reindex metadata to test
+local matching, and add/share actual documents before testing sourced answers.
 
-Example search queries:
+**Administration > AI & search** independently controls search, launcher visibility,
+AI answers, and content indexing. Turning search off also rejects search/chat API requests.
+Hiding just the launcher keeps `/search` and the API available. AI answers are off by default.
+To enable them, configure chat and optional external embeddings, enable content indexing,
+and reindex storage. Chat and embeddings can use different providers. Saved admin keys are
+encrypted; environment settings and admin settings are separate configuration sources.
 
-- `refund policy and billing correction`
-- `employee onboarding and benefits`
-- `release checklist for deployment`
-- `incident response for phishing`
-- `campaign performance and conversions`
+If external embeddings are unavailable, search falls back to access-checked keyword matches.
+Missing extraction keeps metadata indexing available; unavailable chat returns guidance rather
+than an invented answer. MongoDB, events, and audit logs are excluded from search.
 
-On an existing environment, you can create new folders and then reindex their metadata.
+Configure jobs under **Administration > Storage connections > Search index**:
+daily, weekly, fixed interval, or the next selected time after file changes are detected.
+For example, Friday `00:00` or the next midnight after a change. Select the timezone explicitly;
+the initial value is `Africa/Johannesburg`. Pending work and the next run persist in PostgreSQL.
+The backend must be running to detect changes and execute jobs; one backend instance is assumed.
+
+See [search controls and jobs](docs/search-and-indexing.md),
+[provider setup and credential security](docs/ai-search-and-secrets.md), and
+[document processing limits](docs/document-processing-extension.md).
 
 ## Security Model
 
@@ -364,6 +398,8 @@ The repository is configured so embedded analytics work through the application 
 - guest tokens are minted by the backend
 - the backend syncs allowed app origins into Superset embedded allowlists
 - admin-only Superset routes are proxied through the frontend and protected by app auth
+- application passwords use salted bcrypt at cost 12, and provider credentials are encrypted at rest
+- AI and storage settings never return saved keys to the browser; application backups omit credentials
 
 This keeps the user-facing analytics experience inside the application while preserving a separate admin authoring path.
 
@@ -377,11 +413,16 @@ Production access should be explicit and environment-driven.
 - production should use `APP_BOOTSTRAP_USERS_JSON`
 - if the `prod` profile is active and `APP_BOOTSTRAP_USERS_JSON` is empty, convenience fallback users are not created
 
+That rule applies to the Spring runner. First-volume PostgreSQL initialization separately
+seeds `admin@app.local`; review and replace/deactivate development accounts before production
+exposure. See [production bootstrap behavior](docs/deployment.md#user-bootstrap-behavior).
+
 ### Secrets and Configuration
 
 Review and replace at minimum:
 
 - `JWT_SECRET`
+- `APP_SECRETS_ENCRYPTION_KEY` (retain the same wrapping key across restarts and with database backups)
 - `SUPERSET_SECRET_KEY`
 - `GUEST_TOKEN_JWT_SECRET`
 - `SUPERSET_ADMIN_PASSWORD`
@@ -527,6 +568,8 @@ Both reindex helpers:
 - support `APP_URL`, `APP_ADMIN_EMAIL`, and `APP_ADMIN_PASSWORD`
 
 ## Repository Documentation
+
+Start with the [documentation index](docs/README.md) for operator, developer, and API guides.
 
 - [Terraform deployment examples](infra/README.md) for AWS (EC2/S3) and Azure (VM/Blob)
 

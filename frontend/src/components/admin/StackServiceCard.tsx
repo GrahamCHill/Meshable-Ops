@@ -1,4 +1,4 @@
-import type { StackServiceInfo } from '../../api/client'
+import { type StackServiceInfo } from '../../api/system'
 import { Badge, Card } from '../ui'
 
 function statusColor(status: string): 'success' | 'danger' | 'warning' {

@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS item_vectors (
 CREATE INDEX IF NOT EXISTS idx_item_vectors_embedding_hnsw
     ON item_vectors USING hnsw (embedding vector_cosine_ops);
 
+ALTER TABLE item_vectors ADD COLUMN IF NOT EXISTS embedding_model VARCHAR(128) NOT NULL DEFAULT 'legacy';
+
 CREATE TABLE IF NOT EXISTS storage_documents (
     id UUID PRIMARY KEY,
     item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
@@ -75,6 +77,19 @@ CREATE TABLE IF NOT EXISTS document_vectors (
 
 CREATE INDEX IF NOT EXISTS idx_document_vectors_embedding_hnsw
     ON document_vectors USING hnsw (embedding vector_cosine_ops);
+
+CREATE TABLE IF NOT EXISTS document_chunks (
+    id UUID PRIMARY KEY,
+    document_id UUID NOT NULL REFERENCES storage_documents(id) ON DELETE CASCADE,
+    chunk_index INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    embedding vector(384) NOT NULL,
+    source_checksum VARCHAR(64) NOT NULL,
+    embedding_model VARCHAR(128) NOT NULL,
+    UNIQUE(document_id, chunk_index)
+);
+CREATE INDEX IF NOT EXISTS idx_document_chunks_document_id ON document_chunks(document_id);
+CREATE INDEX IF NOT EXISTS idx_document_chunks_embedding_hnsw ON document_chunks USING hnsw (embedding vector_cosine_ops);
 
 CREATE TABLE IF NOT EXISTS dashboard_embed_configs (
     id UUID PRIMARY KEY,
@@ -121,3 +136,10 @@ CREATE TABLE IF NOT EXISTS app_settings (
 
 ALTER TABLE IF EXISTS app_settings
     ADD COLUMN IF NOT EXISTS storage_root_path TEXT NOT NULL DEFAULT 'folders';
+
+ALTER TABLE app_settings ALTER COLUMN storage_access_key TYPE TEXT;
+ALTER TABLE app_settings ALTER COLUMN storage_secret_key TYPE TEXT;
+ALTER TABLE storage_connections ALTER COLUMN access_key TYPE TEXT;
+ALTER TABLE storage_connections ALTER COLUMN secret_key TYPE TEXT;
+
+-- JPA creates ai_settings before supplemental schema initialization. Secret fields are encrypted by the entity converter.

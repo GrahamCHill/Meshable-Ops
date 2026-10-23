@@ -1,4 +1,6 @@
-import api, { type StorageProvider, type StorageEntry } from './client'
+import api from './http'
+import { type StorageProvider } from './types'
+import { type StorageEntry } from './items'
 
 export type SharedFolder = { id: string; nickname: string; path: string; accessible: boolean }
 export type SharedConnection = { id: string; nickname: string; provider: StorageProvider; folderCount: number }
@@ -6,8 +8,8 @@ export type StorageConnectionInput = {
   nickname: string; provider: 'S3' | 'AZURE_BLOB'; bucket: string; region: string; endpoint: string
   accessKey: string; secretKey: string; useServerIdentity: boolean; basePath: string; enabled: boolean
 }
-export type StorageConnection = Omit<StorageConnectionInput, 'secretKey' | 'useServerIdentity'> & {
-  id: string; secretConfigured: boolean; folders: SharedFolder[]
+export type StorageConnection = Omit<StorageConnectionInput, 'accessKey' | 'secretKey' | 'useServerIdentity'> & {
+  id: string; accessKeyConfigured: boolean; secretConfigured: boolean; folders: SharedFolder[]
 }
 export const storageConnectionsApi = {
   list: () => api.get<SharedConnection[]>('/storage-connections').then(response => response.data),

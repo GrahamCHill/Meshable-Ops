@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { adminStackApi, healthApi } from '../../api/client'
+import { adminStackApi, healthApi } from '../../api/system'
 import { Button, Card, Spinner } from '../ui'
 import { AdminPageHeader } from '../admin/AdminPageHeader'
 import { StackServiceCard } from '../admin/StackServiceCard'

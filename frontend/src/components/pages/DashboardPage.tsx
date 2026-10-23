@@ -5,7 +5,6 @@ import { Card } from '../ui'
 
 const destinations = [
   { to: '/storage', label: 'Browse storage', description: 'Explore the folders and documents available to the application.' },
-  { to: '/search', label: 'Vector search', description: 'Search indexed folder and document metadata.' },
   { to: '/dashboards', label: 'Dashboards', description: 'Open the reporting dashboards available to your role.' },
 ]
 

@@ -8,6 +8,7 @@ import com.starter.repository.postgres.ItemRepository
 import com.starter.repository.postgres.StorageDocumentRepository
 import com.starter.repository.postgres.UserRepository
 import com.starter.repository.postgres.StorageConnectionRepository
+import com.starter.repository.postgres.AiSettingsRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -22,6 +23,7 @@ class BackupExportService(
     private val eventRepository: EventRepository,
     private val activityLogRepository: ActivityLogRepository,
     private val storageConnectionRepository: StorageConnectionRepository,
+    private val aiSettingsRepository: AiSettingsRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -78,7 +80,7 @@ class BackupExportService(
                 "id" to connection.id.toString(), "nickname" to connection.nickname,
                 "provider" to connection.provider, "bucket" to connection.bucket,
                 "region" to connection.region, "endpoint" to connection.endpoint,
-                "accessKey" to connection.accessKey, "secretKey" to connection.secretKey,
+                "credentialsConfigured" to (!connection.accessKey.isNullOrBlank() || !connection.secretKey.isNullOrBlank()),
                 "basePath" to connection.basePath, "enabled" to connection.enabled,
             )
         }
@@ -105,16 +107,27 @@ class BackupExportService(
                 "storageBucket" to setting.storageBucket,
                 "storageRegion" to setting.storageRegion,
                 "storageEndpoint" to setting.storageEndpoint,
-                "storageAccessKey" to setting.storageAccessKey,
-                "storageSecretKey" to setting.storageSecretKey,
+                "storageCredentialsConfigured" to (!setting.storageAccessKey.isNullOrBlank() || !setting.storageSecretKey.isNullOrBlank()),
                 "storageRootPath" to setting.storageRootPath,
                 "vectorReindexEnabled" to setting.vectorReindexEnabled,
                 "vectorReindexIntervalMinutes" to setting.vectorReindexIntervalMinutes,
+                "vectorReindexSchedule" to setting.vectorReindexSchedule,
+                "vectorReindexTime" to setting.vectorReindexTime,
+                "vectorReindexDayOfWeek" to setting.vectorReindexDayOfWeek,
+                "vectorReindexTimeZone" to setting.vectorReindexTimeZone,
                 "lastVectorReindexAt" to setting.lastVectorReindexAt?.toString(),
                 "lastVectorReindexStatus" to setting.lastVectorReindexStatus,
                 "createdAt" to setting.createdAt.toString(),
                 "updatedAt" to setting.updatedAt.toString(),
             )
+        }
+
+        val aiSettings = aiSettingsRepository.findById(1L).orElse(null)?.let { saved ->
+            mapOf("source" to saved.source, "enabled" to saved.enabled, "indexContent" to saved.indexContent,
+                "searchEnabled" to saved.searchEnabled, "launcherEnabled" to saved.launcherEnabled,
+                "chatProvider" to saved.chatProvider, "chatBaseUrl" to saved.chatBaseUrl, "chatModel" to saved.chatModel,
+                "embeddingProvider" to saved.embeddingProvider, "embeddingBaseUrl" to saved.embeddingBaseUrl,
+                "embeddingModel" to saved.embeddingModel, "embeddingSendDimensions" to saved.embeddingSendDimensions)
         }
 
         val events = eventRepository.findAll().sortedByDescending { it.createdAt }.map { event ->
@@ -142,7 +155,8 @@ class BackupExportService(
 
         return mapOf(
             "exportedAt" to Instant.now().toString(),
-            "format" to "superset-docker-app-backup-v1",
+            "format" to "superset-docker-app-backup-v2",
+            "credentialsIncluded" to false,
             "data" to mapOf(
                 "users" to users,
             "items" to items,
@@ -150,6 +164,7 @@ class BackupExportService(
                 "dashboardEmbedConfigs" to dashboardEmbeds,
                 "appSettings" to settings,
                 "storageConnections" to storageConnections,
+                "aiSettings" to aiSettings,
                 "events" to events,
                 "activityLogs" to activityLogs,
             )

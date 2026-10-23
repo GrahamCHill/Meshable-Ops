@@ -1,0 +1,21 @@
+.button, .utility-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 0; font-size: 0.85rem; line-height: 1.4; text-decoration: none; white-space: nowrap; }
+.button-sm, .utility-button { padding: 6px 9px; font-size: 0.8rem; }
+.button-md { padding: 8px 12px; }
+.button-lg { padding: 10px 14px; }
+.button-primary, .button-secondary { background: var(--color-surface-2); }
+.button-ghost, .utility-button, .text-button { color: var(--color-text-secondary); }
+.button-danger { color: var(--color-danger); background: transparent; }
+.button:hover:not(:disabled), .utility-button:hover:not(:disabled), .text-button { text-decoration: underline; text-underline-offset: 3px; }
+.inline-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.content-section { padding: 16px 0; }
+.status-label { display: inline-block; font-size: 0.78rem; color: var(--color-text-secondary); }
+.status-danger { color: var(--color-danger); }
+.loading-indicator { font-size: 0.8rem; color: var(--color-text-secondary); }
+.page-stack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.page-heading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.page-heading h1 { font-size: 1.35rem; font-weight: 600; }
+.page-heading p { color: var(--color-text-secondary); font-size: 0.875rem; margin-top: 4px; }
+.card-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; }
+.empty-state { padding: 24px 0; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.empty-state h2 { font-size: 1rem; font-weight: 600; }
+.empty-state p { color: var(--color-text-secondary); font-size: 0.85rem; }

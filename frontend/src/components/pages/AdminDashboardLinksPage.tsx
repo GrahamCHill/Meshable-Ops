@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 
-import { dashboardEmbedsApi, type DashboardEmbedConfig, type SupersetDashboardOption } from '../../api/client'
+import { dashboardEmbedsApi, type DashboardEmbedConfig, type SupersetDashboardOption } from '../../api/dashboards'
 import { Button, Card, Spinner } from '../ui'
 import { AdminPageHeader } from '../admin/AdminPageHeader'
 

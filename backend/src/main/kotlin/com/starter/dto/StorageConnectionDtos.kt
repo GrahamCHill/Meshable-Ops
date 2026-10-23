@@ -1,6 +1,7 @@
 package com.starter.dto
 
 import jakarta.validation.constraints.*
+import com.fasterxml.jackson.annotation.JsonProperty
 
 data class StorageConnectionRequest(
     @field:NotBlank @field:Size(max = 100) val nickname: String,
@@ -8,16 +9,16 @@ data class StorageConnectionRequest(
     @field:NotBlank @field:Size(max = 255) val bucket: String,
     @field:Size(max = 255) val region: String? = null,
     @field:Size(max = 512) val endpoint: String? = null,
-    @field:Size(max = 255) val accessKey: String? = null,
-    @field:Size(max = 512) val secretKey: String? = null,
+    @get:JsonProperty(access = JsonProperty.Access.WRITE_ONLY) @field:Size(max = 255) val accessKey: String? = null,
+    @get:JsonProperty(access = JsonProperty.Access.WRITE_ONLY) @field:Size(max = 512) val secretKey: String? = null,
     val useServerIdentity: Boolean = false,
     @field:Size(max = 512) val basePath: String = "",
     val enabled: Boolean = true,
-)
+) { override fun toString() = "StorageConnectionRequest(nickname=$nickname, provider=$provider)" }
 
 data class StorageConnectionResponse(
     val id: String, val nickname: String, val provider: String, val bucket: String,
-    val region: String?, val endpoint: String?, val accessKey: String?, val secretConfigured: Boolean,
+    val region: String?, val endpoint: String?, val accessKeyConfigured: Boolean, val secretConfigured: Boolean,
     val basePath: String, val enabled: Boolean, val folders: List<SharedFolderResponse>,
 )
 

@@ -30,6 +30,7 @@ services:
     ports: []
     environment:
       SPRING_PROFILES_ACTIVE: docker,prod
+      APP_AUTH_COOKIE_SECURE: "true"
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRY_MS: ${JWT_EXPIRY_MS:-86400000}
       SUPERSET_ADMIN_USER: ${SUPERSET_ADMIN_USER:-admin}

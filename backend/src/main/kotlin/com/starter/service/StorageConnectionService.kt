@@ -1,5 +1,8 @@
 package com.starter.service
 
+import com.starter.service.storage.StorageBrowseResult
+import com.starter.service.storage.objectStorageAdapter
+import com.starter.service.storage.normalizeStorageFolder
 import com.starter.dto.*
 import com.starter.exception.BadRequestException
 import com.starter.exception.ConflictException
@@ -11,6 +14,7 @@ import com.starter.repository.postgres.StorageConnectionRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
+import com.starter.security.SecretEncryption
 
 @Service
 class StorageConnectionService(
@@ -19,6 +23,7 @@ class StorageConnectionService(
     private val settings: AdminSettingsService,
     private val itemService: ItemService,
     private val audit: AuditLogService,
+    private val encryption: SecretEncryption,
 ) {
     @Transactional(readOnly = true)
     fun listAdmin() = connections.findAllByOrderByNicknameAsc().map { response(it) }
@@ -32,8 +37,10 @@ class StorageConnectionService(
     @Transactional
     fun save(id: UUID?, req: StorageConnectionRequest, email: String): StorageConnectionResponse {
         val existing = id?.let { connection(it) }
-        val access = if (req.useServerIdentity) null else req.accessKey?.trim()?.ifBlank { null } ?: existing?.accessKey
-        val secret = if (req.useServerIdentity) null else req.secretKey?.trim()?.ifBlank { null } ?: existing?.secretKey
+        val sameService = existing?.provider == req.provider && existing.endpoint == req.endpoint?.trim()?.ifBlank { null }
+        val access = if (req.useServerIdentity) null else req.accessKey?.trim()?.ifBlank { null } ?: existing?.accessKey?.takeIf { sameService }
+        val secret = if (req.useServerIdentity) null else req.secretKey?.trim()?.ifBlank { null } ?: existing?.secretKey?.takeIf { sameService }
+        if (!req.useServerIdentity && (access == null || secret == null)) throw BadRequestException("Enter both credentials or use server identity")
         if (!req.useServerIdentity && existing?.secretKey != null && access != existing.accessKey && req.secretKey.isNullOrBlank()) {
             throw BadRequestException("Enter a new secret when changing the account or access key")
         }
@@ -44,6 +51,7 @@ class StorageConnectionService(
             storageRootPath = base.ifBlank { "folders" },
         ))
         if (validated.storageProvider == "NONE") throw BadRequestException("Choose S3 or Azure Blob")
+        if (!validated.storageAccessKey.isNullOrBlank() || !validated.storageSecretKey.isNullOrBlank()) encryption.requireConfigured()
         if (existing != null && items.findAllByStorageConnectionIdOrderByTitleAsc(existing.id).isNotEmpty() &&
             (existing.provider != validated.storageProvider || existing.bucket != validated.storageBucket || existing.endpoint != validated.storageEndpoint || existing.basePath != base)) {
             throw ConflictException("Remove the selected folders before changing this connection's storage location")
@@ -120,7 +128,7 @@ class StorageConnectionService(
     private fun folderResponse(item: Item) = SharedFolderResponse(item.id.toString(), item.title, item.storagePrefix.orEmpty().removePrefix(item.storageConnection?.basePath.orEmpty()), item.accessible)
     private fun response(connection: StorageConnection) = StorageConnectionResponse(
         connection.id.toString(), connection.nickname, connection.provider, connection.bucket, connection.region,
-        connection.endpoint, connection.accessKey, !connection.secretKey.isNullOrBlank(), connection.basePath,
+        connection.endpoint, !connection.accessKey.isNullOrBlank(), !connection.secretKey.isNullOrBlank(), connection.basePath,
         connection.enabled, items.findAllByStorageConnectionIdOrderByTitleAsc(connection.id).map { folderResponse(it) },
     )
     private fun <T> storageCall(action: () -> T): T = try { action() } catch (ex: Exception) {
