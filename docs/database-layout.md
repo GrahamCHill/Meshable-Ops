@@ -319,3 +319,17 @@ The current diagram is based on these files:
 - [backend/src/main/resources/schema.sql](../backend/src/main/resources/schema.sql)
 - [docker/postgres/init.sql](../docker/postgres/init.sql)
 - [docker/mongo/init.js](../docker/mongo/init.js)
+
+Named cloud storage connections are stored in `storage_connections` with a nickname,
+provider, bucket/container, optional region and endpoint, credentials, start-folder prefix,
+and enabled flag. An `items.storage_connection_id` reference identifies an explicitly
+selected external folder; `items.title` is its in-app nickname and `items.accessible`
+controls publication. Null connection references preserve the original application-managed
+folder behavior. Existing folders default to accessible when the column is added.
+
+`items.storage_prefix` is unique within a connection, with a separate partial unique index
+for legacy folders. Shared browse, download, and upload requests resolve the connection
+from the saved folder ID and constrain every relative path to that selected prefix.
+Folder and document vector searches join current item/connection visibility, so cached
+embeddings cannot reveal a revoked selection. Backups include connection definitions,
+folder references, nicknames, and visibility.

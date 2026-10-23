@@ -108,8 +108,9 @@ class ItemController(
     fun list(
         @AuthenticationPrincipal user: UserDetails,
         @RequestParam(defaultValue = "0") page: Int,
-        @RequestParam(defaultValue = "20") size: Int
-    ) = itemService.listShared(page, size)
+        @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(required = false) connectionId: UUID?,
+    ) = itemService.listShared(page, size, connectionId)
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

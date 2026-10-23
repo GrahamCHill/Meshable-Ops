@@ -111,7 +111,10 @@ data class ItemResponse(
     val storageProvider: String,
     val documentCount: Int,
     val createdAt: String?,
-    val updatedAt: String?
+    val updatedAt: String?,
+    val connectionId: String? = null,
+    val connectionNickname: String? = null,
+    val accessible: Boolean = true,
 )
 
 data class StorageEntryResponse(

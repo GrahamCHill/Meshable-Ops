@@ -3,7 +3,6 @@ import { useMutation } from '@tanstack/react-query'
 import { itemsApi, searchApi, type VectorSearchResult } from '../../api/client'
 import { Button, Card, Spinner } from '../ui'
 import { useAuthStore } from '../../hooks/useAuthStore'
-import { RefreshCcw, Search, Zap } from 'lucide-react'
 
 export function SearchPage() {
   const [query, setQuery] = useState('')
@@ -43,11 +42,11 @@ export function SearchPage() {
             {[5, 10, 20, 50].map(n => <option key={n} value={n}>{n}</option>)}
           </select>
           <Button onClick={run} loading={search.isPending} style={{ flexShrink: 0 }}>
-            <Search size={14} /> Search
+             Search
           </Button>
           {canReindex && (
             <Button onClick={() => reindex.mutate()} loading={reindex.isPending} variant="secondary" style={{ flexShrink: 0 }}>
-              <RefreshCcw size={14} /> Reindex Storage
+               Reindex Storage
             </Button>
           )}
         </div>
@@ -90,7 +89,7 @@ function SearchResult({ result, rank }: { result: VectorSearchResult; rank: numb
     <Card>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-          <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--color-surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: 'var(--color-text-tertiary)', flexShrink: 0, marginTop: 2 }}>{rank}</span>
+          <span style={{ color: 'var(--color-text-secondary)' }}>{rank}.</span>
           <div>
             <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: 2 }}>{result.payload.title ?? result.pointId}</div>
             <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
@@ -99,7 +98,7 @@ function SearchResult({ result, rank }: { result: VectorSearchResult; rank: numb
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          <Zap size={12} color="var(--color-accent)" />
+
           <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.875rem', fontWeight: 600, color: result.score > 0.7 ? 'var(--color-success)' : result.score > 0.4 ? 'var(--color-warning)' : 'var(--color-text-secondary)' }}>
             sim {score}
           </span>

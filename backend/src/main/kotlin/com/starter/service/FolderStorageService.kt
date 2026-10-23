@@ -8,7 +8,10 @@ import com.azure.storage.blob.models.ListBlobsOptions
 import com.azure.identity.DefaultAzureCredentialBuilder
 import com.starter.exception.BadRequestException
 import com.starter.exception.ConflictException
+import com.starter.dto.AdminSettingsRequest
+import com.starter.dto.MessageResponse
 import com.starter.model.postgres.AppSettings
+import com.starter.model.postgres.Item
 import org.springframework.stereotype.Service
 import org.springframework.http.MediaType
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
@@ -28,6 +31,7 @@ import java.io.ByteArrayOutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import java.util.UUID
+import java.time.Duration
 
 data class FolderStorageSnapshot(
     val provider: String,
@@ -52,8 +56,9 @@ data class StorageBrowseResult(
 data class StorageObjectUpload(val relativePath: String, val contentType: String?, val bytes: ByteArray)
 data class StorageObjectDownload(val filename: String, val contentType: String, val bytes: ByteArray)
 
-private interface ObjectStorageAdapter {
+internal interface ObjectStorageAdapter {
     val provider: String
+    fun testConnection()
     fun inspectAndEnsureRoots(prefixes: Collection<String>): FolderStorageSnapshot
     fun createFolder(prefix: String)
     fun deleteFolderIfEmpty(prefix: String)
@@ -67,6 +72,72 @@ private interface ObjectStorageAdapter {
 class FolderStorageService(
     private val adminSettingsService: AdminSettingsService,
 ) {
+    fun prefixFor(item: Item): String {
+        val connection = item.storageConnection ?: return prefixFor(item.id)
+        val prefix = normalizeStorageFolder(item.storagePrefix ?: throw BadRequestException("Missing shared folder path"))
+        if (!prefix.startsWith(normalizeStorageFolder(connection.basePath))) throw BadRequestException("Folder is outside the connection boundary")
+        return prefix
+    }
+
+    fun browse(item: Item, path: String) = scopedAdapter(item).browse(prefixFor(item), normalizeStorageFolder(path))
+    fun listDocuments(item: Item) = scopedAdapter(item).listDocuments(prefixFor(item))
+    fun upload(item: Item, path: String, objects: List<StorageObjectUpload>) {
+        val adapter = scopedAdapter(item)
+        val destination = normalizeStorageFolder(path)
+        // Validate the whole batch before writing its first object.
+        val paths = objects.map { normalizeStorageObject(it.relativePath) }
+        objects.zip(paths).forEach { (file, objectPath) -> adapter.upload(prefixFor(item), destination + objectPath, file.contentType, file.bytes) }
+    }
+    fun download(item: Item, path: String, archive: Boolean): StorageObjectDownload {
+        val adapter = scopedAdapter(item)
+        val prefix = prefixFor(item)
+        if (!archive) return adapter.download(prefix, normalizeStorageObject(path))
+        val folder = normalizeStorageFolder(path)
+        val output = ByteArrayOutputStream()
+        ZipOutputStream(output).use { zip ->
+            adapter.listDocuments(prefix + folder).forEach { document ->
+                val safePath = normalizeStorageObject(document.path)
+                zip.putNextEntry(ZipEntry(safePath))
+                zip.write(adapter.download(prefix + folder, safePath).bytes)
+                zip.closeEntry()
+            }
+        }
+        return StorageObjectDownload("${folder.trimEnd('/').substringAfterLast('/').ifBlank { "storage-folder" }}.zip", "application/zip", output.toByteArray())
+    }
+    private fun scopedAdapter(item: Item): ObjectStorageAdapter {
+        if (!item.accessible || item.storageConnection?.enabled == false) throw com.starter.exception.NotFoundException("Storage root not found")
+        val connection = item.storageConnection
+        if (connection == null) {
+            requireManagedRoot(prefixFor(item))
+            return adapter()
+        }
+        return objectStorageAdapter(connection.settings(), normalizeStorageFolder(connection.basePath))
+    }
+
+    fun testConnection(req: AdminSettingsRequest): MessageResponse {
+        val settings = adminSettingsService.validatedStorageSettings(req)
+        if (settings.storageProvider == "NONE") throw BadRequestException("Select a storage provider before testing the connection")
+        try {
+            adapter(settings).testConnection()
+        } catch (ex: Exception) {
+            val hint = when (ex) {
+                is software.amazon.awssdk.services.s3.model.S3Exception -> when (ex.statusCode()) {
+                    401, 403 -> "Access denied. Check the credentials and ListBucket permission for this prefix."
+                    404 -> "Bucket not found. Check the bucket name, region, and endpoint."
+                    else -> "S3 rejected the request. Check the bucket, region, endpoint, and credentials."
+                }
+                is com.azure.storage.blob.models.BlobStorageException -> when (ex.statusCode) {
+                    401, 403 -> "Access denied. Check the account credentials or the server identity's Blob Data Reader access."
+                    404 -> "Container not found. Check the container name and Blob service endpoint."
+                    else -> "Azure rejected the request. Check the container, endpoint, and credentials."
+                }
+                else -> "Could not reach storage or resolve credentials. Check the service endpoint, server network access, and authentication settings."
+            }
+            throw BadRequestException(hint)
+        }
+        return MessageResponse("Connection verified: this prefix can be listed. Upload and delete permissions were not tested. Save to apply these settings.")
+    }
+
     fun prefixFor(itemId: UUID) = "${adminSettingsService.currentEntity().storageViewPrefix()}$itemId/"
     fun inspectAndEnsureFolders(prefixes: Collection<String>) = adapter().inspectAndEnsureRoots(prefixes)
     fun createFolder(prefix: String) = adapter().createFolder(prefix)
@@ -113,14 +184,8 @@ class FolderStorageService(
         return StorageObjectDownload("$folderName.zip", "application/zip", output.toByteArray())
     }
 
-    private fun adapter(): ObjectStorageAdapter {
-        val settings = adminSettingsService.currentEntity()
-        return when (settings.storageProvider) {
-            "NONE" -> NoStorageAdapter
-            "S3" -> S3StorageAdapter(settings)
-            "AZURE_BLOB" -> AzureBlobStorageAdapter(settings)
-            else -> throw BadRequestException("Unsupported storage provider: ${settings.storageProvider}")
-        }
+    private fun adapter(settings: AppSettings = adminSettingsService.currentEntity()): ObjectStorageAdapter {
+        return objectStorageAdapter(settings)
     }
 
     private fun requireManagedRoot(prefix: String) {
@@ -150,6 +215,7 @@ class FolderStorageService(
 
 private object NoStorageAdapter : ObjectStorageAdapter {
     override val provider = "NONE"
+    override fun testConnection() = Unit
     override fun inspectAndEnsureRoots(prefixes: Collection<String>) =
         FolderStorageSnapshot(provider, prefixes.associateWith { 0 })
     override fun createFolder(prefix: String) = Unit
@@ -172,7 +238,7 @@ private data class S3StorageConfig(
     val rootPrefix: String,
 )
 
-private class S3StorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
+private class S3StorageAdapter(settings: AppSettings, viewPrefix: String) : ObjectStorageAdapter {
     override val provider = "S3"
     private val config = S3StorageConfig(
         bucket = settings.storageBucket ?: throw BadRequestException("S3 bucket is not configured"),
@@ -180,8 +246,14 @@ private class S3StorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
         endpoint = settings.storageEndpoint,
         accessKey = settings.storageAccessKey,
         secretKey = settings.storageSecretKey,
-        rootPrefix = settings.storageViewPrefix(),
+        rootPrefix = viewPrefix,
     )
+
+    override fun testConnection() {
+        client(probe = true).use { client ->
+            client.listObjectsV2(ListObjectsV2Request.builder().bucket(config.bucket).prefix(config.rootPrefix).maxKeys(1).build())
+        }
+    }
 
     override fun inspectAndEnsureRoots(prefixes: Collection<String>): FolderStorageSnapshot = client().use { client ->
         val counts = prefixes.associateWith { 0 }.toMutableMap()
@@ -220,21 +292,23 @@ private class S3StorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
 
     override fun browse(rootPrefix: String, relativePath: String): StorageBrowseResult = client().use { client ->
         val fullPrefix = rootPrefix + relativePath
-        val response = client.listObjectsV2(
+        val entries = mutableListOf<StorageEntry>()
+        client.listObjectsV2Paginator(
             ListObjectsV2Request.builder().bucket(config.bucket).prefix(fullPrefix).delimiter("/").build()
-        )
-        val folders = response.commonPrefixes().map { child ->
-            val relative = child.prefix().removePrefix(rootPrefix)
-            StorageEntry(relative.removeSuffix("/").substringAfterLast('/'), relative, "FOLDER")
+        ).forEach { response ->
+            entries += response.commonPrefixes().map { child ->
+                val relative = child.prefix().removePrefix(rootPrefix)
+                StorageEntry(relative.removeSuffix("/").substringAfterLast('/'), relative, "FOLDER")
+            }
+            entries += response.contents().filter { it.key() != fullPrefix }.map { item ->
+                val relative = item.key().removePrefix(rootPrefix)
+                StorageEntry(
+                    name = item.key().removePrefix(fullPrefix), path = relative, type = "OBJECT",
+                    size = item.size(), lastModified = item.lastModified()?.toString(),
+                )
+            }
         }
-        val objects = response.contents().filter { it.key() != fullPrefix }.map { item ->
-            val relative = item.key().removePrefix(rootPrefix)
-            StorageEntry(
-                name = item.key().removePrefix(fullPrefix), path = relative, type = "OBJECT",
-                size = item.size(), lastModified = item.lastModified()?.toString(),
-            )
-        }
-        StorageBrowseResult(provider, relativePath, (folders + objects).sortedEntries())
+        StorageBrowseResult(provider, relativePath, entries.sortedEntries())
     }
 
     override fun listDocuments(rootPrefix: String): List<StorageEntry> = client().use { client ->
@@ -277,7 +351,7 @@ private class S3StorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
         )
     }
 
-    private fun client(): S3Client {
+    private fun client(probe: Boolean = false): S3Client {
         val builder = S3Client.builder()
             .region(Region.of(config.region))
             .httpClientBuilder(UrlConnectionHttpClient.builder())
@@ -288,6 +362,10 @@ private class S3StorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
                     DefaultCredentialsProvider.create()
                 }
             )
+        if (probe) {
+            builder.httpClientBuilder(UrlConnectionHttpClient.builder().connectionTimeout(Duration.ofSeconds(5)).socketTimeout(Duration.ofSeconds(10)))
+                .overrideConfiguration { it.apiCallTimeout(Duration.ofSeconds(20)) }
+        }
         if (config.endpoint != null) {
             builder.endpointOverride(URI.create(config.endpoint))
                 .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
@@ -311,18 +389,24 @@ private data class AzureBlobConfig(
     val rootPrefix: String,
 )
 
-private class AzureBlobStorageAdapter(settings: AppSettings) : ObjectStorageAdapter {
+private class AzureBlobStorageAdapter(settings: AppSettings, viewPrefix: String) : ObjectStorageAdapter {
     override val provider = "AZURE_BLOB"
     private val config = AzureBlobConfig(
         container = settings.storageBucket ?: throw BadRequestException("Azure Blob container is not configured"),
         endpoint = settings.storageEndpoint ?: throw BadRequestException("Azure Blob endpoint is not configured"),
         accountName = settings.storageAccessKey,
         accountKey = settings.storageSecretKey,
-        rootPrefix = settings.storageViewPrefix(),
+        rootPrefix = viewPrefix,
     )
 
+    override fun testConnection() {
+        container(createIfMissing = false)
+            .listBlobs(ListBlobsOptions().setPrefix(config.rootPrefix).setMaxResultsPerPage(1), Duration.ofSeconds(20))
+            .iterableByPage(1).iterator().hasNext()
+    }
+
     override fun inspectAndEnsureRoots(prefixes: Collection<String>): FolderStorageSnapshot {
-        val container = container()
+        val container = container(createIfMissing = true)
         val counts = prefixes.associateWith { 0 }.toMutableMap()
         val present = mutableSetOf<String>()
         container.listBlobs(ListBlobsOptions().setPrefix(config.rootPrefix), null).forEach { item ->
@@ -337,7 +421,7 @@ private class AzureBlobStorageAdapter(settings: AppSettings) : ObjectStorageAdap
     }
 
     override fun createFolder(prefix: String) {
-        putMarker(container(), prefix)
+        putMarker(container(createIfMissing = true), prefix)
     }
 
     override fun deleteFolderIfEmpty(prefix: String) {
@@ -398,7 +482,7 @@ private class AzureBlobStorageAdapter(settings: AppSettings) : ObjectStorageAdap
         )
     }
 
-    private fun container(): BlobContainerClient {
+    private fun container(createIfMissing: Boolean = false): BlobContainerClient {
         val builder = BlobServiceClientBuilder().endpoint(config.endpoint)
         if (config.accountName != null && config.accountKey != null) {
             builder.credential(AzureNamedKeyCredential(config.accountName, config.accountKey))
@@ -407,7 +491,7 @@ private class AzureBlobStorageAdapter(settings: AppSettings) : ObjectStorageAdap
         }
         val client = builder.buildClient()
             .getBlobContainerClient(config.container)
-        client.createIfNotExists()
+        if (createIfMissing) client.createIfNotExists()
         return client
     }
 
@@ -432,3 +516,21 @@ private fun AppSettings.storageViewPrefix(): String {
 
 private fun List<StorageEntry>.sortedEntries() =
     sortedWith(compareBy<StorageEntry>({ it.type != "FOLDER" }, { it.name.lowercase() }))
+
+internal fun objectStorageAdapter(settings: AppSettings, viewPrefix: String = settings.storageViewPrefix()): ObjectStorageAdapter = when (settings.storageProvider) {
+    "NONE" -> NoStorageAdapter
+    "S3" -> S3StorageAdapter(settings, viewPrefix)
+    "AZURE_BLOB" -> AzureBlobStorageAdapter(settings, viewPrefix)
+    else -> throw BadRequestException("Unsupported storage provider")
+}
+
+internal fun normalizeStorageFolder(path: String): String {
+    val normalized = path.replace('\\', '/').trim('/')
+    val parts = normalized.split('/').filter { it.isNotEmpty() }
+    if (parts.any { it == "." || it == ".." || it.any { character -> character.code < 32 } }) throw BadRequestException("Invalid storage path")
+    return parts.joinToString("/").let { if (it.isEmpty()) "" else "$it/" }
+}
+
+internal fun normalizeStorageObject(path: String): String = normalizeStorageFolder(path).trimEnd('/').ifEmpty {
+    throw BadRequestException("Select a file to download")
+}

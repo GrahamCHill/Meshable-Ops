@@ -4,7 +4,6 @@ import { useMutation } from '@tanstack/react-query'
 import { authApi } from '../../api/client'
 import { useAuthStore } from '../../hooks/useAuthStore'
 import { Button } from '../ui'
-import { Zap } from 'lucide-react'
 
 function getAuthErrorMessage(error: unknown) {
   const fallback = 'Invalid email or password'
@@ -19,19 +18,13 @@ function AuthCard({ children, title, subtitle }: { children: React.ReactNode; ti
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
       <div style={{ width: '100%', maxWidth: 380 }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 12, background: 'var(--color-accent)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem',
-          }}>
-            <Zap size={22} color="white" />
-          </div>
+
           <h1 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: 4 }}>{title}</h1>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>{subtitle}</p>
         </div>
         <div style={{
           background: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-lg)',
+
           padding: '1.75rem',
         }}>
           {children}
@@ -90,20 +83,7 @@ export function RegisterPage() {
         </p>
         <Link
           to="/login"
-          style={{
-            width: '100%',
-            marginTop: 4,
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '0.75rem 1rem',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--color-accent)',
-            color: 'white',
-            textDecoration: 'none',
-            fontSize: '0.875rem',
-            fontWeight: 500,
-          }}
+          className="button button-secondary button-md"
         >
           Back to sign in
         </Link>

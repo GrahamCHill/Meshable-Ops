@@ -102,13 +102,20 @@ class VectorService(
                     points AS (
                         SELECT item_id::text AS id,
                                (1 - (iv.embedding <=> q.embedding))::real AS score,
-                               payload
-                        FROM item_vectors iv CROSS JOIN query_vector q
+                               iv.payload
+                        FROM item_vectors iv JOIN items i ON i.id = iv.item_id
+                        LEFT JOIN storage_connections sc ON sc.id = i.storage_connection_id
+                        CROSS JOIN query_vector q
+                        WHERE i.accessible = TRUE AND (sc.id IS NULL OR sc.enabled = TRUE)
                         UNION ALL
                         SELECT document_id::text AS id,
                                (1 - (dv.embedding <=> q.embedding))::real AS score,
-                               payload
-                        FROM document_vectors dv CROSS JOIN query_vector q
+                               dv.payload
+                        FROM document_vectors dv JOIN storage_documents d ON d.id = dv.document_id
+                        JOIN items i ON i.id = d.item_id
+                        LEFT JOIN storage_connections sc ON sc.id = i.storage_connection_id
+                        CROSS JOIN query_vector q
+                        WHERE i.accessible = TRUE AND (sc.id IS NULL OR sc.enabled = TRUE)
                     )
                     SELECT id, score, payload::text AS payload
                     FROM points

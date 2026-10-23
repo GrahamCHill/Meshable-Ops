@@ -4,7 +4,6 @@ import { adminBackupApi, auditLogsApi } from '../../api/client'
 import { Button, Card, Spinner } from '../ui'
 import { AdminPageHeader } from '../admin/AdminPageHeader'
 import { extractFilename, formatDate, getErrorMessage } from '../admin/adminUtils'
-import { Download, RefreshCcw, ScrollText } from 'lucide-react'
 
 export function AdminAuditPage() {
   const queryClient = useQueryClient()
@@ -30,8 +29,8 @@ export function AdminAuditPage() {
       <AdminPageHeader
         title="Audit & backup"
         description="Review recent administrative activity and export the data managed by this application."
-        icon={ScrollText}
-        actions={<Button loading={backup.isPending} onClick={() => backup.mutate()}><Download size={14} /> Export backup</Button>}
+
+        actions={<Button loading={backup.isPending} onClick={() => backup.mutate()}> Export backup</Button>}
       />
       {backupError && <div style={{ color: 'var(--color-danger)', fontSize: '0.82rem' }}>{backupError}</div>}
       <Card>
@@ -40,12 +39,12 @@ export function AdminAuditPage() {
             <div style={{ fontWeight: 600 }}>Recent activity</div>
             <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', marginTop: 3 }}>Backup includes relational data, dashboard links, admin settings, events, and audit logs.</div>
           </div>
-          <Button variant="ghost" size="sm" disabled={audit.isFetching} onClick={() => audit.refetch()}><RefreshCcw size={14} /> Refresh</Button>
+          <Button variant="ghost" size="sm" disabled={audit.isFetching} onClick={() => audit.refetch()}> Refresh</Button>
         </div>
         {audit.isLoading ? <div style={{ padding: '2rem', textAlign: 'center' }}><Spinner /></div> : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {(audit.data?.content ?? []).map(entry => (
-              <div key={entry.id} style={{ padding: '0.85rem 1rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)' }}>
+              <div key={entry.id} style={{ padding: '0.85rem 1rem',   background: 'var(--color-bg)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                   <div>
                     <div style={{ fontWeight: 600 }}>{entry.action}</div>

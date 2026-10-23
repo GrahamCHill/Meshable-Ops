@@ -7,6 +7,7 @@ import com.starter.repository.postgres.DashboardEmbedConfigRepository
 import com.starter.repository.postgres.ItemRepository
 import com.starter.repository.postgres.StorageDocumentRepository
 import com.starter.repository.postgres.UserRepository
+import com.starter.repository.postgres.StorageConnectionRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -20,6 +21,7 @@ class BackupExportService(
     private val appSettingsRepository: AppSettingsRepository,
     private val eventRepository: EventRepository,
     private val activityLogRepository: ActivityLogRepository,
+    private val storageConnectionRepository: StorageConnectionRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -46,6 +48,8 @@ class BackupExportService(
                 "description" to item.description,
                 "tags" to item.tags.toList(),
                 "storagePrefix" to item.storagePrefix,
+                "storageConnectionId" to item.storageConnection?.id?.toString(),
+                "accessible" to item.accessible,
                 "createdAt" to item.createdAt.toString(),
                 "updatedAt" to item.updatedAt.toString(),
             )
@@ -66,6 +70,16 @@ class BackupExportService(
                 "vectorizedAt" to document.vectorizedAt?.toString(),
                 "createdAt" to document.createdAt.toString(),
                 "updatedAt" to document.updatedAt.toString(),
+            )
+        }
+
+        val storageConnections = storageConnectionRepository.findAllByOrderByNicknameAsc().map { connection ->
+            mapOf(
+                "id" to connection.id.toString(), "nickname" to connection.nickname,
+                "provider" to connection.provider, "bucket" to connection.bucket,
+                "region" to connection.region, "endpoint" to connection.endpoint,
+                "accessKey" to connection.accessKey, "secretKey" to connection.secretKey,
+                "basePath" to connection.basePath, "enabled" to connection.enabled,
             )
         }
 
@@ -135,6 +149,7 @@ class BackupExportService(
             "storageDocuments" to storageDocuments,
                 "dashboardEmbedConfigs" to dashboardEmbeds,
                 "appSettings" to settings,
+                "storageConnections" to storageConnections,
                 "events" to events,
                 "activityLogs" to activityLogs,
             )

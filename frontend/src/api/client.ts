@@ -64,6 +64,9 @@ export interface Item {
   documentCount: number
   createdAt: string
   updatedAt: string
+  connectionId?: string
+  connectionNickname?: string
+  accessible: boolean
 }
 
 export interface StorageEntry {
@@ -206,8 +209,8 @@ export const adminUsersApi = {
 }
 
 export const itemsApi = {
-  list: (page = 0, size = 20) =>
-    api.get<PageResponse<Item>>('/items', { params: { page, size } }).then(r => r.data),
+  list: (page = 0, size = 20, connectionId?: string) =>
+    api.get<PageResponse<Item>>('/items', { params: { page, size, connectionId } }).then(r => r.data),
   create: (data: { title: string; description?: string; tags?: string[] }) =>
     api.post<Item>('/items', data).then(r => r.data),
   update: (id: string, data: { title: string; description?: string; tags?: string[] }) =>
@@ -250,6 +253,8 @@ export const stackApi = {
 }
 
 export const adminSettingsApi = {
+  testStorage: (data: Pick<AdminSettings, 'storageProvider' | 'storageRootPath' | 'vectorReindexEnabled' | 'vectorReindexIntervalMinutes'> & Partial<Pick<AdminSettings, 'storageBucket' | 'storageRegion' | 'storageEndpoint' | 'storageAccessKey' | 'storageSecretKey'>>) =>
+    api.post<{ message: string }>('/admin/settings/test-storage', data, { timeout: 30_000 }).then(r => r.data),
   get: () => api.get<AdminSettings>('/admin/settings').then(r => r.data),
   update: (data: {
     storageProvider: StorageProvider

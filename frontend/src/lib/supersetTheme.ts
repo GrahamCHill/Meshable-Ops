@@ -106,9 +106,11 @@ export function applySupersetTheme(doc: Document, mode: 'dark' | 'light') {
     }
 
     .ant-btn-primary, .css-1d3w5wq .ant-btn-primary, button[type="button"].ant-btn-primary {
-      background: var(--app-embed-accent) !important;
-      border-color: var(--app-embed-accent) !important;
-      color: #fff !important;
+      background: var(--app-embed-surface-2) !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      color: var(--app-embed-text) !important;
     }
 
     .ant-typography, .ant-tabs-tab, .ant-dropdown-menu-item,

@@ -63,8 +63,16 @@ data class Item(
     @Column(columnDefinition = "TEXT")
     var description: String? = null,
 
-    @Column(name = "storage_prefix", unique = true)
+    @Column(name = "storage_prefix", columnDefinition = "TEXT")
     var storagePrefix: String? = null,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "storage_connection_id")
+    var storageConnection: StorageConnection? = null,
+
+    @Column(nullable = false)
+    @ColumnDefault("true")
+    var accessible: Boolean = true,
 
     @ElementCollection
     @CollectionTable(name = "item_tags", joinColumns = [JoinColumn(name = "item_id")])

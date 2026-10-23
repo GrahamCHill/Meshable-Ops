@@ -3,27 +3,37 @@ import { embedDashboard } from '@superset-ui/embedded-sdk'
 import api from '../../api/client'
 import { useTheme } from '../../hooks/useTheme'
 import { applySupersetTheme } from '../../lib/supersetTheme'
+import { Button } from './index'
 
 interface DashboardEmbedProps {
   dashboardId: string
   guestTokenResourceId?: string
+  title?: string
   height?: string | number
   onLoad?: () => void
   onError?: (err: Error) => void
+  onEscape?: () => void
 }
 
 export function DashboardEmbed({
   dashboardId,
   guestTokenResourceId,
+  title = 'Embedded dashboard',
   height = 600,
   onLoad,
   onError,
+  onEscape,
 }: DashboardEmbedProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeObserverRef = useRef<MutationObserver | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [errorMsg, setErrorMsg] = useState('')
+  const [attempt, setAttempt] = useState(0)
   const { mode } = useTheme()
+  const modeRef = useRef(mode)
+  modeRef.current = mode
+  const callbacks = useRef({ onLoad, onError, onEscape })
+  callbacks.current = { onLoad, onError, onEscape }
 
   const applyEmbedTheme = useCallback(() => {
     const iframe = containerRef.current?.querySelector('iframe')
@@ -37,8 +47,8 @@ export function DashboardEmbed({
     }
     if (!doc) return
 
-    applySupersetTheme(doc, mode)
-  }, [mode])
+    applySupersetTheme(doc, modeRef.current)
+  }, [])
 
   const hideEmbedActions = useCallback(() => {
     const iframe = containerRef.current?.querySelector('iframe')
@@ -152,8 +162,8 @@ export function DashboardEmbed({
 
     doc.addEventListener('click', (event) => {
       const target = event.target
-      if (!(target instanceof Element)) return
-      const anchor = target.closest('a[href]') as HTMLAnchorElement | null
+      if (!target || (target as Element).nodeType !== 1) return
+      const anchor = (target as Element).closest('a[href]') as HTMLAnchorElement | null
       if (!anchor) return
       if (anchor.target && anchor.target !== '_self') {
         anchor.target = '_self'
@@ -221,65 +231,77 @@ export function DashboardEmbed({
 
   useEffect(() => {
     if (!containerRef.current) return
-
+    // Each attempt owns its mount, so a late SDK response cannot clear a newer frame.
+    const mountPoint = document.createElement('div')
+    mountPoint.style.cssText = 'width:100%;height:100%'
+    containerRef.current.replaceChildren(mountPoint)
+    setStatus('loading')
+    setErrorMsg('')
     let destroyed = false
-    let iframeLoadHandler: (() => void) | null = null
-    const observer = new MutationObserver(() => stretchIframe())
+    let embedded: Awaited<ReturnType<typeof embedDashboard>> | undefined
+    let frame: HTMLIFrameElement | null = null
+    let observedDocument: Document | null = null
+    const handleKey = (event: KeyboardEvent) => { if (event.key === 'Escape') callbacks.current.onEscape?.() }
+    const syncFrame = () => {
+      if (destroyed) return
+      stretchIframe()
+      iframeObserverRef.current?.disconnect()
+      try {
+        const doc = frame?.contentDocument
+        if (doc?.body) {
+          observedDocument?.removeEventListener('keydown', handleKey)
+          observedDocument = doc
+          doc.addEventListener('keydown', handleKey)
+          iframeObserverRef.current = new MutationObserver(() => { applyEmbedTheme(); hideEmbedActions(); constrainIframeNavigation() })
+          iframeObserverRef.current.observe(doc.body, { childList: true, subtree: true })
+        }
+      } catch { /* The frame may be navigating. */ }
+    }
+    const observer = new MutationObserver(() => {
+      const next = mountPoint.querySelector('iframe')
+      if (next !== frame) {
+        frame?.removeEventListener('load', syncFrame)
+        frame = next
+        frame?.addEventListener('load', syncFrame)
+      }
+      stretchIframe()
+    })
     const resizeObserver = new ResizeObserver(() => stretchIframe())
-    observer.observe(containerRef.current, { childList: true, subtree: true })
+    observer.observe(mountPoint, { childList: true, subtree: true })
     resizeObserver.observe(containerRef.current)
+    const timeout = window.setTimeout(() => {
+      if (!destroyed) { setStatus('error'); setErrorMsg('The dashboard is taking too long to respond. Try loading it again.') }
+    }, 30_000)
 
     const mount = async () => {
       try {
-        await embedDashboard({
+        embedded = await embedDashboard({
           id: dashboardId,
           supersetDomain: window.location.origin,
-          mountPoint: containerRef.current!,
+          mountPoint,
           fetchGuestToken,
+          iframeTitle: title,
           dashboardUiConfig: {
-            hideTitle: false,
+            hideTitle: true,
             hideChartControls: false,
-            hideTab: true,
-            filters: { expanded: true },
+            hideTab: false,
+            filters: { expanded: false },
           },
         })
-        const iframe = containerRef.current?.querySelector('iframe')
-        if (iframe) {
-          iframeLoadHandler = () => {
-            applyEmbedTheme()
-            hideEmbedActions()
-            constrainIframeNavigation()
-          }
-          iframe.addEventListener('load', iframeLoadHandler)
-          try {
-            const doc = iframe.contentDocument
-            if (doc?.body) {
-              iframeObserverRef.current?.disconnect()
-              iframeObserverRef.current = new MutationObserver(() => {
-                applyEmbedTheme()
-                hideEmbedActions()
-                constrainIframeNavigation()
-              })
-              iframeObserverRef.current.observe(doc.body, { childList: true, subtree: true })
-            }
-          } catch {
-            // If the iframe is not readable yet, later resize/mutation passes will retry.
-          }
-        }
-        stretchIframe()
-        window.setTimeout(stretchIframe, 50)
-        window.setTimeout(stretchIframe, 250)
-        window.setTimeout(stretchIframe, 1000)
+        if (destroyed) { embedded.unmount(); return }
+        syncFrame()
+        window.clearTimeout(timeout)
         if (!destroyed) {
           setStatus('ready')
-          onLoad?.()
+          callbacks.current.onLoad?.()
         }
       } catch (err) {
         if (!destroyed) {
           const error = err instanceof Error ? err : new Error(String(err))
           setStatus('error')
           setErrorMsg(error.message)
-          onError?.(error)
+          window.clearTimeout(timeout)
+          callbacks.current.onError?.(error)
         }
       }
     }
@@ -287,15 +309,16 @@ export function DashboardEmbed({
     mount()
     return () => {
       destroyed = true
-      const iframe = containerRef.current?.querySelector('iframe')
-      if (iframe && iframeLoadHandler) {
-        iframe.removeEventListener('load', iframeLoadHandler)
-      }
+      window.clearTimeout(timeout)
+      frame?.removeEventListener('load', syncFrame)
+      observedDocument?.removeEventListener('keydown', handleKey)
       iframeObserverRef.current?.disconnect()
       observer.disconnect()
       resizeObserver.disconnect()
+      embedded?.unmount()
+      mountPoint.remove()
     }
-  }, [applyEmbedTheme, constrainIframeNavigation, dashboardId, fetchGuestToken, hideEmbedActions, mode, onLoad, onError, stretchIframe])
+  }, [applyEmbedTheme, constrainIframeNavigation, dashboardId, fetchGuestToken, hideEmbedActions, stretchIframe, title, attempt])
 
   useEffect(() => {
     applyEmbedTheme()
@@ -313,22 +336,20 @@ export function DashboardEmbed({
           alignItems: 'center',
           justifyContent: 'center',
           background: 'var(--color-surface)',
-          borderRadius: 'var(--radius-md)',
+
           gap: 12,
           color: 'var(--color-text-secondary)',
           fontSize: '0.875rem',
         }}>
-          <span style={{ width: 28, height: 28, border: '2px solid var(--color-border)', borderTopColor: 'var(--color-accent)', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
+
           Loading dashboard...
         </div>
       )}
       {status === 'error' && (
-        <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(239,68,68,0.2)' }}>
+        <div role="alert" style={{ position: 'absolute', inset: 0, padding: '2rem', textAlign: 'center', background: 'var(--color-surface)' }}>
           <div style={{ color: 'var(--color-danger)', fontWeight: 600, marginBottom: 8 }}>Dashboard failed to load</div>
           <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', fontFamily: 'monospace' }}>{errorMsg}</div>
-          <div style={{ color: 'var(--color-text-tertiary)', fontSize: '0.8rem', marginTop: 12 }}>
-            Make sure the dashboard UUID is correct and embedding is enabled in Superset.
-          </div>
+          <Button variant="secondary" style={{ marginTop: 16 }} onClick={() => setAttempt(value => value + 1)}>Try again</Button>
         </div>
       )}
       <div
@@ -336,9 +357,9 @@ export function DashboardEmbed({
         style={{
           width: '100%',
           height: '100%',
-          borderRadius: 'var(--radius-md)',
+
           overflow: 'hidden',
-          border: '1px solid var(--color-border)',
+
           visibility: status === 'error' ? 'hidden' : 'visible',
         }}
       />

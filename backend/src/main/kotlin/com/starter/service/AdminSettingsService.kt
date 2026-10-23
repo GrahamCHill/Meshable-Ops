@@ -8,6 +8,7 @@ import com.starter.repository.postgres.AppSettingsRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
+import java.net.URI
 
 @Service
 class AdminSettingsService(
@@ -19,17 +20,46 @@ class AdminSettingsService(
 
     @Transactional
     fun updateSettings(req: AdminSettingsRequest): AdminSettingsResponse {
+        val validated = validatedStorageSettings(req)
         val settings = loadOrCreate()
-        settings.storageProvider = req.storageProvider.trim().uppercase()
-        settings.storageBucket = req.storageBucket?.trim()?.ifBlank { null }
-        settings.storageRegion = req.storageRegion?.trim()?.ifBlank { null }
-        settings.storageEndpoint = req.storageEndpoint?.trim()?.ifBlank { null }
-        settings.storageAccessKey = req.storageAccessKey?.trim()?.ifBlank { null }
-        settings.storageSecretKey = req.storageSecretKey?.trim()?.ifBlank { null }
-        settings.storageRootPath = normalizeRootPath(req.storageRootPath)
+        settings.storageProvider = validated.storageProvider
+        settings.storageBucket = validated.storageBucket
+        settings.storageRegion = validated.storageRegion
+        settings.storageEndpoint = validated.storageEndpoint
+        settings.storageAccessKey = validated.storageAccessKey
+        settings.storageSecretKey = validated.storageSecretKey
+        settings.storageRootPath = validated.storageRootPath
         settings.vectorReindexEnabled = req.vectorReindexEnabled
         settings.vectorReindexIntervalMinutes = req.vectorReindexIntervalMinutes
         return toResponse(appSettingsRepository.save(settings))
+    }
+
+    // Validate a detached configuration so checking a draft never changes saved settings.
+    fun validatedStorageSettings(req: AdminSettingsRequest): AppSettings {
+        val provider = req.storageProvider.trim().uppercase()
+        if (provider !in setOf("NONE", "S3", "AZURE_BLOB")) throw BadRequestException("Choose a supported storage provider")
+        val bucket = req.storageBucket?.trim()?.ifBlank { null }
+        val endpoint = req.storageEndpoint?.trim()?.ifBlank { null }
+        val accessKey = req.storageAccessKey?.trim()?.ifBlank { null }
+        val secretKey = req.storageSecretKey?.trim()?.ifBlank { null }
+        if (provider != "NONE") {
+            if (bucket == null) throw BadRequestException(if (provider == "S3") "Enter an S3 bucket name" else "Enter an Azure container name")
+            if ((accessKey == null) != (secretKey == null)) throw BadRequestException("Provide both credential fields, or leave both blank to use the server identity")
+            if (provider == "AZURE_BLOB" && endpoint == null) throw BadRequestException("Enter the Azure Blob service endpoint")
+            if (endpoint != null) {
+                val uri = runCatching { URI(endpoint) }.getOrNull()
+                if (uri == null || uri.scheme !in setOf("http", "https") || uri.host == null || uri.userInfo != null || uri.query != null || uri.fragment != null) {
+                    throw BadRequestException("Use an HTTP or HTTPS service endpoint without credentials, query parameters, or fragments")
+                }
+            }
+        }
+        if (req.vectorReindexIntervalMinutes !in 15..10080) throw BadRequestException("Choose a reindex interval between 15 and 10080 minutes")
+        return AppSettings(
+            storageProvider = provider, storageBucket = bucket,
+            storageRegion = req.storageRegion?.trim()?.ifBlank { null }, storageEndpoint = endpoint,
+            storageAccessKey = accessKey, storageSecretKey = secretKey,
+            storageRootPath = normalizeRootPath(req.storageRootPath.trim()),
+        )
     }
 
     @Transactional

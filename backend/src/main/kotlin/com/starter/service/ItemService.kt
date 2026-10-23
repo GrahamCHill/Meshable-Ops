@@ -9,6 +9,7 @@ import com.starter.exception.NotFoundException
 import com.starter.model.mongo.Event
 import com.starter.model.postgres.Item
 import com.starter.model.postgres.StorageDocument
+import com.starter.model.postgres.StorageConnection
 import com.starter.repository.mongo.EventRepository
 import com.starter.repository.postgres.ItemRepository
 import com.starter.repository.postgres.StorageDocumentRepository
@@ -81,11 +82,11 @@ class ItemService(
     }
 
     @Transactional
-    fun listShared(page: Int, size: Int): PageResponse<ItemResponse> {
-        val p = itemRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, size))
+    fun listShared(page: Int, size: Int, connectionId: UUID? = null): PageResponse<ItemResponse> {
+        val p = itemRepository.findVisibleByConnection(connectionId, PageRequest.of(page.coerceAtLeast(0), size.coerceIn(1, 100)))
         p.content.forEach { it.ensureCurrentPrefix() }
         itemRepository.flush()
-        val snapshot = folderStorageService.inspectAndEnsureFolders(p.content.mapNotNull { it.storagePrefix })
+        val snapshot = legacySnapshot(p.content)
         return PageResponse(
             p.content.map { it.toResponse(snapshot) },
             p.number,
@@ -126,8 +127,7 @@ class ItemService(
             resourceType = "FOLDER",
             resourceId = saved.id.toString(),
         )
-        val prefix = saved.ensureCurrentPrefix()
-        return saved.toResponse(folderStorageService.inspectAndEnsureFolders(listOf(prefix)))
+        return saved.toResponse(legacySnapshot(listOf(saved)))
     }
 
     @Transactional
@@ -138,7 +138,7 @@ class ItemService(
             .orElseThrow { NotFoundException("Item not found") }
 
         val prefix = item.ensureCurrentPrefix()
-        folderStorageService.deleteFolderIfEmpty(prefix)
+        if (item.storageConnection == null) folderStorageService.deleteFolderIfEmpty(prefix)
         storageDocumentRepository.deleteAll(storageDocumentRepository.findAllByItemId(itemId))
         storageDocumentRepository.flush()
         itemRepository.delete(item)
@@ -161,10 +161,10 @@ class ItemService(
 
     @Transactional
     fun reindexShared(): VectorReindexResult {
-        val items = itemRepository.findAllByOrderByCreatedAtDesc()
+        val items = itemRepository.findAllVisible()
         items.forEach { it.ensureCurrentPrefix() }
         itemRepository.flush()
-        folderStorageService.inspectAndEnsureFolders(items.mapNotNull { it.storagePrefix })
+        legacySnapshot(items)
 
         var documentCount = 0
         items.forEach { item ->
@@ -175,7 +175,7 @@ class ItemService(
             )
             documentCount += syncDocuments(
                 item,
-                folderStorageService.listDocuments(item.ensureCurrentPrefix()),
+                folderStorageService.listDocuments(item),
                 removeMissing = true,
                 forceVectorize = true,
             ).size
@@ -188,8 +188,8 @@ class ItemService(
     fun browse(itemId: UUID, path: String): StorageContentsResponse {
         val item = itemRepository.findById(itemId)
             .orElseThrow { NotFoundException(STORAGE_ROOT_NOT_FOUND) }
-        val rootPrefix = folderStorageService.prefixFor(item.id)
-        val result = folderStorageService.browse(rootPrefix, path)
+        val rootPrefix = folderStorageService.prefixFor(item)
+        val result = folderStorageService.browse(item, path)
         val documents = syncDocuments(item, result.entries.filter { it.type == "OBJECT" })
         return StorageContentsResponse(
             folderId = item.id.toString(),
@@ -224,9 +224,8 @@ class ItemService(
             .orElseThrow { NotFoundException(STORAGE_ROOT_NOT_FOUND) }
         if (uploads.isEmpty()) throw com.starter.exception.BadRequestException("Select at least one file")
 
-        val rootPrefix = folderStorageService.prefixFor(item.id)
-        folderStorageService.upload(rootPrefix, path, uploads)
-        syncDocuments(item, folderStorageService.listDocuments(rootPrefix))
+        folderStorageService.upload(item, path, uploads)
+        syncDocuments(item, folderStorageService.listDocuments(item))
         eventRepository.save(
             Event(
                 userId = user.id.toString(),
@@ -243,12 +242,35 @@ class ItemService(
         return browse(itemId, path)
     }
 
+    @Transactional(readOnly = true)
     fun download(itemId: UUID, path: String, archive: Boolean): StorageObjectDownload {
         val item = itemRepository.findById(itemId)
             .orElseThrow { NotFoundException(STORAGE_ROOT_NOT_FOUND) }
-        val rootPrefix = folderStorageService.prefixFor(item.id)
-        return if (archive) folderStorageService.downloadFolder(rootPrefix, path)
-        else folderStorageService.download(rootPrefix, path)
+        return folderStorageService.download(item, path, archive)
+    }
+
+    @Transactional
+    fun registerSharedFolder(email: String, connection: StorageConnection, prefix: String, nickname: String, accessible: Boolean): ItemResponse {
+        val user = userRepository.findByEmail(email).orElseThrow { NotFoundException("User not found") }
+        val folder = itemRepository.saveAndFlush(Item(
+            user = user, title = nickname, storagePrefix = prefix,
+            storageConnection = connection, accessible = accessible,
+        ))
+        vectorService.upsert(folder.id, vectorService.embedText(nickname, vectorSize), vectorPayload(folder))
+        auditLogService.record(actingEmail = email, action = "STORAGE_FOLDER_SHARED", resourceType = "FOLDER", resourceId = folder.id.toString())
+        return folder.toResponse(FolderStorageSnapshot(connection.provider, emptyMap()))
+    }
+
+    fun configureSharing(folder: Item, nickname: String, accessible: Boolean) {
+        folder.title = nickname
+        folder.accessible = accessible
+        itemRepository.saveAndFlush(folder)
+        vectorService.upsert(folder.id, vectorService.embedText(buildVectorText(folder.title, folder.description, folder.tags), vectorSize), vectorPayload(folder))
+    }
+
+    private fun legacySnapshot(items: List<Item>): FolderStorageSnapshot {
+        val prefixes = items.filter { it.storageConnection == null }.map { it.ensureCurrentPrefix() }
+        return if (prefixes.isEmpty()) FolderStorageSnapshot("NONE", emptyMap()) else folderStorageService.inspectAndEnsureFolders(prefixes)
     }
 
     private fun vectorPayload(item: Item) = mapOf(
@@ -327,14 +349,16 @@ class ItemService(
         return ItemResponse(
             id = id.toString(), title = title, description = description, tags = tags.toList(),
             storagePrefix = prefix,
-            storageProvider = snapshot.provider,
+            storageProvider = storageConnection?.provider ?: snapshot.provider,
             documentCount = snapshot.documentCounts[prefix] ?: 0,
-            createdAt = createdAt?.toString(), updatedAt = updatedAt?.toString()
+            createdAt = createdAt.toString(), updatedAt = updatedAt.toString(),
+            connectionId = storageConnection?.id?.toString(), connectionNickname = storageConnection?.nickname,
+            accessible = accessible,
         )
     }
 
     private fun Item.ensureCurrentPrefix(): String {
-        val expected = folderStorageService.prefixFor(id)
+        val expected = folderStorageService.prefixFor(this)
         if (storagePrefix != expected) storagePrefix = expected
         return expected
     }

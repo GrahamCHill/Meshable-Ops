@@ -6,6 +6,8 @@ import com.starter.service.AdminSettingsService
 import com.starter.service.AuditLogService
 import com.starter.service.BackupExportService
 import com.starter.service.StackInfoService
+import com.starter.service.FolderStorageService
+import jakarta.validation.Valid
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
@@ -31,6 +33,7 @@ class AdminOperationsController(
     private val backupExportService: BackupExportService,
     private val objectMapper: ObjectMapper,
     private val stackInfoService: StackInfoService,
+    private val folderStorageService: FolderStorageService,
 ) {
     @GetMapping("/settings")
     fun getSettings() = adminSettingsService.getSettings()
@@ -40,7 +43,7 @@ class AdminOperationsController(
 
     @PutMapping("/settings")
     fun updateSettings(
-        @RequestBody req: AdminSettingsRequest,
+        @Valid @RequestBody req: AdminSettingsRequest,
         @AuthenticationPrincipal principal: UserDetails,
         request: HttpServletRequest,
     ): ResponseEntity<Any> {
@@ -55,6 +58,9 @@ class AdminOperationsController(
         )
         return ResponseEntity.ok(response)
     }
+
+    @PostMapping("/settings/test-storage")
+    fun testStorage(@Valid @RequestBody req: AdminSettingsRequest) = folderStorageService.testConnection(req)
 
     @GetMapping("/audit-logs")
     fun auditLogs(

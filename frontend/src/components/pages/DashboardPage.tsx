@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom'
-import { BarChart2, FolderOpen, Search } from 'lucide-react'
+
 import { useAuthStore } from '../../hooks/useAuthStore'
 import { Card } from '../ui'
 
 const destinations = [
-  { to: '/storage', label: 'Browse storage', description: 'Explore the folders and documents available to the application.', icon: FolderOpen },
-  { to: '/search', label: 'Vector search', description: 'Search indexed folder and document metadata.', icon: Search },
-  { to: '/dashboards', label: 'Dashboards', description: 'Open the reporting dashboards available to your role.', icon: BarChart2 },
+  { to: '/storage', label: 'Browse storage', description: 'Explore the folders and documents available to the application.' },
+  { to: '/search', label: 'Vector search', description: 'Search indexed folder and document metadata.' },
+  { to: '/dashboards', label: 'Dashboards', description: 'Open the reporting dashboards available to your role.' },
 ]
 
 export function DashboardPage() {
@@ -21,10 +21,10 @@ export function DashboardPage() {
         </p>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
-        {destinations.map(({ to, label, description, icon: Icon }) => (
+        {destinations.map(({ to, label, description }) => (
           <Link key={to} to={to} style={{ textDecoration: 'none', color: 'inherit' }}>
             <Card style={{ height: '100%', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <div style={{ width: 38, height: 38, borderRadius: 11, background: 'var(--color-accent-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon size={17} color="var(--color-accent)" /></div>
+
               <div><div style={{ fontWeight: 600, marginBottom: 5 }}>{label}</div><div style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem', lineHeight: 1.5 }}>{description}</div></div>
             </Card>
           </Link>

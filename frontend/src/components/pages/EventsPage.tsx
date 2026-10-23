@@ -53,7 +53,7 @@ function EventRow({ event }: { event: Event }) {
             <Badge color={typeColors[event.type] ?? 'default'}>{event.type}</Badge>
           </div>
           {Object.keys(event.payload).length > 0 && (
-            <pre style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', background: 'var(--color-bg)', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-sm)', overflow: 'auto', margin: 0 }}>
+            <pre style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', background: 'var(--color-bg)', padding: '0.5rem 0.75rem',  overflow: 'auto', margin: 0 }}>
               {JSON.stringify(event.payload, null, 2)}
             </pre>
           )}

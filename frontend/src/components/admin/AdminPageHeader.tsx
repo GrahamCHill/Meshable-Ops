@@ -1,28 +1,24 @@
-import type { LucideIcon } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
+import type { ReactNode } from 'react'
 
-export function AdminPageHeader({
-  title,
-  description,
-  icon: Icon,
-  actions,
-}: Readonly<{
+export function AdminPageHeader({ title, description, actions }: Readonly<{
   title: string
   description: string
-  icon: LucideIcon
-  actions?: React.ReactNode
+  actions?: ReactNode
 }>) {
+  const isOverview = useLocation().pathname === '/admin'
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--color-accent-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Icon size={19} color="var(--color-accent)" />
-        </div>
+    <header className="admin-page-header">
+      <nav className="breadcrumbs" aria-label="Back navigation">
+        <Link to={isOverview ? '/' : '/admin'}>{isOverview ? 'Back to workspace' : 'Back to admin menu'}</Link>
+      </nav>
+      <div className="page-heading">
         <div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 4 }}>{title}</h1>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', maxWidth: 720 }}>{description}</p>
+          <h1>{title}</h1>
+          <p>{description}</p>
         </div>
+        {actions}
       </div>
-      {actions}
-    </div>
+    </header>
   )
 }

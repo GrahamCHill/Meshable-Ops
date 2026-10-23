@@ -5,7 +5,6 @@ import { Badge, Button, Card, Spinner } from '../ui'
 import { AdminPageHeader } from '../admin/AdminPageHeader'
 import { formatDate, getErrorMessage } from '../admin/adminUtils'
 import { useAuthStore } from '../../hooks/useAuthStore'
-import { KeyRound, Trash2, Upload, Users } from 'lucide-react'
 
 type CreateUserForm = {
   email: string
@@ -31,7 +30,7 @@ function UserRow({ user, pending, deleting, requestDelete, cancelDelete, deactiv
 }>) {
   const active = user.active !== false
   return (
-    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', padding: '0.9rem 1rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)' }}>
+    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', padding: '0.9rem 1rem',   background: 'var(--color-bg)' }}>
       <div style={{ minWidth: 0, flex: '1 1 260px' }}>
         <div style={{ fontWeight: 600 }}>{user.email}</div>
         <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem' }}>{user.username}</div>
@@ -48,7 +47,7 @@ function UserRow({ user, pending, deleting, requestDelete, cancelDelete, deactiv
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
         <Button variant="secondary" size="sm" loading={updatingPermission} disabled={!active} onClick={toggleUploadPermission}>
-          <Upload size={14} /> {user.canUploadDocuments ? 'Disable uploads' : 'Enable uploads'}
+           {user.canUploadDocuments ? 'Disable uploads' : 'Enable uploads'}
         </Button>
       {pending ? (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 360 }}>
@@ -57,7 +56,7 @@ function UserRow({ user, pending, deleting, requestDelete, cancelDelete, deactiv
           <Button variant="ghost" size="sm" disabled={deleting} onClick={cancelDelete}>Cancel</Button>
         </div>
       ) : (
-        <Button variant="danger" size="sm" disabled={!active} onClick={requestDelete}><Trash2 size={14} /> {active ? 'Deactivate' : 'Inactive'}</Button>
+        <Button variant="danger" size="sm" disabled={!active} onClick={requestDelete}> {active ? 'Deactivate' : 'Inactive'}</Button>
       )}
       </div>
     </div>
@@ -94,10 +93,10 @@ export function AdminUsersPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <AdminPageHeader title="Users" description="Create application accounts, assign roles, and control login access." icon={Users} actions={<Badge color="accent">{users.data?.length ?? 0} users</Badge>} />
+      <AdminPageHeader title="Users" description="Create application accounts, assign roles, and control login access."  actions={<Badge color="accent">{users.data?.length ?? 0} users</Badge>} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem', alignItems: 'start' }}>
         <Card>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 600, marginBottom: '1rem' }}><KeyRound size={16} /> Create a user</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 600, marginBottom: '1rem' }}> Create a user</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <label>Email<input type="email" placeholder="person@example.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></label>
             <label>Username<input placeholder="person" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} /></label>

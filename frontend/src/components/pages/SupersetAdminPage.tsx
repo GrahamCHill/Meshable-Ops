@@ -1,138 +1,96 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Workflow } from 'lucide-react'
-import { Card } from '../ui'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+
+import { Button, Spinner } from '../ui'
+import { AdminPageHeader } from '../admin/AdminPageHeader'
 import { authApi } from '../../api/client'
 import { useTheme } from '../../hooks/useTheme'
 import { applySupersetTheme } from '../../lib/supersetTheme'
 
+const views = [
+  { id: 'dashboards', label: 'Dashboards', path: '/dashboard/list/' },
+  { id: 'charts', label: 'Charts', path: '/chart/list/' },
+  { id: 'datasets', label: 'Datasets', path: '/tablemodelview/list/' },
+]
+
 export function SupersetAdminPage() {
   const navigate = useNavigate()
-  const [isPreparingSession, setIsPreparingSession] = useState(true)
-  const supersetEntryUrl = '/dashboard/list/'
+  const [params, setParams] = useSearchParams()
+  const view = views.find(option => option.id === params.get('view')) ?? views[0]
+  const [preparing, setPreparing] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [slow, setSlow] = useState(false)
+  const [revision, setRevision] = useState(0)
+  const [focused, setFocused] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const observerRef = useRef<MutationObserver | null>(null)
+  const frameDocument = useRef<Document | null>(null)
+  const handleFrameKey = useCallback((event: KeyboardEvent) => { if (event.key === 'Escape') setFocused(false) }, [])
   const { mode } = useTheme()
-
-  const syncIframeTheme = () => {
-    const iframe = iframeRef.current
-    if (!iframe) return
-
-    let doc: Document | null = null
-    try {
-      doc = iframe.contentDocument
-    } catch {
-      return
-    }
-    if (!doc) return
-
-    applySupersetTheme(doc, mode)
-  }
+  const modeRef = useRef(mode)
+  modeRef.current = mode
+  const syncIframeTheme = useCallback(() => {
+    try { const doc = iframeRef.current?.contentDocument; if (doc) applySupersetTheme(doc, modeRef.current) } catch { /* The frame may be navigating. */ }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
-
-    authApi.refreshSessionCookie()
-      .catch(() => {
-        if (!cancelled) {
-          navigate('/login', { replace: true })
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsPreparingSession(false)
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
+    authApi.refreshSessionCookie().then(() => { if (!cancelled) setPreparing(false) }).catch(() => { if (!cancelled) navigate('/login', { replace: true }) })
+    return () => { cancelled = true }
   }, [navigate])
-
+  useEffect(() => { syncIframeTheme() }, [mode, syncIframeTheme])
+  useEffect(() => () => {
+    observerRef.current?.disconnect()
+    frameDocument.current?.removeEventListener('keydown', handleFrameKey)
+  }, [handleFrameKey])
   useEffect(() => {
-    syncIframeTheme()
-  }, [mode, isPreparingSession])
-
-  useEffect(() => () => observerRef.current?.disconnect(), [])
+    if (!loading || preparing) return
+    const timeout = window.setTimeout(() => setSlow(true), 20_000)
+    return () => window.clearTimeout(timeout)
+  }, [loading, preparing, revision, view.id])
+  useEffect(() => {
+    if (!focused) return
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') setFocused(false) }
+    window.addEventListener('keydown', close)
+    return () => window.removeEventListener('keydown', close)
+  }, [focused])
+  const openList = (id: string) => {
+    setLoading(true); setSlow(false); setRevision(value => value + 1)
+    setParams(previous => { const next = new URLSearchParams(previous); next.set('view', id); return next })
+  }
+  const reload = () => {
+    setLoading(true); setSlow(false)
+    try { iframeRef.current?.contentWindow?.location.reload() } catch { setRevision(value => value + 1) }
+  }
 
   return (
-    <div style={{ width: '100%', maxWidth: 'none', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <Workflow size={18} color="var(--color-accent)" />
-            <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Superset Graph Builder</h1>
-          </div>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
-            Use the embedded Superset workspace for datasets, charts, and dashboard authoring. The wider admin tools stay on the main admin page.
-          </p>
+    <div className="page-stack">
+      <AdminPageHeader title="Superset workspace" description="Build your analytics here, then use Dashboard links to share them with your team."  actions={<Link className="button button-secondary button-sm" to="/admin/dashboard-links"> Dashboard links</Link>} />
+      <section className={`analytics-workspace builder-workspace${focused ? ' is-focused' : ''}`} aria-label="Superset authoring workspace">
+        <div className="workspace-toolbar">
+          <nav className="workspace-tabs" aria-label="Superset sections">{views.map(({ id, label }) => <button key={id} className={view.id === id ? 'is-active' : ''} aria-current={view.id === id ? 'page' : undefined} onClick={() => openList(id)}>{label}</button>)}</nav>
+          <div className="inline-actions"><Button variant="ghost" size="sm" disabled={preparing} onClick={() => openList(view.id)}> Return to list</Button><button className="utility-button" aria-label="Reload Superset workspace" title="Reload current page" disabled={preparing} onClick={reload}>Reload</button><button className="utility-button" aria-label={focused ? 'Exit expanded view' : 'Expand Superset workspace'} title={focused ? 'Exit expanded view (Esc)' : 'Expand workspace'} onClick={() => setFocused(!focused)}>{focused ? 'Exit expanded view' : 'Expand'}</button></div>
         </div>
-        <Link
-          to="/admin"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '0.7rem 0.95rem',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-text)',
-            textDecoration: 'none',
-            fontWeight: 500,
-          }}
-        >
-          <ArrowLeft size={15} /> Back to Admin
-        </Link>
-      </div>
-
-      <Card style={{ padding: '0.75rem' }}>
-        <div style={{ marginBottom: '0.9rem', padding: '0.25rem 0.25rem 0 0.25rem' }}>
-          <div style={{ fontWeight: 600 }}>Embedded workspace</div>
-          <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
-            Use the Superset menu inside the frame for navigation. The frame opens on the proxied dashboard workspace directly, and Superset will present its own sign-in screen there when a Superset session is still needed.
-          </div>
+        <p className="workspace-description">Superset may ask you to sign in with your analytics account. Use the tabs above to switch workspaces.</p>
+        {slow && <div role="status" className="feedback warning workspace-description">Superset is taking longer than expected. <button className="text-button" onClick={reload}>Reload workspace</button></div>}
+        <div className="workspace-content builder-frame">
+          {(preparing || loading) && <div className="frame-loading" role="status"><Spinner />{preparing ? 'Preparing your session…' : `Opening ${view.label.toLowerCase()}…`}</div>}
+          {!preparing && <iframe key={`${view.id}-${revision}`} ref={iframeRef} src={view.path} title={`Superset ${view.label}`} onError={() => { setLoading(false); setSlow(true) }} onLoad={() => {
+            setLoading(false); setSlow(false); syncIframeTheme()
+            observerRef.current?.disconnect()
+            try {
+              const doc = iframeRef.current?.contentDocument
+              if (doc?.body) {
+                frameDocument.current?.removeEventListener('keydown', handleFrameKey)
+                frameDocument.current = doc
+                doc.addEventListener('keydown', handleFrameKey)
+                observerRef.current = new MutationObserver(syncIframeTheme)
+                observerRef.current.observe(doc.body, { childList: true, subtree: true })
+              }
+            } catch { /* A subsequent frame load will retry. */ }
+          }} />}
         </div>
-        <div style={{
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-lg)',
-          overflow: 'hidden',
-          height: 'calc(100vh - 12rem)',
-          minHeight: 720,
-          background: 'var(--color-surface)',
-        }}>
-          {isPreparingSession ? (
-            <div style={{
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--color-text-secondary)',
-              fontSize: '0.9rem',
-              background: 'var(--color-surface)',
-            }}>
-              Preparing Superset session...
-            </div>
-          ) : (
-            <iframe
-              ref={iframeRef}
-              src={supersetEntryUrl}
-              title="Superset Graph Builder"
-              onLoad={() => {
-                syncIframeTheme()
-                const doc = iframeRef.current?.contentDocument
-                if (doc?.body) {
-                  observerRef.current?.disconnect()
-                  observerRef.current = new MutationObserver(() => syncIframeTheme())
-                  observerRef.current.observe(doc.body, { childList: true, subtree: true })
-                }
-              }}
-              style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
-            />
-          )}
-        </div>
-      </Card>
+      </section>
     </div>
   )
 }

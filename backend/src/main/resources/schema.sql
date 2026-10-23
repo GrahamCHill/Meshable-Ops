@@ -19,9 +19,13 @@ ALTER TABLE IF EXISTS users
 ALTER TABLE IF EXISTS items
     ADD COLUMN IF NOT EXISTS storage_prefix TEXT;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_items_storage_prefix
-    ON items (storage_prefix)
-    WHERE storage_prefix IS NOT NULL;
+ALTER TABLE IF EXISTS items ADD COLUMN IF NOT EXISTS accessible BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE IF EXISTS items DROP CONSTRAINT IF EXISTS items_storage_prefix_key;
+DROP INDEX IF EXISTS idx_items_storage_prefix;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_items_legacy_storage_prefix
+    ON items (storage_prefix) WHERE storage_prefix IS NOT NULL AND storage_connection_id IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_items_connection_storage_prefix
+    ON items (storage_connection_id, storage_prefix) WHERE storage_connection_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS item_tags (
     item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,

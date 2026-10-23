@@ -134,11 +134,35 @@ The backend uses the Blob endpoint `http://azurite:10000/devstoreaccount1` and c
 `starter-dev`; override the container with `AZURITE_CONTAINER`. Its well-known development
 account and key are for local testing only.
 
-### Storage view path
+### Shared cloud locations
+
+The existing `ADMIN` role acts as super admin for storage configuration. From
+**Administration > Storage connections > Shared locations**, admins can:
+
+1. Add independent S3 buckets or Azure Blob containers, each with an in-app nickname.
+2. Set an optional start-folder boundary and test the connection.
+3. Browse the provider's folders and select the folders to expose, assigning each a nickname.
+4. Save a folder's **Accessible** setting or disable a whole connection to revoke shared access.
+
+Storage displays each enabled connection as a named folder containing its accessible selections.
+Selections include all descendants. Parent/child selections within a connection cannot overlap.
+Saving a new connection does not share any folders automatically. Regular authenticated users
+see only shared locations; credentials and admin folder discovery remain restricted to `ADMIN`.
+Hidden selections are blocked for browsing, downloads, uploads, and vector search. Uploads still
+require the separate upload permission. Removing a selection removes its application metadata,
+not the objects in cloud storage. Existing application-managed folders retain their visibility
+and can be renamed or hidden in the same admin workspace.
+
+Connection nicknames, selected-folder nicknames, and visibility are stored in PostgreSQL.
+Nicknames do not rename buckets, containers, or cloud object keys. The backend schema update
+adds connection references and defaults existing folders to accessible; prefix uniqueness is
+scoped per connection so matching folder paths can be shared from different buckets.
+
+### Default storage view path
 
 The application never browses the whole bucket/container. It exposes only registered
 storage roots beneath a configured prefix such as `contract-management/documents`.
-Configure this persistently from **Admin > Storage & Vectors > Storage view path**.
+Configure this persistently from **Administration > Storage connections > Default connection > Storage view path**.
 The value is stored in PostgreSQL. Do not use `/`, `.` or `..` as path segments.
 
 For either local provider, set the prefix before startup:
@@ -179,6 +203,12 @@ an existing development database between MinIO and Azurite, run that one startup
 
 Changing the storage view path repoints application roots into the new namespace on the
 next listing/reindex. It does not copy existing objects from the old prefix.
+
+The connection screen shows fields for the selected provider and supports either explicit
+keys or the identity configured on the application server. Use **Test connection** before
+saving to check read access against the draft bucket/container and prefix. This check does
+not save settings, create a container, or upload objects; write permissions must be granted
+separately for uploads. Automatic vector recalculation is configured on the **Search index** tab.
 
 Useful checks:
 
@@ -283,6 +313,12 @@ Each shared dashboard entry stores:
 - sort order
 - enabled state
 - allowed app roles
+
+The dashboard viewer keeps its selection in `/dashboards?dashboard=<app-dashboard-id>`
+so links and browser refresh preserve the selected report. It includes previous/next,
+reload, and expanded-view controls, and keeps the dashboard's own Superset tabs visible.
+The admin Superset workspace provides direct Dashboards, Charts, and Datasets navigation,
+a return-to-list action, and a shortcut to Dashboard links. Press Escape to leave expanded view.
 
 ### User Access Management
 
