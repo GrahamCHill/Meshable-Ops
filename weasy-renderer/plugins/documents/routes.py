@@ -22,6 +22,6 @@ def router(payload, render_payload):
     @routes.post("/plugins/documents/render")
     async def render(request: Request):
         value = await payload(request)
-        return await render_payload({**value, "operation": "documents.render"})
+        return await render_payload({"template": value["template"], "values": value.get("values", {}), "operation": "documents.render"})
 
     return routes

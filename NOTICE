@@ -6,6 +6,11 @@ are available under AGPL-3.0-only, or under a separate executed commercial
 agreement where the relevant copyright holder has granted one.
 See LICENSE, LICENSING.md, and COMMERCIAL-LICENSE.md.
 
+Covered plugins inherit the application's community license. Independently
+authored service-integration components may retain compatible licenses;
+independent external services retain their own terms. See the plugin and
+external-service integration policy in LICENSING.md.
+
 This product includes Apache Superset software developed at
 The Apache Software Foundation (https://www.apache.org/).
 Apache Superset and its embedded SDK remain licensed under Apache-2.0.

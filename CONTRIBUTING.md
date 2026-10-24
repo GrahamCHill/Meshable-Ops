@@ -25,4 +25,6 @@ Python services have separate dependency environments and tests; see [code organ
 
 The public project license is [AGPL-3.0-only](LICENSE), with a [separate commercial licensing path](COMMERCIAL-LICENSE.md). Copyright stays with contributors. Before a copyrightable contribution is merged, its rights holder must explicitly accept the [CLA](CLA.md), which permits both AGPL publication and future commercial sublicensing. A PR submission or commit sign-off alone does not grant those additional rights. Obtain employer/client permission where required, and identify upstream material and its license.
 
+Original plugin functionality submitted for inclusion follows the app's community license. Independently authored service-integration components may retain an AGPL-compatible license with appropriate notices; independent external services retain their own terms. Identify those portions explicitly and follow the [plugin licensing policy](LICENSING.md#plugins-and-external-service-integrations). The allowance does not exempt covered plugin functionality merely because it calls an external API.
+
 Maintainers must retain a record of explicit acceptance for the covered revisions. Existing work without that grant cannot simply be included in a proprietary release. See [licensing](LICENSING.md) and [third-party notices](THIRD_PARTY_NOTICES.md).

@@ -16,7 +16,7 @@ class WorkflowRunService(private val definitions: WorkflowRepository,private val
     private val access: DocumentAccess,private val documents: GeneratedDocumentRepository,private val runtime: WorkflowRuntime,
     private val validation: WorkflowValidation,private val mapper: ObjectMapper,private val rates: RateLimits,private val alerts: com.starter.plugins.workflows.WorkflowNotificationHooks, private val controls: com.starter.access.AccessControlService? = null) {
     fun available(email: String): List<RunnableWorkflow> {
-        val actor=guard.actor(email)
+        val actor=guard.actor(email);guard.readableDesigns(actor)
         return definitions.runnable((com.starter.access.Roles.admin(actor.role) && controls?.allows("admin.workflows") != false),PageRequest.of(0,100)).map {
             val graph = mapper.readValue(it.graphJson,WorkflowGraph::class.java)
             val blocked = graph.nodes.any { block -> block.kind in setOf(BlockKind.DOCUMENT,BlockKind.EMAIL) } && runCatching { guard.documentSupport(actor) }.isFailure
@@ -26,7 +26,7 @@ class WorkflowRunService(private val definitions: WorkflowRepository,private val
     fun list(email: String) = runs.owned(guard.actor(email).id,PageRequest.of(0,100))
     @Transactional
     fun start(email: String,id: UUID): WorkflowRunView {
-        val actor=guard.actor(email);guard.writable(actor);rates.check("workflow-start",actor.id.toString(),20,3600)
+        val actor=guard.actor(email);guard.writable(actor);guard.readableDesigns(actor);rates.check("workflow-start",actor.id.toString(),20,3600)
         val source=definitions.findById(id).orElse(null)?.takeIf { it.state==WorkflowState.READY && (it.published || (com.starter.access.Roles.admin(actor.role) && controls?.allows("admin.workflows") != false)) } ?: throw NotFoundException("Published workflow unavailable")
         val graph=mapper.readValue(source.graphJson,WorkflowGraph::class.java)
         val ids: List<UUID> = mapper.readValue(source.documentIdsJson,object:TypeReference<List<UUID>>() {})

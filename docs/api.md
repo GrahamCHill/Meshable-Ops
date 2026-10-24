@@ -407,6 +407,8 @@ Share passwords require 12–72 characters and at most 72 UTF-8 bytes. Lifetime 
 
 ## Document templates and generated documents
 
+These existing routes belong to the optional `documents` plugin; `/api/admin/workflows` and `/api/workflows` belong to `workflows`. Disabled, removed or role-restricted modules return 404 before their controllers execute. Their existing feature IDs and per-record ownership checks remain in force, alongside plugin table policy. Effective `/api/access/me` features omit unavailable module views while stored role/member policies retain their grants. See [module lifecycle](plugins/documents-and-workflows.md) and [React/Kotlin/Python source plugins](plugins/full-stack.md).
+
 Templates use the structured WeasyCanvas v0.8.0 schema. JSON supplied by regular users cannot replace the saved layout used for generation. These routes require authentication; template mutations additionally require `ADMIN`.
 
 | Method and path | Purpose |
@@ -445,7 +447,7 @@ Runtime endpoints require authentication and an active account. Runs are private
 
 | Endpoint | Contract |
 | --- | --- |
-| `GET /api/workflows` | Latest 100 published ready designs; admins also see private ready previews. Metadata `{ id, name, revision, published, stepCount }` |
+| `GET /api/workflows` | Latest 100 published ready designs; admins also see private ready previews. Metadata `{ id, name, revision, published, stepCount, blockedReason }`; unavailable PDF support sets a reason and prevents starting |
 | `GET /api/workflows/runs` | Latest 100 own run summaries `{ id, name, workflowId, status, updatedAt }` |
 | `POST /api/workflows/runs` | Start `{ workflowId }`, snapshots design; limited to 20/account/hour |
 | `GET /api/workflows/runs/{id}` | Own run view |

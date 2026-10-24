@@ -66,5 +66,21 @@ class RendererTests(unittest.TestCase):
             self.assertTrue(response.content.startswith(b"%PDF-"))
             self.assertEqual(response.headers["cache-control"], "no-store")
 
+    def test_namespaced_python_plugin_routes_share_the_authentication_and_render_contract(self):
+        with patch.dict(os.environ, {"APP_DOCUMENT_RENDER_TOKEN": "sample-internal-render-token"}):
+            client = TestClient(app)
+            body = {"template": SOURCE["template"], "values": VALUES}
+            self.assertEqual(client.post("/plugins/documents/validate", json=body).status_code, 401)
+            headers = {"Authorization": "Bearer sample-internal-render-token"}
+            self.assertEqual(client.post("/plugins/documents/validate", json=body, headers=headers).status_code, 200)
+            result = client.post("/plugins/documents/render", json=body, headers=headers)
+            self.assertEqual(result.status_code, 200)
+            self.assertTrue(result.content.startswith(b"%PDF-"))
+
+    def test_worker_only_dispatches_reviewed_plugin_operations(self):
+        from plugins.registry import render_plugin
+        with self.assertRaises(ValueError):
+            render_plugin("os.system", {})
+
 
 if __name__ == "__main__": unittest.main()

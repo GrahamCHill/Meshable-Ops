@@ -20,6 +20,7 @@ Call `registry.requireFeature("planning", "development", actor.role)` and `regis
 
 | Consumer | Supporting capability | Behavior |
 | --- | --- | --- |
+| Workflows | Documents `documents.pdf` | Optional PDF/email steps; basic workflows remain usable without Documents and saved PDF runs pause while support is unavailable |
 | Kanban | GitHub/GitLab/Gitea `source.repositories` | Link approved repositories and PRs/MRs to boards or individual cards; explicitly refresh snapshots |
 | Calendar | Kanban `kanban.boards` | Show saved card due dates as virtual all-day events, restricted to visible boards |
 | Calendar | `calendar.provider` | Read selected Microsoft, Google, or CalDAV calendars; explicitly publish saved local events |

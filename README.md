@@ -17,8 +17,8 @@ Meshable Ops is an extensible business workspace for teams that want control ove
 | Capability | Included |
 | --- | --- |
 | **Clients and delivery** | Project portfolios, inherited contacts, teams, tags, Kanban tickets, sprints, Git/PR links, comments, PDF reports, and personal work digests. [Guide](docs/projects-and-delivery.md) |
-| **Files and documents** | Named S3/Azure Blob locations, file permissions, PDF previews, download policies, protected sharing, and WeasyCanvas templates with calculated fields. [Files](docs/storage-connections.md) · [Documents](docs/documents-and-workflows.md) |
-| **Processes and insight** | Visual workflow design, guided member runs, multiple Apache Superset dashboards, and permission-aware search with optional AI. [Workflows](docs/documents-and-workflows.md) · [Search](docs/search-and-indexing.md) |
+| **Files and documents** | Named S3/Azure Blob locations, file permissions, PDF previews, download policies, protected sharing, and an optional document-generator plugin with WeasyCanvas templates and calculated fields. [Files](docs/storage-connections.md) · [Documents](docs/documents-and-workflows.md) |
+| **Processes and insight** | Optional visual workflow design and guided member runs, multiple Apache Superset dashboards, and permission-aware search with optional AI. [Workflows](docs/plugins/documents-and-workflows.md) · [Search](docs/search-and-indexing.md) |
 | **Connected teams** | SMTP/API email, notification templates and preferences, webhooks, personal calendar sync, and separate Git, Discord, Telegram, Teams, WhatsApp, and Microsoft file plugins. [Plugins](docs/plugins/README.md) |
 | **Your workspace** | Business branding, optional MFA, delegated administration, restricted external file access, encrypted secrets, and sandboxed ZIP extensions. [Access](docs/access-controls.md) · [Branding](docs/branding.md) |
 
@@ -54,7 +54,7 @@ flowchart TB
     api["Kotlin / Spring Boot<br/>Authentication, RBAC, jobs and application APIs"]
     state["Persistent data<br/>PostgreSQL + pgvector: records, PDFs, secrets, search<br/>S3 / Azure Blob: original documents<br/>MongoDB: events and audit, excluded from search"]
     python["Private Python document services<br/>WeasyCanvas / WeasyPrint: documents and reports<br/>Content helper: bounded PDF, DOCX and text extraction"]
-    plugins["Plugin host and optional providers<br/>Boards, Git, calendars, chat and Microsoft files<br/>ZIP extensions, email, webhooks and optional AI"]
+    plugins["Plugin host and optional providers<br/>Documents, workflows, boards, Git, calendars and chat<br/>React / Kotlin / Python source modules and sandboxed ZIPs"]
     analytics["Python: Apache Superset<br/>Embedded dashboards and admin authoring<br/>Separate metadata, Redis, Celery worker and beat"]
     ci["GitHub Actions, Terraform and Python setup helpers<br/>Checks, releases, VM deployment on AWS / Azure"]
     users --> web --> api
@@ -67,7 +67,7 @@ Kotlin enforces permissions before records, files, reports, or search results ar
 
 ## Extend and contribute
 
-Create plugins with pages, submenus, settings, managed tables, search, and client/project extension points. Bundled modules integrate reviewed server code; uploaded ZIPs run sandboxed pages through a scoped host bridge. See [plugin authoring](docs/plugins/README.md), [contribution guidance](CONTRIBUTING.md), and [CLA](CLA.md).
+Create plugins with pages, submenus, settings, managed tables, search, and client/project extension points. Reviewed [full-stack source modules](docs/plugins/full-stack.md) support React, Kotlin and Python; uploaded ZIPs run sandboxed pages through a scoped host bridge. Documents and Workflows are separately optional plugins with normal workspace/admin pages. See [plugin authoring](docs/plugins/README.md), [contribution guidance](CONTRIBUTING.md), and [CLA](CLA.md).
 
 Installed ZIP plugins and their saved data persist across application updates. Authors can declare supported app releases or ranges; missing/mismatched versions show caution and backup advice. [Compatibility and updates](docs/plugins/compatibility-and-updates.md).
 
@@ -76,3 +76,5 @@ The project is evolving. Providers require your credentials and permissions; ext
 ## License
 
 **AGPL-3.0-only with an alternative commercial licensing path.** The community license covers original Meshable Ops code and the project owner's imported WeasyCanvas source. Alternative terms require a separate written agreement; future premium terms are not granted here. Apache Superset and other dependencies retain their licenses. Read [LICENSE](LICENSE), [licensing](LICENSING.md), and [third-party notices](THIRD_PARTY_NOTICES.md).
+
+Covered plugins inherit the app's community license. Independently authored service-integration components may retain compatible licenses, and independent external services keep their own terms. See [plugin licensing](docs/plugins/licensing.md).

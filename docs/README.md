@@ -9,6 +9,7 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Task | Guide |
 | --- | --- |
 | Understand AGPL, commercial licensing, and upstream notices | [Licensing](../LICENSING.md) |
+| License plugins and compatible external-service integration components | [Plugin licensing](plugins/licensing.md) |
 | Contribute changes and understand the contributor grant | [Contributing](../CONTRIBUTING.md) · [CLA](../CLA.md) |
 | Start the development stack with MinIO or Azurite | [Development setup](getting-started.md) |
 | Understand empty databases, initial access, required secrets, and upgrades | [Initialization and security](initialization-and-security.md) |
@@ -39,6 +40,8 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Email password-protected, watermarked PDF attachments | [Protected PDF sharing](file-sharing.md) |
 | Configure notification methods, messages, and member preferences | [Notifications](notifications.md) |
 | Design templates, generate PDFs, and build or follow workflows | [Documents and workflows](documents-and-workflows.md) |
+| Enable optional Documents/Workflows and preserve existing data | [Document and workflow plugins](plugins/documents-and-workflows.md) |
+| Build plugins spanning React, Kotlin and Python | [Full-stack plugin authoring](plugins/full-stack.md) |
 | Inspect extraction formats, limits, and processing states | [Document processing](document-processing-extension.md) |
 | Understand tables, MongoDB collections, and backup boundaries | [Database layout](database-layout.md) |
 | Deploy, upgrade, verify, or troubleshoot the stack | [Deployment](deployment.md) |
@@ -60,7 +63,7 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 - Internal members retain shared-root access unless restricted. External members need explicit directory/file grants. Upload permission defaults off and is unavailable to external members.
 - AI and storage keys saved through the app require a persistent server wrapping key. MinIO/Azurite development seeds also persist credentials, so set the key before starting those profiles.
 - MongoDB records, audit logs, and events are not search or AI-answer sources.
-- Plugins start disabled. Bundled modules support server integrations; super admins can also install sandboxed ZIP plugins after enabling third-party extensions in Security. ZIP packages require an author file and are excluded from search by default.
+- Plugins start disabled on new databases, including Documents and Workflows. Upgrades retain these modules' existing use when saved documents/designs/runs exist; explicit activation settings are preserved. Reviewed source modules support React, Kotlin and Python. Super admins can also install sandboxed browser ZIP plugins after enabling third-party extensions in Security. ZIP packages require an author file and are excluded from search by default.
 - Projects support scoped member/team-lead/manager roles and explicit team access. Departments and tags do not share work automatically. Reports and digests stay manual until schedules are configured; no schedule is created at startup.
 - Meshable Ops is the product name. Existing Docker project/volume names and the older plugin SDK alias remain compatible; business branding is preserved.
 

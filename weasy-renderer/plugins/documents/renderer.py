@@ -1,8 +1,6 @@
 """WeasyCanvas template-to-PDF contribution owned by the Documents plugin."""
 from backend.generator import DocumentTemplate, DocumentDraft, render_document_html, paragraph_indices, section_id
-from resources import inline_only
-
-MAX_PDF_BYTES = 10 * 1024 * 1024
+from resources import inline_only, MAX_PDF_BYTES
 
 
 def make_draft(template, values):

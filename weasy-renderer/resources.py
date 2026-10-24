@@ -1,6 +1,8 @@
 """Bounded raster-only resource policy shared by every PDF worker."""
 import base64
 
+MAX_PDF_BYTES = 10 * 1024 * 1024
+
 
 def inline_only(url, *args, **kwargs):
     # No network, redirects, filesystem URLs, SVG, or embedded PDF attachments.

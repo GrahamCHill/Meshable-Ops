@@ -66,19 +66,21 @@ class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: P
     @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
     fun requireAvailable(id: String, role: String) {
         if (!canAccess(id)) throw NotFoundException("Plugin unavailable")
-        requireEnabled(id, role)
+        checkEnabled(id, role, true)
     }
 
     /** Capability composition may grant a run PDF without granting access to the owner's document library. */
     @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
-    fun requireEnabled(id: String, role: String) {
+    fun requireEnabled(id: String, role: String) = checkEnabled(id, role, false)
+
+    private fun checkEnabled(id: String, role: String, checkAccess: Boolean) {
         val manifest = manifests[id] ?: throw NotFoundException("Plugin unavailable")
         val view = view(manifest, settings.findById(id).orElse(null))
         if (!view.enabled || view.removed || view.blockedBySecurity || com.starter.access.Roles.plugin(role) !in view.allowedRoles) throw NotFoundException("Plugin unavailable")
         if (manifest.requiresCapabilities.isNotEmpty() || manifest.requires.isNotEmpty() || manifest.incompatibleWith.isNotEmpty() || manifest.apiVersion != 1 || id in bundled && packages?.contains(id) == true || manifests.values.any { id in it.incompatibleWith }) {
             val saved = settings.findAll().associateBy { it.pluginId }.toMutableMap()
             settings.findById(id).orElse(null)?.let { saved[id] = it }
-            if (catalogue(saved, role, false).none { it.manifest.id == id && it.active }) throw NotFoundException("Plugin unavailable: check plugin API compatibility, conflicts, and required supporting plugins")
+            if (catalogue(saved, role, checkAccess).none { it.manifest.id == id && it.active }) throw NotFoundException("Plugin unavailable: check plugin API compatibility, conflicts, and required supporting plugins")
         }
     }
 

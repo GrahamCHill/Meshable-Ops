@@ -14,7 +14,7 @@ Install `requirements-dev.txt`, then run `python -m unittest discover -s tests -
 
 `app.py` bounds input and runs one `worker.py` subprocess per PDF. The worker creates a document from saved template defaults/API values, normalizes paragraph sections, uses a raster-only URL fetcher, and limits pages/output. Linux also enforces per-worker CPU/address-space limits; the Compose service supplies container memory/process limits. Raw native errors and document values are not returned or logged by the wrapper. The vendored generator's unrestricted `render_document_pdf()` is not exposed by this host.
 
-See [the application guide](../docs/documents-and-workflows.md) for workflow scope, document/email policy, deployment, and persistence boundaries.
+The document generator's Python routes and worker live in `plugins/documents/`; `plugins/registry.py` registers reviewed contributions explicitly. Kotlin/React plugin code lives in the corresponding backend/frontend module directories. The host retains token authentication, input/process/output limits and raster-only resource policy; core `/reports/render` remains available when the Document generator plugin is disabled. The worker is private and Kotlin enforces activation/RBAC before requests. See [full-stack plugins](../docs/plugins/full-stack.md) and [the application guide](../docs/documents-and-workflows.md) for deployment, policy, and persistence boundaries.
 
 ## Licensing
 

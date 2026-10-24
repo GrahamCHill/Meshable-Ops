@@ -7,7 +7,7 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 import org.springframework.scheduling.annotation.EnableScheduling
 
 @SpringBootApplication
-@EnableJpaRepositories(basePackages = ["com.starter.repository.postgres", "com.starter.mfa", "com.starter.webhook", "com.starter.share", "com.starter.plugins.documents", "com.starter.plugins.workflows", "com.starter.plugins", "com.starter.notification", "com.starter.access", "com.starter.projects"])
+@EnableJpaRepositories(basePackages = ["com.starter.repository.postgres", "com.starter.mfa", "com.starter.webhook", "com.starter.share", "com.starter.plugins", "com.starter.notification", "com.starter.access", "com.starter.projects"])
 @EnableMongoRepositories(basePackages = ["com.starter.repository.mongo"])
 @EnableScheduling
 class StarterApplication

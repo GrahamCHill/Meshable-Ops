@@ -13,6 +13,7 @@ class WorkflowRunAccess(private val runs: WorkflowRunRepository,private val defi
     private val access: DocumentAccess,private val documents: GeneratedDocumentRepository,private val runtime: WorkflowRuntime, private val modules: com.starter.plugins.BundledModuleAccess, private val controls: com.starter.access.AccessControlService? = null) {
     fun actor(email: String) = access.actor(email).also { modules.check("workflows", it, "workflow_runs", "workflows") }
     fun writable(actor: User) = modules.check("workflows", actor, "workflow_runs", "workflows", write = true)
+    fun readableDesigns(actor: User) = modules.check("workflows", actor, "workflow_definitions", "workflows")
     fun documentSupport(actor: User) = modules.documents(actor)
     fun owned(actor: User,id: UUID,lock: Boolean = false): WorkflowRun {
         if (lock) writable(actor)
@@ -20,6 +21,7 @@ class WorkflowRunAccess(private val runs: WorkflowRunRepository,private val defi
     }
     @Transactional(readOnly=true,propagation=Propagation.REQUIRES_NEW)
     fun blocked(actor: User,run: WorkflowRun): String? {
+        if (runCatching { readableDesigns(actor) }.isFailure) return "Workflow design access is unavailable. Contact an administrator."
         if (runtime.graph(run).nodes.any { it.kind in setOf(BlockKind.DOCUMENT, BlockKind.EMAIL) } && runCatching { documentSupport(actor) }.isFailure) return "The Document generator plugin or its PDF access is unavailable. Enable it to resume this workflow."
         val definition=definitions.findById(run.workflowId).orElse(null)
         return if (definition==null || definition.state!=WorkflowState.READY || (!definition.published && !(com.starter.access.Roles.admin(actor.role) && controls?.allows("admin.workflows") != false))) "This workflow is no longer published or ready. Contact an administrator." else null

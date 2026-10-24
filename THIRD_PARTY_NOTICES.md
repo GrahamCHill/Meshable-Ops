@@ -28,6 +28,8 @@ The checked-in Superset copies correspond to the `apache/superset:4.0.2` image s
 | MinIO, Azurite, nginx, Caddy, base images, fonts, and OS packages | Development storage and runtime components retain their own version-specific licenses. A Meshable Ops commercial license does not waive them. |
 | External AI, email, messaging, calendar, Microsoft, and source-control services | Optional connections are subject to each service's terms and the credentials/account rights configured by the operator. |
 
+Covered plugins follow the app's community license. Independently authored, separable service-integration components may retain compatible licenses with their own notices, while independent external services retain their own terms. An SDK incorporated into covered plugin code must be compatible with the actual combination; API communication does not create a blanket linking exception. See [plugin licensing](LICENSING.md#plugins-and-external-service-integrations).
+
 MongoDB SSPL and Redis's source-available options are not OSI-approved open source licenses. Calling Meshable Ops an open source application is not a claim that every optional service, upstream image, or connected provider uses the same license.
 
 ## Redistribution

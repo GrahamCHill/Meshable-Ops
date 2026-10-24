@@ -94,7 +94,7 @@ icon.webp       # optional
 banner.jpg      # optional
 ```
 
-Upload `notes.zip`, configure its heading, and enable it. No example data is seeded. The [project licensing](../../LICENSING.md) still applies to combined works and dependencies; ZIP packaging does not automatically create a licensing exception.
+Upload `notes.zip`, configure its heading, and enable it. No example data is seeded. Covered plugins inherit the app's community license; independently authored service-integration components may retain compatible licenses and independent external services keep their own terms. See [plugin licensing](licensing.md). ZIP packaging does not automatically create a licensing exception.
 
 ## HTTP endpoints
 

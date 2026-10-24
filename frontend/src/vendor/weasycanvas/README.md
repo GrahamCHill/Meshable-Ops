@@ -5,7 +5,7 @@ Source snapshot copied from the local WeasyCanvas project, editor contract v0.8.
 template designer and its model/helpers. Standalone routes, local persistence, account
 state, demo shell, and image storage endpoints are not imported into this application.
 
-Host integration lives in `components/documents/` and authenticated application APIs.
+Host integration lives in `plugins/modules/documents/` and its authenticated Kotlin/Python plugin APIs. The optional Workflows module composes with generated PDFs.
 Host adaptations include React 18-compatible inert measurement markup, clearer data-field
 labels, removal of decorative glyphs, and server-save/create-document callbacks.
 Designer styles are scoped to `.weasy-host` and simplified to match this app. The matching

@@ -72,4 +72,16 @@ class OptionalModulesTest {
         assertThat(BundledModuleGuard.owner("/api/admin/workflows")).isEqualTo("workflows")
         listOf("/api/document-access", "/api/admin/documents", "/api/workflows-extra", "/api/projects/reports").forEach { assertThat(BundledModuleGuard.owner(it)).isNull() }
     }
+    @Test fun `required supporting plugins still respect member feature restrictions`() {
+        val dependent = object : WorkspacePlugin { override val manifest = PluginManifest("dependent", "Dependent", "1.0.0", "Requires document support", requires = setOf("documents")) }
+        val row = PluginSettings("dependent", true)
+        `when`(rows.findAll()).thenReturn(saved + row)
+        `when`(rows.findById(row.pluginId)).thenReturn(Optional.of(row))
+        val host = PluginRegistry(definitions + dependent, rows, controls)
+        host.requireAvailable("dependent", "USER")
+        `when`(controls.allows("documents")).thenReturn(false)
+        `when`(controls.allows("admin.templates")).thenReturn(false)
+        assertThatThrownBy { host.requireAvailable("dependent", "USER") }.isInstanceOf(NotFoundException::class.java)
+        assertThat(host.available("USER").map { it.manifest.id }).doesNotContain("dependent")
+    }
 }

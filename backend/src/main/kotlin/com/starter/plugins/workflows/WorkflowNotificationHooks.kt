@@ -5,11 +5,7 @@ import com.starter.notification.*
 import com.starter.repository.postgres.UserRepository
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.Async
-import org.springframework.scheduling.annotation.EnableAsync
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
 import org.springframework.stereotype.Component
 import org.springframework.transaction.event.TransactionPhase
 import org.springframework.transaction.event.TransactionalEventListener

@@ -282,6 +282,8 @@ The new MFA/webhook/share repository packages are explicitly included in Postgre
 
 ### Document generation and workflow tables
 
+These tables belong to the optional Documents and Workflows source plugins. Their physical names remain stable to preserve existing records; they are explicitly declared retained tables rather than new plugin-namespaced copies. Startup inserts only missing `plugin_settings` rows, enabling each module when its existing business tables contain records. Explicit disabled/removed rows are never overwritten. See [activation, upgrades and clear-data safeguards](plugins/documents-and-workflows.md).
+
 | Table | Contents |
 | --- | --- |
 | `document_templates` | Name, optional category metadata (no fixed document types), published flag, structured WeasyCanvas template JSON, typed field/calculation rules, creator/timestamps, optimistic revision. |

@@ -22,6 +22,13 @@ class ProjectReportsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             ReportDocument.model_validate(value)
 
+    def test_shared_report_worker_returns_a_real_pdf_independently_of_template_operations(self):
+        from fastapi.testclient import TestClient
+        from app import app
+        result = TestClient(app).post('/reports/render', json={'report': self.value()})
+        self.assertEqual(result.status_code, 200)
+        self.assertTrue(result.content.startswith(b'%PDF-'))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,8 @@
 # Document templates, generated PDFs, and workflows
 
-The app integrates the local WeasyCanvas editor/designer contract v0.8.0 and its matching Python model/WeasyPrint renderer. The integration is vendored in this repository; deploying it does not require a neighbouring WeasyCanvas checkout. The source project is left unchanged. Admins design templates and processes; members generate PDFs and follow published workflows with saved progress.
+The optional **Document generator** and **Workflows** plugins integrate the local WeasyCanvas editor/designer contract v0.8.0 and its matching Python model/WeasyPrint renderer. Enable them separately in **Administration → Plugins → Manage**; clean databases start with both disabled. Existing installations with saved templates/PDFs or workflows keep the corresponding feature enabled on upgrade. Explicit plugin settings are preserved. See [plugin lifecycle, retained data and composition](plugins/documents-and-workflows.md).
+
+The integration is vendored in this repository; deploying it does not require a neighbouring WeasyCanvas checkout. Admins design templates and processes; members generate PDFs and follow published workflows with saved progress. The plugins retain their first-class Documents/Workflows pages and admin authoring cards. Workflows without PDF/email steps do not require Documents. Disabling a plugin hides its UI and notifications, gates its APIs, and retains its records.
 
 ## Template authoring in Admin
 

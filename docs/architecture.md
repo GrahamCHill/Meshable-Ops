@@ -11,7 +11,7 @@ Trusted, compiled-in plugins register pages, submenus, APIs, database tables, an
 - The backend owns application auth, storage boundaries, search/indexing jobs, optional AI calls, guest-token minting, and embed configuration management.
 - Optional MFA gates session issuance. PostgreSQL stores encrypted factors, one-use challenges/recovery hashes, and shared rate counters. The notification boundary keeps core email and accepts separate Discord, Telegram, Teams, WhatsApp, or custom SMS adapters. Built-in MFA remains authenticator/email.
 - Admin webhook sends/receipts use authenticated JSON with encrypted bounded delivery history. Protected sharing generates password-encrypted, watermarked PDF attachments and separately controlled online links; originals stay in object storage.
-- The integrated WeasyCanvas designer uses a private Python/WeasyPrint renderer. Kotlin owns template publication, typed data/calculations, document/workflow access, PDF persistence, and email delivery. Members follow published workflows through saved runs; the visual maker remains in administration.
+- Optional Documents and Workflows source plugins retain first-class pages and admin authoring. Their React/Kotlin modules own templates, typed fields, PDF persistence and guided runs; Documents contributes Python routes/workers to the private WeasyPrint host. Basic workflows operate independently, and project reports retain the shared renderer when either plugin is disabled. See [full-stack plugins](plugins/full-stack.md).
 - Clients/projects own contact inheritance, scoped team membership, tags, file references, and plugin contexts. Project boards, reports, and personalized digests use current project/team access. Report/digest schedules are opt-in and stored in PostgreSQL.
 - Superset remains internal to the stack and is not intended to be exposed directly to users.
 
@@ -37,13 +37,14 @@ flowchart LR
         auth["Accounts, MFA and permissions"]
         projects["Clients and projects<br/>Team roles, tags, contact inheritance"]
         storage["Named storage connections<br/>Directory and file ACLs"]
-        documents["Templates and generated documents<br/>Guided workflow runs"]
         search["Keyword/vector retrieval<br/>Indexing and optional grounded AI"]
         messaging["Notifications and webhooks<br/>Templates, preferences, protected attachments"]
         jobs["Explicitly configured jobs<br/>Indexing, calendar sync, reports, digests"]
         host["Plugin registry and policy<br/>Tables, settings, search, context hooks"]
     end
     subgraph modules["Optional plugins"]
+        documents["Documents: React / Kotlin / Python<br/>Templates and generated PDFs"]
+        workflows["Workflows: React / Kotlin<br/>Visual authoring and guided runs"]
         boards["Kanban + Git providers<br/>Tickets, sprints, comments, repo/PR links"]
         calendar["Calendar + provider adapters<br/>Owner-private two-way sync"]
         integrations["Discord, Telegram, Teams, WhatsApp<br/>SharePoint and OneDrive"]
@@ -60,15 +61,16 @@ flowchart LR
     analytics[("Superset metadata DB + Redis")]
     external["Configured provider APIs<br/>AI, email, Git, calendar, chat, files"]
     browser --> auth
-    auth --> projects & storage & documents & search & messaging & host
+    auth --> projects & storage & search & messaging & host
     browser --> superset --> analytics
-    projects & storage & documents & search & messaging & jobs & host --> data
+    projects & storage & documents & workflows & search & messaging & jobs & host --> data
     storage --> objects
     auth --> mongo
     documents --> render
     projects --> render
     search -.-> extract
-    host --> boards & calendar & integrations & zip
+    host --> documents & workflows & boards & calendar & integrations & zip
+    workflows -. "Optional PDF steps" .-> documents
     projects --> boards
     boards -. "Visible deadlines" .-> calendar
     boards -. "Private mentions" .-> messaging

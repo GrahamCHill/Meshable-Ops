@@ -39,13 +39,31 @@ Apache Superset and its embedded SDK retain **Apache-2.0** licensing. Apache-2.0
 
 The project's licensing choice does not make Meshable Ops code eligible for inclusion in an Apache-licensed upstream project on Apache terms. Nor does compatibility with Superset establish that every dependency or future plugin has been audited. Redis, MongoDB, development storage, and other services have independent version-specific terms; preserve their notices and assess the exact distribution and hosting model.
 
+## Plugins and external-service integrations
+
+**Plugins that form a covered work with Meshable Ops inherit the application's licensing.** This includes plugins that incorporate or adapt app code, or combine with it as a single program. Under the community licensing path, the covered application/plugin combination must be available under **AGPL-3.0-only**, with the applicable notices, Corresponding Source, and network-source-offer obligations. App-derived plugin code cannot be made proprietary merely by packaging it as a plugin. React, Kotlin, Python, ZIP packaging, dynamic loading, a separate directory, or a separate process do not by themselves determine the licensing boundary.
+
+For plugins accepted into this repository, original Meshable Ops plugin functionality must be made available under the application's community license, subject to the integration-component allowance below and any separately identified upstream material. The existing contributor agreement and commercial licensing rules still apply. A commercial alternative applies only where an executed agreement expressly supplies the necessary rights for the relevant application and plugin code; it does not automatically cover third-party plugins or dependencies.
+
+### Allowance for service-integration components
+
+Independently authored, separable code whose role is communicating with an external service may retain another license **compatible with AGPL-3.0-only for the actual combination and distribution**. This can include a reusable protocol client, an external-service adapter, or an upstream SDK under compatible terms such as MIT, BSD-3-Clause, or Apache-2.0. Preserve its own license, copyright and required notices, and include its source where the applicable Corresponding Source requirements call for it. The covered application/plugin combination remains subject to the AGPL.
+
+This allowance does not relicense copied or modified Meshable Ops code, or exempt the plugin's covered pages, business logic, permissions, persistence, or workflow functionality just because they communicate with a service. It does not permit combining an incompatible proprietary SDK with covered code without the necessary separate permissions from all relevant rights holders. A Meshable Ops commercial agreement cannot waive an upstream owner's terms.
+
+An independent external service accessed through an ordinary API or protocol may keep its own license or commercial service terms. Communicating with it does not, by itself, relicense that service under the AGPL. Conversely, moving covered plugin functionality behind HTTP, RPC, or a worker process does not automatically turn it into an independent work. Assess the actual code, dependencies, and degree of integration.
+
+### Scope and examples
+
+These statements explain the project's licensing scope and contribution policy; they do not modify the standard [AGPL text](LICENSE), impose additional restrictions on rights it grants, or purport to relicense genuinely independent works or upstream components. License compatibility and required source/notice obligations must be assessed for the exact components and versions. See [plugin licensing examples](docs/plugins/licensing.md).
+
 ## Contributions and future commercial licensing
 
 Future commercial licensing requires control of the relevant copyrights or sufficient permission from their holders. AGPL permission alone does not authorize a maintainer to relicense someone else's contribution as proprietary software.
 
 Before merging a copyrightable contribution, maintainers require explicit acceptance of the [contributor license agreement](CLA.md), including any necessary employer or organizational authorization. The agreement keeps contributor ownership while granting the project permission to offer the contribution under AGPL and separate commercial terms. Submitting a pull request, signing off a commit, or opening an issue is **not**, by itself, acceptance of that additional grant. Existing contributions are not retroactively covered: their rights must be established separately.
 
-Compiled-in plugins can form part of a combined work. Do not assume that placing a proprietary plugin in a separate folder or giving it a manifest creates an exemption from copyleft. Separately operated services and combined/distributed modules require assessment of their actual relationship and licenses. See the [plugin guide](docs/plugins/README.md).
+Plugin contributions follow the [plugin and integration policy](#plugins-and-external-service-integrations). Independently licensed upstream components must be identified, and contributors cannot grant commercial relicensing rights they do not hold. See the [plugin guide](docs/plugins/README.md).
 
 Commercial contracts, contribution acceptance, and release-specific third-party obligations should receive legal review before a commercial release. This guide explains the project's intended licensing structure; the applicable license texts and executed agreements govern.
 
@@ -56,3 +74,5 @@ Commercial contracts, contribution acceptance, and release-specific third-party 
 - [Apache Software Foundation: Apache-2.0 / GPLv3 compatibility](https://www.apache.org/licenses/GPL-compatibility.html)
 - [GNU FAQ: a copyright holder can release code under different licenses](https://www.gnu.org/licenses/gpl-faq.html#HeardOtherLicense)
 - [GNU: selling separate licensing exceptions](https://www.gnu.org/philosophy/selling-exceptions.html)
+- [GNU FAQ: plugins and combined works](https://www.gnu.org/licenses/gpl-faq.en.html#GPLAndPlugins)
+- [GNU FAQ: separate programs and aggregation](https://www.gnu.org/licenses/gpl-faq.en.html#MereAggregation)
