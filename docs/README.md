@@ -43,7 +43,7 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Deploy, upgrade, verify, or troubleshoot the stack | [Deployment](deployment.md) |
 | Work on the frontend/backend or run relevant checks | [Code organization](code-organization.md) |
 | Integrate with search, storage, or admin APIs | [API reference](api.md) |
-| Provision an AWS or Azure VM and object storage | [Terraform examples](../infra/README.md) |
+| Provision AWS/Azure networking, VM, HTTPS ingress, and object storage | [Terraform deployment](terraform-deployment.md) · [Modules](../infra/README.md) |
 
 ## Current operational defaults
 

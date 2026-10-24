@@ -35,6 +35,16 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d --r
 
 Open [localhost:3000](http://localhost:3000) and sign in with the credentials you chose during setup. Business data starts empty; plugins, outbound email, and project schedules need configuration. The local profile supplies MinIO. See [development setup](docs/getting-started.md) for PowerShell/Azurite and [deployment](docs/github-deployment.md) for opt-in GitHub Actions deployment to a Linux VM over SSH.
 
+## Deployment options
+
+| Destination | Provisioning |
+| --- | --- |
+| **Existing Linux VM** | [GitHub Actions over SSH](docs/github-deployment.md), with Caddy HTTPS and the production Docker Compose stack. |
+| **AWS with Terraform** | [Dedicated VPC, routed subnet, firewall, EC2, Elastic IP, and private S3 storage](docs/terraform-deployment.md#aws). |
+| **Azure with Terraform** | [VNet, private VM, HTTP/HTTPS load balancer, explicit outbound access, private Blob container, and optional Bastion](docs/terraform-deployment.md#azure). |
+
+The cloud templates provision networking as well as compute/storage and bootstrap the same application stack. Supply your domain, credentials, and SSH key; follow the [Terraform deployment guide](docs/terraform-deployment.md) for DNS, private administration, and upgrades.
+
 ## Architecture
 
 ```mermaid
@@ -46,7 +56,7 @@ flowchart TB
     python["Private Python document services<br/>WeasyCanvas / WeasyPrint: documents and reports<br/>Content helper: bounded PDF, DOCX and text extraction"]
     plugins["Plugin host and optional providers<br/>Boards, Git, calendars, chat and Microsoft files<br/>ZIP extensions, email, webhooks and optional AI"]
     analytics["Python: Apache Superset<br/>Embedded dashboards and admin authoring<br/>Separate metadata, Redis, Celery worker and beat"]
-    ci["GitHub Actions + Python setup helpers<br/>Checks, releases, opt-in SSH deployment"]
+    ci["GitHub Actions, Terraform and Python setup helpers<br/>Checks, releases, VM deployment on AWS / Azure"]
     users --> web --> api
     web --> analytics
     api --> state & python & plugins

@@ -2,9 +2,11 @@
 
 For independent template copies deploying automatically to an existing Linux VM, follow [GitHub Actions deployment](github-deployment.md). It includes fresh-instance credentials, an initializer without development users, verified SSH, and persisted release/data directories.
 
-Runnable single-VM Terraform examples for AWS and Azure are available under [`infra/`](../infra/README.md).
-They provision cloud object storage and use EC2 instance roles or Azure managed identity rather
-than long-lived storage keys.
+For a new cloud installation, use the [AWS or Azure Terraform guide](terraform-deployment.md).
+The modules provision their network, VM, restricted ingress, outbound connectivity, and object storage,
+then bootstrap the production Compose stack. AWS uses a dedicated VPC and EC2 instance role;
+Azure uses a private VM behind a load balancer, managed identity, and optional Bastion for administration.
+Neither option needs long-lived object-storage keys. The module entrypoints are under [`infra/`](../infra/README.md).
 
 This guide explains the practical deployment shapes supported by this repository and how the built-in reverse-proxy setup is intended to be used.
 

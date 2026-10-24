@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component
 
 abstract class SourceControlPlugin(id: String, name: String, private val defaultBase: String) : WorkspacePlugin {
     override val manifest = PluginManifest(id, name, "1.0.0", "Link approved repositories and pull or merge requests to boards and cards.",
+        compatibleVersions = listOf("1.0.0"),
         extensions = setOf(PluginExtension.API, PluginExtension.SETTINGS),
         defaultRoles = setOf("ADMIN"),
         capabilities = mapOf("source.repositories" to "Repository information", "source.pull-requests" to "Pull and merge requests"),

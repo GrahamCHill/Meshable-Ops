@@ -26,7 +26,8 @@ data class PluginManifest(val id: String, val name: String, val version: String,
     val contextTargets: Set<String> = emptySet(), val categories: Set<String> = emptySet(),
     val icon: String? = null, val banner: String? = null, val requires: Set<String> = emptySet(), val extends: Set<String> = emptySet(),
     val incompatibleWith: Map<String, String> = emptyMap(), val hasAdminSettings: Boolean = true,
-    val adminMenu: PluginAdminMenu? = null, val providesSms: Boolean = false, val placements: List<PluginPlacement> = emptyList())
+    val adminMenu: PluginAdminMenu? = null, val providesSms: Boolean = false, val placements: List<PluginPlacement> = emptyList(),
+    val compatibleVersions: List<String> = emptyList())
 
 /** Implement as a Spring bean in a reviewed, compiled-in plugin module. */
 interface WorkspacePlugin {
@@ -39,7 +40,9 @@ data class PluginView(val manifest: PluginManifest, val enabled: Boolean, val al
     val searchEnabled: Boolean = false, val tableAccess: Map<String, PluginTableAccess> = emptyMap(),
     val active: Boolean = enabled, val missingDependencies: Set<String> = emptySet(), val features: List<PluginFeatureView> = emptyList(),
     val source: String = "BUNDLED", val author: com.starter.plugins.packages.PluginAuthor? = null, val blockedBySecurity: Boolean = false,
-    val compatibilityIssues: Set<String> = emptySet(), val removed: Boolean = false)
+    val compatibilityIssues: Set<String> = emptySet(), val removed: Boolean = false,
+    val applicationVersion: String = "unknown", val versionCompatibility: PluginVersionStatus = PluginVersionStatus.UNKNOWN,
+    val compatibilityWarnings: Set<String> = emptySet())
 data class PluginSettingsRequest(val enabled: Boolean, val allowedRoles: Set<String> = setOf("ADMIN", "USER"),
     val searchEnabled: Boolean = false, val tableAccess: Map<String, PluginTableAccess> = emptyMap())
 

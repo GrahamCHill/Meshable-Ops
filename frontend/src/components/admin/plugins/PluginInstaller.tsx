@@ -5,6 +5,7 @@ import { extensionSecurityApi, pluginsApi } from '../../../api/plugins'
 import { useAuthStore } from '../../../hooks/useAuthStore'
 import { getErrorMessage } from '../adminUtils'
 import { Button } from '../../ui'
+import {PluginCompatibility} from './PluginCompatibility'
 
 export function PluginInstaller() {
   const superAdmin = useAuthStore(state => state.user?.role === 'SUPER_ADMIN')
@@ -17,7 +18,8 @@ export function PluginInstaller() {
   if (!superAdmin) return null
   return <section className="page-stack" aria-labelledby="install-plugin-title">
     <h2 id="install-plugin-title">Install a plugin</h2>
-    <p className="field-help">Upload a reviewed ZIP with plugin.json, author.json, and self-contained HTML pages. Author fields may be blank. Installed plugins start disabled.</p>
+    <p className="field-help">Upload a reviewed ZIP with plugin.json, author.json, and self-contained HTML pages. Declare compatibleVersions in its manifest. Missing or mismatched app versions show caution and backup advice; they do not block use. Installed plugins start disabled.</p>
+    <p className="field-help">Installed ZIP packages, artwork, settings, credentials, and records live in PostgreSQL and survive application updates when the same database and wrapping key are retained.</p>
     {security.isLoading && <p role="status">Checking extension security…</p>}
     {security.isError && <p role="alert">Unable to check extension security. <button onClick={() => void security.refetch()}>Retry</button></p>}
     {security.data && !security.data.allowThirdPartyExtensions && <p>Third-party extensions are disabled. <Link to="/admin/security">Change extension security</Link> to allow ZIP installations.</p>}
@@ -27,6 +29,6 @@ export function PluginInstaller() {
       <div><Button type="submit" disabled={!file || file.size > 5 * 1024 * 1024 || install.isPending}>Install ZIP</Button></div>
     </form>}
     {install.isError && <p role="alert">{getErrorMessage(install.error, 'Unable to install plugin.')}</p>}
-    {install.isSuccess && <p role="status">{install.data.manifest.name} installed. Open its settings to enable it.</p>}
+    {install.isSuccess && <><p role="status">{install.data.manifest.name} installed. <Link to={`/admin/plugins?plugin=${install.data.manifest.id}`}>Review compatibility and manage this plugin</Link>.</p><PluginCompatibility plugin={install.data}/></>}
   </section>
 }

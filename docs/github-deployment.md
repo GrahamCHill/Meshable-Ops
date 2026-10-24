@@ -2,6 +2,8 @@
 
 Each copy of Meshable Ops can run its own checks and deploy to an existing Linux VM over SSH. Actions sends the tested source revision and Docker builds it on the VM; no registry account is needed. Deployment stays off until the new repository's owner configures it.
 
+To provision the host and its network first, use [AWS or Azure Terraform](terraform-deployment.md). The bundled Actions deployment expects direct SSH reachability from its runner. For Azure's private VM, use a Linux runner with private connectivity and set `DEPLOY_RUNNER` to its label; the public application load balancer does not forward SSH, and this workflow does not automatically create a Bastion tunnel. AWS's trusted SSH source must also include the deployment runner. Terraform bootstrap deploys the app independently of Actions. The shared checks validate both cloud modules with mocked providers and never apply cloud infrastructure.
+
 ## Create your copy
 
 The upstream owner enables **Settings > General > Template repository** once. Users can then choose **Use this template > Create a new repository**. GitHub copies files, not deployment secrets or host configuration. See [GitHub's template guide](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
@@ -64,8 +66,9 @@ Add these **repository variables** under **Settings > Secrets and variables > Ac
 | `AUTO_DEPLOY` | Off | Set exactly `true` to deploy successful pushes on that branch |
 | `DEPLOY_PATH` | `/srv/weaveops` | Absolute host directory; letters, numbers, `_`, `-`, `/` only |
 | `DEPLOY_PORT` | `22` | SSH port |
+| `DEPLOY_RUNNER` | `ubuntu-24.04` | Deployment runner label; use a dedicated self-hosted Linux label for private connectivity or a trusted fixed outbound IP |
 
-`DEPLOY_BRANCH` and `AUTO_DEPLOY` must be repository variables: they control job scheduling before entering the environment. Deployment secrets are read only by the deploy job. Application/database secrets stay on the server.
+`DEPLOY_BRANCH`, `AUTO_DEPLOY`, and `DEPLOY_RUNNER` must be repository variables: they control job scheduling before entering the environment. Deployment secrets are read only by the deploy job. Application/database secrets stay on the server. The selected runner needs Bash, Git, OpenSSH, and an actual network path to the target; a label does not provision connectivity.
 
 ## Deploy and update
 

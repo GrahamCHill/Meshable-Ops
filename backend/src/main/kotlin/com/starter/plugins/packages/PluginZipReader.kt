@@ -14,7 +14,7 @@ import java.util.zip.ZipInputStream
 /** Archives are bounded while streaming and never extracted or executed on the server. */
 @Component
 class PluginZipReader(mapper: ObjectMapper) {
-    private val json = mapper.copy().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+    private val json = mapper.copy().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).disable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     fun read(bytes: ByteArray): ParsedPluginPackage {
         if (bytes.isEmpty() || bytes.size > MAX_ARCHIVE_BYTES) invalid("ZIP files must be at most 5 MB")
         try {

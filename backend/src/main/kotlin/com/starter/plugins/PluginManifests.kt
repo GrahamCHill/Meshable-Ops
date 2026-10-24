@@ -9,6 +9,7 @@ internal object PluginManifests {
         require(manifest.name.isNotBlank() && manifest.name.length <= 100 && manifest.navigationLabel.isNotBlank() && manifest.navigationLabel.length <= 60 && manifest.description.length <= 500) { "Invalid plugin metadata" }
     }
     fun validate(manifest: PluginManifest) {
+        require(manifest.compatibleVersions.size <= 50 && manifest.compatibleVersions.all { PluginVersionRules.rule(it) != null }) { "compatibleVersions must contain up to 50 exact SemVer releases, inclusive version ranges, or comparator ranges" }
         val ids = manifest.requires + manifest.extends + manifest.incompatibleWith.keys
         require(ids.size <= 50 && ids.all { it.matches(Regex("[a-z][a-z0-9-]{1,39}")) && it != manifest.id }) { "Use other plugin IDs for relationships" }
         require(manifest.incompatibleWith.values.all { it.isNotBlank() && it.length <= 300 }) { "Explain plugin incompatibilities" }

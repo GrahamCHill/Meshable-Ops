@@ -1,97 +1,37 @@
-# Terraform deployment examples
+# Terraform deployments
 
-These examples provision a single Linux VM for the existing production Docker Compose stack,
-public HTTPS ingress, and provider-native object storage. They are starting points rather than a
-high-availability production topology: PostgreSQL, MongoDB, Redis, Superset, and the application
-still run on the VM and must be backed up from their Docker volumes.
+Provision Meshable Ops on AWS or Azure, including its network, Linux VM, web ingress, and object storage. Cloud-init installs the production Docker Compose stack. Use the [deployment guide](../docs/terraform-deployment.md) for credentials, DNS/TLS, administration, backups, and upgrades.
 
-- `aws/`: EC2 + S3. The backend uses the EC2 instance role through the AWS default credential chain.
-  Automatic public IPv4 assignment is disabled; the explicitly managed Elastic IP remains the
-  application endpoint. Public ingress allows HTTP/HTTPS plus SSH from `admin_cidr`.
-  Document access logs go to a separate private, encrypted S3 bucket under `documents/`.
-  Both buckets deny non-HTTPS requests. The log destination is intentionally not logged to avoid
-  recursive log delivery; the application role has no access to it.
-- `azure/`: Azure Linux VM + Blob container. The backend uses the VM system-assigned managed identity;
-  the storage account also has its own system-assigned identity. The VM NIC has only a private IP.
-  A Standard Load Balancer owns the public IP and forwards only TCP 80/443 to Caddy. An explicit
-  outbound rule supplies Internet access for cloud-init, image downloads, and certificate renewal.
-  SSH requires existing private connectivity to the VNet, such as a VPN or Azure Bastion, and an
-  appropriate `admin_cidr`; there is no public SSH forwarding rule.
-
-Both examples clone a configurable Git repository/ref and run:
-
-```bash
-docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up --build -d
-```
-
-## File layout
-
-Each provider directory is a single Terraform root module. Terraform loads all of its `.tf`
-files together; run commands from `aws/` or `azure/` as before. Resource addresses and settings
-are unchanged by the file organization, so no Terraform state migration is needed.
-
-| File | Contents |
+| Module | Network and services |
 | --- | --- |
-| `compute.tf` | VM, image selection, SSH keys, and cloud-init configuration |
-| `networking.tf` | VPC/VNet, subnets, network interfaces, and the AWS Elastic IP |
-| `network-security.tf` | Ingress/egress rules and network security group associations |
-| `identity.tf` | AWS instance role/profile and account lookup, or Azure storage role assignment |
-| `storage.tf` | Document storage, access policies, and S3 access logging |
-| `providers.tf` | Provider configuration |
-| `versions.tf` | Terraform and provider version constraints |
-| `variables.tf` | Module inputs |
-| `outputs.tf` | Deployment outputs |
-| `cloud-init.tftpl` | VM bootstrap template |
-| `tests/security.tftest.hcl` | Mocked security regression checks |
+| [AWS](aws/) | Dedicated DNS-enabled VPC, app subnet, internet gateway, route table/association, security group, EC2, managed Elastic IP, and private S3 buckets. No default VPC is required. SSH is restricted to `admin_cidr`. |
+| [Azure](azure/) | VNet, private app subnet/NIC, NSG, private Linux VM, Standard public load balancer for TCP 80/443, explicit outbound SNAT, and private Blob container. Optional Standard Bastion supplies private administration without an existing VPN. |
 
-Azure also has `resource-group.tf` for the resource group and `load-balancer.tf` for the
-public IP, load balancer, backend pool membership, probes, forwarding rules, and outbound rule.
-S3 buckets and their logging resources stay together in `storage.tf` so Sonar can resolve
-both the logging source and its destination. The destination uses an `aws_iam_policy_document`
-with an explicit S3 logging service principal so analyzers recognize it as a log delivery bucket.
+These are single-VM deployments. PostgreSQL/pgvector, MongoDB, Redis, Superset, and the private Python document services run in Compose; they are not publicly exposed or replaced with managed database services. Object access uses an EC2 instance role or Azure managed identity, with no stored storage keys.
 
-## Usage
+## Start
+
+Authenticate to your chosen cloud and install Terraform **1.7+**. From the repository root:
 
 ```bash
 cd infra/aws # or infra/azure
 cp terraform.tfvars.example terraform.tfvars
+# Edit the copied inputs: repository, domain, SSH key, initial super admin, and secrets.
 terraform init
-terraform fmt -check
+terraform fmt -check -recursive
 terraform validate
-terraform plan
-terraform apply
+terraform plan -out=deployment.tfplan
+terraform apply deployment.tfplan
 ```
 
-Point the configured DNS hostname at the emitted public IP. Caddy obtains the TLS certificate
-after DNS resolves and ports 80/443 reach the VM.
+The Azure example opts into billed Bastion resources; the module default is off. Alternatively supply `admin_cidr` and actual existing private connectivity. Setting a CIDR alone does not provision a VPN or peering connection. Application DNS is owner-managed: point your hostname's A record at `terraform output -raw public_ip` so Caddy can obtain its certificate.
 
-For an existing Azure deployment, moving the public IP from the NIC to the load balancer can
-interrupt connections. Establish private administrative access before applying the change and
-review the Terraform plan for VM/NIC replacement. The load balancer adds Azure resources and cost.
+Protect Terraform state, saved plans, and the generated server `.env.production`; all can contain credentials. Use an encrypted remote backend with access controls and locking for shared environments. Database/object backups and the persistent wrapping key remain necessary.
 
-Run the security regression checks without cloud credentials using `terraform test` in each
-provider directory after initialization. These tests use mocked providers and do not deploy resources.
+## Checks
 
-The examples accept application secrets as sensitive Terraform variables for clarity. Sensitive
-values are still stored in Terraform state. Use an encrypted remote backend and replace cloud-init
-secret delivery with AWS Secrets Manager/SSM or Azure Key Vault before production use.
+After initialization, run `terraform test` in either module. Mocked providers check routing, ingress restrictions, outbound access, optional Bastion, identity, and storage protection without cloud credentials or resources. GitHub Actions runs these checks for both providers; cloud provisioning remains an explicit owner action.
 
-## Application configuration after bootstrap
+Each directory is one root module. `networking.tf`, `network-security.tf`, `compute.tf`, `identity.tf`, and `storage.tf` separate responsibilities. Azure adds `load-balancer.tf`, `bastion.tf`, and `resource-group.tf`; `cloud-init.tftpl` bootstraps Compose. Inputs and outputs live in `variables.tf` and `outputs.tf`.
 
-The cloud-init templates configure the default connection with the VM's storage identity and no stored storage keys. A host helper generates missing database credentials, `APP_SECRETS_ENCRYPTION_KEY`, and a renderer token without replacing existing values. AI credentials, named folder selections, and indexing schedules remain admin configuration. Preserve the resulting private `.env.production` for recovery.
-
-After bootstrap:
-
-1. Review the deployed user roster, including accounts created by first-volume PostgreSQL SQL initialization. The production Spring profile only controls its own user runner.
-2. If credentials will be saved through Admin, add a persistent 32-byte base64 `APP_SECRETS_ENCRYPTION_KEY` to the server's protected runtime configuration and recreate the backend with the same Compose/env files. Preserve a separate secure copy for recovery; do not generate a different key for each restart.
-3. Configure shared folders, feature controls, and optional AI through the app. Search uses a local matcher without API keys by default. Multiple named connections can use the existing server identity when it has suitable access.
-4. Reindex once, then save a daily, weekly, interval, or next-time-after-change job. Jobs run in the backend, require the server to stay running, and assume one backend instance.
-
-The examples do not replace production database credential review or recovery backups. See the [deployment and upgrade guide](../docs/deployment.md), [credential setup](../docs/ai-search-and-secrets.md), and [indexing jobs](../docs/search-and-indexing.md). No Terraform resources or MongoDB schema changes are required for these UI/job controls.
-
-Optional outbound email is configured after bootstrap through **Administration > Email delivery** or the `APP_EMAIL_*` environment values forwarded by Compose. The templates do not provision an SMTP account, email API key, or verified sender/domain. Use the persistent wrapping key for admin-saved credentials and allow backend egress to the chosen SMTP/HTTPS endpoint. See [SMTP and transactional email setup](../docs/email-delivery.md).
-
-Optional [MFA](../docs/mfa.md), [webhook management](../docs/webhooks.md), and [protected PDF sharing](../docs/file-sharing.md) use PostgreSQL; no Terraform or MongoDB changes are required. Set the reachable HTTPS origin in `APP_PUBLIC_BASE_URL`, the primary admin email in `APP_MFA_PRIMARY_ADMIN_EMAIL`, and retain `APP_WEBHOOK_ALLOW_PRIVATE_TARGETS=false` unless an internal destination is deliberately trusted. PDF emails include the encrypted, watermarked attachment; online revocation/expiry cannot recall it. SMS/WhatsApp remain future channel adapters, with only email implemented today.
-
-[WeasyCanvas document generation and workflow design](../docs/documents-and-workflows.md) add a private `weasy-renderer` Compose service and PostgreSQL template/document/workflow tables. It needs native Pango/fonts (installed by its image), with no extra public port or Terraform resource. Set the shared server-only `APP_DOCUMENT_RENDER_TOKEN`; override `APP_DOCUMENT_RENDER_URL` only for an intentionally separate renderer. Preserve PostgreSQL backups for generated PDF bytes and source snapshots. Workflow diagrams are not an automatic execution engine in this version.
-
+Before applying updated modules to an existing installation, read the [migration notes](../docs/terraform-deployment.md#existing-installations). Moving AWS from its former default VPC to the dedicated VPC replaces the VM; Terraform does not migrate Docker volume data.

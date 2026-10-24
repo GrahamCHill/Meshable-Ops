@@ -7,6 +7,30 @@ permissions:
   contents: read
 
 jobs:
+  terraform:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        provider: [aws, azure]
+    defaults:
+      run:
+        working-directory: infra/${{ matrix.provider }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: '1.16.5'
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false -input=false -lockfile=readonly
+      - run: terraform validate -no-color
+      - name: Test networking and storage with mocked cloud providers
+        run: terraform test -no-color
+
   frontend:
     runs-on: ubuntu-24.04
     timeout-minutes: 15

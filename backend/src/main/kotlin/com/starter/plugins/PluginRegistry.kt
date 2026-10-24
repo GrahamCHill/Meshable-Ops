@@ -13,9 +13,10 @@ import com.starter.exception.ForbiddenException
 
 @Service
 class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: PluginSettingsRepository, private val access: com.starter.access.AccessControlService? = null,
-    private val packages: com.starter.plugins.packages.InstalledPluginCatalogue? = null) {
+    private val packages: com.starter.plugins.packages.InstalledPluginCatalogue? = null, private val versions: PluginVersionPolicy = PluginVersionPolicy()) {
     private val modules = definitions.associateBy { it.manifest.id }
-    private val manifests: Map<String, PluginManifest> get() = (packages?.manifests()?.associateBy { it.id } ?: emptyMap()) + bundled
+    // Retain uploaded descriptors across releases. A newly bundled ID collision is blocked, never silently substituted.
+    private val manifests: Map<String, PluginManifest> get() = bundled + (packages?.manifests()?.associateBy { it.id } ?: emptyMap())
     private val bundled: Map<String, PluginManifest>
     init {
         val all = definitions.map { it.manifest }
@@ -60,10 +61,10 @@ class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: P
         val manifest = manifests[id] ?: throw NotFoundException("Plugin unavailable")
         val view = view(manifest, settings.findById(id).orElse(null))
         if (!view.enabled || view.removed || view.blockedBySecurity || com.starter.access.Roles.plugin(role) !in view.allowedRoles) throw NotFoundException("Plugin unavailable")
-        if (manifest.requiresCapabilities.isNotEmpty() || manifest.requires.isNotEmpty() || manifest.incompatibleWith.isNotEmpty() || manifest.apiVersion != 1 || manifests.values.any { id in it.incompatibleWith }) {
+        if (manifest.requiresCapabilities.isNotEmpty() || manifest.requires.isNotEmpty() || manifest.incompatibleWith.isNotEmpty() || manifest.apiVersion != 1 || id in bundled && packages?.contains(id) == true || manifests.values.any { id in it.incompatibleWith }) {
             val saved = settings.findAll().associateBy { it.pluginId }.toMutableMap()
             settings.findById(id).orElse(null)?.let { saved[id] = it }
-            if (catalogue(saved, role).none { it.manifest.id == id && it.active }) throw NotFoundException("Enable the required supporting plugins first")
+            if (catalogue(saved, role).none { it.manifest.id == id && it.active }) throw NotFoundException("Plugin unavailable: check plugin API compatibility, conflicts, and required supporting plugins")
         }
     }
 
@@ -84,6 +85,7 @@ class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: P
         val base = manifests.values.sortedBy { it.name }.map { view(it, saved[it.id]) }
         val candidates = base.filter { it.enabled && !it.removed && !it.blockedBySecurity && com.starter.access.Roles.plugin(role) in it.allowedRoles && access?.allows("plugin.${it.manifest.id}") != false }
         val issues = base.associate { plugin -> plugin.manifest.id to buildSet {
+            if (plugin.source == "ZIP" && plugin.manifest.id in bundled) add("An installed ZIP plugin has the same ID as a bundled module in this release. Both are blocked; the uploaded package and its data are retained. Resolve the ID conflict before enabling it.")
             if (plugin.manifest.apiVersion != 1) add("Requires host plugin API ${plugin.manifest.apiVersion}; this host supports 1")
             candidates.filter { other -> other.manifest.id != plugin.manifest.id }.forEach { other ->
                 plugin.manifest.incompatibleWith[other.manifest.id]?.let { add("${other.manifest.name}: $it") }
@@ -108,12 +110,14 @@ class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: P
     private val mapper = jacksonObjectMapper()
     private fun view(manifest: PluginManifest, row: PluginSettings?): PluginView {
         val overrides: Map<String, PluginTableAccess> = row?.let { mapper.readValue(it.tableAccessJson, object : TypeReference<Map<String, PluginTableAccess>>() {}) } ?: emptyMap()
-        val uploaded = manifest.id !in bundled
+        val uploaded = manifest.id !in bundled || packages?.contains(manifest.id) == true
+        val version = versions.assess(manifest)
         return PluginView(manifest, row?.enabled == true,
             row?.allowedRolesCsv?.split(",")?.filter { it in manifest.supportedRoles }?.toSet() ?: manifest.defaultRoles,
             row?.searchEnabled == true && PluginExtension.SEARCH in manifest.extensions,
             manifest.tables.associate { it.name to (overrides[it.name] ?: PluginTableAccess(it.readRoles, it.writeRoles)) },
             source = if (uploaded) "ZIP" else "BUNDLED", author = if (uploaded) packages?.author(manifest.id) else null,
-            blockedBySecurity = uploaded && packages?.allowed() != true, removed = row?.removed == true)
+            blockedBySecurity = uploaded && packages?.allowed() != true, removed = row?.removed == true,
+            applicationVersion=versions.applicationVersion, versionCompatibility=version.status, compatibilityWarnings=version.warnings)
     }
 }
