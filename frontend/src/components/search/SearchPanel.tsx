@@ -1,9 +1,9 @@
+import { useAccess } from '../../api/access'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { aiApi } from '../../api/ai'
 import { searchApi } from '../../api/search'
-import { useAuthStore } from '../../hooks/useAuthStore'
 import { getErrorMessage } from '../admin/adminUtils'
 import { AiAnswerPanel } from './AiAnswerPanel'
 import { SearchResult } from './SearchResult'
@@ -12,7 +12,7 @@ import { Button, Spinner } from '../ui'
 export function SearchPanel({ compact = false, onNavigate }: { compact?: boolean; onNavigate?: () => void }) {
   const [query, setQuery] = useState('')
   const [limit, setLimit] = useState(5)
-  const admin = useAuthStore(state => state.user?.role === 'ADMIN')
+  const admin = useAccess().can('admin.ai')
   const status = useQuery({ queryKey: ['ai-search-status'], queryFn: aiApi.status, refetchInterval: 30000 })
   const search = useMutation({ mutationFn: (request: { query: string; limit: number }) => searchApi.search(request.query, request.limit) })
   const answer = useMutation({ mutationFn: (question: string) => aiApi.ask(question, Math.min(limit, 8)) })

@@ -1,0 +1,15 @@
+WeaveOps
+Copyright (C) 2026 Graham Hill and the WeaveOps contributors.
+
+Original WeaveOps code and the project owner's imported WeasyCanvas snapshot
+are available under AGPL-3.0-only, or under a separate executed commercial
+agreement where the relevant copyright holder has granted one.
+See LICENSE, LICENSING.md, and COMMERCIAL-LICENSE.md.
+
+This product includes Apache Superset software developed at
+The Apache Software Foundation (https://www.apache.org/).
+Apache Superset and its embedded SDK remain licensed under Apache-2.0.
+See THIRD_PARTY_NOTICES.md and LICENSES/ for the included upstream notices.
+
+This is an independent project and is not endorsed by The Apache Software
+Foundation. Third-party software and trademarks retain their own terms.

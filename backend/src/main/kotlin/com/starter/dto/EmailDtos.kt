@@ -38,6 +38,7 @@ data class SendEmailRequest(
     @field:NotBlank @field:Email @field:Size(max = 254) val recipient: String,
     @field:NotBlank @field:Size(max = 200) val subject: String,
     @field:NotBlank @field:Size(max = 20000) val text: String,
+    @field:Size(max = 100000) val html: String = "",
 ) {
     override fun toString() = "SendEmailRequest()"
 }

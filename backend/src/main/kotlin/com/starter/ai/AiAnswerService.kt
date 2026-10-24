@@ -7,8 +7,9 @@ import com.starter.service.VectorService
 import org.springframework.stereotype.Service
 
 @Service
-class AiAnswerService(private val settings: AiSettingsService, private val vectors: VectorService, private val provider: AiProviderClient) {
+class AiAnswerService(private val settings: AiSettingsService, private val vectors: VectorService, private val provider: AiProviderClient, private val access: com.starter.access.AccessControlService? = null) {
     fun ask(req: AiQuestionRequest): AiAnswerResponse {
+        access?.requireFeature("search")
         val config = settings.current()
         if (!config.searchEnabled) throw ForbiddenException("Search and AI are disabled by an administrator")
         if (!config.enabled || config.chat.model.isBlank()) return unavailable("AI answers are not configured. Document search is still available.")
@@ -36,6 +37,7 @@ class AiAnswerService(private val settings: AiSettingsService, private val vecto
         // Generation can take time. Revoking a selection while it runs must also revoke the answer.
         if (!vectors.chunksStillAccessible(ids)) throw ForbiddenException("Document access changed while answering. Run the question again.")
         if (!settings.current().searchEnabled || !settings.current().enabled) return unavailable("AI answers were disabled while this request was running.")
+        access?.requireFeature("search")
         return if (answer == null) AiAnswerResponse("AI answers are temporarily unavailable. You can read the source excerpts below or continue using search.", sources, null, false)
             else AiAnswerResponse(answer, sources, config.chat.model, true)
     }

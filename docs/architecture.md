@@ -25,62 +25,9 @@ The current Redis service is best thought of as part of the Superset runtime sid
 
 The request and permission model stays the same in both cases.
 
-## Mermaid Diagram
+## System diagram
 
-```mermaid
-flowchart LR
-    user["User Browser"]
-    admin["Admin Browser"]
-
-    caddy["Caddy\nproduction HTTPS entrypoint"]
-    frontend["Frontend\nReact + nginx proxy"]
-    backend["Backend\nSpring Boot API"]
-    ml["ML Backend\noptional bounded text extraction"]
-    weasy["WeasyCanvas renderer\nprivate validated PDF generation"]
-    objects["S3 / Azure Blob\noriginal documents"]
-    ai["Optional chat / embedding provider"]
-
-    superset["Apache Superset\nweb app"]
-    supersetInit["Superset Init Job"]
-    supersetEmbedInit["Superset Embed Init Job"]
-    supersetWorker["Superset Celery Worker"]
-    supersetBeat["Superset Celery Beat"]
-
-    pg["PostgreSQL cluster"]
-    mongo["MongoDB"]
-    redis["Redis"]
-
-    user -->|"HTTPS / HTTP"| caddy
-    admin -->|"HTTPS / HTTP"| caddy
-    caddy --> frontend
-
-    frontend -->|"/api/*"| backend
-    frontend -->|"/embedded/*"| superset
-    frontend -->|"/superset/* admin authoring"| superset
-
-    backend -->|JPA app data + pgvector search| pg
-    backend -->|event/activity docs| mongo
-    backend -->|selected folder boundaries| objects
-    backend -.->|content extraction when enabled| ml
-    backend -->|saved templates and validated field values| weasy
-    backend -.->|server-side calls when configured| ai
-    backend -->|Superset admin API + guest tokens| superset
-
-    superset -->|metadata DB| pg
-    superset -->|cache / async state| redis
-    supersetWorker --> redis
-    supersetBeat --> redis
-    supersetWorker --> superset
-    supersetBeat --> superset
-
-    supersetInit --> superset
-    supersetInit --> pg
-    supersetInit --> redis
-
-    supersetEmbedInit --> superset
-    supersetEmbedInit --> backend
-    supersetEmbedInit --> pg
-```
+The [complete Mermaid diagram in the README](../README.md#architecture) shows the application boundary, access controls, document services, storage/search data flow, plugin composition, Superset services, and optional external providers. That block is the maintained diagram source; the sections below explain its behavior and deployment boundaries.
 
 ## Request Flow Notes
 
@@ -93,7 +40,7 @@ flowchart LR
 
 ### Storage and content indexing
 
-1. Admins add named S3/Azure connections and select accessible folders. `ADMIN` is the existing super-admin role; this is not a new role name.
+1. Admins add named S3/Azure connections and select accessible folders. `SUPER_ADMIN` controls delegated administrators and per-member feature/storage policies; see [access controls](access-controls.md).
 2. Storage exposes enabled connections and their accessible selections as named folders. Nicknames stay inside the app.
 3. Browse, upload, download, and ZIP requests resolve the saved folder ID and constrain relative paths to its selected prefix. Uploads also require the separate upload grant.
 4. PostgreSQL stores folder/document identities and metadata. Original files stay in object storage.
@@ -102,7 +49,7 @@ flowchart LR
 
 ### Search and optional AI
 
-1. Storage exposes ordinary similarity search, scoped to the current folder/path when browsing. The floating bottom-right launcher opens AI chat only when its features and chat model are configured; `/search` remains a dedicated search route. The left navigation has no search item.
+1. Storage exposes ordinary similarity search, scoped to the current folder/path when browsing. The floating bottom-right launcher opens AI chat only when its features and chat model are configured; `/search` remains a dedicated search route. A Search workspace link is shown when search is available to the member.
 2. The backend checks the search feature switch before vector or keyword queries. Launcher visibility is a separate UI switch; disabling AI answers leaves search enabled.
 3. Default local feature hashing runs within Kotlin and needs no AI provider, model download, API key, or running ML container. PostgreSQL/pgvector still provides persistence and ranking.
 4. Folder, document, and chunk queries join live folder visibility and connection state. If configured embeddings are unavailable, access-checked keyword queries provide ordinary search. Different model identities are never compared as if their vectors were compatible.
@@ -171,14 +118,9 @@ The main user-visible routes are:
 
 ## Role and Access Model
 
-The effective permission split is:
+`SUPER_ADMIN` retains all administration and controls the available role features and per-member restrictions. `ADMIN` is delegated administration within those caps; `USER` is an internal member; `EXTERNAL` starts read only with Storage as its only view and no file grants. Creating an account as a delegated admin inherits that admin's view/directory limits rather than minting a broader account. Only a super admin can assign administrator roles.
 
-- authenticated users:
-  can sign in, browse accessible folders, download documents/folder archives, run enabled search, and view enabled dashboard embeds allowed for their role
-- users with `can_upload_documents`:
-  can upload documents and folder trees within an accessible selected storage root; this permission is independent of USER/ADMIN and defaults off
-- admins:
-  can manage users and upload permissions, items, dashboard embed configs, admin settings, backups, vector reindexing, audit views, and Superset authoring
+Backend feature gates protect direct API calls as well as navigation. Directory/file grants and exclusions apply to root lists, nested browsing, PDF previews, downloads, ZIP contents, and keyword/vector retrieval. Business protections also prevent external PDF sharing; exclusions follow duplicate mappings of the same storage objects. Internal uploads additionally need the independent upload grant. Plugin enablement and table/row policies add their own checks. See [access controls](access-controls.md) for policy semantics and [plugin authoring](plugins/README.md) for extension contracts.
 
 Important implementation detail:
 

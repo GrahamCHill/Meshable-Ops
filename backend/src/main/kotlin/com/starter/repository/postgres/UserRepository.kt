@@ -18,6 +18,9 @@ interface UserRepository : JpaRepository<User, UUID> {
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM User u WHERE u.id = :id")
     fun lockedById(id: UUID): Optional<User>
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM User u WHERE u.role = 'SUPER_ADMIN' ORDER BY u.id")
+    fun lockSuperAdmins(): List<User>
     fun findAllByOrderByRoleAscCreatedAtAsc(): List<User>
 
     @Query("SELECT DISTINCT UPPER(u.role) FROM User u ORDER BY UPPER(u.role)")

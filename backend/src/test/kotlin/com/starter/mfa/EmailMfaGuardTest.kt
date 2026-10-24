@@ -14,7 +14,10 @@ class EmailMfaGuardTest {
         `when`(credentials.emailOnlyCount()).thenReturn(1)
         assertThatThrownBy { guard.check(EmailConfiguration(enabled = false)) }.isInstanceOf(BadRequestException::class.java)
         assertThatThrownBy { guard.check(EmailConfiguration(enabled = true)) }.isInstanceOf(BadRequestException::class.java)
+        assertThatThrownBy { guard.checkNotificationRoute(false) }.isInstanceOf(BadRequestException::class.java)
+        guard.checkNotificationRoute(true)
         `when`(credentials.emailOnlyCount()).thenReturn(0)
         guard.check(EmailConfiguration(enabled = false))
+        guard.checkNotificationRoute(false)
     }
 }

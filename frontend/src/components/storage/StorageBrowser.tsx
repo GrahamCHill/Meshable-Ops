@@ -1,3 +1,4 @@
+import { useAccess, isAdminRole } from '../../api/access'
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { itemsApi, type Item } from '../../api/items'
@@ -18,8 +19,9 @@ export function StorageBrowser({ folder, onClose, initialPath = '' }: Readonly<{
   const [pdfPath, setPdfPath] = useState<string>()
   const [sharePath, setSharePath] = useState<string>()
   const access = useDocumentAccess()
-  const sharing = useQuery({ queryKey: ['share-settings'], queryFn: sharesApi.settings, enabled: user?.role === 'ADMIN' })
-  const canShare = user?.role === 'ADMIN' && sharing.data?.enabled && sharing.data.emailAvailable && access.data && access.data.downloadMode !== 'DISABLED'
+  const features = useAccess()
+  const sharing = useQuery({ queryKey: ['share-settings'], queryFn: sharesApi.settings, enabled: isAdminRole(user?.role) && features.can('admin.shares') })
+  const canShare = features.can('admin.shares') && isAdminRole(user?.role) && sharing.data?.enabled && sharing.data.emailAvailable && access.data && access.data.downloadMode !== 'DISABLED'
   const fileInput = useRef<HTMLInputElement | null>(null)
   const folderInput = useRef<HTMLInputElement | null>(null)
   const contents = useQuery({

@@ -1,3 +1,4 @@
+import { useAccess, isAdminRole } from '../../api/access'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -13,7 +14,8 @@ import { StorageSearch } from '../search/StorageSearch'
 export function ItemsPage() {
   const qc = useQueryClient()
   const { user } = useAuthStore()
-  const isAdmin = user?.role === 'ADMIN'
+  const access = useAccess()
+  const isAdmin = isAdminRole(user?.role) && access.can('admin.storage')
   const [showCreate, setShowCreate] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
   const [selected, setSelected] = useState<Item | null>(null)

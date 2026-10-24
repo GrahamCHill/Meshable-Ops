@@ -4,6 +4,10 @@ import com.starter.exception.BadRequestException
 
 internal object PluginManifests {
     private val roles = setOf("ADMIN", "USER")
+    fun validateIdentity(manifest: PluginManifest) {
+        require(manifest.id.matches(Regex("[a-z][a-z0-9-]{1,39}")) && manifest.apiVersion == 1 && manifest.version.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+"))) { "Invalid or incompatible plugin manifest" }
+        require(manifest.name.isNotBlank() && manifest.name.length <= 100 && manifest.navigationLabel.isNotBlank() && manifest.navigationLabel.length <= 60 && manifest.description.length <= 500) { "Invalid plugin metadata" }
+    }
     fun validate(manifest: PluginManifest) {
         val capabilities = manifest.capabilities.keys + manifest.requiresCapabilities + manifest.features.flatMap { it.requires }
         require(capabilities.all { it.matches(Regex("[a-z][a-z0-9.-]{1,79}")) } && manifest.capabilities.values.all { it.isNotBlank() && it.length <= 100 }) { "Invalid plugin capabilities" }

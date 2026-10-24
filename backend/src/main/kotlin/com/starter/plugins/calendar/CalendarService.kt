@@ -17,7 +17,7 @@ class CalendarService(private val events: CalendarEventRepository, private val a
         val actor = actor(email)
         val dateFrom=from.atZone(zone).toLocalDate()
         val dateUntil=until.atZone(zone).let { if (it.toLocalTime()==LocalTime.MIDNIGHT) it.toLocalDate() else it.toLocalDate().plusDays(1) }
-        val local = events.window(actor.id, actor.role == "ADMIN", from, until,dateFrom.atStartOfDay(ZoneOffset.UTC).toInstant(),dateUntil.atStartOfDay(ZoneOffset.UTC).toInstant(),PageRequest.of(0,201))
+        val local = events.window(actor.id, com.starter.access.Roles.admin(actor.role), from, until,dateFrom.atStartOfDay(ZoneOffset.UTC).toInstant(),dateUntil.atStartOfDay(ZoneOffset.UTC).toInstant(),PageRequest.of(0,201))
         val deadlinePlugin = registry.available(actor.role).find { it.manifest.id == "kanban" }
         val due = if (deadlinePlugin?.tableAccess?.get("plugin_kanban_boards")?.readRoles?.contains(actor.role) == true) deadlines(actor.id, actor.role, dateFrom, dateUntil) else emptyList()
         return CalendarWindow((local.take(200).map(::view) + due.take(200)).sortedBy { it.start }, local.size > 200 || due.size > 200)
@@ -41,7 +41,7 @@ class CalendarService(private val events: CalendarEventRepository, private val a
     }
     fun owned(email: String, id: UUID, write: Boolean = false): CalendarEvent {
         val actor = actor(email, write)
-        return events.findById(id).orElse(null)?.takeIf { it.deletedAt == null && (it.ownerId == actor.id || (actor.role == "ADMIN" && !it.personal)) } ?: throw NotFoundException("Calendar event unavailable")
+        return events.findById(id).orElse(null)?.takeIf { it.deletedAt == null && (it.ownerId == actor.id || (com.starter.access.Roles.admin(actor.role) && !it.personal)) } ?: throw NotFoundException("Calendar event unavailable")
     }
     private fun actor(email: String, write: Boolean = false) = actors.current(email).also { registry.requireTable("calendar", "plugin_calendar_events", it.role, write) }
     private fun deadlines(owner: UUID, role: String, from: LocalDate, until: LocalDate): List<CalendarEventView> = jdbc.query("""
@@ -52,7 +52,7 @@ class CalendarService(private val events: CalendarEventRepository, private val a
         val date = LocalDate.parse(rs.getString("due")); val boardId = rs.getString("board_id")
         CalendarEventView("kanban:$boardId:${rs.getString("card_id")}", rs.getString("title"), rs.getString("name") + " · " + rs.getString("description").orEmpty(),
             date.toString(), date.plusDays(1).toString(), true, "kanban", "/plugins/kanban/boards?board=$boardId")
-    }, role == "ADMIN", owner, from.toString(),until.toString())
+    }, com.starter.access.Roles.admin(role), owner, from.toString(),until.toString())
     companion object {
         fun validateWindow(from: Instant, until: Instant) { if (from < Instant.parse("1900-01-01T00:00:00Z") || until > Instant.parse("9999-12-31T23:59:59Z") || until <= from || Duration.between(from,until) > Duration.ofDays(93)) throw BadRequestException("Choose a calendar window of at most 93 days, between 1900 and 9999") }
         fun validateEvent(request: CalendarEventRequest) {

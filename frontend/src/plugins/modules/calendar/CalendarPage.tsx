@@ -1,3 +1,4 @@
+import { pluginRole } from '../../../api/access'
 import {useMemo,useState} from 'react'
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query'
 import {useAvailablePlugins} from '../../../api/plugins'
@@ -14,7 +15,7 @@ import './calendar.css'
 export default function CalendarPage() {
   const client=useQueryClient()
   const plugins=useAvailablePlugins()
-  const role=useAuthStore(state => state.user?.role) ?? ''
+  const role=useAuthStore(state => pluginRole(state.user?.role ?? '')) ?? ''
   const scope=useAuthStore(state => `${state.user?.id}:${state.user?.role}`)
   const policy=plugins.data?.find(plugin => plugin.manifest.id==='calendar')?.tableAccess.plugin_calendar_events
   const providers=role==='ADMIN' ? plugins.data?.filter(plugin => Object.prototype.hasOwnProperty.call(plugin.manifest.capabilities,'calendar.provider')).map(plugin => ({id:plugin.manifest.id,name:plugin.manifest.name})) ?? [] : []

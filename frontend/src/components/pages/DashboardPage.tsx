@@ -1,3 +1,4 @@
+import { useAccess } from '../../api/access'
 import { Link } from 'react-router-dom'
 
 import { useAuthStore } from '../../hooks/useAuthStore'
@@ -10,6 +11,7 @@ const destinations = [
 
 export function DashboardPage() {
   const { user } = useAuthStore()
+  const access = useAccess()
 
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -20,7 +22,7 @@ export function DashboardPage() {
         </p>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
-        {destinations.map(({ to, label, description }) => (
+        {destinations.filter(item => access.canPath(item.to)).map(({ to, label, description }) => (
           <Link key={to} to={to} style={{ textDecoration: 'none', color: 'inherit' }}>
             <Card style={{ height: '100%', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
 

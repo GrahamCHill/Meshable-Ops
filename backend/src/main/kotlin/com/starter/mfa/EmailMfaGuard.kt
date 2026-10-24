@@ -10,6 +10,10 @@ import org.springframework.stereotype.Component
 class EmailMfaGuard(private val jdbc: JdbcTemplate, private val credentials: MfaCredentialRepository) {
     // Shared transaction lock serializes email-only enrollment against delivery configuration changes.
     fun lock() { jdbc.query("SELECT pg_advisory_xact_lock(1938674201)", { _, _ -> 0 }) }
+    fun checkNotificationRoute(enabled: Boolean) {
+        lock()
+        if(!enabled && credentials.emailOnlyCount()>0) throw BadRequestException("Email is the only MFA method for an account. Add an authenticator or disable that email MFA before disabling verification-code delivery.")
+    }
     fun check(config: EmailConfiguration) {
         lock()
         if (credentials.emailOnlyCount() > 0 && (!config.enabled || runCatching { validateEmailConfiguration(config) }.isFailure))

@@ -13,7 +13,7 @@ interface PluginSearchProvider {
 
 @Service
 class PluginSearchService(private val providers: List<PluginSearchProvider>, private val registry: PluginRegistry,
-    private val actors: PluginActor) {
+    private val actors: PluginActor, private val packages: com.starter.plugins.packages.PluginPackageSearch? = null) {
     init {
         require(providers.map { it.pluginId to it.tableName }.distinct().size == providers.size)
         providers.forEach { provider ->
@@ -24,14 +24,17 @@ class PluginSearchService(private val providers: List<PluginSearchProvider>, pri
     fun search(email: String, query: String, limit: Int): List<VectorSearchPoint> {
         val actor = actors.current(email)
         val allowed = registry.available(actor.role).filter { it.searchEnabled }.associateBy { it.manifest.id }
-        val matches = providers.filter { provider -> actor.role in (allowed[provider.pluginId]?.tableAccess?.get(provider.tableName)?.readRoles ?: emptySet()) }
+        val matches = providers.filter { provider -> com.starter.access.Roles.plugin(actor.role) in (allowed[provider.pluginId]?.tableAccess?.get(provider.tableName)?.readRoles ?: emptySet()) }
             .associateWith { it.search(query, limit, actor) }
+        val uploadedMatches = packages?.search(allowed.values, query, limit, actor) ?: emptyList()
         val currentActor = actors.current(email)
         // Providers may have used ADMIN to read other owners' rows. A role change
         // requires a fresh query; checking only the new table role is insufficient.
         if (currentActor.id != actor.id || currentActor.role != actor.role) return emptyList()
         val current = registry.available(currentActor.role).filter { it.searchEnabled }.associateBy { it.manifest.id }
-        return matches.filterKeys { provider -> currentActor.role in (current[provider.pluginId]?.tableAccess?.get(provider.tableName)?.readRoles ?: emptySet()) }
-            .values.flatten().sortedByDescending { it.score }.take(limit)
+        val retained = uploadedMatches.filter { point -> com.starter.access.Roles.plugin(currentActor.role) in
+            (current[point.payload["pluginId"]]?.tableAccess?.get(point.payload["tableName"])?.readRoles ?: emptySet()) }
+        return (matches.filterKeys { provider -> com.starter.access.Roles.plugin(currentActor.role) in (current[provider.pluginId]?.tableAccess?.get(provider.tableName)?.readRoles ?: emptySet()) }
+            .values.flatten() + retained).sortedByDescending { it.score }.take(limit)
     }
 }

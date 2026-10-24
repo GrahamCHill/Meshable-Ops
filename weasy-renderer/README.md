@@ -15,3 +15,7 @@ Install `requirements-dev.txt`, then run `python -m unittest discover -s tests -
 `app.py` bounds input and runs one `worker.py` subprocess per PDF. The worker creates a document from saved template defaults/API values, normalizes paragraph sections, uses a raster-only URL fetcher, and limits pages/output. Linux also enforces per-worker CPU/address-space limits; the Compose service supplies container memory/process limits. Raw native errors and document values are not returned or logged by the wrapper. The vendored generator's unrestricted `render_document_pdf()` is not exposed by this host.
 
 See [the application guide](../docs/documents-and-workflows.md) for workflow scope, document/email policy, deployment, and persistence boundaries.
+
+## Licensing
+
+The original host wrapper and the project owner's imported WeasyCanvas model/generator snapshot are covered by the repository [AGPL/commercial licensing choice](../LICENSING.md). WeasyPrint, fonts, native libraries, and other dependencies retain their upstream licenses; see [third-party notices](../THIRD_PARTY_NOTICES.md).

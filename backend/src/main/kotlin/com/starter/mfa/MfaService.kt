@@ -35,15 +35,16 @@ class MfaService(
 ) {
     @Value("\${app.mfa.primary-admin-email:admin@app.local}") private var primaryEmail: String = "admin@app.local"
     fun recommended(user: User): Boolean {
-        if (user.role != "ADMIN" || user.mfaPromptDismissed || credentials.enabledCount(user.id) > 0) return false
-        val primary = users.findByEmail(primaryEmail.lowercase()).orElse(null)?.takeIf { it.role == "ADMIN" && it.active }
+        if (!com.starter.access.Roles.admin(user.role) || user.mfaPromptDismissed || credentials.enabledCount(user.id) > 0) return false
+        val primary = users.findByEmail(primaryEmail.lowercase()).orElse(null)?.takeIf { com.starter.access.Roles.admin(it.role) && it.active }
+            ?: users.findFirstByRoleAndActiveTrueOrderByCreatedAtAsc("SUPER_ADMIN").orElse(null)
             ?: users.findFirstByRoleAndActiveTrueOrderByCreatedAtAsc("ADMIN").orElse(null)
         return primary?.id == user.id
     }
     fun enabled(id: UUID) = credentials.enabledCount(id) > 0
     fun status(email: String): MfaStatus {
         val user = user(email); val saved = credentials.findById(user.id).orElse(null)
-        return MfaStatus(saved?.totpSecret != null, saved?.emailEnabled == true, notifications.available(NotificationChannel.EMAIL),
+        return MfaStatus(saved?.totpSecret != null, saved?.emailEnabled == true, notifications.availableOtp("email"),
             encryption.configured, saved?.let { recovery(it).size } ?: 0, recommended(user))
     }
     @Transactional fun dismiss(email: String) { val user = user(email); user.mfaPromptDismissed = true; users.save(user) }
@@ -55,7 +56,7 @@ class MfaService(
         val (raw, challenge) = create(user, ChallengePurpose.LOGIN)
         val methods = buildList {
             if (saved.totpSecret != null) add(MfaMethod.TOTP)
-            if (saved.emailEnabled && notifications.available(NotificationChannel.EMAIL)) add(MfaMethod.EMAIL)
+            if (saved.emailEnabled && notifications.availableOtp("email")) add(MfaMethod.EMAIL)
             if (recovery(saved).isNotEmpty()) add(MfaMethod.RECOVERY)
         }
         return MfaChallengeResponse(challengeToken = raw, methods = methods, expiresAt = challenge.expiresAt.toString())
@@ -123,7 +124,7 @@ class MfaService(
             saved.totpSecret = challenge.pendingSecret; saved.lastTotpStep = step
         } else {
             emailGuard.lock()
-            if (!notifications.available(NotificationChannel.EMAIL)) throw BadRequestException("Restore email delivery before enabling email MFA")
+            if (!notifications.availableOtp("email")) throw BadRequestException("Restore email delivery before enabling email MFA")
             if (request.method != MfaMethod.EMAIL || !verifyEmail(challenge, request.code)) fail(challenge)
             saved.emailEnabled = true
         }
@@ -177,13 +178,12 @@ class MfaService(
     private fun verifyEmail(challenge: MfaChallenge, code: String) = Regex("[0-9]{6}").matches(code) &&
         challenge.emailCodeHash?.let { SecureValues.equal(it, tokens.proof("${challenge.id}:$code")) } == true
     private fun sendCode(challenge: MfaChallenge) {
-        if (!notifications.available(NotificationChannel.EMAIL)) throw BadRequestException("Configure working email delivery before using email MFA")
+        if (!notifications.availableOtp("email")) throw BadRequestException("Configure working email delivery before using email MFA")
         if (challenge.emailSentAt?.isAfter(Instant.now().minusSeconds(60)) == true) throw TooManyRequestsException()
         rates.check("mfa-email-user", challenge.userId.toString(), 5, 900)
         val user = users.findById(challenge.userId).orElse(null)?.takeIf { it.active } ?: invalid()
         val code = tokens.code()
-        val result = notifications.send(NotificationChannel.EMAIL, SendEmailRequest(user.email, "Your verification code",
-            "Your verification code is $code. It expires in five minutes. If you did not request it, ignore this message."))
+        val result = notifications.sendOtp("email",com.starter.notification.NotificationTarget(user.id,user.email,name=user.name ?: user.username,verifiedMethods=setOf("email")),code,5)
         if (result.status != "ACCEPTED") throw EmailDeliveryException("Unable to send a verification email. Use an authenticator or recovery code, or restore email delivery.")
         challenge.emailCodeHash = tokens.proof("${challenge.id}:$code"); challenge.emailSentAt = Instant.now()
         challenges.saveAndFlush(challenge)

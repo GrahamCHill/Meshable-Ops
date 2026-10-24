@@ -1,0 +1,9 @@
+.notification-settings-layout { display: grid; grid-template-columns: minmax(210px, 280px) minmax(0, 1fr); gap: 36px; align-items: start; }
+.notification-list { max-height: 62vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.notification-list-item { background: transparent; color: inherit; text-align: left; padding: 12px; cursor: pointer; display: grid; gap: 4px; }
+.notification-list-item[aria-pressed="true"] { background: var(--color-surface-2); }
+.notification-method-choice { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.notification-html-preview { width: 100%; min-height: 280px; border: 0; background: white; }
+.notification-history { max-height: 60vh; overflow-y: auto; }
+.notification-history-entry { display: grid; gap: 4px; padding: 14px 0; }
+@media (max-width: 800px) { .notification-settings-layout { grid-template-columns: 1fr; } .notification-list { max-height: 250px; } }

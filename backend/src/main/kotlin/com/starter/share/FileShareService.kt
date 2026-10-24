@@ -28,7 +28,7 @@ import java.util.UUID
 class FileShareService(private val shares: FileShareRepository, private val grants: ShareAccessGrantRepository,
     private val settings: ShareSettingsService, private val users: UserRepository, private val files: ShareFileAccess,
     private val policy: DocumentAccessService, private val pdf: PdfService, private val passwords: PasswordEncoder,
-    private val tokens: SecureValues, private val notifications: NotificationService, private val rates: RateLimits) {
+    private val tokens: SecureValues, private val notifications: NotificationService, private val rates: RateLimits, private val access: com.starter.access.AccessControlService? = null) {
     fun list() = shares.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 100)).map(::view)
 
     // Persist PENDING before external delivery, then commit ACCEPTED/revoked separately.
@@ -40,9 +40,11 @@ class FileShareService(private val shares: FileShareRepository, private val gran
         if (policy.current().downloadMode == DownloadMode.DISABLED) throw ForbiddenException("Downloads are disabled; external sharing is unavailable")
         if (request.password.length < 12 || request.password.any { it.isISOControl() }) throw BadRequestException("Use a share password of at least 12 characters without control characters")
         val base = settings.baseUrl()
-        val owner = users.findByEmail(actor).orElse(null)?.takeIf { it.active && it.role == "ADMIN" } ?: throw ForbiddenException("Administrator access required")
+        val owner = users.findByEmail(actor).orElse(null)?.takeIf { it.active && com.starter.access.Roles.admin(it.role) } ?: throw ForbiddenException("Administrator access required")
         rates.check("share-create-user", owner.id.toString(), 10, 300)
         val path = normalizeStorageObject(request.path)
+        if (access?.externalShareAllowed(request.folderId, path) == false) throw ForbiddenException("This file is protected from external sharing")
+        access?.requireStorage(request.folderId, path, false)
         val source = files.read(request.folderId, path)
         val info = pdf.inspect(source.bytes, source.filename)
         val token = tokens.token()
@@ -51,12 +53,15 @@ class FileShareService(private val shares: FileShareRepository, private val gran
         if (protectedPdf.size > EmailAttachment.MAX_BYTES) throw BadRequestException("The protected PDF exceeds the 10 MB email attachment limit")
         files.check(request.folderId)
         if (!settings.settings().enabled || policy.current().downloadMode == DownloadMode.DISABLED) throw ForbiddenException("File sharing is unavailable")
+        if (access?.externalShareAllowed(request.folderId, path) == false) throw ForbiddenException("This file is protected from external sharing")
+        access?.requireStorage(request.folderId, path, false)
+        access?.requireFeature("admin.shares")
         val attachmentName = source.filename.map { if (it.isISOControl() || it in "\\\"/") '_' else it }.joinToString("").take(196).let { if (it.endsWith(".pdf", true)) it else "$it.pdf" }
         val share = shares.saveAndFlush(FileShare(id = shareId, tokenHash = SecureValues.hash(token), ownerId = owner.id, folderId = request.folderId,
             storagePath = path, filename = source.filename, recipient = request.recipient, passwordHash = passwords.encode(request.password),
             sourceHash = SecureValues.hash(source.bytes), pageCount = info.pageCount, expiresAt = Instant.now().plusSeconds(request.lifetimeHours * 3600L)))
         val url = "$base/shared/$token"
-        val result = notifications.send(NotificationChannel.EMAIL, SendEmailRequest(request.recipient, "A protected PDF has been shared with you",
+        val result = notifications.sendEmail("shares.email", SendEmailRequest(request.recipient, "A protected PDF has been shared with you",
             "The attached PDF is watermarked and password protected: ${source.filename}\n\nAsk the sender for the password through a separate channel. The password is not included in this email.\n\nYou can also open it in the app:\n$url\nThis online link expires: ${share.expiresAt}. The attachment remains available after the link expires or is revoked.",), listOf(EmailAttachment(attachmentName, protectedPdf)))
         share.deliveryStatus = result.status
         if (result.status != "ACCEPTED") { share.revoked = true; shares.saveAndFlush(share); throw EmailDeliveryException("The share email could not be sent. The link has been revoked; create a new share after restoring delivery.") }
@@ -115,7 +120,9 @@ class FileShareService(private val shares: FileShareRepository, private val gran
         if (!settings.settings().enabled) throw NotFoundException("Shared file unavailable")
         val share = shares.findByTokenHash(SecureValues.hash(token)).orElse(null) ?: throw NotFoundException("Shared file unavailable")
         if (share.revoked || share.deliveryStatus != "ACCEPTED" || !share.expiresAt.isAfter(Instant.now())) throw NotFoundException("Shared file unavailable")
-        if (users.findById(share.ownerId).orElse(null)?.let { it.active && it.role == "ADMIN" } != true) throw NotFoundException("Shared file unavailable")
+        if (users.findById(share.ownerId).orElse(null)?.let { it.active && com.starter.access.Roles.admin(it.role) } != true) throw NotFoundException("Shared file unavailable")
+        val owner = users.findById(share.ownerId).orElse(null) ?: throw NotFoundException("Shared file unavailable")
+        if (access != null && ("admin.shares" !in access.features(owner) || !access.storage(owner).allows(share.folderId, share.storagePath) || !access.externalShareAllowed(share.folderId, share.storagePath))) throw NotFoundException("Shared file unavailable")
         files.check(share.folderId)
         return share
     }

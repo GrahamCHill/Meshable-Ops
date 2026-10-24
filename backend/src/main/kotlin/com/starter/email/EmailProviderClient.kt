@@ -49,11 +49,12 @@ class EmailProviderClient(private val mapper: ObjectMapper) {
         try {
             val sender = smtpSender(config)
             val mime = sender.createMimeMessage()
-            MimeMessageHelper(mime, attachments.isNotEmpty(), "UTF-8").apply {
+            MimeMessageHelper(mime, attachments.isNotEmpty() || message.html.isNotBlank(), "UTF-8").apply {
                 setFrom(config.fromAddress, config.fromName)
                 setTo(message.recipient)
                 if (config.replyTo.isNotBlank()) setReplyTo(config.replyTo)
-                setSubject(message.subject); setText(message.text, false)
+                setSubject(message.subject)
+                if(message.html.isBlank()) setText(message.text,false) else setText(message.text,message.html)
                 attachments.forEach { addAttachment(it.filename, ByteArrayResource(it.bytes), "application/pdf") }
             }
             sender.send(mime)
@@ -73,6 +74,7 @@ class EmailProviderClient(private val mapper: ObjectMapper) {
             EmailProvider.RESEND -> {
                 route = "/emails"
                 val body = mutableMapOf<String, Any>("from" to from, "to" to listOf(message.recipient), "subject" to message.subject, "text" to message.text)
+                if(message.html.isNotBlank()) body["html"]=message.html
                 if (config.replyTo.isNotBlank()) body["reply_to"] = config.replyTo
                 if (attachments.isNotEmpty()) body["attachments"] = attachments.map { mapOf("filename" to it.filename, "content" to Base64.getEncoder().encodeToString(it.bytes)) }
                 content = mapper.writeValueAsBytes(body)
@@ -83,7 +85,7 @@ class EmailProviderClient(private val mapper: ObjectMapper) {
                 val body = mutableMapOf<String, Any>(
                     "from" to mapOf("email" to config.fromAddress, "name" to config.fromName),
                     "personalizations" to listOf(mapOf("to" to listOf(mapOf("email" to message.recipient)))),
-                    "subject" to message.subject, "content" to listOf(mapOf("type" to "text/plain", "value" to message.text)))
+                    "subject" to message.subject, "content" to listOfNotNull(mapOf("type" to "text/plain", "value" to message.text),message.html.takeIf {it.isNotBlank()}?.let {mapOf("type" to "text/html","value" to it)}))
                 if (config.replyTo.isNotBlank()) body["reply_to"] = mapOf("email" to config.replyTo)
                 if (attachments.isNotEmpty()) body["attachments"] = attachments.map { mapOf("filename" to it.filename, "content" to Base64.getEncoder().encodeToString(it.bytes), "type" to "application/pdf", "disposition" to "attachment") }
                 content = mapper.writeValueAsBytes(body)
@@ -93,6 +95,7 @@ class EmailProviderClient(private val mapper: ObjectMapper) {
                 route = "/${config.mailgunDomain}/messages"
                 val boundary = "email-${UUID.randomUUID()}"
                 val fields = linkedMapOf("from" to from, "to" to message.recipient, "subject" to message.subject, "text" to message.text)
+                if(message.html.isNotBlank()) fields["html"]=message.html
                 if (config.replyTo.isNotBlank()) fields["h:Reply-To"] = config.replyTo
                 content = ByteArrayOutputStream().use { output ->
                     fields.forEach { (key, value) -> output.write("--$boundary\r\nContent-Disposition: form-data; name=\"$key\"\r\n\r\n$value\r\n".toByteArray(Charsets.UTF_8)) }

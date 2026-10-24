@@ -1,3 +1,4 @@
+import { pluginRole } from '../../../api/access'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../../../hooks/useAuthStore'
@@ -10,7 +11,7 @@ export function PersonalCalendarSettings() {
   const user=useAuthStore(state => state.user)
   const plugins=useAvailablePlugins()
   const policy=plugins.data?.find(plugin => plugin.manifest.id==='calendar')?.tableAccess
-  const readable=!!user && ['plugin_calendar_connections','plugin_calendar_sync_links'].every(table => policy?.[table]?.readRoles.includes(user.role))
+  const readable=!!user && ['plugin_calendar_connections','plugin_calendar_sync_links'].every(table => policy?.[table]?.readRoles.includes(pluginRole(user.role)))
   const client=useQueryClient()
   const query=useQuery({queryKey:['plugin-calendar-personal',user?.id,user?.role],queryFn:calendarApi.personal,enabled:readable})
   const changed=async () => {await Promise.all([client.invalidateQueries({queryKey:['plugin-calendar-personal']}),client.invalidateQueries({queryKey:['plugin-calendar-events']})])}

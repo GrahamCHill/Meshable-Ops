@@ -8,7 +8,7 @@ import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.*
 
 @RestController @PreAuthorize("hasRole('ADMIN')")
-class IntegrationController(private val messaging: PluginMessagingService, private val drives: MicrosoftDriveService,
+class IntegrationController(private val messaging: com.starter.notification.NotificationService, private val drives: MicrosoftDriveService,
     private val rates: RateLimits) {
     @PostMapping("/api/plugins/{id:telegram|teams|whatsapp}/send")
     fun send(@PathVariable id: String, @RequestBody request: ChannelMessage, @AuthenticationPrincipal user: UserDetails): com.starter.dto.EmailDeliveryResult {

@@ -24,13 +24,14 @@ class StorageConnectionService(
     private val itemService: ItemService,
     private val audit: AuditLogService,
     private val encryption: SecretEncryption,
+    private val access: com.starter.access.AccessControlService? = null,
 ) {
     @Transactional(readOnly = true)
     fun listAdmin() = connections.findAllByOrderByNicknameAsc().map { response(it) }
 
     @Transactional(readOnly = true)
     fun listShared() = connections.findAllByEnabledTrueOrderByNicknameAsc().mapNotNull { connection ->
-        val count = items.countByStorageConnectionIdAndAccessibleTrue(connection.id)
+        val count = if (access == null) items.countByStorageConnectionIdAndAccessibleTrue(connection.id) else items.findAllByStorageConnectionIdOrderByTitleAsc(connection.id).count { it.accessible && access.storage().allows(it.id, "", true) }.toLong()
         if (count == 0L) null else SharedStorageConnectionResponse(connection.id.toString(), connection.nickname, connection.provider, count)
     }
 

@@ -1,6 +1,6 @@
 # Email delivery
 
-Open **Administration > Email delivery**. The admin menu has a card for this section and the page has **Back to admin menu**. The existing `ADMIN` role can configure, test, and send email. Regular users cannot use these endpoints.
+Open **Administration > Notifications > Delivery methods > Configure email delivery**. The page links back to Notifications and the admin menu. The existing `ADMIN` role can configure, test, and send email. Regular users cannot use these endpoints.
 
 Email is disabled by default and does not need to be configured for the app to start. Choose **Server environment** or **Admin settings**. The two sources keep separate credentials; switching sources does not copy secrets between them. Environment values are read-only in the app.
 
@@ -9,9 +9,9 @@ Email is disabled by default and does not need to be configured for the app to s
 1. Select the configuration source. For admin-managed settings, enable email delivery and enter the sender email, optional sender name, and optional reply-to address.
 2. Choose **SMTP account or relay**, **Resend API**, **SendGrid API**, or **Mailgun API**.
 3. Fill in the transport fields below, save, and use **Send test email** with a recipient you control. The test sends a fixed plain-text message without documents or credentials.
-4. **Send email** sends a single plain-text message with your subject/body using the saved configuration. Unsaved changes disable sending. Saving with delivery disabled removes these sending controls; direct send/test requests return HTTP 403.
+4. **Send email** sends one message through the General messages notification rule and its configured email template. The template may include sanitized HTML with a plain-text fallback. Unsaved changes disable sending. Saving with delivery disabled removes these sending controls; direct send/test requests return HTTP 403.
 
-Saving settings does not test the service or send a message. A successful send means the SMTP/API provider accepted the message; delivery to the recipient's inbox is not confirmed. Check the provider's delivery/bounce tools and the recipient mailbox.
+Notification method switches and per-notification templates are managed in [Notifications](notifications.md). Transport tests use the saved connection independently of those rules. Saving settings does not test the service or send a message. A successful send means the SMTP/API provider accepted the message; delivery to the recipient's inbox is not confirmed. Check the provider's delivery/bounce tools and the recipient mailbox.
 
 ## SMTP and app passwords
 
@@ -78,7 +78,7 @@ The `email_settings` PostgreSQL row (singleton ID `1`) stores the source, transp
 
 ## Using email in application code
 
-Application workflows use `NotificationService` as the delivery boundary. `EMAIL` delegates to `EmailDeliveryService`; `SMS` remains reserved. WhatsApp is now an optional plugin channel alongside Telegram and Teams, each with its own settings. See [integration plugins](plugins/integrations.md). Existing email/MFA/document flows continue to use email and do not switch channels automatically. Direct email callers can still use `send(SendEmailRequest(recipient, subject, text))`; it returns `ACCEPTED`, `DISABLED`, or `UNAVAILABLE`. Provider/configuration failures become an optional result for callers to handle. Invalid message input is rejected. MFA and explicit PDF sharing use this sender; account creation and indexing do not send automatically.
+Application workflows use `NotificationService` as the delivery boundary. `EMAIL` delegates to `EmailDeliveryService`; SMS methods are supplied by provider plugins. WhatsApp is now an optional plugin channel alongside Telegram and Teams, each with its own settings. See [Notifications](notifications.md) and [integration plugins](plugins/integrations.md). Existing email/MFA/document flows continue to use email and do not switch channels automatically. Direct email callers can still use `send(SendEmailRequest(recipient, subject, text))`; it returns `ACCEPTED`, `DISABLED`, or `UNAVAILABLE`. Provider/configuration failures become an optional result for callers to handle. Invalid message input is rejected. MFA and explicit PDF sharing use this sender; account creation and indexing do not send automatically.
 
 Delivery is synchronous, with at most two concurrent sends per backend instance. Messages are limited to one recipient, a 200-character single-line subject, and 20,000 characters of plain text. Internal callers can include one PDF attachment up to 10 MiB via `EmailAttachment`; public manual email requests cannot supply attachments. [Protected sharing](file-sharing.md) generates an encrypted, watermarked copy before attaching it; passwords are kept out of the email. SMTP sends multipart MIME, Resend/SendGrid send base64 attachment fields, and Mailgun sends a binary multipart attachment. Bulk campaigns, HTML templates, a persistent queue, bounce processing, and automatic retries remain outside this sender. After a timeout, verify provider status before manually retrying because the provider may already have accepted the message.
 

@@ -25,7 +25,7 @@ class PluginMessagingService(private val registry: PluginRegistry, private val s
         if (id !in ids) throw NotFoundException("Messaging plugin unavailable")
         registry.requireAvailable(id, "ADMIN")
         if (!available(id)) return EmailDeliveryResult("UNAVAILABLE", "Complete this plugin's configuration first")
-        if (message.text.length > 4000 || message.recipient.length > 40 || message.templateParameters.size > 20 ||
+        if (message.text.length > 4000 || message.recipient.length > 40 || message.templateParameters.size > 20 || message.providerTemplate.isNotBlank() && !message.providerTemplate.matches(Regex("[a-z0-9_]{1,200}")) ||
             message.templateParameters.any { it.length > 1000 } || message.text.any { it.isISOControl() && it !in "\n\r\t" })
             throw BadRequestException("Use a message up to 4000 characters and at most 20 template parameters")
         if (!workers.tryAcquire()) return EmailDeliveryResult("UNAVAILABLE", "Plugin delivery is busy. Try again shortly.")
@@ -50,7 +50,7 @@ class PluginMessagingService(private val registry: PluginRegistry, private val s
                 }
                 else -> {
                     if (!message.recipient.matches(Regex("[1-9][0-9]{6,14}")) || message.text.isNotBlank()) throw BadRequestException("Use an international phone number without + and approved template parameters; free-text messaging is not supported")
-                    val template = mutableMapOf<String, Any>("name" to config.getValue("templateName"), "language" to mapOf("code" to config.getValue("languageCode")))
+                    val template = mutableMapOf<String, Any>("name" to message.providerTemplate.ifBlank {config.getValue("templateName")}, "language" to mapOf("code" to config.getValue("languageCode")))
                     if (message.templateParameters.isNotEmpty()) template["components"] = listOf(mapOf("type" to "body", "parameters" to message.templateParameters.map { mapOf("type" to "text", "text" to it) }))
                     http.request("POST", "https://graph.facebook.com/${config.getValue("apiVersion")}/${config.getValue("phoneNumberId")}/messages",
                         headers = mapOf("Authorization" to "Bearer ${config.getValue("accessToken")}"), body = mapper.writeValueAsString(mapOf("messaging_product" to "whatsapp", "to" to message.recipient, "type" to "template", "template" to template)))
@@ -71,6 +71,11 @@ abstract class MessagingChannelAdapter(override val channel: String, private val
             catch (_: NotFoundException) { EmailDeliveryResult("DISABLED", "This notification plugin was disabled") }
     }
 }
-@Component class TelegramChannelAdapter(messaging: PluginMessagingService) : MessagingChannelAdapter("telegram", messaging)
-@Component class TeamsChannelAdapter(messaging: PluginMessagingService) : MessagingChannelAdapter("teams", messaging)
-@Component class WhatsAppChannelAdapter(messaging: PluginMessagingService) : MessagingChannelAdapter("whatsapp", messaging)
+@Component class TelegramChannelAdapter(messaging: PluginMessagingService) : MessagingChannelAdapter("telegram", messaging) {override val label="Telegram"}
+@Component class TeamsChannelAdapter(messaging: PluginMessagingService) : MessagingChannelAdapter("teams", messaging) {override val label="Microsoft Teams"}
+@Component class WhatsAppChannelAdapter(messaging: PluginMessagingService) : MessagingChannelAdapter("whatsapp", messaging) {
+    override val label="WhatsApp Business"
+    override val recipientKind=com.starter.notification.NotificationRecipientKind.PHONE
+    override val parameterized=true
+    override fun send(message: ChannelMessage)=super.send(message.copy(recipient=message.recipient.removePrefix("+")))
+}

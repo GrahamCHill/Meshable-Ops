@@ -4,7 +4,7 @@ Connect S3-compatible buckets or Azure Blob containers in **Administration > Sto
 
 ## Shared cloud locations
 
-The existing `ADMIN` role acts as super admin for storage configuration. From
+`SUPER_ADMIN`, and delegated `ADMIN` accounts permitted to manage storage, configure connections. From
 **Administration > Storage connections > Shared locations**, admins can:
 
 1. Add independent S3 buckets or Azure Blob containers, each with an in-app nickname.
@@ -15,7 +15,7 @@ The existing `ADMIN` role acts as super admin for storage configuration. From
 Storage displays each enabled connection as a named folder containing its accessible selections.
 Selections include all descendants. Parent/child selections within a connection cannot overlap.
 Saving a new connection does not share any folders automatically. Regular authenticated users
-see only shared locations; credentials and admin folder discovery remain restricted to `ADMIN`.
+see only shared locations; credentials and admin folder discovery remain restricted to permitted administrators. Per-member directory grants, exclusions, and external access are configured in [Access controls](access-controls.md).
 Hidden selections are blocked for browsing, downloads, uploads, and vector search. Uploads still
 require the separate upload permission. Removing a selection removes its application metadata,
 not the objects in cloud storage. Existing application-managed folders retain their visibility

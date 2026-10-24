@@ -1,3 +1,4 @@
+import { pluginRole } from '../../../api/access'
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -16,7 +17,7 @@ export default function KanbanPage() {
 function Boards() {
   const [params, setParams] = useSearchParams()
   const userId = useAuthStore(state => state.user?.id)
-  const role = useAuthStore(state => state.user?.role)
+  const role = useAuthStore(state => pluginRole(state.user?.role ?? ''))
   const plugins = useAvailablePlugins()
   const canWrite = !!role && !!plugins.data?.find(item => item.manifest.id === 'kanban')?.tableAccess.plugin_kanban_boards?.writeRoles.includes(role)
   const client = useQueryClient()

@@ -15,7 +15,7 @@ import java.util.UUID
 class KanbanService(private val boards: KanbanRepository, private val actors: PluginActor,
     private val plugins: PluginRegistry, private val mapper: ObjectMapper,
     private val search: KanbanSearchProvider? = null, private val development: KanbanDevelopmentLinkRepository? = null) {
-    fun list(email: String): List<KanbanSummary> { val actor = actor(email); return boards.visible(actor.id, actor.role == "ADMIN", PageRequest.of(0, 100)) }
+    fun list(email: String): List<KanbanSummary> { val actor = actor(email); return boards.visible(actor.id, com.starter.access.Roles.admin(actor.role), PageRequest.of(0, 100)) }
     fun get(email: String, id: UUID) = view(owned(actor(email), id))
     @Transactional
     fun save(email: String, id: UUID?, request: KanbanRequest): KanbanView {
@@ -32,7 +32,7 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
         return view(saved)
     }
     private fun actor(email: String) = actors.current(email).also { plugins.requireTable("kanban", "plugin_kanban_boards", it.role) }
-    private fun owned(actor: User, id: UUID) = boards.findById(id).orElse(null)?.takeIf { it.ownerId == actor.id || actor.role == "ADMIN" }
+    private fun owned(actor: User, id: UUID) = boards.findById(id).orElse(null)?.takeIf { it.ownerId == actor.id || com.starter.access.Roles.admin(actor.role) }
         ?: throw NotFoundException("Board unavailable")
     private fun view(row: KanbanBoard) = KanbanView(row.id, row.ownerId, row.name, row.updatedAt, row.revision, mapper.readValue(row.contentJson, KanbanContent::class.java))
     internal fun validate(request: KanbanRequest) {

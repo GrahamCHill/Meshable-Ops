@@ -34,8 +34,8 @@ class WorkflowEmailTest {
     private val definition=WorkflowDefinition(state=WorkflowState.READY,published=true)
     private val graph=WorkflowGraph(listOf(email,WorkflowBlock("end",BlockKind.END,"End")),listOf(WorkflowEdge("out","email","end")))
     private val row=WorkflowRun(ownerId=actor.id,workflowId=definition.id,graphJson=mapper.writeValueAsString(graph),currentNodeId="email")
-    private val runner=WorkflowRunService(definitions,rows,guard,access,documents,runtime,WorkflowValidation(),mapper,mock(RateLimits::class.java))
-    private val claims=WorkflowEmailClaims(rows,guard,runtime)
+    private val runner=WorkflowRunService(definitions,rows,guard,access,documents,runtime,WorkflowValidation(),mapper,mock(RateLimits::class.java),mock(com.starter.notification.WorkflowNotificationHooks::class.java))
+    private val claims=WorkflowEmailClaims(rows,guard,runtime,mock(com.starter.notification.WorkflowNotificationHooks::class.java))
     private val service=WorkflowEmailService(claims,runner,guard,GeneratedDocumentDelivery(access,PdfService(),policy,notifications,mock(RateLimits::class.java)),notifications,policy)
     private val password="Example-secret-for-test-123"
     private var attachments=emptyList<EmailAttachment>()
@@ -46,9 +46,9 @@ class WorkflowEmailTest {
         `when`(rows.saveAndFlush(any(WorkflowRun::class.java))).thenAnswer {row.revision++;row}
         `when`(definitions.findById(definition.id)).thenReturn(Optional.of(definition))
         `when`(documents.findById(document.id)).thenReturn(Optional.of(document))
-        `when`(notifications.available(NotificationChannel.EMAIL)).thenReturn(true)
+        `when`(notifications.availableFor("workflow.email","email")).thenReturn(true)
         `when`(policy.current()).thenReturn(DocumentAccessPolicy())
-        `when`(notifications.send(any<NotificationChannel>() ?: NotificationChannel.EMAIL,any<SendEmailRequest>() ?: SendEmailRequest("a@b.test","Subject","Text"),anyList())).thenAnswer {
+        `when`(notifications.sendEmail(anyString(),any<SendEmailRequest>() ?: SendEmailRequest("a@b.test","Subject","Text"),anyList())).thenAnswer {
             message=it.getArgument(1);attachments=it.getArgument(2);EmailDeliveryResult("ACCEPTED","Accepted")
         }
     }
@@ -67,20 +67,20 @@ class WorkflowEmailTest {
         assertThat(document.pdfBytes).isEqualTo(pdf)
     }
     @Test fun `uncertain external result leaves a durable claim and rejects a second send`() {
-        `when`(notifications.send(any<NotificationChannel>() ?: NotificationChannel.EMAIL,any<SendEmailRequest>() ?: SendEmailRequest("a@b.test","Subject","Text"),anyList())).thenThrow(EmailDeliveryException("Timeout"))
+        `when`(notifications.sendEmail(anyString(),any<SendEmailRequest>() ?: SendEmailRequest("a@b.test","Subject","Text"),anyList())).thenThrow(EmailDeliveryException("Timeout"))
         assertThatThrownBy {service.send(actor.email,row.id,request())}.isInstanceOf(EmailDeliveryException::class.java)
         assertThat(row.emailState).isEqualTo(WorkflowEmailState.UNCERTAIN);assertThat(row.currentNodeId).isEqualTo("email")
         assertThatThrownBy {service.send(actor.email,row.id,request())}.isInstanceOf(ConflictException::class.java)
-        verify(notifications,times(1)).send(any<NotificationChannel>() ?: NotificationChannel.EMAIL,any<SendEmailRequest>() ?: SendEmailRequest("a@b.test","Subject","Text"),anyList())
+        verify(notifications,times(1)).sendEmail(anyString(),any<SendEmailRequest>() ?: SendEmailRequest("a@b.test","Subject","Text"),anyList())
         val result=runner.advance(actor.email,row.id,WorkflowAdvanceRequest(row.revision,"email",WorkflowAction.CONFIRM_EMAIL,note="Confirmed in provider outbox"))
         assertThat(result.current?.kind).isEqualTo(BlockKind.END)
         assertThat(result.history.single().outcome).isEqualTo("DELIVERY_CONFIRMED_MANUALLY")
     }
     @Test fun `missing email invalid password and disabled downloads fail before claiming or sending`() {
         assertThatThrownBy {service.send(actor.email,row.id,request().copy(password="short"))}.isInstanceOf(BadRequestException::class.java)
-        `when`(notifications.available(NotificationChannel.EMAIL)).thenReturn(false)
+        `when`(notifications.availableFor("workflow.email","email")).thenReturn(false)
         assertThatThrownBy {service.send(actor.email,row.id,request())}.isInstanceOf(BadRequestException::class.java)
-        `when`(notifications.available(NotificationChannel.EMAIL)).thenReturn(true)
+        `when`(notifications.availableFor("workflow.email","email")).thenReturn(true)
         `when`(policy.current()).thenReturn(DocumentAccessPolicy(downloadMode=DownloadMode.DISABLED))
         assertThatThrownBy {service.send(actor.email,row.id,request())}.isInstanceOf(ForbiddenException::class.java)
         verify(rows,never()).saveAndFlush(any(WorkflowRun::class.java));assertThat(attachments).isEmpty()

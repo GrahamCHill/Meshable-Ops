@@ -15,7 +15,7 @@ data class WorkflowEmailClaim(val ownerId: UUID,val attemptId: UUID,val block: W
 
 /** Commit the claim before any external send so timeouts/crashes never trigger an automatic resend. */
 @Service
-class WorkflowEmailClaims(private val runs: WorkflowRunRepository,private val guard: WorkflowRunAccess,private val runtime: WorkflowRuntime) {
+class WorkflowEmailClaims(private val runs: WorkflowRunRepository,private val guard: WorkflowRunAccess,private val runtime: WorkflowRuntime,private val alerts: com.starter.notification.WorkflowNotificationHooks) {
     @Transactional(propagation=Propagation.REQUIRES_NEW)
     fun claim(email: String,id: UUID,request: WorkflowSendRequest): WorkflowEmailClaim {
         val actor=guard.actor(email);val run=guard.owned(actor,id,true);guard.active(actor,run);runtime.matches(run,request.revision,request.nodeId)
@@ -34,6 +34,7 @@ class WorkflowEmailClaims(private val runs: WorkflowRunRepository,private val gu
         if (accepted) runtime.finishStep(run,"EMAIL_ACCEPTED","The email provider accepted the PDF attachment; inbox delivery is not confirmed.")
         else {run.emailState=WorkflowEmailState.UNCERTAIN;run.updatedAt=Instant.now()}
         runs.saveAndFlush(run)
+        if(accepted) alerts.advanced(run)
     }
 }
 
@@ -46,12 +47,12 @@ class WorkflowEmailService(private val claims: WorkflowEmailClaims,private val r
         val block=view.current ?: throw ConflictException("This run has finished")
         if (block.kind!=BlockKind.EMAIL) throw BadRequestException("This is not an email step")
         if (block.protection==DocumentEmailProtection.PASSWORD && (request.password.length<12 || request.password.toByteArray(Charsets.UTF_8).size>72 || request.password.any {it.isISOControl()})) throw BadRequestException("Use a PDF password of 12 characters or more, up to 72 UTF-8 bytes")
-        if (!notifications.available(NotificationChannel.EMAIL)) throw BadRequestException("Email delivery is not configured. Contact an administrator or record delivery handled outside the app.")
+        if (!notifications.availableFor("workflow.email","email")) throw BadRequestException("Workflow email delivery is disabled or not configured. Contact an administrator or record delivery handled outside the app.")
         if (policy.current().downloadMode==DownloadMode.DISABLED) throw ForbiddenException("Document downloads and email attachments are disabled")
         guard.document(email,id,block.documentId ?: throw NotFoundException("Email document unavailable"))
         val claim=claims.claim(email,id,request)
         try {
-            val result=delivery.email(email,EmailDocumentRequest(claim.block.recipient,claim.block.subject,claim.block.note.ifBlank {"Please find the document attached."},claim.block.protection,request.password)) {
+            val result=delivery.email(email,EmailDocumentRequest(claim.block.recipient,claim.block.subject,claim.block.note.ifBlank {"Please find the document attached."},claim.block.protection,request.password),"workflow.email") {
                 guard.document(email,id,claim.block.documentId!!)
             }
             if (result.status!="ACCEPTED") throw com.starter.email.EmailDeliveryException(result.message)

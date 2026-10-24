@@ -54,7 +54,7 @@ class KanbanDevelopmentService(private val boards: KanbanRepository, private val
         registry.requireTable("kanban", "plugin_kanban_boards", it.role, write)
         registry.requireTable("kanban", "plugin_kanban_development_links", it.role, write)
     }
-    private fun board(actor: User, id: UUID, lock: Boolean = false) = (if (lock) boards.locked(id) else boards.findById(id)).orElse(null)?.takeIf { it.ownerId == actor.id || actor.role == "ADMIN" } ?: throw NotFoundException("Board unavailable")
+    private fun board(actor: User, id: UUID, lock: Boolean = false) = (if (lock) boards.locked(id) else boards.findById(id)).orElse(null)?.takeIf { it.ownerId == actor.id || com.starter.access.Roles.admin(actor.role) } ?: throw NotFoundException("Board unavailable")
     private fun recheck(email: String, original: User, provider: String) {
         val current = actor(email, true)
         if (current.id != original.id || current.role != original.role) throw ForbiddenException("Access changed. Try again.")

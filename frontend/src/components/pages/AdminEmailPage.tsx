@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { emailApi, emailInput, type EmailInput, type EmailSettings } from '../../api/email'
 import { AdminPageHeader } from '../admin/AdminPageHeader'
@@ -36,7 +37,7 @@ export function AdminEmailPage() {
   const sameSmtp = environment || (!!draft && !!view && draft.provider === view.provider && draft.smtpHost.trim().toLowerCase() === view.smtpHost.toLowerCase() && draft.smtpPort === view.smtpPort && draft.smtpSecurity === view.smtpSecurity && draft.smtpAuth === view.smtpAuth)
   const sameApi = environment || (!!draft && !!view && draft.provider === view.provider && draft.apiBaseUrl.trim().replace(/\/+$/, '') === view.apiBaseUrl && draft.mailgunDomain.trim() === view.mailgunDomain)
   return <div className="page-stack" style={{ maxWidth: 900 }}>
-    <AdminPageHeader title="Email delivery" description="Connect an SMTP account, app password, or transactional email service." />
+    <AdminPageHeader title="Email delivery" description="Connect an SMTP account, app password, or transactional email service." actions={<Link to="/admin/notifications">Back to Notifications</Link>} />
     {query.isLoading && <Spinner />}
     {query.isError && <p role="alert" className="feedback error">Unable to load email settings. <Button variant="ghost" onClick={() => query.refetch()}>Retry</Button></p>}
     {settings && draft && view && value && <>

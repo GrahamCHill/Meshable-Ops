@@ -8,6 +8,8 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 
 | Task | Guide |
 | --- | --- |
+| Understand AGPL, commercial licensing, and upstream notices | [Licensing](../LICENSING.md) |
+| Contribute changes and understand the contributor grant | [Contributing](../CONTRIBUTING.md) · [CLA](../CLA.md) |
 | Start the development stack with MinIO or Azurite | [Development setup](getting-started.md) |
 | Understand empty databases, initial access, required secrets, and upgrades | [Initialization and security](initialization-and-security.md) |
 | Keep the workspace out of compliant search and AI crawlers | [Crawler exclusion](crawler-exclusion.md) |
@@ -17,6 +19,7 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Link Git repositories/PRs to boards and cards | [Source-control plugins](plugins/source-control.md) |
 | Use day/week/month views, private member sync, and board deadlines | [Calendar plugins](plugins/calendar.md) |
 | Add dependencies and optional connections between plugins | [Plugin composition](plugins/composition.md) |
+| Restrict roles, member views, client directories, and protected files | [Access controls](access-controls.md) |
 | Find admin sections and manage users and access | [Administration](administration.md) |
 | Connect buckets/containers, select shared folders, and configure uploads | [Storage connections](storage-connections.md) |
 | Author reports and manage embedded dashboards | [Dashboards and Superset](dashboards.md) |
@@ -28,6 +31,7 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Enroll an authenticator, verify email MFA, or use recovery codes | [Optional MFA](mfa.md) |
 | Send or receive authenticated JSON webhooks | [Webhooks](webhooks.md) |
 | Email password-protected, watermarked PDF attachments | [Protected PDF sharing](file-sharing.md) |
+| Configure notification methods, messages, and member preferences | [Notifications](notifications.md) |
 | Design templates, generate PDFs, and build or follow workflows | [Documents and workflows](documents-and-workflows.md) |
 | Inspect extraction formats, limits, and processing states | [Document processing](document-processing-extension.md) |
 | Understand tables, MongoDB collections, and backup boundaries | [Database layout](database-layout.md) |
@@ -46,8 +50,8 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 - Admin webhooks support manual sends and authenticated JSON receipt with encrypted, bounded delivery history. Optional Telegram, Teams, WhatsApp, SharePoint, and OneDrive connections are separate [integration plugins](plugins/integrations.md).
 - Local text matching runs inside the backend without an AI provider or ML container.
 - Scheduled indexing is disabled until an admin saves a job. Calendar jobs initially use `00:00`, Friday for weekly jobs, and `Africa/Johannesburg`; each value is editable.
-- `ADMIN` is the existing super-admin role for connection, folder-access, feature, and job settings. There is no separate `SUPER_ADMIN` role.
-- Explicitly shared folders are available to authenticated users. Upload permission is independent of role and defaults off.
+- The initial admin becomes `SUPER_ADMIN`; assignable `ADMIN`, `USER`, and read-only `EXTERNAL` roles have configurable view and storage permissions. See [access controls](access-controls.md).
+- Internal members retain shared-root access unless restricted. External members need explicit directory/file grants. Upload permission defaults off and is unavailable to external members.
 - AI and storage keys saved through the app require a persistent server wrapping key. MinIO/Azurite development seeds also persist credentials, so set the key before starting those profiles.
 - MongoDB records, audit logs, and events are not search or AI-answer sources.
 - Plugins are trusted modules included at build time and start disabled. Enable Kanban boards in Administration → Plugins.

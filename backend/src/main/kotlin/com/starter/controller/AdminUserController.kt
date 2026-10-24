@@ -15,6 +15,10 @@ import java.util.UUID
 @PreAuthorize("hasRole('ADMIN')")
 class AdminUserController(private val adminUserService: AdminUserService) {
 
+    @PatchMapping("/{id}/role")
+    fun role(@PathVariable id: java.util.UUID, @Valid @RequestBody request: com.starter.dto.UpdateUserRoleRequest,
+        @AuthenticationPrincipal principal: UserDetails) = adminUserService.updateRole(id, request.role, principal.username)
+
     @GetMapping
     fun listUsers() = adminUserService.listUsers()
 

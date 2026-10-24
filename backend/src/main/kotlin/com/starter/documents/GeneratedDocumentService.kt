@@ -13,7 +13,7 @@ import java.util.UUID
 class GeneratedDocumentService(private val documents: GeneratedDocumentRepository, private val templates: DocumentTemplateService,
     private val access: DocumentAccess, private val fields: DocumentFields, private val renderer: WeasyRendererClient,
     private val mapper: ObjectMapper, private val pdf: PdfService, private val delivery: GeneratedDocumentDelivery, private val rates: RateLimits) {
-    fun list(email: String): List<GeneratedDocumentView> { val actor = access.actor(email); return documents.visible(actor.id, actor.role == "ADMIN", PageRequest.of(0, 100)) }
+    fun list(email: String): List<GeneratedDocumentView> { val actor = access.actor(email); return documents.visible(actor.id, com.starter.access.Roles.admin(actor.role), PageRequest.of(0, 100)) }
     fun generate(email: String, request: GenerateDocumentRequest): GeneratedDocumentView {
         val actor = access.actor(email); rates.check("generate-document", actor.id.toString(), 20, 3600)
         val template = templates.get(email, request.templateId); val source = mapper.readTree(template.templateJson)

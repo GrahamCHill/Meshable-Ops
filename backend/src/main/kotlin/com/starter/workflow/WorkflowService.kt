@@ -18,7 +18,7 @@ class WorkflowService(private val repository: WorkflowRepository, private val ac
     @Transactional
     fun save(email: String, id: UUID?, request: WorkflowRequest): WorkflowView {
         val actor = access.admin(email)
-        val saved = id?.let { repository.findById(it).orElse(null)?.takeIf { row -> actor.role == "ADMIN" || row.ownerId == actor.id }
+        val saved = id?.let { repository.findById(it).orElse(null)?.takeIf { row -> com.starter.access.Roles.admin(actor.role) || row.ownerId == actor.id }
             ?: throw NotFoundException("Workflow unavailable") } ?: WorkflowDefinition(ownerId = actor.id)
         if (id != null && saved.revision != request.revision) throw ConflictException("The workflow changed. Reload before saving.")
         validation.check(request.graph, request.documentIds, request.state == WorkflowState.READY)

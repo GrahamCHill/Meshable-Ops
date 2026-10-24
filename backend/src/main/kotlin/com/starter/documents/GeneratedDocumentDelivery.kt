@@ -30,14 +30,14 @@ class GeneratedDocumentDelivery(private val access: DocumentAccess,private val p
         authorize();if (policy.current()!=previous) throw ForbiddenException("Document policy changed. Refresh the page.")
         return StorageObjectDownload(saved.filename,"application/pdf",bytes)
     }
-    fun email(email: String,request: EmailDocumentRequest,authorize: () -> GeneratedDocument): com.starter.dto.EmailDeliveryResult {
+    fun email(email: String,request: EmailDocumentRequest,event: String="documents.email",authorize: () -> GeneratedDocument): com.starter.dto.EmailDeliveryResult {
         val actor=access.actor(email);rates.check("email-generated-document",actor.id.toString(),10,300)
-        if (!notifications.available(NotificationChannel.EMAIL)) throw BadRequestException("Configure email delivery first")
+        if (!notifications.availableFor(event,"email")) throw BadRequestException("Enable this document notification and configure email delivery first")
         if (request.protection==DocumentEmailProtection.PASSWORD && (request.password.length<12 || request.password.any {it.isISOControl()})) throw BadRequestException("Use a PDF password of at least 12 characters without control characters")
         val previous=policy.current();val file=download(email,authorize)
         val bytes=if (request.protection==DocumentEmailProtection.PASSWORD) pdf.protect(file.bytes,request.password) else file.bytes
         if (bytes.size>EmailAttachment.MAX_BYTES) throw BadRequestException("Protected PDF exceeds 10 MB")
         authorize();if (policy.current()!=previous) throw ForbiddenException("Document policy changed. Refresh before sending.")
-        return notifications.send(NotificationChannel.EMAIL,SendEmailRequest(request.recipient,request.subject,request.text),listOf(EmailAttachment(file.filename,bytes)))
+        return notifications.sendEmail(event,SendEmailRequest(request.recipient,request.subject,request.text),listOf(EmailAttachment(file.filename,bytes)))
     }
 }

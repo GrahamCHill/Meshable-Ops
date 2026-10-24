@@ -32,12 +32,12 @@ class DocumentIndexService(
             (removeMissing && existing.keys.any { it !in seen })
         val synchronized = entries.associate { entry ->
             val checksum = DocumentFingerprints.metadata(entry)
-            val document = existing[entry.path] ?: StorageDocument(item = item, storagePath = entry.path)
+            var document = existing[entry.path] ?: StorageDocument(item = item, storagePath = entry.path)
             val needsIndex = force || document.sourceChecksum != checksum || document.vectorizedAt == null ||
                 document.embeddingModel != model || (config.indexContent && document.processingStatus in setOf("METADATA_ONLY", "CONTENT_UNAVAILABLE"))
             document.fileName = entry.name; document.contentType = entry.contentType
             document.sizeBytes = entry.size; document.storageLastModified = entry.lastModified
-            documents.saveAndFlush(document)
+            document = documents.saveAndFlush(document)
             if (needsIndex) {
                 vectors.deleteDocument(document.id)
                 document.vectorizedAt = null

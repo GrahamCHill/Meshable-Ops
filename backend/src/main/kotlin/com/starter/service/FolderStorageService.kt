@@ -15,6 +15,7 @@ import com.starter.service.storage.*
 @Service
 class FolderStorageService(
     private val adminSettingsService: AdminSettingsService,
+    private val access: com.starter.access.AccessControlService? = null,
 ) {
     fun prefixFor(item: Item): String {
         val connection = item.storageConnection ?: return prefixFor(item.id)
@@ -36,6 +37,8 @@ class FolderStorageService(
         downloadTransformed(item, path, archive, null) { it }
 
     fun downloadTransformed(item: Item, path: String, archive: Boolean, maxPdfBytes: Int?, transform: (StorageObjectDownload) -> StorageObjectDownload): StorageObjectDownload {
+        access?.requireStorage(item.id, path, archive)
+        val acl = access?.storage()
         val adapter = scopedAdapter(item)
         val prefix = prefixFor(item)
         fun read(root: String, objectPath: String): StorageObjectDownload {
@@ -49,6 +52,7 @@ class FolderStorageService(
         ZipOutputStream(output).use { zip ->
             adapter.listDocuments(prefix + folder).forEach { document ->
                 val safePath = normalizeStorageObject(document.path)
+                if (acl?.allows(item.id, folder + safePath) == false) return@forEach
                 zip.putNextEntry(ZipEntry(safePath))
                 zip.write(read(prefix + folder, safePath).bytes)
                 zip.closeEntry()

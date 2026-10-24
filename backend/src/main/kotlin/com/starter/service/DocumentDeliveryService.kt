@@ -17,16 +17,20 @@ class DocumentDeliveryService(
     private val items: ItemRepository,
     private val storage: FolderStorageService,
     private val pdf: PdfService,
+    private val access: com.starter.access.AccessControlService? = null,
 ) {
     fun download(id: UUID, path: String, archive: Boolean, actor: String): StorageObjectDownload {
+        val acl = access?.sqlSnapshot()
         val policy = settings.current()
         if (policy.downloadMode == DownloadMode.DISABLED) throw ForbiddenException("Downloads are disabled by an administrator")
+        access?.requireStorage(id, path, archive)
         val item = accessible(id)
         val result = if (policy.downloadMode == DownloadMode.NORMAL) storage.download(item, path, archive)
             else storage.downloadTransformed(item, path, archive, PdfService.MAX_BYTES) {
                 if (isPdf(it)) StorageObjectDownload(it.filename, "application/pdf", pdf.watermark(it.bytes, policy.watermarkText, actor)) else it
             }
         verifyUnchanged(id, policy)
+        if (access?.sqlSnapshot() != acl) throw ForbiddenException("Access controls changed. Try again.")
         return result
     }
 
@@ -37,13 +41,16 @@ class DocumentDeliveryService(
     }
 
     private fun <T> withPreview(id: UUID, path: String, action: (ByteArray, String, DocumentAccessPolicy) -> T): T {
+        val acl = access?.sqlSnapshot()
         val policy = settings.current()
         if (!policy.pdfPreviewEnabled) throw ForbiddenException("PDF viewing is disabled by an administrator")
+        access?.requireStorage(id, path, false)
         val item = accessible(id)
         val source = storage.downloadForIndex(item, normalizeStorageObject(path), PdfService.MAX_BYTES)
         if (!isPdf(source)) throw BadRequestException("Select a PDF document")
         val result = action(source.bytes, source.filename, policy)
         verifyUnchanged(id, policy)
+        if (access?.sqlSnapshot() != acl) throw ForbiddenException("Access controls changed. Try again.")
         return result
     }
 

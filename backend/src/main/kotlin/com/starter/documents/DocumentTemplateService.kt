@@ -13,14 +13,14 @@ import java.util.UUID
 
 @Service
 class DocumentTemplateService(private val templates: DocumentTemplateRepository, private val access: DocumentAccess,
-    private val fields: DocumentFields, private val renderer: WeasyRendererClient, private val mapper: ObjectMapper) {
+    private val fields: DocumentFields, private val renderer: WeasyRendererClient, private val mapper: ObjectMapper, private val controls: com.starter.access.AccessControlService? = null) {
     fun list(email: String, admin: Boolean = false): List<TemplateView> {
         if (admin) access.admin(email) else access.actor(email)
         return (if (admin) templates.findAllByOrderByUpdatedAtDesc(PageRequest.of(0, 100)) else templates.findByPublishedTrueOrderByUpdatedAtDesc(PageRequest.of(0, 100))).map(::view)
     }
     fun get(email: String, id: UUID): DocumentTemplateRecord {
         val actor = access.actor(email)
-        return templates.visibleById(id, actor.role == "ADMIN").orElseThrow { NotFoundException("Template unavailable") }
+        return templates.visibleById(id, (com.starter.access.Roles.admin(actor.role) && controls?.allows("admin.templates") != false)).orElseThrow { NotFoundException("Template unavailable") }
     }
     fun rules(saved: DocumentTemplateRecord): List<DataFieldRule> = mapper.readValue(saved.fieldRulesJson, object : TypeReference<List<DataFieldRule>>() {})
     fun save(email: String, id: UUID?, request: TemplateRequest): TemplateView {

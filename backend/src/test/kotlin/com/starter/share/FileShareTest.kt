@@ -61,7 +61,7 @@ class FileShareTest {
         `when`(shares.findById(any(UUID::class.java))).thenAnswer { Optional.ofNullable(saved?.takeIf { row -> row.id == it.getArgument<UUID>(0) }) }
         `when`(grants.saveAndFlush(any(ShareAccessGrant::class.java))).thenAnswer { val value = it.getArgument<ShareAccessGrant>(0); grantRows[value.id] = value; value }
         `when`(grants.findById(anyString())).thenAnswer { Optional.ofNullable(grantRows[it.getArgument(0)]) }
-        `when`(notifications.send(any<NotificationChannel>() ?: NotificationChannel.EMAIL, any<com.starter.dto.SendEmailRequest>() ?: com.starter.dto.SendEmailRequest("a@b.test", "subject", "text"), anyList())).thenAnswer {
+        `when`(notifications.sendEmail(anyString(), any<com.starter.dto.SendEmailRequest>() ?: com.starter.dto.SendEmailRequest("a@b.test", "subject", "text"), anyList())).thenAnswer {
             emailText = it.getArgument<com.starter.dto.SendEmailRequest>(1).text; attached = it.getArgument(2)
             EmailDeliveryResult(deliveryStatus, "Test result")
         }

@@ -1,6 +1,6 @@
 package com.starter.plugins
 
-enum class PluginExtension { PAGE, API, DATABASE, SEARCH, SETTINGS }
+enum class PluginExtension { PAGE, API, DATABASE, SEARCH, SETTINGS, NOTIFICATIONS }
 
 enum class PluginFieldType { TEXT, SECRET }
 data class PluginSettingField(val key: String, val label: String, val type: PluginFieldType = PluginFieldType.TEXT,
@@ -30,7 +30,8 @@ interface WorkspacePlugin {
 
 data class PluginView(val manifest: PluginManifest, val enabled: Boolean, val allowedRoles: Set<String>,
     val searchEnabled: Boolean = false, val tableAccess: Map<String, PluginTableAccess> = emptyMap(),
-    val active: Boolean = enabled, val missingDependencies: Set<String> = emptySet(), val features: List<PluginFeatureView> = emptyList())
+    val active: Boolean = enabled, val missingDependencies: Set<String> = emptySet(), val features: List<PluginFeatureView> = emptyList(),
+    val source: String = "BUNDLED", val author: com.starter.plugins.packages.PluginAuthor? = null, val blockedBySecurity: Boolean = false)
 data class PluginSettingsRequest(val enabled: Boolean, val allowedRoles: Set<String> = setOf("ADMIN", "USER"),
     val searchEnabled: Boolean = false, val tableAccess: Map<String, PluginTableAccess> = emptyMap())
 

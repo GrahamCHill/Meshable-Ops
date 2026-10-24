@@ -19,6 +19,7 @@ Files are grouped by feature and responsibility. Page components compose the scr
 | `frontend/src/api/http.ts` | Shared Axios transport, token injection, and expired-session handling. |
 | `frontend/src/api/{auth,users,items,settings,storageConnections,ai,dashboards,superset,events,search,system,audit}.ts` | Feature requests and their request/response contracts. Import the relevant module directly. |
 | `frontend/src/api/types.ts` | Types shared across API domains, such as pagination and storage provider names. |
+| `frontend/src/api/access.ts`, `components/layout/AccessBoundary.tsx`, `components/admin/AccessStoragePicker.tsx` | Effective permissions, route gating, and actual S3/Blob path selection. |
 | `frontend/src/components/pages/` | Route-level screen composition and navigation. |
 | `frontend/src/components/storage/` | Folder metadata form, document browser, and file listing. |
 | `frontend/src/components/admin/storage/` | Connection form/cards, folder selection and access controls, default settings, and search-index settings. |
@@ -40,6 +41,7 @@ Add feature-specific API calls and types beside their existing domain. Keep reus
 
 | Location | Responsibility |
 | --- | --- |
+| `backend/src/main/kotlin/com/starter/access/` | Role hierarchy/migration, feature catalogue, policy persistence, API gates, canonical storage ACLs, and search SQL predicates. |
 | `backend/src/main/kotlin/com/starter/controller/` | One controller per HTTP resource. Request mappings and security annotations live with the controller. |
 | `backend/src/main/kotlin/com/starter/dto/` | Request/response contracts grouped by domain. Generic message and pagination contracts are in `CommonDtos.kt`. |
 | `backend/src/main/kotlin/com/starter/model/postgres/` | One JPA entity per file. |
@@ -63,6 +65,8 @@ Check the relevant UI flow after implementation changes: connection draft persis
 For documentation-only changes, validate relative links, headings/fences, API paths, and configuration names against the checked-in sources. See the [documentation index](README.md) and [API reference](api.md).
 
 PDF delivery policy lives in `DocumentAccessService`/`DocumentDeliveryService`; bounded raster rendering and watermarking live in `PdfService`. The frontend separates `AdminDocumentAccessPage`, `PdfViewer`, and the document-access API/hook. Tests cover direct-route restrictions, policy/access changes during processing, ZIP transforms, multiple/rotated PDF pages, and unsupported input.
+
+Notification delivery and plugin method discovery live in `notification/`: method contracts/transports, typed catalogue, settings/preferences, HTML renderer, metadata-only delivery claims, shared publisher, and workflow after-commit hooks. `AdminNotificationsPage` composes separate rule, message, method, history, and sending components; `NotificationPreferencesPage` is owner-scoped. See [notifications](notifications.md) and [plugin messaging](plugins/notifications.md).
 
 Optional mail lives in `backend/src/main/kotlin/com/starter/email/`: configuration/validation, encrypted settings selection, a reusable optional delivery service, and SMTP/API adapters. `AdminEmailController` owns the admin endpoints. Frontend files are `api/email.ts`, `AdminEmailPage.tsx`, `admin/email/EmailTransportForm.tsx`, and `EmailSendPanel.tsx`. Email tests use loopback SMTP/HTTP fixtures and check STARTTLS refusal, provider payloads/redirects, credential redaction/binding, disabled behavior, and admin authorization. [Email setup](email-delivery.md) describes integration and operational limits.
 

@@ -19,6 +19,19 @@ class DocumentIndexServiceTest {
     private val jobs = mock(AdminSettingsService::class.java)
     private val endpoint = AiEndpoint(AiProvider.LOCAL, "", "local")
     private val service = DocumentIndexService(documents, storage, vectors, embeddings, settings, text, jobs)
+    init { `when`(documents.saveAndFlush(any(StorageDocument::class.java))).thenAnswer { it.arguments[0] } }
+
+    @Test fun `vectors use the persisted document identity returned by JPA merge`() {
+        val folder = Item(storagePrefix = "shared/")
+        val persisted = StorageDocument(item = folder, storagePath = "file.txt", fileName = "file.txt")
+        `when`(settings.current()).thenReturn(ActiveAiConfiguration(false, false, endpoint, endpoint))
+        `when`(embeddings.fingerprint(endpoint)).thenReturn("local-model")
+        `when`(documents.saveAndFlush(any(StorageDocument::class.java))).thenReturn(persisted)
+        `when`(embeddings.embed(anyList(), eq(endpoint) ?: endpoint)).thenReturn(listOf(List(384) { 0.1f }))
+        val result = service.sync(folder, listOf(StorageEntry("file.txt", "file.txt", "OBJECT", size = 4))).getValue("file.txt")
+        assertThat(result.id).isEqualTo(persisted.id)
+        verify(vectors).upsertDocument(eq(persisted.id) ?: persisted.id, anyList(), anyMap(), anyString(), eq("local-model") ?: "local-model")
+    }
 
     @Test fun `missing extraction service still indexes metadata without failing storage browsing`() {
         val folder = Item(storagePrefix = "shared/")

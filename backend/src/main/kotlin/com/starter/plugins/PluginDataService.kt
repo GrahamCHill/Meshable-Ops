@@ -11,7 +11,7 @@ class PluginDataService(private val registry: PluginRegistry, private val jdbc: 
     fun clear(id: String, request: PluginClearRequest): PluginClearResult {
         val tables = registry.definition(id).tables
         if (request.confirmation != id || tables.isEmpty()) throw BadRequestException("Type the plugin ID to clear its data")
-        // Names come exclusively from validated, compiled manifests. Never accept
+        // Names come exclusively from validated plugin manifests. Never accept
         // table names or CASCADE from HTTP. FK failures roll back the whole clear.
         tables.forEach { jdbc.execute("LOCK TABLE \"${it.name}\" IN SHARE ROW EXCLUSIVE MODE") }
         return PluginClearResult(tables.associate { it.name to jdbc.update("DELETE FROM \"${it.name}\"") })

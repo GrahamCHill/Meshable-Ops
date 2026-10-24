@@ -35,8 +35,8 @@ class GeneratedDocumentServiceTest {
     @BeforeEach fun setup() {
         `when`(access.actor(actor.email)).thenReturn(actor); `when`(access.document(actor, document.id)).thenReturn(document)
         `when`(policy.current()).thenReturn(DocumentAccessPolicy())
-        `when`(notifications.available(NotificationChannel.EMAIL)).thenReturn(true)
-        `when`(notifications.send(any<NotificationChannel>() ?: NotificationChannel.EMAIL, any<SendEmailRequest>() ?: SendEmailRequest("a@b.test", "Subject", "Text"), anyList())).thenAnswer {
+        `when`(notifications.availableFor("documents.email","email")).thenReturn(true)
+        `when`(notifications.sendEmail(anyString(), any<SendEmailRequest>() ?: SendEmailRequest("a@b.test", "Subject", "Text"), anyList())).thenAnswer {
             attachments = it.getArgument(2); EmailDeliveryResult("ACCEPTED", "Accepted")
         }
     }

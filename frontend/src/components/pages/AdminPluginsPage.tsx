@@ -7,6 +7,7 @@ import { PluginConfigurationForm } from '../admin/plugins/PluginConfigurationFor
 import { PluginDataControls } from '../admin/plugins/PluginDataControls'
 import { PluginConnections } from '../admin/plugins/PluginConnections'
 import { useState } from 'react'
+import { PluginInstaller } from '../admin/plugins/PluginInstaller'
 
 export function AdminPluginsPage() {
   const plugins = useQuery({ queryKey: ['admin-plugins'], queryFn: pluginsApi.installed })
@@ -22,13 +23,16 @@ export function AdminPluginsPage() {
     {params.has('plugin') && !selected && !plugins.isLoading && !plugins.isError && <p role="alert">This plugin is not installed. <Link to="/admin/plugins">Back to plugins</Link></p>}
     {selected ? <>
       <Link to="/admin/plugins">Back to plugins</Link>
+      {selected.blockedBySecurity && <p role="status">This uploaded extension is blocked by the global third-party extensions setting. A super admin can change this in Security.</p>}
+      {selected.source === 'ZIP' && <div><p className="field-help">Uploaded extension · Author: {selected.author?.name || 'Not provided'} · Organisation: {selected.author?.organization || 'Not provided'}</p><p className="field-help">Email: {selected.author?.email || 'Not provided'} · Website: {selected.author?.website || 'Not provided'}</p></div>}
       <nav className="workspace-tabs" aria-label="Plugin settings">{tabs.map(item => <button key={item.id} aria-current={tab === item.id ? 'page' : undefined} className={tab === item.id ? 'is-active' : ''} onClick={() => setParams({plugin:selected.manifest.id,tab:item.id})}>{item.label}</button>)}</nav>
       {tab === 'configuration' ? <PluginConfigurationForm key={selected.manifest.id} plugin={selected} /> : tab === 'connections' ? <PluginConnections plugin={selected} /> : tab === 'data' && selected.manifest.tables.length ? <PluginDataControls plugin={selected} /> : <PluginSetting key={selected.manifest.id} plugin={selected} />}
     </> : !params.has('plugin') && <>
       <p className="field-help">New plugins start disabled and excluded from search. Each plugin has its own settings menu. Disabling retains saved data and connection settings.</p>
+      <PluginInstaller />
       <label className="form-field">Find a plugin<input type="search" value={filter} onChange={event => setFilter(event.target.value)} /></label>
       <div className="admin-cards">{plugins.data?.filter(plugin => `${plugin.manifest.name} ${plugin.manifest.description}`.toLowerCase().includes(filter.toLowerCase())).map(plugin => <section key={plugin.manifest.id} className="page-stack">
-        <div><h2>{plugin.manifest.name}</h2><p className="field-help">{plugin.active ? 'Enabled' : plugin.enabled ? 'Waiting for support' : 'Disabled'} · Version {plugin.manifest.version}</p></div>
+        <div><h2>{plugin.manifest.name}</h2><p className="field-help">{plugin.blockedBySecurity ? 'Blocked by security' : plugin.active ? 'Enabled' : plugin.enabled ? 'Waiting for support' : 'Disabled'} · Version {plugin.manifest.version} · {plugin.source === 'ZIP' ? 'Uploaded ZIP' : 'Bundled'}</p></div>
         <p>{plugin.manifest.description}</p>
         <Link className="button button-secondary" aria-label={`Settings for ${plugin.manifest.name}`} to={`/admin/plugins?plugin=${encodeURIComponent(plugin.manifest.id)}`}>Settings</Link>
       </section>)}</div>

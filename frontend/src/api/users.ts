@@ -1,3 +1,4 @@
+import type { AccountRole } from './access'
 import api from './http'
 
 export interface AdminUser {
@@ -16,10 +17,11 @@ export interface AdminUser {
 export const adminUsersApi = {
   list: () =>
     api.get<AdminUser[]>('/admin/users').then(r => r.data),
-  create: (data: { email: string; username: string; name?: string; contactNumber?: string; password: string; role: 'ADMIN' | 'USER'; canUploadDocuments?: boolean }) =>
+  create: (data: { email: string; username: string; name?: string; contactNumber?: string; password: string; role: AccountRole; canUploadDocuments?: boolean }) =>
     api.post<AdminUser>('/admin/users', data).then(r => r.data),
   updateUploadPermission: (id: string, canUploadDocuments: boolean) =>
     api.patch<AdminUser>(`/admin/users/${id}/upload-permission`, { canUploadDocuments }).then(r => r.data),
+  updateRole: (id: string, role: AccountRole) => api.patch<AdminUser>(`/admin/users/${id}/role`, {role}).then(r => r.data),
   deactivate: (id: string) =>
     api.delete<AdminUser>(`/admin/users/${id}`).then(r => r.data),
 }

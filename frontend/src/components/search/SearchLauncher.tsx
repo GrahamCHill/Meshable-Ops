@@ -1,15 +1,17 @@
+import { useAccess } from '../../api/access'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { aiApi } from '../../api/ai'
 import { SearchPanel } from './SearchPanel'
 
 export function SearchLauncher() {
-  const status = useQuery({ queryKey: ['ai-search-status'], queryFn: aiApi.status, refetchInterval: 30000 })
+  const access = useAccess()
+  const status = useQuery({ queryKey: ['ai-search-status'], queryFn: aiApi.status, refetchInterval: 30000, enabled: access.can('search') })
   const [open, setOpen] = useState(false)
   const [opened, setOpened] = useState(false)
   const button = useRef<HTMLButtonElement>(null)
   const input = useRef<HTMLElement>(null)
-  const enabled = status.data?.enabled && status.data.indexContent && status.data.launcherEnabled
+  const enabled = access.can('search') && status.data?.enabled && status.data.indexContent && status.data.launcherEnabled
   const close = () => { setOpen(false); button.current?.focus() }
   useEffect(() => { if (!enabled) setOpen(false) }, [enabled])
   useEffect(() => { if (open) input.current?.querySelector('input')?.focus() }, [open])

@@ -450,3 +450,24 @@ Branding metadata/images are public GET endpoints so the business name, colours,
 `settings` contains `applicationName` (trimmed, 1–80 characters), nullable six-digit hex `sidebarBackgroundColor`, `sidebarTextColor`, and `linkColor`, `loginBackgroundMode` (`NONE`, `SINGLE`, `SLIDESHOW`), nullable `loginBackgroundSlot`, `slideshowSeconds` (5–60), and `revision`. Missing preferences use WeaveOps/theme defaults without seeding a row. Background modes need an uploaded image; a selected single-image slot must exist. Stale preference updates return 409. API slots are 0–4, displayed as images 1–5 in the UI. Background inputs are PNG/JPEG/WebP up to 5 MiB and 4096 × 4096 pixels, re-encoded as JPEG at a longest side of 1920 pixels.
 
 A missing favicon falls back to the custom logo; a missing logo falls back to the bundled placeholder. No external image URLs or arbitrary CSS values are accepted. The frontend refreshes branding after saves and applies the name/title, sidebar/text/link colours, and image preferences. See [branding behavior and persistence](branding.md).
+
+## Notifications
+
+| Endpoint | Contract |
+| --- | --- |
+| `GET /api/admin/notifications` | Admin: `{ revision, methods, notifications }` including method descriptors/availability and type definitions/rules |
+| `PUT /api/admin/notifications` | Admin: `{ revision, methods: { methodId: boolean }, rules: { notificationId: rule } }`; revision starts at -1 for absent settings, stale writes 409 |
+| `POST /api/admin/notifications/preview` | Admin: `{ notificationId, methodId, template }`; synthetic values only, returns subject/text/sanitized HTML/parameters, sends nothing |
+| `POST /api/admin/notifications/send` | Admin: `{ methodId, recipient, subject, message, userId? }`; General messages rule; optional internal `userId` applies member preferences; returns per-method acceptance statuses |
+| `GET /api/admin/notifications/deliveries` | Admin: latest 200 metadata-only delivery records with masked recipient hints; 90-day retention |
+| `GET /api/account/notifications` | Active member: own optional notification choices, inherited defaults, method availability |
+| `PUT /api/account/notifications` | Active member: `{ revision, choices: { notificationId: [methodId] } }`; absent entry restores defaults; empty list opts out; cannot expand admin-allowed methods |
+| `GET /api/notifications/availability` | Active member: `{ documentsEmail, workflowEmail, sharesEmail }` for corresponding UI controls |
+
+A rule contains `enabled`, `allowedMethods`, `defaultMethods`, `allowMemberChoice`, and `templates` keyed by method ID. A template contains `subject` (200), `text` (20,000), `html` (100,000), ordered `parameters` (20 entries, 1,000 characters each), and optional `providerTemplate` (200). Placeholder names must be declared by the type. Security message bodies must contain `{{code}}`; shared methods cannot receive codes. Security/explicit PDF routes do not support member opt-outs. Email-only MFA interlocks reject disabling its method/OTP route with 400. No public OTP-delivery endpoint accepts user-supplied verification flags.
+
+Method descriptors include plugin ID, recipient kind (`EMAIL`, `PHONE`, `FIXED`), HTML/OTP/attachment support, parameter mode, and text length limit. Plugin methods require the owning module's `NOTIFICATIONS` extension and enabled/configured state. Method and type switches apply to direct and automatic sends. Delivery attempts are claimed before external I/O and never automatically retried. Codes, bodies, credentials and provider responses are omitted from history. HTML previews are sanitized and sandboxed. See [behavior and limits](notifications.md) and [plugin delivery API](plugins/notifications.md).
+
+## Role, view, and directory policies
+
+See [Access controls](access-controls.md#persistence-and-apis) for policy JSON and endpoints. `GET /api/access/me` supplies effective features; super admins manage policies at `/api/admin/access-controls` and assign roles with `PATCH /api/admin/users/{id}/role`. Role changes invalidate sessions. Existing admin endpoints also accept `SUPER_ADMIN`; delegated admin access must satisfy the feature policy. Storage permissions apply to all object reads, archives, previews, and search.

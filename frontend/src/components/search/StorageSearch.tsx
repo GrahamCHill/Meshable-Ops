@@ -1,3 +1,4 @@
+import { useAccess } from '../../api/access'
 import { useId, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { aiApi } from '../../api/ai'
@@ -9,9 +10,10 @@ import { SearchResult } from './SearchResult'
 export function StorageSearch({ folderId, path = '', onOpenPdf }: { folderId?: string; path?: string; onOpenPdf?: (path: string) => void }) {
   const id = useId()
   const [query, setQuery] = useState('')
-  const status = useQuery({ queryKey: ['ai-search-status'], queryFn: aiApi.status, refetchInterval: 30000 })
+  const access = useAccess()
+  const status = useQuery({ queryKey: ['ai-search-status'], queryFn: aiApi.status, refetchInterval: 30000, enabled: access.can('search') })
   const search = useMutation({ mutationFn: (text: string) => searchApi.search(text, 10, folderId, path) })
-  if (!status.data?.searchEnabled) return null
+  if (!access.can('search') || !status.data?.searchEnabled) return null
   return <section className="page-stack storage-search" aria-label="Search storage">
     <form onSubmit={event => { event.preventDefault(); if (query.trim()) search.mutate(query.trim()) }}>
       <label htmlFor={id}>{folderId ? 'Search this folder and subfolders' : 'Search all shared storage'}</label>

@@ -18,7 +18,7 @@ class PersonalCalendarSettingsService(private val connections: PersonalCalendarR
         val actor = actor(email)
         val active = registry.available(actor.role).filter { "calendar.personal-sync" in it.manifest.capabilities }.map { it.manifest.id }
         val calendar = registry.available(actor.role).first { it.manifest.id == "calendar" }
-        val canWrite = calendar.manifest.tables.all { actor.role in calendar.tableAccess.getValue(it.name).writeRoles }
+        val canWrite = calendar.manifest.tables.all { com.starter.access.Roles.plugin(actor.role) in calendar.tableAccess.getValue(it.name).writeRoles }
         return PersonalCalendarSettings(connections.findByOwnerId(actor.id)?.let(::view),PersonalCalendarSchemas.all.filter { it.id in active },canWrite)
     }
     @Transactional

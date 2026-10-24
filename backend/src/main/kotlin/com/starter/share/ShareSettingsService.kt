@@ -12,7 +12,7 @@ class ShareSettingsService(private val repository: FileShareSettingsRepository, 
     @Value("\${app.public-base-url:}") private val defaultBaseUrl: String) {
     fun settings(): ShareSettingsView {
         val saved = repository.findById(1).orElseGet { FileShareSettings() }
-        return ShareSettingsView(saved.enabled, saved.publicBaseUrl.ifBlank { defaultBaseUrl }.trimEnd('/'), saved.maxLifetimeHours, notifications.available(NotificationChannel.EMAIL))
+        return ShareSettingsView(saved.enabled, saved.publicBaseUrl.ifBlank { defaultBaseUrl }.trimEnd('/'), saved.maxLifetimeHours, notifications.availableFor("shares.email","email"))
     }
     fun save(request: ShareSettingsRequest): ShareSettingsView {
         val url = request.publicBaseUrl.trim().trimEnd('/')

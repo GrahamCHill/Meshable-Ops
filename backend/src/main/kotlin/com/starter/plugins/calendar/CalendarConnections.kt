@@ -32,7 +32,7 @@ class CalendarConnections(providers: List<CalendarProvider>, private val actors:
     }
     private fun check(email: String, id: String): com.starter.model.postgres.User {
         val actor = actors.current(email)
-        if (actor.role != "ADMIN") throw ForbiddenException("Shared calendar connections are administrator-only. Use your personal connection.")
+        if (!com.starter.access.Roles.admin(actor.role)) throw ForbiddenException("Shared calendar connections are administrator-only. Use your personal connection.")
         registry.requireTable("calendar", "plugin_calendar_events", actor.role)
         registry.requireCapability("calendar", "calendar.provider", id, actor.role)
         return actor

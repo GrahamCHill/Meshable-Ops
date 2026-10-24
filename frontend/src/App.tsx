@@ -1,16 +1,19 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useMemo } from 'react'
+import { AccessBoundary } from './components/layout/AccessBoundary'
+import { isAdminRole } from './api/access'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppLayout } from './components/layout/AppLayout'
 import { BrandingHead } from './components/layout/Branding'
 import { AdminBrandingPage } from './components/pages/AdminBrandingPage'
 import { AdminPluginsPage } from './components/pages/AdminPluginsPage'
+import { AdminSecurityPage } from './components/pages/AdminSecurityPage'
+import { AdminSectionPage } from './components/pages/AdminSectionPage'
 import { AdminPage } from './components/pages/AdminPage'
 import { DashboardPage } from './components/pages/DashboardPage'
 import { DashboardsPage } from './components/pages/DashboardsPage'
 import { SupersetAdminPage } from './components/pages/SupersetAdminPage'
 import { AdminDashboardLinksPage } from './components/pages/AdminDashboardLinksPage'
-import { AdminUsersPage } from './components/pages/AdminUsersPage'
 import { AdminAiPage } from './components/pages/AdminAiPage'
 import { AdminDocumentAccessPage } from './components/pages/AdminDocumentAccessPage'
 import { AdminEmailPage } from './components/pages/AdminEmailPage'
@@ -29,14 +32,18 @@ import { useAuthStore } from './hooks/useAuthStore'
 import { ThemeProvider } from './hooks/useTheme'
 import './styles/global.css'
 
+const AdminUsersPage = lazy(() => import('./components/pages/AdminUsersPage').then(module => ({default: module.AdminUsersPage})))
+const AdminAccessPage = lazy(() => import('./components/pages/AdminAccessPage'))
 const AdminTemplatesPage = lazy(() => import('./components/pages/AdminTemplatesPage'))
 const DocumentsPage = lazy(() => import('./components/pages/DocumentsPage'))
 const AdminWorkflowsPage = lazy(() => import('./components/pages/AdminWorkflowsPage'))
 const WorkflowsPage = lazy(() => import('./components/pages/WorkflowsPage'))
 const PluginPage = lazy(() => import('./plugins/PluginPage'))
+const AdminNotificationsPage = lazy(() => import('./components/pages/AdminNotificationsPage'))
+const NotificationPreferencesPage = lazy(() => import('./components/pages/NotificationPreferencesPage'))
 const loading = (children: React.ReactNode) => <Suspense fallback={<p role="status">Loading workspace…</p>}>{children}</Suspense>
 
-const qc = new QueryClient({
+const makeQueryClient = () => new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 })
 
@@ -47,10 +54,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore()
-  return user?.role === 'ADMIN' ? <>{children}</> : <Navigate to="/" replace />
+  return isAdminRole(user?.role) ? <>{children}</> : <Navigate to="/" replace />
 }
 
 function App() {
+  const token = useAuthStore(state => state.token)
+  const qc = useMemo(makeQueryClient, [token])
   return (
     <ThemeProvider>
       <QueryClientProvider client={qc}>
@@ -62,7 +71,7 @@ function App() {
             <Route path="/shared/:token" element={<SharedFilePage />} />
             <Route path="/*" element={
               <ProtectedRoute>
-                <AppLayout>
+                <AccessBoundary><AppLayout>
                   <Routes>
                     <Route path="/" element={<DashboardPage />} />
                     <Route path="/dashboards" element={<DashboardsPage />} />
@@ -71,13 +80,18 @@ function App() {
                         <AdminPage />
                       </AdminRoute>
                     } />
-                    <Route path="/admin/users" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
+                    <Route path="/admin/access-controls" element={<AdminRoute>{loading(<AdminAccessPage />)}</AdminRoute>} />
+                    <Route path="/admin/security" element={<AdminRoute><AdminSecurityPage /></AdminRoute>} />
+                    <Route path="/admin/sections/:sectionId" element={<AdminRoute><AdminSectionPage /></AdminRoute>} />
+                    <Route path="/admin/users" element={<AdminRoute>{loading(<AdminUsersPage />)}</AdminRoute>} />
                     <Route path="/admin/branding" element={<AdminRoute><AdminBrandingPage /></AdminRoute>} />
                     <Route path="/admin/plugins" element={<AdminRoute><AdminPluginsPage /></AdminRoute>} />
                     <Route path="/plugins/:pluginId/*" element={loading(<PluginPage />)} />
                     <Route path="/admin/ai" element={<AdminRoute><AdminAiPage /></AdminRoute>} />
                     <Route path="/admin/documents" element={<AdminRoute><AdminDocumentAccessPage /></AdminRoute>} />
                     <Route path="/admin/email" element={<AdminRoute><AdminEmailPage /></AdminRoute>} />
+                    <Route path="/admin/notifications" element={<AdminRoute>{loading(<AdminNotificationsPage />)}</AdminRoute>} />
+                    <Route path="/account/notifications" element={loading(<NotificationPreferencesPage />)} />
                     <Route path="/account/security" element={<AccountSecurityPage />} />
                     <Route path="/admin/shares" element={<AdminRoute><AdminSharesPage /></AdminRoute>} />
                     <Route path="/admin/webhooks" element={<AdminRoute><AdminWebhooksPage /></AdminRoute>} />
@@ -103,7 +117,7 @@ function App() {
                     <Route path="/search" element={<SearchPage />} />
                     <Route path="/events" element={<EventsPage />} />
                   </Routes>
-                </AppLayout>
+                </AppLayout></AccessBoundary>
               </ProtectedRoute>
             } />
           </Routes>

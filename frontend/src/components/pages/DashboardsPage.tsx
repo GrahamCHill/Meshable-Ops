@@ -1,8 +1,8 @@
+import { useAccess } from '../../api/access'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { dashboardEmbedsApi } from '../../api/dashboards'
-import { useAuthStore } from '../../hooks/useAuthStore'
 import { Button, Card, Spinner } from '../ui'
 import { DashboardEmbed } from '../ui/DashboardEmbed'
 
@@ -10,7 +10,7 @@ export function DashboardsPage() {
   const [params, setParams] = useSearchParams()
   const [revision, setRevision] = useState(0)
   const [focused, setFocused] = useState(false)
-  const admin = useAuthStore(state => state.user?.role === 'ADMIN')
+  const admin = useAccess().can('admin.dashboards')
   const embedsQuery = useQuery({ queryKey: ['dashboard-embeds'], queryFn: dashboardEmbedsApi.list })
   const dashboards = [...(embedsQuery.data ?? [])].sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label))
   const selectedId = params.get('dashboard')

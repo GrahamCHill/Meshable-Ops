@@ -1,0 +1,23 @@
+import { useState } from 'react'
+import { notificationsApi, type DeliveryMethod, type MessageTemplate, type NotificationDefinition, type NotificationPreview } from '../../../api/notifications'
+import { getErrorMessage } from '../adminUtils'
+import { Button } from '../../ui'
+
+export function NotificationMessageEditor({ definition, method, value, disabled, onChange }: { definition: NotificationDefinition; method: DeliveryMethod; value: MessageTemplate; disabled: boolean; onChange: (value: MessageTemplate) => void }) {
+  const [preview, setPreview] = useState<NotificationPreview>(); const [busy, setBusy] = useState(false); const [error, setError] = useState('')
+  const change = (patch: Partial<MessageTemplate>) => { setPreview(undefined); setError(''); onChange({ ...value, ...patch }) }
+  const loadHtml = async (file?: File) => { if (!file) return; try { if (file.size > 100000) throw new Error('HTML templates must be 100 KB or smaller.'); change({ html: await file.text() }) } catch (failure) { setError(getErrorMessage(failure, 'Unable to load this HTML template.')) } }
+  const showPreview = async () => { setError(''); setBusy(true); try { setPreview(await notificationsApi.preview(definition.id, method.id, value)) } catch (failure) { setError(getErrorMessage(failure, 'Unable to preview this message.')) } finally { setBusy(false) } }
+  return <section className="page-stack" aria-label={`${method.label} message`}>
+    <h3>{method.label} message</h3>
+    <p className="field-help">Available variables: {definition.variables.map(key => `{{${key}}}`).join(', ')}. Values are inserted as text.</p>
+    <fieldset disabled={disabled || busy} className="page-stack">
+      {method.recipientKind === 'EMAIL' && <div className="form-field"><label htmlFor="notification-subject">Subject</label><input id="notification-subject" maxLength={200} value={value.subject} onChange={e => change({ subject: e.target.value })} /></div>}
+      {method.parameterized ? <><div className="form-field"><label htmlFor="notification-provider-template">Approved provider template (optional override)</label><input id="notification-provider-template" maxLength={200} value={value.providerTemplate} onChange={e => change({ providerTemplate: e.target.value })} /><small>Leave blank to use the template configured in the plugin.</small></div><div className="form-field"><label htmlFor="notification-parameters">Template parameters (one per line)</label><textarea id="notification-parameters" rows={5} value={value.parameters.join('\n')} onChange={e => change({ parameters: e.target.value.split('\n') })} /><small>The provider controls the approved wording. These values fill its body parameters.</small></div></> : <div className="form-field"><label htmlFor="notification-text">Plain text message</label><textarea id="notification-text" rows={6} maxLength={20000} value={value.text} onChange={e => change({ text: e.target.value })} /><small>Rendered messages must fit this method's {method.maxTextLength.toLocaleString()} character limit.</small></div>}
+      {method.supportsHtml && <><div className="form-field"><label htmlFor="notification-html-file">Load HTML email template</label><input id="notification-html-file" type="file" accept="text/html,.html,.htm" onChange={e => { void loadHtml(e.target.files?.[0]); e.target.value = '' }} /></div><div className="form-field"><label htmlFor="notification-html">HTML message (optional)</label><textarea id="notification-html" rows={8} maxLength={100000} value={value.html} onChange={e => change({ html: e.target.value })} /><small>Plain text is sent alongside HTML. Tables and safe inline formatting are supported. Scripts, images, forms, and external styles are removed. Put variables in text, not attributes.</small></div></>}
+      <div><Button variant="secondary" disabled={disabled || busy} onClick={() => void showPreview()}>{busy ? 'Building preview…' : 'Preview with sample values'}</Button></div>
+    </fieldset>
+    {error && <p role="alert">{error}</p>}
+    {preview && <div className="page-stack" role="region" aria-label="Message preview"><h4>Preview — no message sent</h4>{method.recipientKind === 'EMAIL' && <p><strong>Subject:</strong> {preview.subject}</p>}{method.parameterized ? <ol>{preview.parameters.map((value, index) => <li key={index}>{value}</li>)}</ol> : <p style={{ whiteSpace: 'pre-wrap' }}>{preview.text}</p>}{preview.html && <iframe title="HTML email preview" sandbox="" referrerPolicy="no-referrer" className="notification-html-preview" srcDoc={`<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"></head><body>${preview.html}</body></html>`} />}</div>}
+  </section>
+}

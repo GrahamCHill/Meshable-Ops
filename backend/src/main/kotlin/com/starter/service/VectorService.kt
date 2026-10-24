@@ -20,6 +20,7 @@ class VectorService(
     private val jdbcTemplate: JdbcTemplate,
     private val objectMapper: ObjectMapper,
     private val embeddings: EmbeddingService,
+    private val access: com.starter.access.AccessControlService? = null,
 ) {
 
     fun upsert(pointId: UUID, vector: List<Float>, payload: Map<String, String>, model: String = embeddings.fingerprint()) {
@@ -135,7 +136,8 @@ class VectorService(
                           AND left(d.storage_path, length(s.path_prefix)) = s.path_prefix
                     )
                     SELECT id, score, payload::text AS payload
-                    FROM points
+                    FROM points CROSS JOIN (SELECT CAST(? AS jsonb) AS rules) acl
+                    WHERE ${com.starter.access.AccessSql.predicate}
                     """.trimIndent()
                 )
                 parameters += queryVector.toPgVector()
@@ -143,8 +145,9 @@ class VectorService(
                 parameters += scope.folderId
                 parameters += scope.pathPrefix
                 parameters += embeddings.contentEnabled()
+                parameters += access?.sqlSnapshot() ?: com.starter.access.AccessSql.unrestricted
                 if (filterField != null && filterValue != null) {
-                    append(" WHERE payload ->> ? = ?")
+                    append(" AND payload ->> ? = ?")
                     parameters += filterField
                     parameters += filterValue
                 }
@@ -194,7 +197,11 @@ class VectorService(
             WHERE i.accessible = TRUE AND (sc.id IS NULL OR sc.enabled = TRUE)
             AND dc.embedding_model = ? AND dc.id IN ($placeholders)""", Long::class.java,
             embeddings.fingerprint(), *ids.map(UUID::fromString).toTypedArray()) ?: 0
-        return count == ids.distinct().size.toLong()
+        if (count != ids.distinct().size.toLong()) return false
+        val acl = access?.storage() ?: return true
+        return jdbcTemplate.query("""SELECT i.id, d.storage_path FROM document_chunks dc
+            JOIN storage_documents d ON d.id = dc.document_id JOIN items i ON i.id = d.item_id WHERE dc.id IN ($placeholders)""",
+            { rs, _ -> acl.allows(rs.getObject("id", UUID::class.java), rs.getString("storage_path")) }, *ids.map(UUID::fromString).toTypedArray()).all { it }
     }
 
     private fun List<Float>.toPgVector() = joinToString(",", "[", "]")

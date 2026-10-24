@@ -31,7 +31,7 @@ data class User(
     var password: String = "",
 
     @Column(nullable = false)
-    val role: String = "USER",
+    var role: String = "USER",
 
     @Column(name = "can_upload_documents", nullable = false)
     var canUploadDocuments: Boolean = false,

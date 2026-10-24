@@ -14,13 +14,15 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/api/admin/email")
 @PreAuthorize("hasRole('ADMIN')")
-class AdminEmailController(private val settings: EmailSettingsService, private val delivery: EmailDeliveryService) {
+class AdminEmailController(private val settings: EmailSettingsService, private val delivery: EmailDeliveryService,private val notifications: com.starter.notification.NotificationService) {
     @GetMapping fun settings() = settings.settings()
     @PutMapping fun save(@Valid @RequestBody request: EmailSettingsRequest, @AuthenticationPrincipal user: UserDetails) = settings.save(request, user.username)
-    @PostMapping("/test") fun test(@Valid @RequestBody request: EmailTestRequest) = send(
-        SendEmailRequest(request.recipient, "Email delivery test", "This is a test message from your application's email settings. No storage documents or credentials are included."))
+    @PostMapping("/test") fun test(@Valid @RequestBody request: EmailTestRequest) = checked(delivery.send(
+        SendEmailRequest(request.recipient, "Email delivery test", "This is a test message from your application's email settings. No storage documents or credentials are included.")))
     @PostMapping("/send") fun send(@Valid @RequestBody request: SendEmailRequest): EmailDeliveryResult {
-        val result = delivery.send(request)
+        return checked(notifications.sendEmail("general.message",request))
+    }
+    private fun checked(result: EmailDeliveryResult): EmailDeliveryResult {
         if (result.status == "DISABLED") throw ForbiddenException(result.message)
         if (result.status != "ACCEPTED") throw EmailDeliveryException(result.message)
         return result

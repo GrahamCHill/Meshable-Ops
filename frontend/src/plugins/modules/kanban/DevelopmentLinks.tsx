@@ -1,3 +1,4 @@
+import { pluginRole } from '../../../api/access'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAvailablePlugins } from '../../../api/plugins'
@@ -12,7 +13,7 @@ interface Pull {number: number; title: string}
 const api = createPluginApi('kanban')
 export function DevelopmentLinks({boardId,cards,locked}: {boardId: string; cards: BoardCard[]; locked: boolean}) {
   const plugins = useAvailablePlugins()
-  const role = useAuthStore(state => state.user?.role) ?? ''
+  const role = useAuthStore(state => pluginRole(state.user?.role ?? '')) ?? ''
   const policy = plugins.data?.find(plugin => plugin.manifest.id === 'kanban')?.tableAccess.plugin_kanban_development_links
   const providers = plugins.data?.filter(plugin => ['github','gitlab','gitea'].includes(plugin.manifest.id)) ?? []
   if (!policy?.readRoles.includes(role)) return null

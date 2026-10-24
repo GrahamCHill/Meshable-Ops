@@ -55,14 +55,16 @@ class MfaServiceTest {
         assertThat(credential.emailEnabled).isFalse(); verify(notifications, never()).send(any<NotificationChannel>() ?: NotificationChannel.EMAIL, any<com.starter.dto.SendEmailRequest>() ?: com.starter.dto.SendEmailRequest("a@b.test", "subject", "text"), anyList())
     }
     @Test fun `email MFA requires the code actually sent to stored account email and never persists plaintext codes`() {
-        `when`(notifications.available(NotificationChannel.EMAIL)).thenReturn(true)
-        `when`(notifications.send(any<NotificationChannel>() ?: NotificationChannel.EMAIL, any<com.starter.dto.SendEmailRequest>() ?: com.starter.dto.SendEmailRequest("a@b.test", "subject", "text"), anyList())).thenReturn(EmailDeliveryResult("ACCEPTED", "Accepted"))
+        `when`(notifications.availableOtp("email")).thenReturn(true)
+        `when`(notifications.sendOtp(anyString(),any<com.starter.notification.NotificationTarget>() ?: com.starter.notification.NotificationTarget(),anyString(),anyInt())).thenReturn(EmailDeliveryResult("ACCEPTED", "Accepted"))
         val enrollment = service.begin(user.email, ChallengePurpose.SETUP_EMAIL, MfaSetupRequest("sample-admin-password"))
         assertThat(credential.emailEnabled).isFalse()
-        val message = ArgumentCaptor.forClass(com.starter.dto.SendEmailRequest::class.java)
-        verify(notifications).send(eq(NotificationChannel.EMAIL) ?: NotificationChannel.EMAIL, message.capture() ?: com.starter.dto.SendEmailRequest("a@b.test", "subject", "text"), eq(emptyList<com.starter.email.EmailAttachment>()) ?: emptyList())
-        assertThat(message.value.recipient).isEqualTo(user.email)
-        val code = Regex("code is ([0-9]{6})").find(message.value.text)!!.groupValues[1]
+        val target = ArgumentCaptor.forClass(com.starter.notification.NotificationTarget::class.java)
+        val sentCode = ArgumentCaptor.forClass(String::class.java)
+        verify(notifications).sendOtp(eq("email") ?: "email",target.capture() ?: com.starter.notification.NotificationTarget(),sentCode.capture() ?: "",eq(5))
+        assertThat(target.value.email).isEqualTo(user.email)
+        assertThat(target.value.verifiedMethods).containsExactly("email")
+        val code = sentCode.value
         val challenge = saved.values.single()
         assertThat(challenge.emailCodeHash).isNotEqualTo(code)
         val wrong = if (code == "000000") "111111" else "000000"

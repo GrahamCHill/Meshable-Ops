@@ -14,29 +14,31 @@ import java.util.UUID
 @Service
 class WorkflowRunService(private val definitions: WorkflowRepository,private val runs: WorkflowRunRepository,private val guard: WorkflowRunAccess,
     private val access: DocumentAccess,private val documents: GeneratedDocumentRepository,private val runtime: WorkflowRuntime,
-    private val validation: WorkflowValidation,private val mapper: ObjectMapper,private val rates: RateLimits) {
+    private val validation: WorkflowValidation,private val mapper: ObjectMapper,private val rates: RateLimits,private val alerts: com.starter.notification.WorkflowNotificationHooks, private val controls: com.starter.access.AccessControlService? = null) {
     fun available(email: String): List<RunnableWorkflow> {
         val actor=guard.actor(email)
-        return definitions.runnable(actor.role=="ADMIN",PageRequest.of(0,100)).map { RunnableWorkflow(it.id,it.name,it.revision,it.published,mapper.readValue(it.graphJson,WorkflowGraph::class.java).nodes.size) }
+        return definitions.runnable((com.starter.access.Roles.admin(actor.role) && controls?.allows("admin.workflows") != false),PageRequest.of(0,100)).map { RunnableWorkflow(it.id,it.name,it.revision,it.published,mapper.readValue(it.graphJson,WorkflowGraph::class.java).nodes.size) }
     }
     fun list(email: String) = runs.owned(guard.actor(email).id,PageRequest.of(0,100))
     @Transactional
     fun start(email: String,id: UUID): WorkflowRunView {
         val actor=guard.actor(email);rates.check("workflow-start",actor.id.toString(),20,3600)
-        val source=definitions.findById(id).orElse(null)?.takeIf { it.state==WorkflowState.READY && (it.published || actor.role=="ADMIN") } ?: throw NotFoundException("Published workflow unavailable")
+        val source=definitions.findById(id).orElse(null)?.takeIf { it.state==WorkflowState.READY && (it.published || (com.starter.access.Roles.admin(actor.role) && controls?.allows("admin.workflows") != false)) } ?: throw NotFoundException("Published workflow unavailable")
         val graph=mapper.readValue(source.graphJson,WorkflowGraph::class.java)
         val ids: List<UUID> = mapper.readValue(source.documentIdsJson,object:TypeReference<List<UUID>>() {})
         validation.check(graph,ids,true)
         val row=WorkflowRun(ownerId=actor.id,workflowId=source.id,name=source.name,workflowRevision=source.revision,graphJson=source.graphJson,currentNodeId=graph.nodes.single {it.kind==BlockKind.START}.id)
         guard.active(guard.actor(email),row)
-        return view(email,runs.saveAndFlush(row))
+        val saved=runs.saveAndFlush(row);alerts.started(saved)
+        return view(email,saved)
     }
     fun get(email: String,id: UUID) = view(email,guard.owned(guard.actor(email),id))
     @Transactional
     fun advance(email: String,id: UUID,request: WorkflowAdvanceRequest): WorkflowRunView {
         val actor=guard.actor(email);val row=guard.owned(actor,id,true);guard.active(actor,row)
         runtime.advance(row,request)
-        return view(email,runs.saveAndFlush(row))
+        val saved=runs.saveAndFlush(row);alerts.advanced(saved)
+        return view(email,saved)
     }
     @Transactional
     fun useDocument(email: String,id: UUID,request: WorkflowDocumentRequest): WorkflowRunView {
@@ -53,7 +55,8 @@ class WorkflowRunService(private val definitions: WorkflowRepository,private val
         val row=guard.owned(guard.actor(email),id,true);runtime.matches(row,revision)
         if (runtime.emailBusy(row)) throw ConflictException("Wait for email delivery to finish before cancelling")
         row.status=WorkflowRunStatus.CANCELLED;row.currentNodeId=null;row.updatedAt=Instant.now()
-        return view(email,runs.saveAndFlush(row))
+        val saved=runs.saveAndFlush(row);alerts.cancelled(saved)
+        return view(email,saved)
     }
     fun view(email: String,row: WorkflowRun): WorkflowRunView {
         val actor=guard.actor(email)

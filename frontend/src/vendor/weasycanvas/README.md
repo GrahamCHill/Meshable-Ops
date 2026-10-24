@@ -16,3 +16,7 @@ To update, copy a matching editor/designer/Python source revision together, revi
 adaptations, and run frontend, renderer, document access, and workflow validation tests.
 The source project is not changed by this integration. Imported templates retain their
 WeasyCanvas schema version; application revision numbers are stored separately.
+
+## Licensing of this snapshot
+
+The project owner has included this WeasyCanvas source snapshot under the same AGPL-3.0-only / separately agreed commercial licensing choice as WeaveOps. See the repository [licensing guide](../../../../LICENSING.md). Dependencies retain their upstream terms. This notice applies to the imported copy and does not change the separate source project.

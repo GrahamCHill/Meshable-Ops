@@ -14,11 +14,11 @@ class DocumentAccess(private val users: UserRepository, private val documents: G
     @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
     fun actor(email: String): User = users.findByEmail(email).orElse(null)?.takeIf { it.active } ?: throw ForbiddenException("Active account required")
     @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
-    fun admin(email: String) = actor(email).also { if (it.role != "ADMIN") throw ForbiddenException("Administrator access required") }
+    fun admin(email: String) = actor(email).also { if (!com.starter.access.Roles.admin(it.role)) throw ForbiddenException("Administrator access required") }
     @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
     fun document(actor: User, id: UUID): GeneratedDocument = documents.findById(id).orElse(null)
-        ?.takeIf { actor.role == "ADMIN" || it.ownerId == actor.id } ?: throw NotFoundException("Document unavailable")
+        ?.takeIf { com.starter.access.Roles.admin(actor.role) || it.ownerId == actor.id } ?: throw NotFoundException("Document unavailable")
     fun references(actor: User, ids: List<UUID>) {
-        if (ids.isNotEmpty() && documents.visibleCount(ids, actor.id, actor.role == "ADMIN") != ids.distinct().size.toLong()) throw NotFoundException("A workflow document is unavailable")
+        if (ids.isNotEmpty() && documents.visibleCount(ids, actor.id, com.starter.access.Roles.admin(actor.role)) != ids.distinct().size.toLong()) throw NotFoundException("A workflow document is unavailable")
     }
 }

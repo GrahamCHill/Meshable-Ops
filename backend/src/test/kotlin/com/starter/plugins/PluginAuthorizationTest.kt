@@ -20,10 +20,10 @@ class PluginAuthorizationTest {
         @Bean open fun dataController(data: PluginDataService) = AdminPluginDataController(data)
         @Bean open fun configuration() = mock(PluginConfigurationService::class.java)
         @Bean open fun configurationController(configuration: PluginConfigurationService) = PluginConfigurationController(configuration)
-        @Bean open fun messaging() = mock(com.starter.plugins.integrations.PluginMessagingService::class.java)
+        @Bean open fun messaging() = mock(com.starter.notification.NotificationService::class.java)
         @Bean open fun drives() = mock(com.starter.plugins.integrations.MicrosoftDriveService::class.java)
         @Bean open fun rates() = mock(com.starter.security.RateLimits::class.java)
-        @Bean open fun integrationController(messaging: com.starter.plugins.integrations.PluginMessagingService, drives: com.starter.plugins.integrations.MicrosoftDriveService, rates: com.starter.security.RateLimits) = com.starter.plugins.integrations.IntegrationController(messaging, drives, rates)
+        @Bean open fun integrationController(messaging: com.starter.notification.NotificationService, drives: com.starter.plugins.integrations.MicrosoftDriveService, rates: com.starter.security.RateLimits) = com.starter.plugins.integrations.IntegrationController(messaging, drives, rates)
     }
     @AfterEach fun clear() = SecurityContextHolder.clearContext()
     @Test fun `ordinary accounts cannot list installed plugins or change their settings`() {
@@ -41,7 +41,7 @@ class PluginAuthorizationTest {
             val principal = org.springframework.security.core.userdetails.User.withUsername("user@example.test").password("unused").roles("USER").build()
             assertThatThrownBy { integrations.send("telegram", com.starter.notification.ChannelMessage("test"), principal) }.isInstanceOf(AccessDeniedException::class.java)
             assertThatThrownBy { integrations.files("sharepoint", principal) }.isInstanceOf(AccessDeniedException::class.java)
-            verifyNoInteractions(context.getBean(PluginConfigurationService::class.java), context.getBean(com.starter.plugins.integrations.PluginMessagingService::class.java), context.getBean(com.starter.plugins.integrations.MicrosoftDriveService::class.java))
+            verifyNoInteractions(context.getBean(PluginConfigurationService::class.java), context.getBean(com.starter.notification.NotificationService::class.java), context.getBean(com.starter.plugins.integrations.MicrosoftDriveService::class.java))
             verifyNoInteractions(context.getBean(PluginRegistry::class.java))
         }
     }

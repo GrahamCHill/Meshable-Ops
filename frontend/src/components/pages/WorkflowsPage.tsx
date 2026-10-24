@@ -1,3 +1,4 @@
+import { useAccess } from '../../api/access'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -8,6 +9,7 @@ import { getErrorMessage } from '../admin/adminUtils'
 import { Button, Spinner } from '../ui'
 
 export default function WorkflowsPage() {
+  const access = useAccess()
   const user = useAuthStore(state => state.user)
   const client = useQueryClient(); const [params, setParams] = useSearchParams()
   const [busy, setBusy] = useState(false); const [error, setError] = useState('')
@@ -24,7 +26,7 @@ export default function WorkflowsPage() {
     finally { setBusy(false) }
   }
   return <div className="page-stack" style={{ maxWidth: 1000 }}>
-    <div className="page-heading"><div><h1>Workflows</h1><p>Follow a process one step at a time. Your progress is saved to your account.</p></div>{user?.role === 'ADMIN' && <Link className="button button-secondary button-sm" to="/admin/workflows">Workflow builder</Link>}</div>
+    <div className="page-heading"><div><h1>Workflows</h1><p>Follow a process one step at a time. Your progress is saved to your account.</p></div>{access.can('admin.workflows') && <Link className="button button-secondary button-sm" to="/admin/workflows">Workflow builder</Link>}</div>
     {params.has('attach') && <p role="status">Choose a workflow, then select your PDF when you reach a document or email step.</p>}
     {error && <p role="alert">{error}</p>}
     {id ? <>

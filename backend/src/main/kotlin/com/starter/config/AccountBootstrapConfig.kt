@@ -20,7 +20,7 @@ data class BootstrapAccount(val email: String, val username: String, val passwor
 @Configuration
 @EnableConfigurationProperties(BootstrapProperties::class)
 class AccountBootstrapConfig {
-    @Bean
+    @Bean @org.springframework.core.annotation.Order(100)
     fun bootstrapAccounts(mapper: ObjectMapper, users: UserRepository, encoder: PasswordEncoder, settings: BootstrapProperties) = ApplicationRunner {
         val log = LoggerFactory.getLogger(AccountBootstrapConfig::class.java)
         if (settings.bootstrapUsersJson.isBlank()) {
@@ -40,9 +40,9 @@ class AccountBootstrapConfig {
         }
         normalized.forEach {
             require(it.email.matches(Regex("[^\\s@]+@[^\\s@]+\\.[^\\s@]+")) && it.email.length <= 255 && it.username.matches(Regex("[A-Za-z0-9_.-]{1,100}"))) { "Invalid bootstrap account identity" }
-            require(it.role in setOf("ADMIN", "USER") && it.password.length >= 14 && it.password.toByteArray(Charsets.UTF_8).size <= 72) { "Bootstrap accounts need a valid role and a password of 14 characters to 72 UTF-8 bytes" }
+            require(it.role in com.starter.access.Roles.all && it.password.length >= 14 && it.password.toByteArray(Charsets.UTF_8).size <= 72) { "Bootstrap accounts need a valid role and a password of 14 characters to 72 UTF-8 bytes" }
         }
-        if (normalized.isNotEmpty() && users.count() == 0L) require(normalized.any { it.role == "ADMIN" }) { "Configure an initial ADMIN account" }
+        if (normalized.isNotEmpty() && users.count() == 0L) require(normalized.any { com.starter.access.Roles.admin(it.role) }) { "Configure an initial ADMIN account" }
         normalized.forEach { account ->
             val existing = users.findByEmail(account.email).orElse(null)
             if (existing != null) return@forEach // Preserve passwords, roles, MFA state, profiles, and deactivations.

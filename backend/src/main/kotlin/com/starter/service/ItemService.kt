@@ -40,6 +40,7 @@ class ItemService(
     private val folderStorageService: FolderStorageService,
     private val auditLogService: AuditLogService,
     private val documentIndex: DocumentIndexService,
+    private val access: com.starter.access.AccessControlService? = null,
 ) {
     private fun buildVectorText(title: String, description: String?, tags: List<String>): String =
         listOf(title, description.orEmpty(), tags.joinToString(" ")).joinToString(" ").trim()
@@ -82,7 +83,12 @@ class ItemService(
 
     @Transactional
     fun listShared(page: Int, size: Int, connectionId: UUID? = null): PageResponse<ItemResponse> {
-        val p = itemRepository.findVisibleByConnection(connectionId, PageRequest.of(page.coerceAtLeast(0), size.coerceIn(1, 100)))
+        val acl = access?.storage()
+        val p = if (acl == null) itemRepository.findVisibleByConnection(connectionId, PageRequest.of(page.coerceAtLeast(0), size.coerceIn(1, 100))) else {
+            val visible = itemRepository.findAllVisible().filter { it.storageConnection?.id == connectionId && acl.allows(it.id, "", true) }
+            val paging = PageRequest.of(page.coerceAtLeast(0), size.coerceIn(1, 100))
+            org.springframework.data.domain.PageImpl(visible.drop(paging.offset.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()).take(paging.pageSize), paging, visible.size.toLong())
+        }
         p.content.forEach { it.ensureCurrentPrefix() }
         itemRepository.flush()
         val snapshot = legacySnapshot(p.content)
@@ -196,8 +202,10 @@ class ItemService(
     fun browse(itemId: UUID, path: String): StorageContentsResponse {
         val item = itemRepository.findById(itemId)
             .orElseThrow { NotFoundException(STORAGE_ROOT_NOT_FOUND) }
+        access?.requireStorage(itemId, path, true)
         val rootPrefix = folderStorageService.prefixFor(item)
-        val result = folderStorageService.browse(item, path)
+        val acl = access?.storage()
+        val result = folderStorageService.browse(item, path).let { result -> result.copy(entries = result.entries.filter { acl?.allows(itemId, it.path, it.type == "FOLDER") != false }) }
         val documents = syncDocuments(item, result.entries.filter { it.type == "OBJECT" })
         return StorageContentsResponse(
             folderId = item.id.toString(),
@@ -223,11 +231,12 @@ class ItemService(
     fun upload(email: String, itemId: UUID, path: String, uploads: List<StorageObjectUpload>): StorageContentsResponse {
         val user = userRepository.findByEmail(email)
             .orElseThrow { org.springframework.security.core.userdetails.UsernameNotFoundException("User not found") }
-        if (!user.canUploadDocuments) {
+        if (!user.canUploadDocuments || user.role == "EXTERNAL") {
             throw com.starter.exception.ForbiddenException("Document upload permission is required")
         }
         val item = itemRepository.findById(itemId)
             .orElseThrow { NotFoundException(STORAGE_ROOT_NOT_FOUND) }
+        uploads.forEach { access?.requireStorage(itemId, com.starter.service.storage.normalizeStorageFolder(path) + com.starter.service.storage.normalizeStorageObject(it.relativePath), false) }
         if (uploads.isEmpty()) throw com.starter.exception.BadRequestException("Select at least one file")
 
         folderStorageService.upload(item, path, uploads)
@@ -250,6 +259,7 @@ class ItemService(
 
     @Transactional(readOnly = true)
     fun getShared(itemId: UUID): ItemResponse {
+        access?.requireStorage(itemId)
         val item = itemRepository.findById(itemId).orElseThrow { NotFoundException(STORAGE_ROOT_NOT_FOUND) }
         if (!item.accessible || item.storageConnection?.enabled == false) throw NotFoundException(STORAGE_ROOT_NOT_FOUND)
         return item.toResponse(FolderStorageSnapshot(item.storageConnection?.provider ?: "NONE", emptyMap()))
@@ -315,7 +325,7 @@ class ItemService(
             id = id.toString(), title = title, description = description, tags = tags.toList(),
             storagePrefix = prefix,
             storageProvider = storageConnection?.provider ?: snapshot.provider,
-            documentCount = snapshot.documentCounts[prefix] ?: 0,
+            documentCount = if (access?.storage()?.let { !it.unrestricted || it.blocks.isNotEmpty() } == true) storageDocumentRepository.findAllByItemId(id).count { access.storage().allows(id, it.storagePath) } else snapshot.documentCounts[prefix] ?: 0,
             createdAt = createdAt.toString(), updatedAt = updatedAt.toString(),
             connectionId = storageConnection?.id?.toString(), connectionNickname = storageConnection?.nickname,
             accessible = accessible,

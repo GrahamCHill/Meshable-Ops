@@ -38,7 +38,7 @@ class SupersetController(
             forwardedHostHeader = request.getHeader("X-Forwarded-Host"),
             hostHeader = request.getHeader("Host"),
         )
-        val resolvedDashboardIds = dashboardEmbedConfigService.resolveGuestTokenDashboardIds(req.dashboardIds)
+        val resolvedDashboardIds = dashboardEmbedConfigService.resolveGuestTokenDashboardIds(req.dashboardIds, principal.authorities.map { it.authority.removePrefix("ROLE_") }.let { if ("SUPER_ADMIN" in it) "SUPER_ADMIN" else it.firstOrNull() ?: "USER" })
         if (resolvedDashboardIds.isEmpty()) {
             throw BadRequestException("No numeric Superset dashboard id is mapped for the requested embed")
         }
@@ -55,7 +55,7 @@ class SupersetController(
 
     @GetMapping("/dashboard-embeds")
     fun listDashboardEmbeds(@AuthenticationPrincipal principal: UserDetails) =
-        dashboardEmbedConfigService.listEnabledForRole(principal.authorities.firstOrNull()?.authority?.removePrefix("ROLE_") ?: "USER")
+        dashboardEmbedConfigService.listEnabledForRole(principal.authorities.map { it.authority.removePrefix("ROLE_") }.let { if ("SUPER_ADMIN" in it) "SUPER_ADMIN" else it.firstOrNull() ?: "USER" })
 
     @GetMapping("/dashboard-embeds/admin")
     @PreAuthorize("hasRole('ADMIN')")

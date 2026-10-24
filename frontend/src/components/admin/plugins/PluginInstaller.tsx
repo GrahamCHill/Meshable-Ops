@@ -1,0 +1,32 @@
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { extensionSecurityApi, pluginsApi } from '../../../api/plugins'
+import { useAuthStore } from '../../../hooks/useAuthStore'
+import { getErrorMessage } from '../adminUtils'
+import { Button } from '../../ui'
+
+export function PluginInstaller() {
+  const superAdmin = useAuthStore(state => state.user?.role === 'SUPER_ADMIN')
+  const security = useQuery({queryKey: ['extension-security'], queryFn: extensionSecurityApi.get, enabled: superAdmin})
+  const client = useQueryClient(); const [file, setFile] = useState<File>(); const [inputKey, setInputKey] = useState(0)
+  const install = useMutation({mutationFn: () => pluginsApi.install(file!), onSuccess: async () => {
+    setFile(undefined); setInputKey(value => value + 1)
+    await Promise.all(['admin-plugins', 'plugins', 'my-access', 'access-policy'].map(key => client.invalidateQueries({queryKey: [key]})))
+  }})
+  if (!superAdmin) return null
+  return <section className="page-stack" aria-labelledby="install-plugin-title">
+    <h2 id="install-plugin-title">Install a plugin</h2>
+    <p className="field-help">Upload a reviewed ZIP with plugin.json, author.json, and self-contained HTML pages. Author fields may be blank. Installed plugins start disabled.</p>
+    {security.isLoading && <p role="status">Checking extension security…</p>}
+    {security.isError && <p role="alert">Unable to check extension security. <button onClick={() => void security.refetch()}>Retry</button></p>}
+    {security.data && !security.data.allowThirdPartyExtensions && <p>Third-party extensions are disabled. <Link to="/admin/security">Change extension security</Link> to allow ZIP installations.</p>}
+    {security.data?.allowThirdPartyExtensions && <form className="page-stack" onSubmit={event => {event.preventDefault(); if (file) install.mutate()}}>
+      <label className="form-field">Plugin ZIP (maximum 5 MB)<input key={inputKey} type="file" accept=".zip,application/zip" disabled={install.isPending} onChange={event => {setFile(event.target.files?.[0]); install.reset()}} /></label>
+      {file && file.size > 5 * 1024 * 1024 && <p role="alert">Choose a ZIP smaller than 5 MB.</p>}
+      <div><Button type="submit" disabled={!file || file.size > 5 * 1024 * 1024 || install.isPending}>Install ZIP</Button></div>
+    </form>}
+    {install.isError && <p role="alert">{getErrorMessage(install.error, 'Unable to install plugin.')}</p>}
+    {install.isSuccess && <p role="status">{install.data.manifest.name} installed. Open its settings to enable it.</p>}
+  </section>
+}

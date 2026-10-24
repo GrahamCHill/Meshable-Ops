@@ -18,7 +18,7 @@ class WorkflowServiceTest {
     private val mapper=jacksonObjectMapper().findAndRegisterModules()
     private val runtime=WorkflowRuntime(mapper)
     private val guard=WorkflowRunAccess(rows,definitions,access,documents,runtime)
-    private val runner=WorkflowRunService(definitions,rows,guard,access,documents,runtime,WorkflowValidation(),mapper,mock(RateLimits::class.java))
+    private val runner=WorkflowRunService(definitions,rows,guard,access,documents,runtime,WorkflowValidation(),mapper,mock(RateLimits::class.java),mock(com.starter.notification.WorkflowNotificationHooks::class.java))
     private val author=WorkflowService(definitions,access,WorkflowValidation(),mapper)
     private val member=User(email="member@example.test");private val admin=User(email="admin@example.test",role="ADMIN")
     private val graph=WorkflowGraph(listOf(WorkflowBlock("start",BlockKind.START,"Start"),WorkflowBlock("end",BlockKind.END,"End")),listOf(WorkflowEdge("edge","start","end")))

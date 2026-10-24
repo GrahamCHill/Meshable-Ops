@@ -21,7 +21,7 @@ class DashboardEmbedConfigService(
     fun listEnabledForRole(role: String): List<DashboardEmbedConfigResponse> =
         dashboardEmbedConfigRepository.findAllByEnabledTrueOrderBySortOrderAscCreatedAtAsc()
             .filter { config ->
-                config.allowedRoles.isEmpty() || config.allowedRoles.any { it.equals(role, ignoreCase = true) }
+                role == "SUPER_ADMIN" || config.allowedRoles.isEmpty() || config.allowedRoles.any { it.equals(role, ignoreCase = true) }
             }
             .map { refreshLink(it).toResponse() }
 
@@ -30,19 +30,19 @@ class DashboardEmbedConfigService(
         dashboardEmbedConfigRepository.findAllByOrderBySortOrderAscCreatedAtAsc().map { refreshLink(it).toResponse() }
 
     @Transactional(readOnly = true)
-    fun listAvailableRoles(): List<String> = userRepository.findDistinctRoles()
+    fun listAvailableRoles(): List<String> = (userRepository.findDistinctRoles() + com.starter.access.Roles.all).distinct().sorted()
 
     @Transactional(readOnly = true)
-    fun resolveGuestTokenDashboardIds(requestedIds: List<String>): List<String> {
+    fun resolveGuestTokenDashboardIds(requestedIds: List<String>, role: String? = null): List<String> {
         if (requestedIds.isEmpty()) return emptyList()
 
-        val configs = dashboardEmbedConfigRepository.findAll()
+        val configs = dashboardEmbedConfigRepository.findAll().filter { role == null || it.enabled && (role == "SUPER_ADMIN" || it.allowedRoles.isEmpty() || role in it.allowedRoles) }
         return requestedIds
             .mapNotNull { requestedId ->
                 val normalizedId = requestedId.trim()
                 when {
                     normalizedId.isBlank() -> null
-                    normalizedId.all(Char::isDigit) -> normalizedId
+                    normalizedId.all(Char::isDigit) -> normalizedId.takeIf { role == null || configs.any { it.guestTokenResourceId == normalizedId } }
                     else -> configs
                         .asSequence()
                         .filter { config ->

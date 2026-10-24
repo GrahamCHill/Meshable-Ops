@@ -56,7 +56,12 @@ class PluginIntegrationsTest {
             if(call.method.name=="request") {calls+=call.arguments.toList(); IntegrationResponse(200,mapper.readTree("{\"messages\":[{\"id\":\"message\"}]}"))} else org.mockito.Answers.RETURNS_DEFAULTS.answer(call)
         }
         val adapter=WhatsAppChannelAdapter(PluginMessagingService(registry,configuration,transport,mapper))
-        val notifications=NotificationService(mock(EmailDeliveryService::class.java),mock(EmailSettingsService::class.java),listOf(adapter))
+        val transportRegistry=com.starter.notification.NotificationTransports(mock(EmailDeliveryService::class.java),mock(EmailSettingsService::class.java),listOf(adapter),registry)
+        val policy=mock(com.starter.notification.NotificationSettingsService::class.java)
+        `when`(policy.methodEnabled("whatsapp")).thenReturn(true)
+        `when`(policy.permitted("general.message","whatsapp")).thenReturn(true)
+        val journal=mock(com.starter.notification.NotificationDeliveryRecorder::class.java) {call -> if(call.method.name=="claim") java.util.UUID.randomUUID() else org.mockito.Answers.RETURNS_DEFAULTS.answer(call)}
+        val notifications=NotificationService(transportRegistry,policy,mock(com.starter.notification.NotificationCatalogue::class.java),com.starter.notification.NotificationRenderer(),journal,mock(com.starter.service.branding.BrandingPreferencesService::class.java))
         assertThat(notifications.available("whatsapp")).isTrue()
         assertThat(notifications.send("whatsapp",ChannelMessage(recipient="27821234567",templateParameters=listOf("Quote 42"))).status).isEqualTo("ACCEPTED")
         val json=mapper.readTree(calls.single()[3] as String)

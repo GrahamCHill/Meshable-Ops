@@ -12,30 +12,31 @@ import com.fasterxml.jackson.core.type.TypeReference
 import com.starter.exception.ForbiddenException
 
 @Service
-class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: PluginSettingsRepository) {
+class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: PluginSettingsRepository, private val access: com.starter.access.AccessControlService? = null,
+    private val packages: com.starter.plugins.packages.InstalledPluginCatalogue? = null) {
     private val modules = definitions.associateBy { it.manifest.id }
-    private val manifests: Map<String, PluginManifest>
+    private val manifests: Map<String, PluginManifest> get() = (packages?.manifests()?.associateBy { it.id } ?: emptyMap()) + bundled
+    private val bundled: Map<String, PluginManifest>
     init {
         val all = definitions.map { it.manifest }
         require(all.map { it.id }.distinct().size == all.size) { "Plugin IDs must be unique" }
         all.forEach {
-            require(it.id.matches(Regex("[a-z][a-z0-9-]{1,39}")) && it.apiVersion == 1 && it.version.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+"))) { "Invalid or incompatible plugin manifest" }
-            require(it.name.isNotBlank() && it.name.length <= 100 && it.navigationLabel.isNotBlank() && it.navigationLabel.length <= 60 && it.description.length <= 500) { "Invalid plugin metadata" }
+            PluginManifests.validateIdentity(it)
             PluginManifests.validate(it)
         }
-        manifests = all.associateBy { it.id }
+        bundled = all.associateBy { it.id }
     }
     @Transactional(readOnly = true)
     fun installed(): List<PluginView> {
         val saved = settings.findAll().associateBy { it.pluginId }
         return catalogue(saved, "ADMIN")
     }
-    fun available(role: String) = catalogue(settings.findAll().associateBy { it.pluginId }, role).filter { it.active }
+    fun available(role: String) = catalogue(settings.findAll().associateBy { it.pluginId }, role).filter { it.active && (access?.allows("plugin.${it.manifest.id}") != false) }
 
     fun definition(id: String) = manifests[id] ?: throw NotFoundException("Plugin not installed")
-    fun validateConfiguration(id: String, values: Map<String, String>) = modules[id]?.validateConfiguration(values)
-        ?: throw NotFoundException("Plugin not installed")
-    fun missingConfiguration(id: String, values: Map<String, String>) = modules[id]?.missingConfiguration(values) ?: throw NotFoundException("Plugin not installed")
+    fun validateConfiguration(id: String, values: Map<String, String>) { definition(id); modules[id]?.validateConfiguration(values) }
+    fun missingConfiguration(id: String, values: Map<String, String>) = modules[id]?.missingConfiguration(values)
+        ?: definition(id).settingsFields.filter { it.required && values[it.key].isNullOrBlank() }.map { it.label }
 
     fun requireFeature(id: String, feature: String, role: String) {
         val plugin = available(role).find { it.manifest.id == id }
@@ -50,14 +51,15 @@ class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: P
         requireAvailable(id, role)
         val policy = view(definition(id), settings.findById(id).orElse(null)).tableAccess[table]
             ?: throw NotFoundException("Plugin table not declared")
-        if (role !in (if (write) policy.writeRoles else policy.readRoles)) throw ForbiddenException("Your role cannot ${if (write) "change" else "read"} this plugin table")
+        if (com.starter.access.Roles.plugin(role) !in (if (write) policy.writeRoles else policy.readRoles)) throw ForbiddenException("Your role cannot ${if (write) "change" else "read"} this plugin table")
     }
 
     @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
     fun requireAvailable(id: String, role: String) {
+        if (access?.allows("plugin.$id") == false) throw NotFoundException("Plugin unavailable")
         val manifest = manifests[id] ?: throw NotFoundException("Plugin unavailable")
         val view = view(manifest, settings.findById(id).orElse(null))
-        if (!view.enabled || role !in view.allowedRoles) throw NotFoundException("Plugin unavailable")
+        if (!view.enabled || view.blockedBySecurity || com.starter.access.Roles.plugin(role) !in view.allowedRoles) throw NotFoundException("Plugin unavailable")
         if (manifest.requiresCapabilities.isNotEmpty()) {
             val saved = settings.findAll().associateBy { it.pluginId }.toMutableMap()
             settings.findById(id).orElse(null)?.let { saved[id] = it }
@@ -82,7 +84,7 @@ class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: P
         val active = mutableSetOf<String>()
         repeat(base.size) {
             val supplied = base.filter { it.manifest.id in active }.flatMap { it.manifest.capabilities.keys }.toSet()
-            base.filter { it.enabled && role in it.allowedRoles && supplied.containsAll(it.manifest.requiresCapabilities) }.forEach { active += it.manifest.id }
+            base.filter { it.enabled && !it.blockedBySecurity && com.starter.access.Roles.plugin(role) in it.allowedRoles && supplied.containsAll(it.manifest.requiresCapabilities) }.forEach { active += it.manifest.id }
         }
         val providers = base.filter { it.manifest.id in active }
         val supplied = providers.flatMap { it.manifest.capabilities.keys }.toSet()
@@ -97,9 +99,12 @@ class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: P
     private val mapper = jacksonObjectMapper()
     private fun view(manifest: PluginManifest, row: PluginSettings?): PluginView {
         val overrides: Map<String, PluginTableAccess> = row?.let { mapper.readValue(it.tableAccessJson, object : TypeReference<Map<String, PluginTableAccess>>() {}) } ?: emptyMap()
+        val uploaded = manifest.id !in bundled
         return PluginView(manifest, row?.enabled == true,
             row?.allowedRolesCsv?.split(",")?.filter { it in manifest.supportedRoles }?.toSet() ?: manifest.defaultRoles,
             row?.searchEnabled == true && PluginExtension.SEARCH in manifest.extensions,
-            manifest.tables.associate { it.name to (overrides[it.name] ?: PluginTableAccess(it.readRoles, it.writeRoles)) })
+            manifest.tables.associate { it.name to (overrides[it.name] ?: PluginTableAccess(it.readRoles, it.writeRoles)) },
+            source = if (uploaded) "ZIP" else "BUNDLED", author = if (uploaded) packages?.author(manifest.id) else null,
+            blockedBySecurity = uploaded && packages?.allowed() != true)
     }
 }

@@ -21,7 +21,8 @@ class EmailAuthorizationTest {
     open class TestConfig {
         @Bean open fun settings(): EmailSettingsService = mock(EmailSettingsService::class.java)
         @Bean open fun delivery(): EmailDeliveryService = mock(EmailDeliveryService::class.java)
-        @Bean open fun controller(settings: EmailSettingsService, delivery: EmailDeliveryService) = AdminEmailController(settings, delivery)
+        @Bean open fun notifications() = mock(com.starter.notification.NotificationService::class.java)
+        @Bean open fun controller(settings: EmailSettingsService, delivery: EmailDeliveryService, notifications: com.starter.notification.NotificationService) = AdminEmailController(settings, delivery, notifications)
     }
     @AfterEach fun clear() = SecurityContextHolder.clearContext()
     @Test fun `regular users cannot read credentials configure or use the email sender`() {
@@ -38,7 +39,8 @@ class EmailAuthorizationTest {
     @Test fun `disabled email rejects even direct administrator send requests`() {
         val settings = mock(EmailSettingsService::class.java); val delivery = mock(EmailDeliveryService::class.java)
         val request = SendEmailRequest("reader@example.test", "Test", "Text")
-        `when`(delivery.send(request)).thenReturn(EmailDeliveryResult("DISABLED", "Email delivery is disabled"))
-        assertThatThrownBy { AdminEmailController(settings, delivery).send(request) }.isInstanceOf(com.starter.exception.ForbiddenException::class.java)
+        val notifications=mock(com.starter.notification.NotificationService::class.java)
+        `when`(notifications.sendEmail("general.message",request)).thenReturn(EmailDeliveryResult("DISABLED", "Email delivery is disabled"))
+        assertThatThrownBy { AdminEmailController(settings, delivery,notifications).send(request) }.isInstanceOf(com.starter.exception.ForbiddenException::class.java)
     }
 }

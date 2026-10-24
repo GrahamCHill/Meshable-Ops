@@ -1,15 +1,17 @@
 # Administration and access
 
-Open **Administration** (`/admin`) to see cards for each section. Admin sections have return navigation to Administration; they are not nested items in the main sidebar. The existing `ADMIN` role manages the workspace, including shared storage; there is no separate super-admin role.
+Open **Administration** (`/admin`) to see cards for each section. Admin sections have return navigation to Administration; they are not nested items in the main sidebar. `SUPER_ADMIN` manages role features, member views, and directory access. Delegated `ADMIN` accounts manage only the areas permitted by a super admin. See [access controls](access-controls.md).
 
 | Area | Route | Purpose |
 | --- | --- | --- |
-| Users & access | `/admin/users` | Accounts, activation, and independent upload permissions |
+| Users | `/admin/users` | Row-based roster, role assignment, activation, upload permissions, and Add user dialog |
+| Access controls | `/admin/access-controls` | Super admin role features, member views, external sharing, and protected cloud paths |
 | Branding | `/admin/branding` | Business name, sidebar/link colours, logo/favicon, and sign-in backgrounds |
 | Plugins | `/admin/plugins` | Enable installed modules and choose administrator or all-user access |
 | Storage connections | `/admin/storage` | Named S3/Blob locations, shared folders, indexing jobs |
 | Document access | `/admin/documents` | PDF viewing, download policies, and watermarks |
-| Email delivery | `/admin/email` | SMTP/API services and manual messages |
+| Notifications | `/admin/notifications` | Delivery methods, per-method messages, workflow alerts, and delivery history |
+| Email connection | `/admin/email` | SMTP/API configuration, reached from Notifications > Delivery methods |
 | Security & MFA | `/account/security` | Personal authenticator/email enrollment and recovery codes |
 | File sharing | `/admin/shares` | Protected PDF email attachments and online links |
 | Webhooks | `/admin/webhooks` | Authenticated JSON receipt and manual outgoing requests |
@@ -25,7 +27,7 @@ Users open shared storage at `/storage`, insights at `/dashboards`, their genera
 
 ## User access management
 
-Admins manage access from `/admin/users`.
+Admins manage accounts from `/admin/users`. Super admins configure feature and storage permissions in `/admin/access-controls`; external members start with no file grants. User creation is manual; invitations remain deferred.
 
 Current admin capabilities include:
 

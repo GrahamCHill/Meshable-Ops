@@ -20,7 +20,7 @@ class EmailProviderClientTest {
     private val message = SendEmailRequest("reader@example.test", "Sample subject", "Sample plain text")
     private fun config(provider: EmailProvider) = EmailConfiguration(true, provider, "sender@example.test", "Sample app", "reply@example.test", apiKey = "private-api-key", mailgunDomain = "mg.example.test")
 
-    @Test fun `API providers send their documented authentication routes and plain text payloads`() {
+    @Test fun `API providers send their documented authentication routes and plain plus HTML payloads`() {
         data class Captured(val path: String, val auth: String, val contentType: String, val body: String)
         val captured = mutableListOf<Captured>()
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
@@ -31,7 +31,7 @@ class EmailProviderClientTest {
         server.start()
         try {
             listOf(EmailProvider.RESEND, EmailProvider.SENDGRID, EmailProvider.MAILGUN).forEach {
-                client.send(config(it).copy(apiBaseUrl = "http://127.0.0.1:${server.address.port}" + if (it == EmailProvider.MAILGUN) "/v3" else ""), message, listOf(EmailAttachment("contract.pdf", "%PDF-protected-sample".toByteArray())))
+                client.send(config(it).copy(apiBaseUrl = "http://127.0.0.1:${server.address.port}" + if (it == EmailProvider.MAILGUN) "/v3" else ""), message.copy(html="<p>Sample HTML message</p>"), listOf(EmailAttachment("contract.pdf", "%PDF-protected-sample".toByteArray())))
             }
         } finally { server.stop(0) }
         assertThat(captured.map { it.path }).containsExactly("/emails", "/v3/mail/send", "/v3/mg.example.test/messages")
@@ -43,6 +43,9 @@ class EmailProviderClientTest {
         val sendgrid = mapper.readTree(captured[1].body)
         assertThat(sendgrid.path("personalizations")[0].path("to")[0].path("email").asText()).isEqualTo(message.recipient)
         assertThat(sendgrid.path("content")[0].path("type").asText()).isEqualTo("text/plain")
+        assertThat(sendgrid.path("content")[1].path("type").asText()).isEqualTo("text/html")
+        assertThat(mapper.readTree(captured[0].body).path("html").asText()).isEqualTo("<p>Sample HTML message</p>")
+        assertThat(captured[2].body).contains("name=\"html\"", "<p>Sample HTML message</p>")
         assertThat(captured[2].contentType).startsWith("multipart/form-data; boundary=")
         assertThat(captured[2].body).contains("name=\"h:Reply-To\"", message.text, "Sample app")
         val resendAttachment = mapper.readTree(captured[0].body).path("attachments")[0]
@@ -112,7 +115,7 @@ class EmailProviderClientTest {
                     mime.toString()
                 }
             }
-            client.send(config(EmailProvider.SMTP).copy(smtpHost = "127.0.0.1", smtpPort = server.localPort, smtpSecurity = SmtpSecurity.NONE, smtpAuth = SmtpAuth.NONE), message.copy(subject = "Agreement résumé", text = "A café example"), listOf(EmailAttachment("contract.pdf", "%PDF-protected-sample".toByteArray())))
+            client.send(config(EmailProvider.SMTP).copy(smtpHost = "127.0.0.1", smtpPort = server.localPort, smtpSecurity = SmtpSecurity.NONE, smtpAuth = SmtpAuth.NONE), message.copy(subject = "Agreement résumé", text = "A café example", html = "<p>A café example</p>"), listOf(EmailAttachment("contract.pdf", "%PDF-protected-sample".toByteArray())))
             val mime = MimeMessage(Session.getInstance(Properties()), ByteArrayInputStream(received.get(10, TimeUnit.SECONDS).toByteArray()))
             assertThat(mime.subject).isEqualTo("Agreement résumé")
             fun leaves(part: jakarta.mail.Part): List<jakarta.mail.Part> = if (part.isMimeType("multipart/*")) {
@@ -120,6 +123,7 @@ class EmailProviderClientTest {
             } else listOf(part)
             val parts = leaves(mime)
             assertThat(parts.first { it.isMimeType("text/plain") }.content.toString()).contains("A café example")
+            assertThat(parts.first { it.isMimeType("text/html") }.content.toString()).contains("<p>A café example</p>")
             val attachment = parts.single { it.disposition == jakarta.mail.Part.ATTACHMENT }
             assertThat(attachment.fileName).isEqualTo("contract.pdf")
             assertThat(attachment.inputStream.readBytes()).isEqualTo("%PDF-protected-sample".toByteArray())

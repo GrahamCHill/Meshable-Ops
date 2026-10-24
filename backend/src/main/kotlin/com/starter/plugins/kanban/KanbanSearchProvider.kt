@@ -34,6 +34,6 @@ class KanbanSearchProvider(private val jdbc: JdbcTemplate) : PluginSearchProvide
                 "title" to rs.getString("name"), "text" to rs.getString("text").take(1800), "source" to "Kanban boards",
                 "matchMode" to if (rs.getBoolean("keyword")) "Keyword and similarity" else "Similarity",
                 "href" to "/plugins/kanban/boards?board=$id"))
-        }, vector, query, query, actor.role == "ADMIN", actor.id, limit)
+        }, vector, query, query, com.starter.access.Roles.admin(actor.role), actor.id, limit)
     }
 }

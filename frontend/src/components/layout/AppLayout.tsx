@@ -1,3 +1,4 @@
+import { useAccess, pluginRole, isAdminRole } from '../../api/access'
 import { useEffect, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 
@@ -26,8 +27,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const access = useAccess()
   const plugins = useAvailablePlugins()
-  const searchStatus = useQuery({queryKey: ['ai-search-status'], queryFn: aiApi.status, refetchInterval: 30_000})
+  const searchStatus = useQuery({queryKey: ['ai-search-status'], queryFn: aiApi.status, refetchInterval: 30_000, enabled: access.can('search')})
 
   useEffect(() => {
     setMobileOpen(false)
@@ -75,15 +77,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <Brand className="sidebar-brand" />
         <nav className="sidebar-nav" aria-label="Main navigation">
           <div className="nav-caption">Workspace</div>
-          {nav.map(renderNavItem)}
-          {searchStatus.data?.searchEnabled && renderNavItem({to: '/search', label: 'Search workspace'})}
+          {nav.filter(item => access.canPath(item.to)).map(renderNavItem)}
+          {access.can('search') && searchStatus.data?.searchEnabled && renderNavItem({to: '/search', label: 'Search workspace'})}
           {plugins.data?.filter(plugin => pageModule(plugin)).map(plugin => <div key={plugin.manifest.id}>
             <NavLink to={`/plugins/${plugin.manifest.id}`} end className={({isActive}) => `nav-item${isActive ? ' is-active' : ''}`}>{plugin.manifest.navigationLabel}</NavLink>
             <div className="plugin-submenu" aria-label={`${plugin.manifest.navigationLabel} sections`}>
-              {plugin.manifest.menuItems.filter(item => user && item.roles.includes(user.role)).map(item => renderNavItem({to: `/plugins/${plugin.manifest.id}/${item.path}`, label: item.label}))}
+              {plugin.manifest.menuItems.filter(item => user && item.roles.includes(pluginRole(user.role))).map(item => renderNavItem({to: `/plugins/${plugin.manifest.id}/${item.path}`, label: item.label}))}
             </div>
           </div>)}
-          {user?.role === 'ADMIN' && (
+          {isAdminRole(user?.role) && access.canPath('/admin') && (
             <div className="admin-navigation">
               {renderNavItem({ to: '/admin', label: 'Administration' })}
             </div>
@@ -95,6 +97,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </button>
           <div className="user-email" title={user?.email}>{user?.email}</div>
           <NavLink to="/account/security" className="sign-out">Security & MFA</NavLink>
+          <NavLink to="/account/notifications" className="sign-out">Notification preferences</NavLink>
           <button className="sign-out" onClick={handleLogout}> Sign out</button>
         </div>
       </aside>

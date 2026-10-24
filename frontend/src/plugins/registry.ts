@@ -4,10 +4,10 @@ import type { PluginView } from '../api/plugins'
 export interface WorkspacePluginModule {
   id: string
   apiVersion: 1
-  loadPage: () => Promise<{ default: ComponentType }>
+  loadPage: () => Promise<{ default: ComponentType<{plugin: PluginView}> }>
 }
 
-// Only source modules included in this build are executable. Server metadata never supplies JavaScript.
+// Bundled pages share the app runtime; uploaded pages use a separate sandboxed loader.
 const sources = import.meta.glob<{ default: WorkspacePluginModule }>('./modules/*/index.ts', { eager: true })
 const registry = new Map<string, WorkspacePluginModule>()
 for (const { default: module } of Object.values(sources)) {
@@ -15,6 +15,8 @@ for (const { default: module } of Object.values(sources)) {
   registry.set(module.id, module)
 }
 export function pageModule(plugin: PluginView) {
+  if (plugin.source === 'ZIP' && plugin.manifest.extensions.includes('PAGE') && plugin.manifest.apiVersion === 1) return runtimeModule
   const module = registry.get(plugin.manifest.id)
   return plugin.manifest.extensions.includes('PAGE') && module?.apiVersion === plugin.manifest.apiVersion ? module : undefined
 }
+const runtimeModule: WorkspacePluginModule = {id: 'runtime', apiVersion: 1, loadPage: () => import('./runtime/RuntimePluginPage')}
