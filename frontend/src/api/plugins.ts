@@ -25,6 +25,7 @@ export interface PluginSettingField {key: string; label: string; type: 'TEXT' | 
 export interface PluginConfiguration {values: Record<string, string>; configuredSecrets: string[]; missingRequired: string[]; revision: number; encryptionConfigured: boolean}
 export type PluginSettings = Pick<PluginView, 'enabled' | 'allowedRoles' | 'searchEnabled' | 'tableAccess'>
 export const pluginsApi = {
+  code: (id:string)=>api.get<{backend?:{modules:Record<string,{runtime:'PYTHON'|'KOTLIN';entrypoint:string}>;routes:{path:string;module:string;methods:string[];roles:string[];permissions:string[]}[];allowedOrigins:string[]};runnerConfigured:boolean;sha256:string}>(`/admin/plugins/${encodeURIComponent(id)}/code`).then(response=>response.data),
   remove: (id: string, confirmation: string) => api.delete(`/admin/plugins/${encodeURIComponent(id)}`, {data: {confirmation}}).then(() => undefined),
   restore: (id: string) => api.post(`/admin/plugins/${encodeURIComponent(id)}/restore`).then(() => undefined),
   install: (file: File) => { const body = new FormData(); body.append('file', file); return api.post<PluginView>('/admin/plugins/install', body, {headers: {'Content-Type': undefined}}).then(response => response.data) },

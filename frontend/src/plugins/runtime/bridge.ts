@@ -9,6 +9,10 @@ export async function dispatchPluginRequest(request: Request, plugin: PluginView
     if (typeof params.section !== 'string' || params.section !== '' && !plugin.manifest.menuItems.some(item => item.path === params.section)) throw new Error('Choose a declared plugin section.')
     navigate(params.section); return null
   }
+  if (method === 'backend') {
+    if (!plugin.manifest.extensions.includes('API') || typeof params.path !== 'string' || !/^\/[a-z][a-z0-9-]*(\/[a-z][a-z0-9-]*){0,3}$/.test(params.path) || !['GET','POST','PUT','PATCH','DELETE'].includes(String(params.method))) throw new Error('Choose a declared backend endpoint and HTTP method.')
+    return (await api.request({url:`/plugins/${encodeURIComponent(plugin.manifest.id)}/backend${params.path}`,method:String(params.method),data:params.method==='GET'?undefined:params.body,params:params.query??{}})).data
+  }
   if (typeof params.table !== 'string' || !plugin.manifest.tables.some(table => table.name === params.table)) throw new Error('This table is not declared by this plugin.')
   const root = `/plugins/${encodeURIComponent(plugin.manifest.id)}/data/${encodeURIComponent(params.table)}`
   if (method === 'list') return (await api.get(root, {params: {offset: params.offset ?? 0}})).data

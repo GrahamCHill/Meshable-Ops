@@ -22,6 +22,7 @@ class InstalledPluginCatalogue(private val records: PluginPackageRepository, pri
             if (descriptor.manifest.menuItems.none { it.path == section && role in it.roles }) throw NotFoundException("Plugin section unavailable")
             descriptor.pages[section] ?: throw NotFoundException("Plugin page unavailable")
         }
-        return mapper.readValue(record.filesJson, object : TypeReference<Map<String, String>>() {})[file] ?: throw NotFoundException("Plugin page unavailable")
+        if (com.starter.plugins.PluginExtension.PAGE !in descriptor.manifest.extensions) throw NotFoundException("This plugin has no frontend")
+        return PluginPageAssets.render(file, mapper.readValue(record.filesJson, object : TypeReference<Map<String, String>>() {}))
     }
 }

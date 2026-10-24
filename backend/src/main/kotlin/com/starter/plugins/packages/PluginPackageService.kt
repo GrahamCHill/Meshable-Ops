@@ -32,7 +32,7 @@ class PluginPackageService(private val records: PluginPackageRepository, private
 
     @Transactional
     fun install(file: MultipartFile): com.starter.plugins.PluginView {
-        if (file.size > PluginZipReader.MAX_ARCHIVE_BYTES || file.originalFilename?.endsWith(".zip", ignoreCase = true) != true) throw BadRequestException("Choose a plugin ZIP file of at most 5 MB")
+        if (file.size > PluginZipReader.MAX_ARCHIVE_BYTES || file.originalFilename?.endsWith(".zip", ignoreCase = true) != true) throw BadRequestException("Choose a plugin ZIP file of at most 16 MiB")
         lock()
         if (!catalogue.allowed()) throw ForbiddenException("Enable third-party extensions in Administration → Security first")
         val parsed = reader.read(file.inputStream.use { it.readNBytes(PluginZipReader.MAX_ARCHIVE_BYTES + 1) })

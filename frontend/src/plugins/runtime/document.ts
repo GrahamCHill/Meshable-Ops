@@ -6,6 +6,7 @@ export function runtimeDocument(html: string, channel: string) {
     function request(method, params = {}) { return new Promise((resolve, reject) => { const id = String(++sequence); const timer = setTimeout(() => { pending.delete(id); reject(new Error('The host did not respond. Reload the plugin.')); }, 30000); pending.set(id, {resolve, reject, timer}); channel.port1.postMessage({id, method, params}); }); }
     window.meshableOps = Object.freeze({
       context: () => request('context'), navigate: section => request('navigate', {section}),
+      backend: Object.freeze({request: (path, body = null, method = 'POST', query = {}) => request('backend', {path, body, method, query})}),
       data: Object.freeze({list: (table, offset = 0) => request('list', {table, offset}), get: (table, id) => request('get', {table, id}),
         create: (table, data) => request('create', {table, data}), update: (table, id, data, revision) => request('update', {table, id, data, revision}),
         remove: (table, id, revision) => request('remove', {table, id, revision})})

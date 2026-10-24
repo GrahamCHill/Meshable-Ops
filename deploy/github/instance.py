@@ -38,6 +38,7 @@ def environment(domain: str, admin_email: str, acme_email: str, admin_password: 
         "SUPERSET_ADMIN_USER": "admin", "SUPERSET_ADMIN_PASSWORD": secrets.token_hex(24),
         "SUPERSET_ADMIN_EMAIL": admin_email, "POSTGRES_PASSWORD": secrets.token_hex(32),
         "MONGO_PASSWORD": secrets.token_hex(32), "APP_DOCUMENT_RENDER_TOKEN": secrets.token_hex(32),
+        "APP_PLUGIN_RUNNER_TOKEN": secrets.token_hex(32),
         "APP_PUBLIC_BASE_URL": f"https://{domain}", "APP_MFA_PRIMARY_ADMIN_EMAIL": admin_email,
         "APP_BOOTSTRAP_USERS_JSON": json.dumps(users, separators=(",", ":")),
         "APP_EMAIL_ENABLED": "false", "AI_ENABLED": "false", "APP_SEARCH_ENABLED": "true",

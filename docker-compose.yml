@@ -213,6 +213,8 @@ services:
       APP_BOOTSTRAP_USERS_JSON: ${APP_BOOTSTRAP_USERS_JSON:-}
       APP_WEBHOOK_ALLOW_PRIVATE_TARGETS: ${APP_WEBHOOK_ALLOW_PRIVATE_TARGETS:-false}
       APP_PLUGIN_ALLOW_PRIVATE_TARGETS: ${APP_PLUGIN_ALLOW_PRIVATE_TARGETS:-false}
+      APP_PLUGIN_RUNNER_URL: http://plugin-runner:8090
+      APP_PLUGIN_RUNNER_TOKEN: ${APP_PLUGIN_RUNNER_TOKEN:-}
       APP_DOCUMENT_RENDER_URL: ${APP_DOCUMENT_RENDER_URL:-http://weasy-renderer:8000}
       APP_DOCUMENT_RENDER_TOKEN: ${APP_DOCUMENT_RENDER_TOKEN:-}
       APP_SEARCH_ENABLED: ${APP_SEARCH_ENABLED:-true}
@@ -240,6 +242,56 @@ services:
       timeout: 5s
       retries: 5
       start_period: 60s
+
+  plugin-python-worker:
+    image: meshable-ops-plugin-python:1
+    build:
+      context: ./plugin-runtime
+      dockerfile: workers/python.Dockerfile
+    entrypoint: ["/bin/true"]
+    restart: "no"
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  plugin-kotlin-worker:
+    image: meshable-ops-plugin-kotlin:1
+    build:
+      context: ./plugin-runtime
+      dockerfile: workers/kotlin.Dockerfile
+    entrypoint: ["/bin/true"]
+    restart: "no"
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  plugin-runner:
+    build: ./plugin-runtime
+    restart: unless-stopped
+    depends_on:
+      plugin-python-worker:
+        condition: service_completed_successfully
+      plugin-kotlin-worker:
+        condition: service_completed_successfully
+    environment:
+      APP_PLUGIN_RUNNER_TOKEN: ${APP_PLUGIN_RUNNER_TOKEN:-}
+      PLUGIN_HOST_CALLBACK: http://backend:8080/internal/plugins/host-call
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    expose: ["8090"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:size=32m"]
+    mem_limit: 512m
+    pids_limit: 64
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   weasy-renderer:
     build: ./weasy-renderer

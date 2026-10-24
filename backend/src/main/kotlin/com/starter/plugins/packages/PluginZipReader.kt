@@ -11,12 +11,12 @@ import java.nio.charset.CodingErrorAction
 import java.security.MessageDigest
 import java.util.zip.ZipInputStream
 
-/** Archives are bounded while streaming and never extracted or executed on the server. */
+/** Bounded package ingestion. Backend artifacts execute only in the separate worker runtime. */
 @Component
 class PluginZipReader(mapper: ObjectMapper) {
     private val json = mapper.copy().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).disable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     fun read(bytes: ByteArray): ParsedPluginPackage {
-        if (bytes.isEmpty() || bytes.size > MAX_ARCHIVE_BYTES) invalid("ZIP files must be at most 5 MB")
+        if (bytes.isEmpty() || bytes.size > MAX_ARCHIVE_BYTES) invalid("ZIP files must be at most 16 MiB")
         try {
             val files = linkedMapOf<String, String>()
             val seen = mutableSetOf<String>()
@@ -25,12 +25,13 @@ class PluginZipReader(mapper: ObjectMapper) {
             ZipInputStream(bytes.inputStream()).use { zip ->
                 while (true) {
                     val entry = zip.nextEntry ?: break
-                    if (++entries > 50) invalid("Too many ZIP entries")
+                    if (++entries > 200) invalid("Too many ZIP entries")
                     val path = if (entry.isDirectory) entry.name.removeSuffix("/") else entry.name
                     if (!path.matches(Regex("[A-Za-z0-9][A-Za-z0-9_./-]{0,119}")) || path.split('/').any { it in setOf("", ".", "..") }) invalid("Use safe, relative ZIP paths")
                     if (!seen.add(path.lowercase(java.util.Locale.ROOT))) invalid("Duplicate ZIP entry")
-                    val raster = path.substringAfterLast('.').lowercase() in setOf("png", "jpg", "jpeg", "webp")
-                    if (!entry.isDirectory && path !in setOf("plugin.json", "author.json") && !path.endsWith(".html") && !raster) invalid("Packages may contain JSON metadata, self-contained HTML pages, and PNG/JPEG/WebP artwork")
+                    val extension = path.substringAfterLast('.').lowercase()
+                    val binary = extension in setOf("png", "jpg", "jpeg", "webp", "jar", "woff", "woff2")
+                    if (!entry.isDirectory && path !in setOf("plugin.json", "author.json", "LICENSE", "NOTICE") && extension !in setOf("html", "js", "css", "json", "py", "jar", "kt", "java", "ts", "tsx", "md", "txt", "xml", "toml", "yaml", "yml", "sh", "png", "jpg", "jpeg", "webp", "woff", "woff2")) invalid("Unsupported plugin artifact type")
                     val output = java.io.ByteArrayOutputStream()
                     val buffer = ByteArray(8192)
                     while (true) {
@@ -42,7 +43,7 @@ class PluginZipReader(mapper: ObjectMapper) {
                         output.write(buffer, 0, count)
                     }
                     if (entry.isDirectory) continue
-                    files[path] = if (raster) java.util.Base64.getEncoder().encodeToString(output.toByteArray()) else Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
+                    files[path] = if (binary) java.util.Base64.getEncoder().encodeToString(output.toByteArray()) else Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
                         .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(output.toByteArray())).toString()
                 }
             }
@@ -54,7 +55,6 @@ class PluginZipReader(mapper: ObjectMapper) {
             PluginManifests.validateIdentity(descriptor.manifest)
             PluginManifests.validate(descriptor.manifest)
             val manifest = descriptor.manifest
-            if (manifest.runtimes.any { it != com.starter.plugins.PluginRuntime.REACT }) invalid("Kotlin and Python plugins use reviewed source modules and a server image rebuild; the ZIP installer supports self-contained browser pages only")
             if (manifest.apiVersion != 1) invalid("This host supports plugin API version 1")
             val images = mutableMapOf<String, String>()
             listOf("icon" to manifest.icon, "banner" to manifest.banner).forEach { (kind, path) -> if (path != null) {
@@ -63,19 +63,25 @@ class PluginZipReader(mapper: ObjectMapper) {
                 val normalized = com.starter.service.branding.BrandingImages.normalize(java.util.Base64.getDecoder().decode(raw), if (kind == "icon") com.starter.service.branding.BrandingImageProfile.FAVICON else com.starter.service.branding.BrandingImageProfile.LOGIN)
                 images["__$kind"] = java.util.Base64.getEncoder().encodeToString(normalized)
             } }
-            val supported = setOf(PluginExtension.PAGE, PluginExtension.DATABASE, PluginExtension.SEARCH, PluginExtension.SETTINGS)
-            if (PluginExtension.PAGE !in manifest.extensions || !supported.containsAll(manifest.extensions)) invalid("ZIP plugins support pages, managed data, settings, and search; server integrations require reviewed source modules")
+            val supported = setOf(PluginExtension.PAGE, PluginExtension.API, PluginExtension.DATABASE, PluginExtension.SEARCH, PluginExtension.SETTINGS)
+            if (manifest.extensions.intersect(setOf(PluginExtension.PAGE, PluginExtension.API)).isEmpty() || !supported.containsAll(manifest.extensions)) invalid("Declare PAGE, API, or both; optional extensions are DATABASE, SEARCH and SETTINGS")
             if (manifest.capabilities.isNotEmpty() || manifest.requiresCapabilities.isNotEmpty() || manifest.features.isNotEmpty()) invalid("ZIP plugins cannot declare server capabilities")
+            PluginBackendValidation.check(descriptor, files)
             if (manifest.menuItems.map { it.path }.toSet() != descriptor.pages.keys) invalid("Provide a page for every submenu, with no undeclared pages")
-            if ((descriptor.pages.values + descriptor.entrypoint).any { !it.endsWith(".html") || files[it].isNullOrBlank() }) invalid("Every entrypoint and submenu page must be an HTML file inside the ZIP")
-            return ParsedPluginPackage(descriptor, author, files.filterKeys { it.endsWith(".html") } + images, MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) })
+            if (PluginExtension.PAGE in manifest.extensions) {
+                (descriptor.pages.values + descriptor.entrypoint).forEach {
+                    if (!it.endsWith(".html") || files[it].isNullOrBlank()) invalid("Every frontend entrypoint and submenu must reference a packaged HTML file")
+                    PluginPageAssets.render(it, files)
+                }
+            } else if (descriptor.pages.isNotEmpty() || manifest.menuItems.isNotEmpty()) invalid("Backend-only plugins cannot declare frontend pages or submenus")
+            return ParsedPluginPackage(descriptor, author, files.filterKeys { it !in setOf("plugin.json", "author.json") } + images, MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) })
         } catch (error: BadRequestException) { throw error }
         catch (_: Exception) { invalid("Invalid plugin ZIP or metadata. Check the package format and host API version.") }
     }
     private fun invalid(message: String): Nothing = throw BadRequestException(message)
     companion object {
-        const val MAX_ARCHIVE_BYTES = 5 * 1024 * 1024
-        const val MAX_EXPANDED_BYTES = 10 * 1024 * 1024
-        const val MAX_FILE_BYTES = 2 * 1024 * 1024
+        const val MAX_ARCHIVE_BYTES = 16 * 1024 * 1024
+        const val MAX_EXPANDED_BYTES = 32 * 1024 * 1024
+        const val MAX_FILE_BYTES = 12 * 1024 * 1024
     }
 }

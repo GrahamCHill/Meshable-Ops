@@ -6,7 +6,12 @@ import org.springframework.data.jpa.repository.JpaRepository
 import java.time.Instant
 
 data class PluginAuthor(val name: String, val organization: String, val email: String, val website: String)
-data class PluginPackageDescriptor(val manifest: PluginManifest, val entrypoint: String = "index.html", val pages: Map<String, String> = emptyMap())
+enum class BackendRuntime { PYTHON, KOTLIN }
+data class PluginBackendModule(val runtime: BackendRuntime, val entrypoint: String)
+data class PluginBackendRoute(val path: String, val module: String, val methods: Set<String> = setOf("POST"),
+    val roles: Set<String> = setOf("ADMIN", "USER"), val permissions: Set<String> = emptySet())
+data class PluginBackend(val modules: Map<String, PluginBackendModule>, val routes: List<PluginBackendRoute>, val allowedOrigins: Set<String> = emptySet())
+data class PluginPackageDescriptor(val manifest: PluginManifest, val entrypoint: String = "index.html", val pages: Map<String, String> = emptyMap(), val backend: PluginBackend? = null)
 data class ParsedPluginPackage(val descriptor: PluginPackageDescriptor, val author: PluginAuthor, val files: Map<String, String>, val sha256: String)
 data class PluginRuntime(val html: String, val configuration: Map<String, String>)
 

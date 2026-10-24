@@ -48,6 +48,7 @@ class SecurityConfig(
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
         .authorizeHttpRequests { auth ->
             auth.requestMatchers("/api/health", "/api/auth/**").permitAll()
+            auth.requestMatchers(HttpMethod.POST, "/internal/plugins/host-call").permitAll() // Short-lived, hashed invocation credential is checked by the host broker.
             auth.requestMatchers(HttpMethod.GET, "/api/branding", "/api/branding/assets/*/*").permitAll()
             auth.requestMatchers(HttpMethod.GET, "/api/branding/login-images/*/*").permitAll()
             auth.requestMatchers(HttpMethod.POST, "/api/webhooks/incoming/*").permitAll()
