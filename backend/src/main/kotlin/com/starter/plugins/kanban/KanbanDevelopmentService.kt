@@ -12,7 +12,8 @@ import java.util.UUID
 
 @Service
 class KanbanDevelopmentService(private val boards: KanbanRepository, private val links: KanbanDevelopmentLinkRepository,
-    private val actors: PluginActor, private val registry: PluginRegistry, private val source: SourceControlService, private val mapper: ObjectMapper) {
+    private val actors: PluginActor, private val registry: PluginRegistry, private val source: SourceControlService, private val mapper: ObjectMapper,
+    private val projects: com.starter.projects.ProjectBoardAccess? = null) {
     @Transactional(readOnly = true)
     fun list(email: String, boardId: UUID): List<BoardLinkView> {
         val actor = actor(email); board(actor, boardId)
@@ -54,7 +55,7 @@ class KanbanDevelopmentService(private val boards: KanbanRepository, private val
         registry.requireTable("kanban", "plugin_kanban_boards", it.role, write)
         registry.requireTable("kanban", "plugin_kanban_development_links", it.role, write)
     }
-    private fun board(actor: User, id: UUID, lock: Boolean = false) = (if (lock) boards.locked(id) else boards.findById(id)).orElse(null)?.takeIf { it.ownerId == actor.id || com.starter.access.Roles.admin(actor.role) } ?: throw NotFoundException("Board unavailable")
+    private fun board(actor: User, id: UUID, lock: Boolean = false) = (if (lock) boards.locked(id) else boards.findById(id)).orElse(null)?.takeIf { projects?.readable(actor, it) ?: (it.ownerId == actor.id || com.starter.access.Roles.admin(actor.role)) } ?: throw NotFoundException("Board unavailable")
     private fun recheck(email: String, original: User, provider: String) {
         val current = actor(email, true)
         if (current.id != original.id || current.role != original.role) throw ForbiddenException("Access changed. Try again.")

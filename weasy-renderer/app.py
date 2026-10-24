@@ -15,7 +15,7 @@ workers = BoundedSemaphore(2)
 MAX_BODY = 2 * 1024 * 1024
 
 
-async def payload(request):
+async def payload(request, kind="template"):
     token = os.getenv("APP_DOCUMENT_RENDER_TOKEN", "")
     if token and not hmac.compare_digest(request.headers.get("Authorization", "").encode(), ("Bearer " + token).encode()):
         raise HTTPException(401, "Renderer authentication required")
@@ -26,7 +26,7 @@ async def payload(request):
             raise HTTPException(413, "Template payload must be 2 MB or smaller")
     try:
         value = json.loads(raw)
-        if not isinstance(value, dict) or not isinstance(value.get("template"), dict):
+        if not isinstance(value, dict) or not isinstance(value.get(kind), dict):
             raise ValueError()
         return value
     except (ValueError, UnicodeError):
@@ -53,6 +53,21 @@ async def validate(request: Request):
 @app.post("/render")
 async def render(request: Request):
     value = await payload(request)
+    return await render_payload(value)
+
+
+@app.post("/reports/render")
+async def render_report(request: Request):
+    value = await payload(request, "report")
+    from report import ReportDocument
+    try:
+        ReportDocument.model_validate(value["report"])
+    except ValueError:
+        raise HTTPException(400, "Invalid structured report") from None
+    return await render_payload(value)
+
+
+async def render_payload(value):
     if not workers.acquire(blocking=False):
         raise HTTPException(503, "Document rendering is busy")
     try:

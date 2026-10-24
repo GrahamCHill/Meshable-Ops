@@ -19,7 +19,7 @@ export interface PluginSettingField {key: string; label: string; type: 'TEXT' | 
 export interface PluginConfiguration {values: Record<string, string>; configuredSecrets: string[]; missingRequired: string[]; revision: number; encryptionConfigured: boolean}
 export type PluginSettings = Pick<PluginView, 'enabled' | 'allowedRoles' | 'searchEnabled' | 'tableAccess'>
 export const pluginsApi = {
-  install: (file: File) => { const body = new FormData(); body.append('file', file); return api.post<PluginView>('/admin/plugins/install', body).then(response => response.data) },
+  install: (file: File) => { const body = new FormData(); body.append('file', file); return api.post<PluginView>('/admin/plugins/install', body, {headers: {'Content-Type': undefined}}).then(response => response.data) },
   runtime: (id: string, section: string) => api.get<{html: string; configuration: Record<string, string>}>(`/plugins/${encodeURIComponent(id)}/runtime`, {params: {section}}).then(response => response.data),
   available: () => api.get<PluginView[]>('/plugins').then(response => response.data),
   installed: () => api.get<PluginView[]>('/admin/plugins').then(response => response.data),

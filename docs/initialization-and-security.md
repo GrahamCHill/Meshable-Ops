@@ -1,5 +1,7 @@
 # Initialization and configuration security
 
+Third-party ZIP extensions default off. Only a super admin can change **Administration → People & security → Security → Allow third-party extensions** or upload a package. Turning the switch off blocks installed ZIP pages, APIs, and search while retaining their data and configuration; bundled plugins are unaffected. Packages require an author file (blank values allowed), strict archive validation, and code/permission review. See [ZIP extension security](plugins/zip-packages.md#isolation-and-trust).
+
 Fresh databases start without demo users, folders, audit events, datasets, charts, or dashboards. The PostgreSQL initializer creates only the application database and required extensions. Hibernate and `backend/src/main/resources/schema.sql` own application schema setup; Docker no longer duplicates those table/index definitions. MongoDB's initializer retains its collection/index setup without inserting a sample event.
 
 ## Initial access

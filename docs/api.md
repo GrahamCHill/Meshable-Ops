@@ -2,6 +2,8 @@
 
 Optional modules use the authenticated `/api/plugins` catalogue, administrator-only `/api/admin/plugins` settings, and guarded `/api/plugins/{id}/…` routes. See [Workspace plugins](plugins.md#api) for contracts and Kanban endpoints, [plugin settings](plugins/settings.md) for redacted configuration APIs, and [integration plugins](plugins/integrations.md) for messaging/file-listing endpoints.
 
+Super-admin ZIP installation, global extension security, runtime pages, and owner-scoped managed record endpoints are documented in [Runtime ZIP packages](plugins/zip-packages.md#http-endpoints). These packages are loaded dynamically without rebuilding the host.
+
 [Source-control APIs](plugins/source-control.md#api) link approved repository/PR metadata to boards/cards. [Calendar APIs](plugins/calendar.md#api-and-extension-points) manage local events, export ICS, read selected providers, and explicitly publish saved events. [Capability dependencies](plugins/composition.md) are enforced per role, including direct API calls.
 
 

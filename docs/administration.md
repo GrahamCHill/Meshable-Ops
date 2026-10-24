@@ -2,12 +2,15 @@
 
 Open **Administration** (`/admin`) to see cards for each section. Admin sections have return navigation to Administration; they are not nested items in the main sidebar. `SUPER_ADMIN` manages role features, member views, and directory access. Delegated `ADMIN` accounts manage only the areas permitted by a super admin. See [access controls](access-controls.md).
 
+Related settings are consolidated into seven card groups: **Workspace**, **People & security**, **Storage & sharing**, **Communications**, **Documents & workflows**, **Analytics & search**, and **Operations**. Each group opens a compact settings menu at `/admin/sections/<group-id>`. Existing settings URLs still work; breadcrumbs return to either their group or the admin overview. Restricted cards are hidden according to the same feature permissions as their destination pages.
+
 | Area | Route | Purpose |
 | --- | --- | --- |
 | Users | `/admin/users` | Row-based roster, role assignment, activation, upload permissions, and Add user dialog |
 | Access controls | `/admin/access-controls` | Super admin role features, member views, external sharing, and protected cloud paths |
+| Security | `/admin/security` | Super admin global third-party extension switch; links to access controls and personal MFA |
 | Branding | `/admin/branding` | Business name, sidebar/link colours, logo/favicon, and sign-in backgrounds |
-| Plugins | `/admin/plugins` | Enable installed modules and choose administrator or all-user access |
+| Plugins | `/admin/plugins` | ZIP installation by super admins; module settings, roles, tables, and search |
 | Storage connections | `/admin/storage` | Named S3/Blob locations, shared folders, indexing jobs |
 | Document access | `/admin/documents` | PDF viewing, download policies, and watermarks |
 | Notifications | `/admin/notifications` | Delivery methods, per-method messages, workflow alerts, and delivery history |

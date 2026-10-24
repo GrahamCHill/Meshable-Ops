@@ -19,7 +19,8 @@ data class PluginManifest(val id: String, val name: String, val version: String,
     val menuItems: List<PluginMenuItem> = emptyList(), val tables: List<PluginTable> = emptyList(),
     val settingsFields: List<PluginSettingField> = emptyList(), val supportedRoles: Set<String> = setOf("ADMIN", "USER"),
     val capabilities: Map<String, String> = emptyMap(), val requiresCapabilities: Set<String> = emptySet(),
-    val features: List<PluginFeature> = emptyList(), val defaultRoles: Set<String> = supportedRoles)
+    val features: List<PluginFeature> = emptyList(), val defaultRoles: Set<String> = supportedRoles,
+    val contextTargets: Set<String> = emptySet())
 
 /** Implement as a Spring bean in a reviewed, compiled-in plugin module. */
 interface WorkspacePlugin {

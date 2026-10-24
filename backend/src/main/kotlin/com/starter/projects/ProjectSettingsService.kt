@@ -1,0 +1,45 @@
+package com.starter.projects
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.starter.access.AccessControlService
+import com.starter.exception.*
+import com.starter.repository.postgres.UserRepository
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
+
+@Service
+class ProjectSettingsService(private val records: ProjectSettingsRepository, private val groups: WorkGroupRepository,
+    private val users: UserRepository, private val mapper: ObjectMapper, private val access: AccessControlService) {
+    fun current() = records.findById(1).orElse(null)?.let { ProjectSettingsView(mapper.readValue(it.settingsJson, ProjectSettings::class.java), it.revision) } ?: ProjectSettingsView(ProjectSettings(), -1)
+    fun groups() = groups.findAll().sortedBy { it.name }.map(::view)
+    @Transactional
+    fun save(request: ProjectSettingsView): ProjectSettingsView {
+        access.requireFeature("admin.projects")
+        val value = request.settings
+        if (value.tags.size > 100 || value.tags.map { it.id }.distinct().size != value.tags.size || value.tags.map { it.name.trim().lowercase() }.distinct().size != value.tags.size) throw BadRequestException("Use up to 100 unique project tags")
+        val known = groups.findAll().map { it.id }.toSet()
+        value.tags.forEach { ProjectValidation.name(it.name, 80); if (it.description.length > 500 || !known.containsAll(it.groupIds)) throw BadRequestException("Use valid tag descriptions and groups") }
+        ProjectValidation.contacts(value.identityContacts)
+        val row = records.findById(1).orElse(null)
+        if ((row?.revision ?: -1) != request.revision) throw ConflictException("Project settings changed. Reload before saving.")
+        val saved = row ?: ProjectSettingsRecord()
+        saved.settingsJson = mapper.writeValueAsString(value.copy(tags = value.tags.map { it.copy(name = it.name.trim()) }))
+        records.saveAndFlush(saved)
+        return current()
+    }
+    @Transactional
+    fun saveGroup(id: UUID?, request: WorkGroupInput): WorkGroupView {
+        access.requireFeature("admin.projects")
+        ProjectValidation.name(request.name, 100)
+        if (request.description.length > 1000 || request.details.memberIds.size > 500 || request.details.tagIds.size > 100) throw BadRequestException("Group details exceed their limits")
+        val internal = users.findAllById(request.details.memberIds).filter { it.active && it.role != "EXTERNAL" }.map { it.id }.toSet()
+        if (internal != request.details.memberIds || !current().settings.tags.map { it.id }.containsAll(request.details.tagIds)) throw BadRequestException("Choose active internal members and existing tags")
+        val row = id?.let { groups.findById(it).orElseThrow { NotFoundException("Group unavailable") } } ?: WorkGroupRecord()
+        if (id != null && row.revision != request.revision) throw ConflictException("This group changed. Reload before saving.")
+        row.name = request.name.trim(); row.description = request.description; row.kind = request.kind; row.projectRole = request.projectRole
+        row.detailsJson = mapper.writeValueAsString(request.details)
+        return view(groups.saveAndFlush(row))
+    }
+    private fun view(row: WorkGroupRecord) = WorkGroupView(row.id, row.name, row.description, row.kind, row.projectRole, mapper.readValue(row.detailsJson, WorkGroupData::class.java), row.revision)
+}

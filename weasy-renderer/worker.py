@@ -73,7 +73,11 @@ if __name__ == "__main__":
             resource.setrlimit(resource.RLIMIT_AS, (768 * 1024 * 1024, 768 * 1024 * 1024))
             resource.setrlimit(resource.RLIMIT_CPU, (35, 35))
         request = json.loads(sys.stdin.buffer.read(2 * 1024 * 1024 + 1))
-        sys.stdout.buffer.write(render(request["template"], request.get("values", {})))
+        if "report" in request:
+            from report import render_report
+            sys.stdout.buffer.write(render_report(request["report"]))
+        else:
+            sys.stdout.buffer.write(render(request["template"], request.get("values", {})))
     except Exception:
         # Input/template values and native errors never reach the HTTP response or logs.
         sys.exit(2)

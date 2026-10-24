@@ -10,7 +10,7 @@ export default {
 } satisfies WorkspacePluginModule
 ```
 
-Vite discovers compiled descriptors. The server supplies labels, roles, and submenu metadata; it cannot supply executable JavaScript. A matching local descriptor/API version is required before a page appears.
+Vite discovers compiled descriptors for bundled modules. A matching local descriptor/API version is required before a bundled page appears. [ZIP packages](zip-packages.md) instead supply self-contained pages loaded through a sandbox at runtime; they do not run inside the host React application.
 
 Pages mount at `/plugins/:pluginId/*`. Add `PluginMenuItem("boards", "Boards")` to the backend manifest for `/plugins/tasks/boards`. Submenu paths are single lowercase segments, with no URLs, slashes, or traversal. Each item can restrict `roles` to `ADMIN` and/or `USER`. The host hides disallowed links and rejects direct page navigation to undeclared/disallowed sections. The root page remains the plugin's landing page. Sections can own deeper routes under their declared first segment.
 

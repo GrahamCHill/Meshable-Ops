@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class SearchService(private val vectors: VectorService, private val keywords: KeywordSearchService, private val settings: AiSettingsService, private val scopes: SearchScopeResolver,
-    private val plugins: com.starter.plugins.PluginSearchService? = null) {
+    private val plugins: com.starter.plugins.PluginSearchService? = null, private val projects: com.starter.projects.ProjectSearchService? = null) {
     fun search(request: VectorSearchRequest, email: String? = null): SearchResponse {
         if (!settings.current().searchEnabled) throw ForbiddenException("Search is disabled by an administrator")
         val scope = scopes.resolve(request)
@@ -25,8 +25,8 @@ class SearchService(private val vectors: VectorService, private val keywords: Ke
         } catch (_: AiUnavailableException) { fallback(request, scope) }
           catch (_: BadRequestException) { fallback(request, scope) }
         // A folder-scoped storage search must never include unrelated plugin rows.
-        if (scope.folderId != null || email == null || plugins == null) return storage
-        val matches = plugins.search(email, request.query, request.limit).map { VectorSearchResult(it.id, it.score, it.payload) }
+        if (scope.folderId != null || email == null) return storage
+        val matches = (plugins?.search(email, request.query, request.limit)?.map { VectorSearchResult(it.id, it.score, it.payload) } ?: emptyList()) + (projects?.search(email, request.query, request.limit) ?: emptyList())
         if (matches.isEmpty()) return storage
         val storageMatches = if (storage.mode == "KEYWORD") storage.results.map { it.copy(payload = it.payload + ("matchMode" to "Keyword match")) } else storage.results
         return storage.copy(results = (storageMatches + matches).sortedByDescending { it.score }.take(request.limit), mode = "MIXED")

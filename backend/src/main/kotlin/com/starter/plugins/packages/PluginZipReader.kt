@@ -19,29 +19,28 @@ class PluginZipReader(mapper: ObjectMapper) {
         if (bytes.isEmpty() || bytes.size > MAX_ARCHIVE_BYTES) invalid("ZIP files must be at most 5 MB")
         try {
             val files = linkedMapOf<String, String>()
+            val seen = mutableSetOf<String>()
             var total = 0
             var entries = 0
             ZipInputStream(bytes.inputStream()).use { zip ->
                 while (true) {
                     val entry = zip.nextEntry ?: break
                     if (++entries > 50) invalid("Too many ZIP entries")
-                    val path = entry.name
-                    if (!path.matches(Regex("[A-Za-z0-9][A-Za-z0-9_./-]{0,119}")) || path.split('/').any { it in setOf("", ".", "..") }) {
-                        if (entry.isDirectory && path.endsWith('/') && path.dropLast(1).matches(Regex("[A-Za-z0-9][A-Za-z0-9_/-]{0,118}")) && path.split('/').none { it == ".." }) continue
-                        invalid("Use safe, relative ZIP paths")
-                    }
-                    if (entry.isDirectory) continue
-                    if (files.keys.any { it.equals(path, ignoreCase = true) }) invalid("Duplicate ZIP entry")
-                    if (path !in setOf("plugin.json", "author.json") && !path.endsWith(".html")) invalid("Packages may contain JSON metadata and self-contained HTML pages only")
+                    val path = if (entry.isDirectory) entry.name.removeSuffix("/") else entry.name
+                    if (!path.matches(Regex("[A-Za-z0-9][A-Za-z0-9_./-]{0,119}")) || path.split('/').any { it in setOf("", ".", "..") }) invalid("Use safe, relative ZIP paths")
+                    if (!seen.add(path.lowercase(java.util.Locale.ROOT))) invalid("Duplicate ZIP entry")
+                    if (!entry.isDirectory && path !in setOf("plugin.json", "author.json") && !path.endsWith(".html")) invalid("Packages may contain JSON metadata and self-contained HTML pages only")
                     val output = java.io.ByteArrayOutputStream()
                     val buffer = ByteArray(8192)
                     while (true) {
                         val count = zip.read(buffer)
                         if (count < 0) break
+                        if (entry.isDirectory && count > 0) invalid("Directory entries must be empty")
                         total += count
                         if (total > MAX_EXPANDED_BYTES || output.size() + count > MAX_FILE_BYTES) invalid("Expanded ZIP exceeds the package limits")
                         output.write(buffer, 0, count)
                     }
+                    if (entry.isDirectory) continue
                     files[path] = Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
                         .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(output.toByteArray())).toString()
                 }

@@ -5,16 +5,19 @@ import { pluginsApi, type PluginView } from '../../api/plugins'
 import { getErrorMessage } from '../../components/admin/adminUtils'
 import { dispatchPluginRequest, isPluginRequest } from './bridge'
 import { runtimeDocument } from './document'
+import { useAuthStore } from '../../hooks/useAuthStore'
+import { pluginRole } from '../../api/access'
 
 export default function RuntimePluginPage({ plugin }: { plugin: PluginView }) {
   const { '*': section = '' } = useParams(); const navigate = useNavigate(); const location = useLocation()
   const frame = useRef<HTMLIFrameElement>(null)
+  const role = useAuthStore(state => pluginRole(state.user?.role ?? ''))
   const runtime = useQuery({queryKey: ['plugin-runtime', plugin.manifest.id, section], queryFn: () => pluginsApi.runtime(plugin.manifest.id, section), refetchInterval: 15_000, retry: false})
   const channel = useMemo(() => crypto.randomUUID(), [plugin.manifest.id, section, runtime.data, runtime.isError])
   const document = useMemo(() => runtime.data ? runtimeDocument(runtime.data.html, channel) : '', [runtime.data, channel])
-  const context = useMemo(() => ({plugin: {id: plugin.manifest.id, name: plugin.manifest.name}, section,
+  const context = useMemo(() => ({plugin: {id: plugin.manifest.id, name: plugin.manifest.name}, section, role,
     configuration: runtime.data?.configuration ?? {}, tables: plugin.manifest.tables, tableAccess: plugin.tableAccess,
-    record: new URLSearchParams(location.search).get('record'), table: new URLSearchParams(location.search).get('table')}), [plugin, section, runtime.data, location.search])
+    record: new URLSearchParams(location.search).get('record'), table: new URLSearchParams(location.search).get('table')}), [plugin, section, role, runtime.data, location.search])
   // Keep the port alive across harmless query refreshes; each request reads the current context.
   const current = useRef({plugin, context}); current.current = {plugin, context}
   useLayoutEffect(() => {
@@ -32,7 +35,7 @@ export default function RuntimePluginPage({ plugin }: { plugin: PluginView }) {
           const result = await dispatchPluginRequest(request, current.current.plugin, current.current.context,
             next => navigate(`/plugins/${plugin.manifest.id}${next ? `/${next}` : ''}`))
           if (active) port?.postMessage({id: request.id, result})
-        } catch (error) { if (active) port?.postMessage({id: request.id, error: getErrorMessage(error, 'Plugin request failed.')}) }
+        } catch (error) { if (active) port?.postMessage({id: request.id, error: getErrorMessage(error, error instanceof Error ? error.message : 'Plugin request failed.')}) }
         finally {inFlight--}
       }
       port.start()
@@ -43,7 +46,7 @@ export default function RuntimePluginPage({ plugin }: { plugin: PluginView }) {
   if (runtime.isError) return <p role="alert">{getErrorMessage(runtime.error, 'This extension is unavailable.')} <button onClick={() => void runtime.refetch()}>Retry</button></p>
   if (!runtime.data) return <p role="status">Loading extension…</p>
   return <div className="page-stack"><div><h1>{plugin.manifest.name}</h1><p>{plugin.manifest.description}</p></div>
-    <iframe key={channel} ref={frame} title={`${plugin.manifest.name} extension`} sandbox="allow-scripts" referrerPolicy="no-referrer"
+    <iframe key={channel} ref={frame} title={`${plugin.manifest.name} extension`} sandbox="allow-scripts allow-forms" referrerPolicy="no-referrer"
       allow="camera 'none'; microphone 'none'; geolocation 'none'; clipboard-read 'none'; clipboard-write 'none'" srcDoc={document}
       style={{width: '100%', minHeight: 650, border: 0, background: '#fff'}} />
   </div>

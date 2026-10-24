@@ -20,12 +20,32 @@ class PluginAuthorizationTest {
         @Bean open fun dataController(data: PluginDataService) = AdminPluginDataController(data)
         @Bean open fun configuration() = mock(PluginConfigurationService::class.java)
         @Bean open fun configurationController(configuration: PluginConfigurationService) = PluginConfigurationController(configuration)
+        @Bean open fun packages() = mock(com.starter.plugins.packages.PluginPackageService::class.java)
+        @Bean open fun actors() = mock(PluginActor::class.java)
+        @Bean open fun packageController(packages: com.starter.plugins.packages.PluginPackageService, actors: PluginActor) = com.starter.plugins.packages.PluginPackageController(packages, actors)
         @Bean open fun messaging() = mock(com.starter.notification.NotificationService::class.java)
         @Bean open fun drives() = mock(com.starter.plugins.integrations.MicrosoftDriveService::class.java)
         @Bean open fun rates() = mock(com.starter.security.RateLimits::class.java)
         @Bean open fun integrationController(messaging: com.starter.notification.NotificationService, drives: com.starter.plugins.integrations.MicrosoftDriveService, rates: com.starter.security.RateLimits) = com.starter.plugins.integrations.IntegrationController(messaging, drives, rates)
     }
     @AfterEach fun clear() = SecurityContextHolder.clearContext()
+    @Test fun `only super admins can install ZIP packages or change global extension security`() {
+        AnnotationConfigApplicationContext(Config::class.java).use { context ->
+            val controller = context.getBean(com.starter.plugins.packages.PluginPackageController::class.java)
+            val request = com.starter.plugins.packages.ExtensionSecurityView(true, -1)
+            val file = org.springframework.mock.web.MockMultipartFile("file", "notes.zip", "application/zip", byteArrayOf(1))
+            listOf("USER", "ADMIN", "EXTERNAL").forEach { role ->
+                SecurityContextHolder.getContext().authentication = UsernamePasswordAuthenticationToken("member@example.test", "", listOf(SimpleGrantedAuthority("ROLE_$role")))
+                assertThatThrownBy { controller.security() }.isInstanceOf(AccessDeniedException::class.java)
+                assertThatThrownBy { controller.saveSecurity(request) }.isInstanceOf(AccessDeniedException::class.java)
+                assertThatThrownBy { controller.install(file) }.isInstanceOf(AccessDeniedException::class.java)
+            }
+            verifyNoInteractions(context.getBean(com.starter.plugins.packages.PluginPackageService::class.java))
+            SecurityContextHolder.getContext().authentication = UsernamePasswordAuthenticationToken("owner@example.test", "", listOf(SimpleGrantedAuthority("ROLE_SUPER_ADMIN"), SimpleGrantedAuthority("ROLE_ADMIN")))
+            `when`(context.getBean(com.starter.plugins.packages.PluginPackageService::class.java).security()).thenReturn(request)
+            assertThat(controller.security()).isEqualTo(request)
+        }
+    }
     @Test fun `ordinary accounts cannot list installed plugins or change their settings`() {
         SecurityContextHolder.getContext().authentication = UsernamePasswordAuthenticationToken("user@example.test", "", listOf(SimpleGrantedAuthority("ROLE_USER")))
         AnnotationConfigApplicationContext(Config::class.java).use { context ->

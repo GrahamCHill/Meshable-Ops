@@ -17,7 +17,11 @@ class PluginPackageRecord(@Id val id: String = "",
     @Column(nullable = false, columnDefinition = "TEXT") val filesJson: String = "",
     @Column(nullable = false, length = 64) val sha256: String = "",
     @Column(nullable = false) val installedAt: Instant = Instant.now())
-interface PluginPackageRepository : JpaRepository<PluginPackageRecord, String>
+interface PluginPackageMetadata { val id: String; val descriptorJson: String; val authorJson: String }
+interface PluginPackageRepository : JpaRepository<PluginPackageRecord, String> {
+    fun findAllProjectedBy(): List<PluginPackageMetadata>
+    fun findMetadataById(id: String): PluginPackageMetadata?
+}
 
 @Entity @Table(name = "workspace_extension_security")
 class ExtensionSecurityRecord(@Id val id: Int = 1, var allowThirdPartyExtensions: Boolean = false,

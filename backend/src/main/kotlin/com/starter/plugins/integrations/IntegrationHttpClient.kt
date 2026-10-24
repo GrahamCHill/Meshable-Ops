@@ -65,7 +65,7 @@ class IntegrationHttpClient(private val mapper: ObjectMapper, @Value("\${app.plu
     internal fun validate(url: String): URI {
         val uri = runCatching { URI(url) }.getOrNull()
         val host = uri?.host?.lowercase().orEmpty()
-        val fixed = setOf("api.telegram.org", "graph.facebook.com", "graph.microsoft.com", "login.microsoftonline.com", "oauth2.googleapis.com", "www.googleapis.com", "api.github.com")
+        val fixed = setOf("api.telegram.org", "discord.com", "graph.facebook.com", "graph.microsoft.com", "login.microsoftonline.com", "oauth2.googleapis.com", "www.googleapis.com", "api.github.com")
         if (uri == null || uri.scheme != "https" || uri.port !in listOf(-1,443) || uri.userInfo != null || uri.fragment != null ||
             (host !in fixed && !host.endsWith(".api.powerplatform.com") && !host.endsWith(".logic.azure.com")))
             throw IntegrationUnavailable("Unsupported integration endpoint")

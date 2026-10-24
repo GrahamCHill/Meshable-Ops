@@ -16,6 +16,7 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Create a versioned template copy and deploy automatically over SSH | [GitHub Actions deployment](github-deployment.md) |
 | Set a business name, colours, logos, and sign-in backgrounds | [Branding](branding.md) |
 | Create plugins with pages, submenus, tables, and search | [Plugin authoring](plugins/README.md) |
+| Upload ZIP plugins and configure third-party extension security | [Runtime ZIP packages](plugins/zip-packages.md) |
 | Link Git repositories/PRs to boards and cards | [Source-control plugins](plugins/source-control.md) |
 | Use day/week/month views, private member sync, and board deadlines | [Calendar plugins](plugins/calendar.md) |
 | Add dependencies and optional connections between plugins | [Plugin composition](plugins/composition.md) |
@@ -54,7 +55,7 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 - Internal members retain shared-root access unless restricted. External members need explicit directory/file grants. Upload permission defaults off and is unavailable to external members.
 - AI and storage keys saved through the app require a persistent server wrapping key. MinIO/Azurite development seeds also persist credentials, so set the key before starting those profiles.
 - MongoDB records, audit logs, and events are not search or AI-answer sources.
-- Plugins are trusted modules included at build time and start disabled. Enable Kanban boards in Administration → Plugins.
+- Plugins start disabled. Bundled modules support server integrations; super admins can also install sandboxed ZIP plugins after enabling third-party extensions in Security. ZIP packages require an author file and are excluded from search by default.
 
 ## Upgrading an existing checkout
 

@@ -54,7 +54,9 @@ class PluginPackageService(private val records: PluginPackageRepository, private
 
     fun runtime(id: String, section: String, role: String): PluginRuntime {
         registry.requireAvailable(id, role)
-        val html = catalogue.page(id, section, com.starter.access.Roles.plugin(role))
+        val html = org.jsoup.Jsoup.parse(catalogue.page(id, section, com.starter.access.Roles.plugin(role))).also {
+            it.select("meta[http-equiv], base, iframe, object, embed").remove()
+        }.outerHtml()
         // SECRET fields are always redacted by the existing encrypted configuration service.
         return PluginRuntime(html, configuration.view(id).values)
     }

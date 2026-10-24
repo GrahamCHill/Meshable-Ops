@@ -22,7 +22,7 @@ data class PluginRecordInput(val data: JsonNode, val revision: Long = -1)
 class PluginRecordService(private val registry: PluginRegistry, private val packages: InstalledPluginCatalogue,
     private val jdbc: JdbcTemplate, private val mapper: ObjectMapper) {
     private fun table(id: String, table: String, actor: User, write: Boolean = false) {
-        if (packages.find(id) == null) throw NotFoundException("Managed plugin data unavailable")
+        if (!packages.contains(id)) throw NotFoundException("Managed plugin data unavailable")
         registry.requireTable(id, table, actor.role, write)
     }
     fun list(id: String, table: String, actor: User, offset: Int): List<PluginRecord> {

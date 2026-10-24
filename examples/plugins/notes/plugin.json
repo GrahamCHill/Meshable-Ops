@@ -1,0 +1,15 @@
+{
+  "manifest": {
+    "id": "zip-notes",
+    "name": "Notes",
+    "version": "1.0.0",
+    "description": "Private notes with managed storage and optional workspace search.",
+    "apiVersion": 1,
+    "extensions": ["PAGE", "DATABASE", "SEARCH", "SETTINGS"],
+    "menuItems": [{"path": "guide", "label": "Guide", "roles": ["ADMIN", "USER"]}],
+    "tables": [{"name": "plugin_zip_notes_notes", "label": "Notes", "readRoles": ["ADMIN", "USER"], "writeRoles": ["ADMIN", "USER"]}],
+    "settingsFields": [{"key": "heading", "label": "Page heading", "help": "Optional heading shown above your notes.", "maxLength": 100}]
+  },
+  "entrypoint": "index.html",
+  "pages": {"guide": "guide.html"}
+}

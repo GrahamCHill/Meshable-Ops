@@ -1,6 +1,8 @@
 # Creating a plugin
 
-Start from `backend/src/main/kotlin/com/starter/plugins/kanban/` and `frontend/src/plugins/modules/kanban/`. Plugins are trusted source modules included in both application images. Review them as application code: dependencies, SQL migrations, secrets, ownership, and outbound requests all need review.
+Choose between [runtime ZIP packages](zip-packages.md) for sandboxed pages, submenus, managed data/settings/search, and compiled source modules for privileged server integrations and composition. Both need source and permission review. ZIP installation requires the super admin's third-party extensions security switch.
+
+For a source module, start from `backend/src/main/kotlin/com/starter/plugins/kanban/` and `frontend/src/plugins/modules/kanban/`. Source modules are included in both application images. Review dependencies, SQL migrations, secrets, ownership, and outbound requests as application code.
 
 1. Add a Spring `@Component` implementing `WorkspacePlugin` under `com.starter.plugins.<module>`. Declare a unique lowercase ID of 2–40 characters, a `major.minor.patch` version, and host `apiVersion = 1`.
 2. Declare extension types: `PAGE`, `API`, `DATABASE`, `SETTINGS`, `NOTIFICATIONS`, and/or `SEARCH`. Add submenu definitions and owned table declarations as needed. `defaultRoles` may restrict initial access within `supportedRoles` (both must retain `ADMIN`).

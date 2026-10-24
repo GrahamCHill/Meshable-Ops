@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><style>
+body {font: 16px system-ui, sans-serif; margin: 24px; color: #202124} form {display: grid; gap: 12px; max-width: 640px} input, textarea, button {font: inherit; padding: 8px} textarea {min-height: 100px} li {margin: 20px 0} button {cursor: pointer} #status {min-height: 24px} pre {white-space: pre-wrap}
+</style></head><body>
+<h2 id="heading">My notes</h2><p>Members see their own notes. Administrators can manage all notes.</p>
+<form id="note-form"><label>Title <input id="title" required maxlength="150"></label><label>Note <textarea id="body" maxlength="4000"></textarea></label><button id="save">Add note</button></form>
+<p id="status" role="status"></p><ul id="notes"></ul><button id="more" hidden>Load more</button>
+<script>
+const table = 'plugin_zip_notes_notes'; let offset = 0; let canWrite = false;
+const status = document.getElementById('status'); const list = document.getElementById('notes');
+async function run(action) { try { status.textContent = ''; await action(); } catch (error) { status.textContent = error.message; } }
+async function load(reset = true) {
+  if (reset) {offset = 0; list.replaceChildren();}
+  const rows = await weaveops.data.list(table, offset); offset += rows.length;
+  for (const row of rows) {
+    const item = document.createElement('li'); const title = document.createElement('strong'); const body = document.createElement('pre');
+    title.textContent = row.data.title || 'Untitled'; body.textContent = row.data.body || ''; item.append(title, body);
+    const remove = document.createElement('button'); remove.textContent = 'Delete';
+    remove.onclick = () => run(async () => {await weaveops.data.remove(table, row.id, row.revision); await load();});
+    if (canWrite) item.append(remove); list.append(item);
+  }
+  document.getElementById('more').hidden = rows.length < 100;
+}
+document.getElementById('more').onclick = () => run(() => load(false));
+document.getElementById('note-form').onsubmit = event => {
+  event.preventDefault(); const save = document.getElementById('save'); save.disabled = true;
+  run(async () => {await weaveops.data.create(table, {title: document.getElementById('title').value, body: document.getElementById('body').value}); event.target.reset(); await load();}).finally(() => {save.disabled = false;});
+};
+run(async () => {
+  const context = await weaveops.context(); document.getElementById('heading').textContent = context.configuration.heading || 'My notes';
+  canWrite = context.tableAccess[table].writeRoles.includes(context.role);
+  document.getElementById('note-form').hidden = !canWrite;
+  await load();
+});
+</script></body></html>

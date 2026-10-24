@@ -23,7 +23,7 @@ Built for growing businesses and teams building their own internal platforms. St
 | **Search and optional AI** | Search permitted storage by meaning or keywords, schedule reindexing, and add document chat with configurable providers. Local search works without an AI service. [Search](docs/search-and-indexing.md) |
 | **Business insights** | Bring multiple Apache Superset dashboards into the workspace, with clear navigation, role visibility, and an admin authoring area. [Dashboards](docs/dashboards.md) |
 | **Communication** | Configure SMTP or transactional email, per-method notification templates and member preferences, protected PDF attachments, and incoming/outgoing webhooks. [Notifications](docs/notifications.md) |
-| **Plugins that work together** | Add Kanban boards, repository/PR links, daily/weekly/monthly calendars, private member calendar sync, messaging, and Microsoft file integrations. [Plugin ecosystem](docs/plugins/README.md) |
+| **Plugins that work together** | Enable boards, repository links, calendars, private member sync, messaging, and Microsoft file integrations. Install runtime ZIP extensions with pages, submenus, settings, managed data, and search. [Plugin ecosystem](docs/plugins/README.md) |
 | **Workspace control** | Delegate administration, restrict member views, enable optional authenticator/email MFA, and customize branding. Saved provider secrets are encrypted; account passwords use salted bcrypt. [Administration](docs/administration.md) |
 
 ## Quick start
@@ -80,7 +80,8 @@ flowchart TB
             documents["Document and workflow services<br/>Template publication, calculated fields, generated PDFs<br/>Visual designs, private guided runs, document/email steps"]
             search["Search and indexing<br/>Local matching or provider embeddings<br/>Vector/keyword retrieval, schedules, optional grounded chat"]
             communication["Notifications, sharing, and webhooks<br/>Method templates, member preferences, delivery history<br/>Watermarked/password-protected PDF email attachments"]
-            plugins["Compiled-in plugin host<br/>Pages and submenus, settings, capabilities<br/>Owned tables, role/row checks, optional search providers"]
+            plugins["Plugin host: bundled modules + runtime ZIPs<br/>Pages and submenus, encrypted settings<br/>Owned tables, role/row checks, optional search providers"]
+            zipruntime["Uploaded ZIP extensions<br/>Required author metadata, super admin security switch<br/>Sandboxed pages and managed data; no server code"]
         end
 
         subgraph modules["Optional plugin modules"]
@@ -131,6 +132,8 @@ flowchart TB
     search -.->|"Content indexing when enabled"| extract
     search -.->|"Permitted excerpts / optional embeddings"| ai
     plugins --> boards & calendars & connectors
+    plugins --> zipruntime
+    zipruntime -->|"Scoped host bridge"| appdb
     boards -.->|"Card deadlines"| calendars
     plugins -->|"Opt-in authorized records"| search
     communication --> mail --> recipients
@@ -144,7 +147,7 @@ flowchart TB
     celery --> supersetdb & redis
 ```
 
-Solid lines show primary service/data paths; dotted lines show optional connections or deployment. PostgreSQL and object storage serve different purposes; MongoDB is not a search source. Redis/Celery support Superset, while application indexing and calendar jobs run in the Kotlin backend. Plugins are reviewed source modules included at build time.
+Solid lines show primary service/data paths; dotted lines show optional connections or deployment. PostgreSQL and object storage serve different purposes; MongoDB is not a search source. Redis/Celery support Superset, while application indexing and calendar jobs run in the Kotlin backend. Bundled plugins are reviewed source modules; [ZIP extensions](docs/plugins/zip-packages.md) load dynamically in sandboxed frames after super admin approval.
 
 See [architecture](docs/architecture.md), [database layout](docs/database-layout.md), and [plugin composition](docs/plugins/composition.md) for boundaries and operational details.
 

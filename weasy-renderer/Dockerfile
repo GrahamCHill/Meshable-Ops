@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && useradd --create-home renderer
 COPY backend ./backend
-COPY app.py worker.py ./
+COPY app.py worker.py report.py ./
 USER renderer
 EXPOSE 8000
 CMD ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]

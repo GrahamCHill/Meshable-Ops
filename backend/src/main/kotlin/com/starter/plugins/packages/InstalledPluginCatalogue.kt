@@ -9,11 +9,11 @@ import org.springframework.stereotype.Service
 @Service
 class InstalledPluginCatalogue(private val records: PluginPackageRepository, private val security: ExtensionSecurityRepository, private val mapper: ObjectMapper) {
     fun allowed() = security.findById(1).orElse(null)?.allowThirdPartyExtensions == true
-    fun records() = records.findAll()
-    fun manifests() = records().map { descriptor(it).manifest }
+    fun manifests() = records.findAllProjectedBy().map { mapper.readValue(it.descriptorJson, PluginPackageDescriptor::class.java).manifest }
     fun find(id: String) = records.findById(id).orElse(null)
+    fun contains(id: String) = records.existsById(id)
     fun descriptor(record: PluginPackageRecord) = mapper.readValue(record.descriptorJson, PluginPackageDescriptor::class.java)
-    fun author(id: String) = find(id)?.let { mapper.readValue(it.authorJson, PluginAuthor::class.java) }
+    fun author(id: String) = records.findMetadataById(id)?.let { mapper.readValue(it.authorJson, PluginAuthor::class.java) }
     fun page(id: String, section: String, role: String): String {
         if (!allowed()) throw NotFoundException("Third-party extensions are disabled")
         val record = find(id) ?: throw NotFoundException("Plugin package not installed")

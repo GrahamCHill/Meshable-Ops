@@ -12,6 +12,8 @@ class AccessCatalogue(private val plugins: List<WorkspacePlugin>, private val pa
         AccessFeature("storage", "Storage", "/storage"), AccessFeature("documents", "Documents", "/documents"),
         AccessFeature("workflows", "Workflows", "/workflows"), AccessFeature("events", "Events", "/events"),
         AccessFeature("search", "Search and AI assistant", "/search"),
+        AccessFeature("projects", "Clients and projects", "/projects"),
+        AccessFeature("admin.projects", "Project tags, teams, and custom roles", "/admin/projects", true),
         AccessFeature("admin.branding", "Branding", "/admin/branding", true),
         AccessFeature("admin.plugins", "Plugin administration", "/admin/plugins", true),
         AccessFeature("admin.users", "User management", "/admin/users", true),

@@ -9,6 +9,8 @@ internal object PluginManifests {
         require(manifest.name.isNotBlank() && manifest.name.length <= 100 && manifest.navigationLabel.isNotBlank() && manifest.navigationLabel.length <= 60 && manifest.description.length <= 500) { "Invalid plugin metadata" }
     }
     fun validate(manifest: PluginManifest) {
+        require(setOf("CLIENT", "PROJECT").containsAll(manifest.contextTargets)) { "Context targets must be CLIENT or PROJECT" }
+        require(manifest.contextTargets.isEmpty() || PluginExtension.PAGE in manifest.extensions) { "Context extensions require a page" }
         val capabilities = manifest.capabilities.keys + manifest.requiresCapabilities + manifest.features.flatMap { it.requires }
         require(capabilities.all { it.matches(Regex("[a-z][a-z0-9.-]{1,79}")) } && manifest.capabilities.values.all { it.isNotBlank() && it.length <= 100 }) { "Invalid plugin capabilities" }
         require(manifest.requiresCapabilities.intersect(manifest.capabilities.keys).isEmpty()) { "A plugin cannot supply its own requirement" }
