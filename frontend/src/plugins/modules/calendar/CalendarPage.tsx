@@ -23,7 +23,7 @@ export default function CalendarPage() {
   const [view,setView]=useState<CalendarView>('month')
   const range=useMemo(() => calendarRange(cursor,view),[cursor,view])
   const [provider,setProvider]=useState('')
-  const [editing,setEditing]=useState<CalendarEvent|'new'>()
+  const [editing,setEditing]=useState<{event?:CalendarEvent;date?:Date;allDay?:boolean}>()
   const selectedProvider=providers.find(item => item.id===provider)
   const from=range.start.toISOString(),until=range.end.toISOString()
   const readable=policy?.readRoles.includes(role)===true
@@ -43,15 +43,15 @@ export default function CalendarPage() {
     <div><h1>Calendar</h1><p>Local events, personal calendar sync, and board deadlines.</p></div>
     <nav className="workspace-tabs" aria-label="Calendar view">{(['day','week','month'] as const).map(item => <button key={item} aria-pressed={view===item} className={view===item ? 'is-active' : ''} onClick={() => {setView(item);setEditing(undefined)}}>{item==='day' ? 'Day' : item==='week' ? 'Week' : 'Month'}</button>)}</nav>
     <div className="inline-actions"><Button variant="ghost" onClick={() => shift(-1)}>Previous {view}</Button><h2>{range.label}</h2><Button variant="ghost" onClick={() => shift(1)}>Next {view}</Button><Button variant="ghost" onClick={() => {setCursor(new Date());setEditing(undefined)}}>Today</Button></div>
-    <div className="inline-actions">{policy?.writeRoles.includes(role) && <Button onClick={() => setEditing('new')}>New event</Button>}<Button variant="secondary" disabled={exportCalendar.isPending || local.isLoading || local.isError} onClick={() => exportCalendar.mutate()}>Export local events (.ics)</Button><Button variant="ghost" onClick={() => {void local.refetch();if (selectedProvider) void remote.refetch()}}>Refresh calendar</Button></div>
-    <PersonalCalendarSettings />
+    <div className="inline-actions">{policy?.writeRoles.includes(role) && <Button onClick={() => setEditing({date:new Date(cursor.getFullYear(),cursor.getMonth(),cursor.getDate(),9),allDay:false})}>New event</Button>}<Button variant="secondary" disabled={exportCalendar.isPending || local.isLoading || local.isError} onClick={() => exportCalendar.mutate()}>Export local events (.ics)</Button><Button variant="ghost" onClick={() => {void local.refetch();if (selectedProvider) void remote.refetch()}}>Refresh calendar</Button></div>
+    <details><summary>Calendar connections & personal sync</summary><PersonalCalendarSettings /></details>
     {providers.length>0 && <label className="form-field">Show a shared external calendar<select value={selectedProvider?.id ?? ''} onChange={event => setProvider(event.target.value)}><option value="">Local events only</option>{providers.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
     {(local.isLoading || (!!selectedProvider && remote.isFetching)) && <p role="status">Loading calendar…</p>}
     {(local.isError || (!!selectedProvider && remote.isError) || exportCalendar.isError) && <p role="alert">{getErrorMessage(local.error ?? remote.error ?? exportCalendar.error,'Unable to load the selected calendar. Local events remain available when an external provider fails.')}</p>}
     {[local.data,selectedProvider ? remote.data : undefined].filter(Boolean).map((window,index) => <div key={index}>{window?.truncated && <p role="status">Only the first events are shown. Use Day or Week view for a smaller range.</p>}{window?.notice && <p role="status">{window.notice}</p>}</div>)}
-    <CalendarGrid view={view} days={range.days} events={events} onEdit={setEditing} />
-    {view!=='day' && <section className="page-stack"><h2>Agenda</h2>{events.length===0 && !local.isLoading && <p>No events in this {view}.</p>}{events.map(event => <article key={event.id}><div><CalendarEventLink event={event} onEdit={setEditing} /></div><small>{event.allDay ? `${event.start} · All day` : new Date(event.start).toLocaleString()} · {event.source}{event.source==='calendar' && !event.syncEnabled && ' · Local only'}</small>{event.description && <p className="calendar-description">{event.description}</p>}</article>)}</section>}
+    <CalendarGrid view={view} days={range.days} events={events} onEdit={event=>setEditing({event})} onCreate={(date,allDay)=>setEditing({date,allDay})} canCreate={policy?.writeRoles.includes(role)===true} />
+    {view!=='day' && <details className="page-stack"><summary>Agenda</summary>{events.length===0 && !local.isLoading && <p>No events in this {view}.</p>}{events.map(event => <article key={event.id}><div><CalendarEventLink event={event} onEdit={event=>setEditing({event})} /></div><small>{event.allDay ? `${event.start} · All day` : new Date(event.start).toLocaleString()} · {event.source}{event.source==='calendar' && !event.syncEnabled && ' · Local only'}</small>{event.description && <p className="calendar-description">{event.description}</p>}</article>)}</details>}
     {view==='day' && events.length===0 && !local.isLoading && <p>No events today.</p>}
-    {editing && <EventEditor key={editing==='new' ? 'new' : editing.id} event={editing==='new' ? undefined : editing} onDone={done} canWrite={policy?.writeRoles.includes(role)===true} providers={providers} />}
+    {editing && <EventEditor key={editing.event?.id ?? editing.date?.toISOString() ?? 'new'} event={editing.event} initialDate={editing.date} initialAllDay={editing.allDay} onDone={done} canWrite={policy?.writeRoles.includes(role)===true} providers={providers} />}
   </div>
 }

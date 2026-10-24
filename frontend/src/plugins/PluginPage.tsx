@@ -22,5 +22,5 @@ export default function PluginPage() {
   if (!Page || !plugin) return <div className="page-stack"><h1>Plugin unavailable</h1><p>This plugin is disabled, restricted, or missing from this app build.</p><Link to="/">Back to workspace</Link></div>
   const section = plugin?.manifest.menuItems.find(item => item.path === childPath.split('/')[0])
   if (childPath && (!section || !role || !section.roles.includes(role))) return <p role="alert">This plugin section is unavailable.</p>
-  return <PluginErrorBoundary key={pluginId}><Suspense fallback={<p role="status">Loading plugin…</p>}><Page plugin={plugin} /></Suspense></PluginErrorBoundary>
+  return <PluginErrorBoundary key={pluginId}><div className="page-stack">{plugin.manifest.banner&&<img className="plugin-banner" src={`/api/plugins/${pluginId}/assets/banner`} alt="" onError={event=>{event.currentTarget.hidden=true}}/>}<Suspense fallback={<p role="status">Loading plugin…</p>}><Page plugin={plugin} /></Suspense></div></PluginErrorBoundary>
 }

@@ -20,6 +20,7 @@ class PluginConfigurationService(private val registry: PluginRegistry, private v
     @Transactional
     fun save(id: String, request: PluginConfigurationRequest): PluginConfigurationView {
         val manifest = registry.definition(id)
+        if (!manifest.hasAdminSettings) throw com.starter.exception.ForbiddenException("This plugin has no editable administrator configuration")
         val fields = manifest.settingsFields.associateBy { it.key }
         if (request.values.keys.any { it !in fields } || request.clearSecrets.any { fields[it]?.type != PluginFieldType.SECRET })
             throw BadRequestException("Use only this plugin's declared settings fields")

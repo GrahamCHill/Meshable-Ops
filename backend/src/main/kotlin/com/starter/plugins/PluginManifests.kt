@@ -5,10 +5,21 @@ import com.starter.exception.BadRequestException
 internal object PluginManifests {
     private val roles = setOf("ADMIN", "USER")
     fun validateIdentity(manifest: PluginManifest) {
-        require(manifest.id.matches(Regex("[a-z][a-z0-9-]{1,39}")) && manifest.apiVersion == 1 && manifest.version.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+"))) { "Invalid or incompatible plugin manifest" }
+        require(manifest.id.matches(Regex("[a-z][a-z0-9-]{1,39}")) && manifest.apiVersion in 1..100 && manifest.version.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+"))) { "Invalid plugin manifest" }
         require(manifest.name.isNotBlank() && manifest.name.length <= 100 && manifest.navigationLabel.isNotBlank() && manifest.navigationLabel.length <= 60 && manifest.description.length <= 500) { "Invalid plugin metadata" }
     }
     fun validate(manifest: PluginManifest) {
+        val ids = manifest.requires + manifest.extends + manifest.incompatibleWith.keys
+        require(ids.size <= 50 && ids.all { it.matches(Regex("[a-z][a-z0-9-]{1,39}")) && it != manifest.id }) { "Use other plugin IDs for relationships" }
+        require(manifest.incompatibleWith.values.all { it.isNotBlank() && it.length <= 300 }) { "Explain plugin incompatibilities" }
+        require(manifest.categories.size <= 5 && manifest.categories.all { it.isNotBlank() && it.length <= 50 && it.none(Char::isISOControl) }) { "Use up to five short categories" }
+        listOfNotNull(manifest.icon, manifest.banner).forEach { require(it == "builtin" || it.matches(Regex("[A-Za-z0-9][A-Za-z0-9_./-]{0,119}")) && it.split('/').none { segment -> segment in setOf("", ".", "..") }) { "Use packaged image paths" } }
+        manifest.adminMenu?.let { require(it.category.matches(Regex("[a-z][a-z0-9-]{1,59}")) && it.categoryLabel.length <= 80 && it.label.length <= 100 && listOf(it.categoryLabel,it.label).none { value -> value.any(Char::isISOControl) }) { "Use a valid admin category and labels" } }
+        require(!manifest.providesSms || PluginExtension.NOTIFICATIONS in manifest.extensions) { "SMS providers must declare notifications" }
+        require(manifest.placements.size <= 30 && manifest.placements.map { it.slot to it.section }.distinct().size == manifest.placements.size)
+        manifest.placements.forEach { require(it.slot.matches(Regex("[a-z][a-z0-9.-]{1,79}")) && it.label.isNotBlank() && it.label.length <= 100 && (it.section.isBlank() || manifest.menuItems.any { menu -> menu.path == it.section })) { "Use named extension slots and declared submenu pages" } }
+        require(manifest.placements.none { it.mode == PluginPlacementMode.PANEL && it.slot in setOf("header.actions", "navigation.links", "account.menu") }) { "Compact navigation slots support links only" }
+        require(manifest.placements.isEmpty() || PluginExtension.PAGE in manifest.extensions) { "Screen placements require a page" }
         require(setOf("CLIENT", "PROJECT").containsAll(manifest.contextTargets)) { "Context targets must be CLIENT or PROJECT" }
         require(manifest.contextTargets.isEmpty() || PluginExtension.PAGE in manifest.extensions) { "Context extensions require a page" }
         val capabilities = manifest.capabilities.keys + manifest.requiresCapabilities + manifest.features.flatMap { it.requires }

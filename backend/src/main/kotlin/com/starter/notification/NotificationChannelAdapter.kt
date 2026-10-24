@@ -13,6 +13,7 @@ interface NotificationChannelAdapter {
     val supportsAttachments: Boolean get() = false
     val parameterized: Boolean get() = false
     val maxTextLength: Int get() = 4000
+    val sms: Boolean get() = channel == "sms" || channel.endsWith(".sms")
     fun available(): Boolean
     fun reachable(userId: java.util.UUID): Boolean = true
     fun send(message: ChannelMessage): EmailDeliveryResult

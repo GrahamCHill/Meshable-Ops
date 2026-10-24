@@ -20,11 +20,12 @@ class NotificationTransports(private val email: EmailDeliveryService,private val
         }
     }
     fun all()=listOf(core)+adapters.map {NotificationMethod(it.channel,it.label,it.pluginId,it.recipientKind,it.supportsOtp,it.supportsHtml,it.supportsAttachments,it.parameterized,it.maxTextLength)}
+    fun visible() = all().filter { method -> method.pluginId == null || runCatching { plugins.requireAvailable(method.pluginId,"ADMIN"); adapters.find { it.channel == method.id }?.let { !it.sms || plugins.definition(it.pluginId).providesSms } == true }.getOrDefault(false) }
     fun get(id: String)=all().find {it.id==id} ?: throw NotFoundException("Delivery method unavailable")
     fun reachable(id: String, userId: java.util.UUID) = get(id).recipientKind != NotificationRecipientKind.MEMBER || adapters.find { it.channel == id }?.reachable(userId) == true
     fun available(id: String)=runCatching {
         if(id=="email") emailSettings.current().let {it.enabled && runCatching {validateEmailConfiguration(it)}.isSuccess}
-        else adapters.find {it.channel==id}?.let {plugins.requireAvailable(it.pluginId,"ADMIN");it.available()} ?: false
+        else adapters.find {it.channel==id}?.let {plugins.requireAvailable(it.pluginId,"ADMIN");(!it.sms || plugins.definition(it.pluginId).providesSms) && it.available()} ?: false
     }.getOrDefault(false)
     fun send(id: String,message: ChannelMessage): EmailDeliveryResult {
         validate(id,message)

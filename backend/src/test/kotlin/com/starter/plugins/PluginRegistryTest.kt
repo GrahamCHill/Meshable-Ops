@@ -44,7 +44,7 @@ class PluginRegistryTest {
     }
     @Test fun `invalid duplicate and incompatible manifests fail at startup`() {
         assertThatThrownBy { PluginRegistry(listOf(KanbanPlugin(), KanbanPlugin()), settings) }.isInstanceOf(IllegalArgumentException::class.java)
-        listOf(KanbanPlugin().manifest.copy(id = "../bad"), KanbanPlugin().manifest.copy(apiVersion = 2), KanbanPlugin().manifest.copy(version = "latest")).forEach { manifest ->
+        listOf(KanbanPlugin().manifest.copy(id = "../bad"), KanbanPlugin().manifest.copy(version = "latest")).forEach { manifest ->
             assertThatThrownBy { PluginRegistry(listOf(object : WorkspacePlugin { override val manifest = manifest }), settings) }.isInstanceOf(IllegalArgumentException::class.java)
         }
     }

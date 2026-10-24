@@ -29,7 +29,8 @@ class PluginZipReader(mapper: ObjectMapper) {
                     val path = if (entry.isDirectory) entry.name.removeSuffix("/") else entry.name
                     if (!path.matches(Regex("[A-Za-z0-9][A-Za-z0-9_./-]{0,119}")) || path.split('/').any { it in setOf("", ".", "..") }) invalid("Use safe, relative ZIP paths")
                     if (!seen.add(path.lowercase(java.util.Locale.ROOT))) invalid("Duplicate ZIP entry")
-                    if (!entry.isDirectory && path !in setOf("plugin.json", "author.json") && !path.endsWith(".html")) invalid("Packages may contain JSON metadata and self-contained HTML pages only")
+                    val raster = path.substringAfterLast('.').lowercase() in setOf("png", "jpg", "jpeg", "webp")
+                    if (!entry.isDirectory && path !in setOf("plugin.json", "author.json") && !path.endsWith(".html") && !raster) invalid("Packages may contain JSON metadata, self-contained HTML pages, and PNG/JPEG/WebP artwork")
                     val output = java.io.ByteArrayOutputStream()
                     val buffer = ByteArray(8192)
                     while (true) {
@@ -41,7 +42,7 @@ class PluginZipReader(mapper: ObjectMapper) {
                         output.write(buffer, 0, count)
                     }
                     if (entry.isDirectory) continue
-                    files[path] = Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
+                    files[path] = if (raster) java.util.Base64.getEncoder().encodeToString(output.toByteArray()) else Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
                         .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(output.toByteArray())).toString()
                 }
             }
@@ -53,12 +54,20 @@ class PluginZipReader(mapper: ObjectMapper) {
             PluginManifests.validateIdentity(descriptor.manifest)
             PluginManifests.validate(descriptor.manifest)
             val manifest = descriptor.manifest
+            if (manifest.apiVersion != 1) invalid("This host supports plugin API version 1")
+            val images = mutableMapOf<String, String>()
+            listOf("icon" to manifest.icon, "banner" to manifest.banner).forEach { (kind, path) -> if (path != null) {
+                if (path == "builtin" || path.substringAfterLast('.').lowercase() !in setOf("png", "jpg", "jpeg", "webp")) invalid("Plugin artwork must reference a packaged PNG, JPEG, or WebP")
+                val raw = files[path] ?: invalid("Missing $kind image")
+                val normalized = com.starter.service.branding.BrandingImages.normalize(java.util.Base64.getDecoder().decode(raw), if (kind == "icon") com.starter.service.branding.BrandingImageProfile.FAVICON else com.starter.service.branding.BrandingImageProfile.LOGIN)
+                images["__$kind"] = java.util.Base64.getEncoder().encodeToString(normalized)
+            } }
             val supported = setOf(PluginExtension.PAGE, PluginExtension.DATABASE, PluginExtension.SEARCH, PluginExtension.SETTINGS)
             if (PluginExtension.PAGE !in manifest.extensions || !supported.containsAll(manifest.extensions)) invalid("ZIP plugins support pages, managed data, settings, and search; server integrations require reviewed source modules")
             if (manifest.capabilities.isNotEmpty() || manifest.requiresCapabilities.isNotEmpty() || manifest.features.isNotEmpty()) invalid("ZIP plugins cannot declare server capabilities")
             if (manifest.menuItems.map { it.path }.toSet() != descriptor.pages.keys) invalid("Provide a page for every submenu, with no undeclared pages")
             if ((descriptor.pages.values + descriptor.entrypoint).any { !it.endsWith(".html") || files[it].isNullOrBlank() }) invalid("Every entrypoint and submenu page must be an HTML file inside the ZIP")
-            return ParsedPluginPackage(descriptor, author, files.filterKeys { it.endsWith(".html") }, MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) })
+            return ParsedPluginPackage(descriptor, author, files.filterKeys { it.endsWith(".html") } + images, MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) })
         } catch (error: BadRequestException) { throw error }
         catch (_: Exception) { invalid("Invalid plugin ZIP or metadata. Check the package format and host API version.") }
     }

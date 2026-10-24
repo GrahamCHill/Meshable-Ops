@@ -17,7 +17,6 @@ import { AdminDashboardLinksPage } from './components/pages/AdminDashboardLinksP
 import { AdminAiPage } from './components/pages/AdminAiPage'
 import { AdminDocumentAccessPage } from './components/pages/AdminDocumentAccessPage'
 import { AdminEmailPage } from './components/pages/AdminEmailPage'
-import { AccountSecurityPage } from './components/pages/AccountSecurityPage'
 import { AdminSharesPage } from './components/pages/AdminSharesPage'
 import { AdminWebhooksPage } from './components/pages/AdminWebhooksPage'
 import { SharedFilePage } from './components/pages/SharedFilePage'
@@ -40,10 +39,10 @@ const AdminWorkflowsPage = lazy(() => import('./components/pages/AdminWorkflowsP
 const WorkflowsPage = lazy(() => import('./components/pages/WorkflowsPage'))
 const PluginPage = lazy(() => import('./plugins/PluginPage'))
 const AdminNotificationsPage = lazy(() => import('./components/pages/AdminNotificationsPage'))
-const NotificationPreferencesPage = lazy(() => import('./components/pages/NotificationPreferencesPage'))
 const ProjectsPage = lazy(() => import('./components/pages/ProjectsPage'))
 const ProjectDetailPage = lazy(() => import('./components/pages/ProjectDetailPage'))
 const AdminProjectSettingsPage = lazy(() => import('./components/pages/AdminProjectSettingsPage'))
+const UserSettingsPage = lazy(() => import('./components/pages/UserSettingsPage'))
 const loading = (children: React.ReactNode) => <Suspense fallback={<p role="status">Loading workspace…</p>}>{children}</Suspense>
 
 const makeQueryClient = () => new QueryClient({
@@ -97,8 +96,9 @@ function App() {
                     <Route path="/admin/documents" element={<AdminRoute><AdminDocumentAccessPage /></AdminRoute>} />
                     <Route path="/admin/email" element={<AdminRoute><AdminEmailPage /></AdminRoute>} />
                     <Route path="/admin/notifications" element={<AdminRoute>{loading(<AdminNotificationsPage />)}</AdminRoute>} />
-                    <Route path="/account/notifications" element={loading(<NotificationPreferencesPage />)} />
-                    <Route path="/account/security" element={<AccountSecurityPage />} />
+                    <Route path="/account/settings" element={loading(<UserSettingsPage />)} />
+                    <Route path="/account/notifications" element={<Navigate to="/account/settings?tab=notifications" replace />} />
+                    <Route path="/account/security" element={<Navigate to="/account/settings?tab=security" replace />} />
                     <Route path="/admin/shares" element={<AdminRoute><AdminSharesPage /></AdminRoute>} />
                     <Route path="/admin/webhooks" element={<AdminRoute><AdminWebhooksPage /></AdminRoute>} />
                     <Route path="/admin/document-templates" element={<AdminRoute>{loading(<AdminTemplatesPage />)}</AdminRoute>} />

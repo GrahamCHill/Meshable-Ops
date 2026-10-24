@@ -3,7 +3,8 @@ import api from './http'
 import { useAuthStore } from '../hooks/useAuthStore'
 
 export interface PluginView {
-  manifest: { id: string; name: string; navigationLabel: string; version: string; apiVersion: number; description: string; extensions: ('PAGE' | 'API' | 'DATABASE' | 'SEARCH' | 'SETTINGS' | 'NOTIFICATIONS')[]; menuItems: {path: string; label: string; roles: string[]}[]; tables: {name: string; label: string}[]; settingsFields: PluginSettingField[]; supportedRoles: string[]; capabilities: Record<string,string>; requiresCapabilities: string[]; contextTargets: ('PROJECT' | 'CLIENT')[] }
+  manifest: { id: string; name: string; navigationLabel: string; version: string; apiVersion: number; description: string; extensions: ('PAGE' | 'API' | 'DATABASE' | 'SEARCH' | 'SETTINGS' | 'NOTIFICATIONS')[]; menuItems: {path: string; label: string; roles: string[]}[]; tables: {name: string; label: string}[]; settingsFields: PluginSettingField[]; supportedRoles: string[]; capabilities: Record<string,string>; requiresCapabilities: string[]; contextTargets: ('PROJECT' | 'CLIENT')[];
+    categories: string[]; icon?: string; banner?: string; requires: string[]; extends: string[]; incompatibleWith: Record<string,string>; hasAdminSettings: boolean; adminMenu?: {category: string; categoryLabel: string; label: string}; providesSms: boolean; placements: {slot: string; label: string; section: string; mode: 'LINK'|'PANEL'}[] }
   enabled: boolean
   active: boolean
   missingDependencies: string[]
@@ -13,12 +14,16 @@ export interface PluginView {
   tableAccess: Record<string, {readRoles: string[]; writeRoles: string[]}>
   source: 'BUNDLED' | 'ZIP'
   blockedBySecurity: boolean
+  compatibilityIssues: string[]
+  removed: boolean
   author?: { name: string; organization: string; email: string; website: string }
 }
 export interface PluginSettingField {key: string; label: string; type: 'TEXT' | 'SECRET'; required: boolean; help: string; maxLength: number}
 export interface PluginConfiguration {values: Record<string, string>; configuredSecrets: string[]; missingRequired: string[]; revision: number; encryptionConfigured: boolean}
 export type PluginSettings = Pick<PluginView, 'enabled' | 'allowedRoles' | 'searchEnabled' | 'tableAccess'>
 export const pluginsApi = {
+  remove: (id: string, confirmation: string) => api.delete(`/admin/plugins/${encodeURIComponent(id)}`, {data: {confirmation}}).then(() => undefined),
+  restore: (id: string) => api.post(`/admin/plugins/${encodeURIComponent(id)}/restore`).then(() => undefined),
   install: (file: File) => { const body = new FormData(); body.append('file', file); return api.post<PluginView>('/admin/plugins/install', body, {headers: {'Content-Type': undefined}}).then(response => response.data) },
   runtime: (id: string, section: string) => api.get<{html: string; configuration: Record<string, string>}>(`/plugins/${encodeURIComponent(id)}/runtime`, {params: {section}}).then(response => response.data),
   available: () => api.get<PluginView[]>('/plugins').then(response => response.data),

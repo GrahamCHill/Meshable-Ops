@@ -8,7 +8,7 @@ import { useAuthStore } from '../../hooks/useAuthStore'
 import { getErrorMessage } from '../admin/adminUtils'
 import { Button, Spinner } from '../ui'
 
-export function AccountSecurityPage() {
+export function AccountSecurityPage({embedded=false}: {embedded?: boolean} = {}) {
   const client = useQueryClient(); const navigate = useNavigate()
   const access = useAccess()
   const { login } = useAuthStore()
@@ -27,8 +27,8 @@ export function AccountSecurityPage() {
   const complete = (result:MfaComplete) => {login(result.auth.token,result.auth); setRecovery(result.recoveryCodes);setEnrollment(undefined);setPassword('');setProofCode('');setProofToken('');setConfirmCode('');client.invalidateQueries({queryKey:['account-mfa']});setNotice('Security settings saved. Other sessions have been signed out.')}
   const setup = (kind:'totp'|'email') => run(async()=>{setRecovery([]);setEnrollment({...await mfaApi.setup(kind,proof()),kind});setProofCode('');setProofToken('')})
   return <div className="page-stack" style={{maxWidth:850}}>
-    <div className="inline-actions"><Link to="/">Back to workspace</Link>{access.canPath('/admin')&&<Link to="/admin">Back to admin menu</Link>}</div>
-    <div><h1>Security & MFA</h1><p>Protect your account with an authenticator app or verified email codes.</p></div>
+    {!embedded&&<div className="inline-actions"><Link to="/">Back to workspace</Link>{access.canPath('/admin')&&<Link to="/admin">Back to admin menu</Link>}</div>}
+    <div>{embedded?<h2>Security & MFA</h2>:<h1>Security & MFA</h1>}<p>Protect your account with an authenticator app or verified email codes.</p></div>
     {status.isLoading&&<Spinner/>}{status.isError&&<p role="alert">Unable to load security settings.</p>}
     {status.data&&<>
       {status.data.setupRecommended&&<div className="page-stack"><p role="status">Set up MFA for your primary administrator account. An authenticator works without email delivery.</p><Button variant="ghost" disabled={busy} onClick={()=>void run(async()=>{await mfaApi.dismiss();await client.invalidateQueries({queryKey:['account-mfa']});navigate('/')})}>Skip setup for now</Button></div>}

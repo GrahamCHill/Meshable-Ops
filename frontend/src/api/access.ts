@@ -24,9 +24,10 @@ export function useAccess() {
   const query = useQuery({ queryKey: ['my-access', user?.id, token], queryFn: accessApi.me, enabled: !!token, refetchInterval: 15_000, refetchOnWindowFocus: 'always' })
   const can = (id: string) => query.data?.features.includes(id) === true
   const canPath = (path: string): boolean => {
+    path = path.split('?')[0]
     if (path.startsWith('/account/')) return true
     if (path === '/admin') return isAdminRole(query.data?.role) && query.data?.features.some(id => id.startsWith('admin.')) === true
-    if (path.startsWith('/admin/sections/')) return isAdminRole(query.data?.role) && adminGroups.find(group => path === `/admin/sections/${group.id}`)?.items.some(item => canPath(item.to)) === true
+    if (path.startsWith('/admin/sections/')) return isAdminRole(query.data?.role) && (can('admin.plugins') || adminGroups.find(group => path === `/admin/sections/${group.id}`)?.items.some(item => canPath(item.to)) === true)
     if (path === '/admin/email') return can('admin.notifications')
     if (path === '/items') path = '/storage'
     const view = query.data?.views.filter(view => path === view.path || view.path !== '/' && path.startsWith(view.path + '/')).sort((a, b) => b.path.length - a.path.length)[0]

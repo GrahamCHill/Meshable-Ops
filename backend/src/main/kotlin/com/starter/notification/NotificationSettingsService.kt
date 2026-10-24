@@ -28,8 +28,9 @@ class NotificationSettingsService(private val records: NotificationSettingsRepos
     }
     fun view(): NotificationSettingsView {
         val row=records.findById(1).orElse(null);val config=row?.let {mapper.readValue(it.configurationJson,NotificationConfiguration::class.java)} ?: NotificationConfiguration()
-        return NotificationSettingsView(row?.revision ?: -1,transports.all().map {NotificationMethodView(it,methodEnabled(it.id,config),transports.available(it.id))},
-            catalogue.all().map {definition -> val rule=rule(definition,config);NotificationDefinitionView(definition,rule.copy(templates=transports.all().filter {it.id in eligible(definition)}.associate {it.id to template(definition,it,rule)}),eligible(definition))})
+        val visible = transports.visible(); val visibleIds = visible.map { it.id }.toSet()
+        return NotificationSettingsView(row?.revision ?: -1,visible.map {NotificationMethodView(it,methodEnabled(it.id,config),transports.available(it.id))},
+            catalogue.all().map {definition -> val rule=rule(definition,config);NotificationDefinitionView(definition,rule.copy(allowedMethods=rule.allowedMethods.intersect(visibleIds),defaultMethods=rule.defaultMethods.intersect(visibleIds),templates=visible.filter {it.id in eligible(definition)}.associate {it.id to template(definition,it,rule)}),eligible(definition).intersect(visibleIds))})
     }
     @Transactional
     fun save(request: NotificationSettingsRequest): NotificationSettingsView {
@@ -45,7 +46,10 @@ class NotificationSettingsService(private val records: NotificationSettingsRepos
             if(input.allowMemberChoice && definition.category in setOf(NotificationCategory.SECURITY,NotificationCategory.TRANSACTIONAL)) throw BadRequestException("Security codes and explicit attachment sends do not have member opt-outs")
             input.copy(templates=input.templates.mapValues {(method,template) -> renderer.normalize(definition,methods.getValue(method),template)})
         }
-        val config=NotificationConfiguration(previous.methods+request.methods,previous.rules+rules)
+        // A hidden disabled-provider method keeps its saved choices/templates for re-enablement.
+        val hidden = methods.keys - transports.visible().map { it.id }.toSet()
+        val merged = rules.mapValues { (id, rule) -> val old = this.rule(catalogue.get(id),previous); rule.copy(allowedMethods = rule.allowedMethods + old.allowedMethods.intersect(hidden), defaultMethods = rule.defaultMethods + old.defaultMethods.intersect(hidden), templates = old.templates.filterKeys { it in hidden } + rule.templates) }
+        val config=NotificationConfiguration(previous.methods+request.methods,previous.rules+merged)
         val otp=rule(catalogue.get("security.otp"),config)
         mfa.checkNotificationRoute(methodEnabled("email",config) && otp.enabled && "email" in otp.allowedMethods)
         val row=existing ?: NotificationSettingsRecord()

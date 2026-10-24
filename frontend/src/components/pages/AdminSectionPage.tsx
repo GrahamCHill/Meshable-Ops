@@ -1,10 +1,11 @@
 import { Link, useParams } from 'react-router-dom'
 import { useAccess } from '../../api/access'
-import { adminGroups } from '../admin/adminNavigation'
+import { useAdminGroups } from '../admin/useAdminGroups'
 import { AdminPageHeader } from '../admin/AdminPageHeader'
 
 export function AdminSectionPage() {
   const {sectionId} = useParams(); const access = useAccess()
+  const adminGroups = useAdminGroups()
   const group = adminGroups.find(item => item.id === sectionId)
   const items = group?.items.filter(item => access.canPath(item.to)) ?? []
   if (!group || !items.length) return <div className="page-stack"><h1>Section unavailable</h1><Link to="/admin">Back to admin menu</Link></div>

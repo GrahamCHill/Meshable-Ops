@@ -9,8 +9,8 @@ import { useAuthStore } from '../../hooks/useAuthStore'
 import { pluginRole } from '../../api/access'
 import { projectsApi } from '../../api/projects'
 
-export default function RuntimePluginPage({ plugin }: { plugin: PluginView }) {
-  const { '*': section = '' } = useParams(); const navigate = useNavigate(); const location = useLocation()
+export default function RuntimePluginPage({ plugin, sectionOverride, embedded = false }: { plugin: PluginView; sectionOverride?: string; embedded?: boolean }) {
+  const { '*': routeSection = '' } = useParams(); const section = sectionOverride ?? routeSection; const navigate = useNavigate(); const location = useLocation()
   const frame = useRef<HTMLIFrameElement>(null)
   const role = useAuthStore(state => pluginRole(state.user?.role ?? ''))
   const projectId = plugin.manifest.contextTargets?.includes('PROJECT') ? new URLSearchParams(location.search).get('project') : null
@@ -22,6 +22,7 @@ export default function RuntimePluginPage({ plugin }: { plugin: PluginView }) {
   const document = useMemo(() => runtime.data ? runtimeDocument(runtime.data.html, channel) : '', [runtime.data, channel])
   const context = useMemo(() => ({plugin: {id: plugin.manifest.id, name: plugin.manifest.name}, section, role,
     configuration: runtime.data?.configuration ?? {}, tables: plugin.manifest.tables, tableAccess: plugin.tableAccess, project: projectContext.data ?? null, client: clientContext.data ?? null,
+    placement: new URLSearchParams(location.search).get('placement'), returnTo: new URLSearchParams(location.search).get('returnTo'),
     record: new URLSearchParams(location.search).get('record'), table: new URLSearchParams(location.search).get('table')}), [plugin, section, role, runtime.data, location.search, projectContext.data, clientContext.data])
   // Keep the port alive across harmless query refreshes; each request reads the current context.
   const current = useRef({plugin, context}); current.current = {plugin, context}
@@ -52,7 +53,7 @@ export default function RuntimePluginPage({ plugin }: { plugin: PluginView }) {
   if (projectId && projectContext.isLoading || clientId && clientContext.isLoading) return <p role="status">Checking extension context access…</p>
   if (runtime.isError) return <p role="alert">{getErrorMessage(runtime.error, 'This extension is unavailable.')} <button onClick={() => void runtime.refetch()}>Retry</button></p>
   if (!runtime.data) return <p role="status">Loading extension…</p>
-  return <div className="page-stack"><div><h1>{plugin.manifest.name}</h1><p>{plugin.manifest.description}</p></div>
+  return <div className="page-stack">{!embedded&&<div><h1>{plugin.manifest.name}</h1><p>{plugin.manifest.description}</p></div>}
     <iframe key={channel} ref={frame} title={`${plugin.manifest.name} extension`} sandbox="allow-scripts allow-forms" referrerPolicy="no-referrer"
       allow="camera 'none'; microphone 'none'; geolocation 'none'; clipboard-read 'none'; clipboard-write 'none'" srcDoc={document}
       style={{width: '100%', minHeight: 650, border: 0, background: '#fff'}} />

@@ -44,7 +44,7 @@ class NotificationFixture {
     var pluginEnabled=true
     private val claimed=mutableSetOf<String>()
     init {
-        `when`(plugins.definition(anyString())).thenAnswer {call -> val id=call.arguments[0] as String;PluginManifest(id,id,"1.0.0","",extensions=setOf(PluginExtension.NOTIFICATIONS))}
+        `when`(plugins.definition(anyString())).thenAnswer {call -> val id=call.arguments[0] as String;PluginManifest(id,id,"1.0.0","",extensions=setOf(PluginExtension.NOTIFICATIONS),providesSms=true)}
         doAnswer {if(!pluginEnabled) throw com.starter.exception.NotFoundException("Disabled");null}.`when`(plugins).requireAvailable(anyString(),anyString())
         `when`(records.findById(1)).thenAnswer {Optional.ofNullable(stored)}
         `when`(records.saveAndFlush(any(NotificationSettingsRecord::class.java))).thenAnswer {call -> val row=call.getArgument<NotificationSettingsRecord>(0);if(stored!=null) row.revision++;stored=row;row}

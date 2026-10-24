@@ -41,14 +41,15 @@ class PluginPackageService(private val records: PluginPackageRepository, private
         if (records.count() >= 30 || manifest.tables.size > 8) throw BadRequestException("At most 30 ZIP plugins and 8 managed tables per package are supported")
         // Only validated identifiers and fixed host-owned DDL. Uploaded SQL/JARs are never executed.
         manifest.tables.forEach { table ->
-            jdbc.execute("""CREATE TABLE "${table.name}" (
+            jdbc.execute("""CREATE TABLE IF NOT EXISTS "${table.name}" (
                 id uuid PRIMARY KEY, owner_id uuid NOT NULL, data jsonb NOT NULL,
                 revision bigint NOT NULL DEFAULT 0, created_at timestamptz NOT NULL DEFAULT now(),
                 updated_at timestamptz NOT NULL DEFAULT now(), search_text text NOT NULL DEFAULT '', search_embedding vector(384))""")
-            jdbc.execute("CREATE INDEX ON \"${table.name}\" (owner_id, updated_at)")
+            jdbc.execute("CREATE INDEX IF NOT EXISTS \"${table.name.take(45)}_owner_updated\" ON \"${table.name}\" (owner_id, updated_at)")
         }
         records.saveAndFlush(PluginPackageRecord(manifest.id, mapper.writeValueAsString(parsed.descriptor),
             mapper.writeValueAsString(parsed.author), mapper.writeValueAsString(parsed.files), parsed.sha256))
+        jdbc.update("UPDATE plugin_settings SET removed = false, enabled = false WHERE plugin_id = ?", manifest.id)
         return registry.installed().first { it.manifest.id == manifest.id }
     }
 

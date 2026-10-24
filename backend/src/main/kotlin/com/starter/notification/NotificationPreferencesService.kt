@@ -25,7 +25,7 @@ class NotificationPreferencesService(private val records: NotificationPreference
         val items=catalogue.all().filter {it.category in setOf(NotificationCategory.GENERAL,NotificationCategory.WORKFLOW) && catalogue.active(it)}.map {definition ->
             val rule=settings.rule(definition)
             NotificationPreferenceItem(definition.id,definition.label,definition.description,rule.enabled,rule.allowMemberChoice,rule.defaultMethods,selected(actor,definition),definition.id !in choices,
-                transports.all().filter {it.id in rule.allowedMethods}.map {NotificationMethodView(it,settings.methodEnabled(it.id),transports.available(it.id) && transports.reachable(it.id, actor.id) && (it.recipientKind!=NotificationRecipientKind.PHONE || validPhone(actor.contactNumber)))})
+                transports.visible().filter {it.id in rule.allowedMethods}.map {NotificationMethodView(it,settings.methodEnabled(it.id),transports.available(it.id) && transports.reachable(it.id, actor.id) && (it.recipientKind!=NotificationRecipientKind.PHONE || validPhone(actor.contactNumber)))})
         }
         return NotificationPreferencesView(row?.revision ?: -1,items,validPhone(actor.contactNumber))
     }

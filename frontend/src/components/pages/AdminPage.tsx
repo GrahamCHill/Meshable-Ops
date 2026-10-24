@@ -6,10 +6,11 @@ import { adminUsersApi } from '../../api/users'
 import { Badge, Card, Spinner } from '../ui'
 import { AdminPageHeader } from '../admin/AdminPageHeader'
 
-import { adminGroups } from '../admin/adminNavigation'
+import { useAdminGroups } from '../admin/useAdminGroups'
 
 export function AdminPage() {
   const access = useAccess()
+  const adminGroups = useAdminGroups()
   const usersQuery = useQuery({ queryKey: ['admin-users'], queryFn: adminUsersApi.list, enabled: access.can('admin.users') })
   const healthQuery = useQuery({ queryKey: ['admin-health'], queryFn: healthApi.check, enabled: access.can('admin.system'), refetchInterval: 30_000 })
   const stackQuery = useQuery({ queryKey: ['admin-stack'], queryFn: adminStackApi.get, enabled: access.can('admin.system'), refetchInterval: 30_000 })
