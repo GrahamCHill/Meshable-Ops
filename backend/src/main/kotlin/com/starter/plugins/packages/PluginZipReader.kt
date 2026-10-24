@@ -54,6 +54,7 @@ class PluginZipReader(mapper: ObjectMapper) {
             PluginManifests.validateIdentity(descriptor.manifest)
             PluginManifests.validate(descriptor.manifest)
             val manifest = descriptor.manifest
+            if (manifest.runtimes.any { it != com.starter.plugins.PluginRuntime.REACT }) invalid("Kotlin and Python plugins use reviewed source modules and a server image rebuild; the ZIP installer supports self-contained browser pages only")
             if (manifest.apiVersion != 1) invalid("This host supports plugin API version 1")
             val images = mutableMapOf<String, String>()
             listOf("icon" to manifest.icon, "banner" to manifest.banner).forEach { (kind, path) -> if (path != null) {

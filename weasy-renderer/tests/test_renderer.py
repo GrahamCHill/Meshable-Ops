@@ -8,7 +8,8 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from app import app
 from backend.generator import DocumentTemplate, render_document_html
-from worker import make_draft, inline_only, render
+from plugins.documents.renderer import make_draft, render
+from resources import inline_only
 
 SOURCE = json.loads((Path(__file__).parent / "fixtures/quote.json").read_text())
 VALUES = {"company.name": "Sample Company", "document.number": "Q-2026-001", "document.date": "2026-10-24",

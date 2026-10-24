@@ -32,7 +32,8 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Use a version such as 1.0.0'; exit 1; }
+          python3 deploy/github/check-release-version.py "$VERSION"
           # The API refuses existing refs: a published version is never moved.
           gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/template-v$VERSION" -f sha="$GITHUB_SHA" >/dev/null
           gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/heads/template/v$VERSION" -f sha="$GITHUB_SHA" >/dev/null
-          gh release create "template-v$VERSION" --verify-tag --title "WeaveOps template $VERSION" --generate-notes
+          gh release create "template-v$VERSION" --verify-tag --title "Meshable Ops template $VERSION" --generate-notes

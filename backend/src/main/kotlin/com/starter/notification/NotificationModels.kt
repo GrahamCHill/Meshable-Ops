@@ -43,7 +43,12 @@ data class NotificationTarget(val userId: UUID?=null,val email: String="",val ph
     override fun toString()="NotificationTarget(userId=$userId)"
 }
 /** Reviewed plugins can declare extra notification types without editing the core catalogue. */
-interface NotificationDefinitionProvider { val pluginId: String; fun definitions(): List<NotificationDefinition> }
+interface NotificationDefinitionProvider {
+    val pluginId: String
+    /** Reviewed extracted modules can retain existing notification IDs and saved preferences. */
+    val namespace: String get() = "$pluginId."
+    fun definitions(): List<NotificationDefinition>
+}
 
 @Entity @Table(name="notification_settings")
 class NotificationSettingsRecord(@Id val id: Int=1,@get:JsonIgnore @Column(columnDefinition="TEXT") var configurationJson: String="{}",@Version var revision: Long=0)

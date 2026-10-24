@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense, useMemo } from 'react'
+import {bundledRoutes} from './plugins/registry'
+import {BundledPluginRoute} from './plugins/BundledPluginRoute'
 import { AccessBoundary } from './components/layout/AccessBoundary'
 import { isAdminRole } from './api/access'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -33,10 +35,6 @@ import './styles/global.css'
 
 const AdminUsersPage = lazy(() => import('./components/pages/AdminUsersPage').then(module => ({default: module.AdminUsersPage})))
 const AdminAccessPage = lazy(() => import('./components/pages/AdminAccessPage'))
-const AdminTemplatesPage = lazy(() => import('./components/pages/AdminTemplatesPage'))
-const DocumentsPage = lazy(() => import('./components/pages/DocumentsPage'))
-const AdminWorkflowsPage = lazy(() => import('./components/pages/AdminWorkflowsPage'))
-const WorkflowsPage = lazy(() => import('./components/pages/WorkflowsPage'))
 const PluginPage = lazy(() => import('./plugins/PluginPage'))
 const AdminNotificationsPage = lazy(() => import('./components/pages/AdminNotificationsPage'))
 const ProjectsPage = lazy(() => import('./components/pages/ProjectsPage'))
@@ -91,6 +89,7 @@ function App() {
                     <Route path="/admin/users" element={<AdminRoute>{loading(<AdminUsersPage />)}</AdminRoute>} />
                     <Route path="/admin/branding" element={<AdminRoute><AdminBrandingPage /></AdminRoute>} />
                     <Route path="/admin/plugins" element={<AdminRoute><AdminPluginsPage /></AdminRoute>} />
+                    {bundledRoutes.map(route => <Route key={route.path} path={route.path} element={<BundledPluginRoute route={route}/>}/>)}
                     <Route path="/plugins/:pluginId/*" element={loading(<PluginPage />)} />
                     <Route path="/admin/ai" element={<AdminRoute><AdminAiPage /></AdminRoute>} />
                     <Route path="/admin/documents" element={<AdminRoute><AdminDocumentAccessPage /></AdminRoute>} />
@@ -101,10 +100,6 @@ function App() {
                     <Route path="/account/security" element={<Navigate to="/account/settings?tab=security" replace />} />
                     <Route path="/admin/shares" element={<AdminRoute><AdminSharesPage /></AdminRoute>} />
                     <Route path="/admin/webhooks" element={<AdminRoute><AdminWebhooksPage /></AdminRoute>} />
-                    <Route path="/admin/document-templates" element={<AdminRoute>{loading(<AdminTemplatesPage />)}</AdminRoute>} />
-                    <Route path="/documents" element={loading(<DocumentsPage />)} />
-                    <Route path="/admin/workflows" element={<AdminRoute>{loading(<AdminWorkflowsPage />)}</AdminRoute>} />
-                    <Route path="/workflows" element={loading(<WorkflowsPage />)} />
                     <Route path="/admin/storage" element={<AdminRoute><AdminStoragePage /></AdminRoute>} />
                     <Route path="/admin/system" element={<AdminRoute><AdminSystemPage /></AdminRoute>} />
                     <Route path="/admin/audit" element={<AdminRoute><AdminAuditPage /></AdminRoute>} />

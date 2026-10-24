@@ -8,7 +8,7 @@ internal object PluginManifests {
         require(manifest.id.matches(Regex("[a-z][a-z0-9-]{1,39}")) && manifest.apiVersion in 1..100 && manifest.version.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+"))) { "Invalid plugin manifest" }
         require(manifest.name.isNotBlank() && manifest.name.length <= 100 && manifest.navigationLabel.isNotBlank() && manifest.navigationLabel.length <= 60 && manifest.description.length <= 500) { "Invalid plugin metadata" }
     }
-    fun validate(manifest: PluginManifest) {
+    fun validate(manifest: PluginManifest, retainedTables: Set<String> = emptySet()) {
         require(manifest.compatibleVersions.size <= 50 && manifest.compatibleVersions.all { PluginVersionRules.rule(it) != null }) { "compatibleVersions must contain up to 50 exact SemVer releases, inclusive version ranges, or comparator ranges" }
         val ids = manifest.requires + manifest.extends + manifest.incompatibleWith.keys
         require(ids.size <= 50 && ids.all { it.matches(Regex("[a-z][a-z0-9-]{1,39}")) && it != manifest.id }) { "Use other plugin IDs for relationships" }
@@ -42,7 +42,7 @@ internal object PluginManifests {
         require(manifest.tables.size <= 20 && manifest.tables.map { it.name }.distinct().size == manifest.tables.size)
         val prefix = "plugin_${manifest.id.replace('-', '_')}_"
         manifest.tables.forEach {
-            require(it.name.startsWith(prefix) && it.name.length <= 63 && it.name.matches(Regex("[a-z][a-z0-9_]+"))) { "Plugin tables must use their own namespace" }
+            require((it.name.startsWith(prefix) || it.name in retainedTables) && it.name.length <= 63 && it.name.matches(Regex("[a-z][a-z0-9_]+"))) { "Plugin tables must use their own namespace" }
             require(it.label.isNotBlank() && it.label.length <= 100 && valid(it.readRoles, it.writeRoles)) { "Invalid plugin table policy" }
         }
         require(manifest.tables.isEmpty() || PluginExtension.DATABASE in manifest.extensions)

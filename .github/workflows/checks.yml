@@ -86,6 +86,7 @@ jobs:
       - run: /tmp/weaveops-extraction/bin/python -m unittest discover -s tests -v
         working-directory: ml-backend
       - run: python -m unittest discover -s deploy/github/tests -v
+      - run: python deploy/github/check-release-version.py
 
   deployment-config:
     runs-on: ubuntu-24.04

@@ -59,7 +59,7 @@ def report_html(value):
 
 def render_report(value):
     from weasyprint import HTML
-    from worker import inline_only, MAX_PDF_BYTES
+    from resources import inline_only, MAX_PDF_BYTES
     document = HTML(string=report_html(value), url_fetcher=inline_only).render()
     if not 2 <= len(document.pages) <= 200:
         raise ValueError("Report must have a cover and 1–199 content pages")

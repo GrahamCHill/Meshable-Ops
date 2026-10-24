@@ -5,6 +5,8 @@ export interface WorkspacePluginModule {
   id: string
   apiVersion: 1
   loadPage: () => Promise<{ default: ComponentType<{plugin: PluginView}> }>
+  navigationPath?: string
+  routes?: {path: string; label: string; feature: string; adminCategory?: string; description?: string; loadPage: () => Promise<{default: ComponentType}>}[]
   loadExtensions?: Record<string, () => Promise<{default: ComponentType<{plugin: PluginView; slot: string; context: Record<string,unknown>}>}>>
 }
 export function extensionModule(plugin: PluginView, slot: string) {return plugin.source==='BUNDLED' && plugin.manifest.apiVersion===1 ? registry.get(plugin.manifest.id)?.loadExtensions?.[slot] : undefined}
@@ -16,6 +18,8 @@ for (const { default: module } of Object.values(sources)) {
   if (!/^[a-z][a-z0-9-]{1,39}$/.test(module.id) || module.apiVersion !== 1 || registry.has(module.id)) throw new Error('Invalid or duplicate workspace plugin')
   registry.set(module.id, module)
 }
+// Only reviewed, compiled modules can claim first-class host routes. ZIP routes remain sandboxed.
+export const bundledRoutes = [...registry.values()].flatMap(module => (module.routes ?? []).map(route => ({...route, pluginId: module.id})))
 export function pageModule(plugin: PluginView) {
   if (plugin.source === 'ZIP' && plugin.manifest.extensions.includes('PAGE') && plugin.manifest.apiVersion === 1) return runtimeModule
   const module = registry.get(plugin.manifest.id)

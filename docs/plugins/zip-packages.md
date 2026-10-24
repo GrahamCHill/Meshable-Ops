@@ -2,6 +2,8 @@
 
 ZIP plugins install at runtime: no image rebuild or application restart is needed. They supply self-contained HTML/JavaScript pages, submenu items, settings fields, and optional host-managed PostgreSQL tables and search. Existing compiled plugins continue to support server integrations and capabilities.
 
+Packages, artwork, settings, and records survive application container updates in PostgreSQL. Declare `compatibleVersions` in the manifest; omitted/mismatched releases warn with backup/caution advice and do not block use. See [compatibility and updates](compatibility-and-updates.md).
+
 ## Install and control access
 
 1. As a `SUPER_ADMIN`, open **Administration → People & security → Security** and enable **Allow third-party extensions**. It defaults off. The switch is not delegable to an `ADMIN`.
@@ -41,6 +43,7 @@ banner.jpg      # optional
     "version": "1.0.0",
     "description": "Private notes",
     "apiVersion": 1,
+    "compatibleVersions": ["1.0.0"],
     "extensions": ["PAGE", "DATABASE", "SEARCH", "SETTINGS"],
     "menuItems": [{"path": "guide", "label": "Guide", "roles": ["ADMIN", "USER"]}],
     "tables": [{"name": "plugin_zip_notes_notes", "label": "Notes"}],

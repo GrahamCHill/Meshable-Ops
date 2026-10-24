@@ -69,6 +69,8 @@ Kotlin enforces permissions before records, files, reports, or search results ar
 
 Create plugins with pages, submenus, settings, managed tables, search, and client/project extension points. Bundled modules integrate reviewed server code; uploaded ZIPs run sandboxed pages through a scoped host bridge. See [plugin authoring](docs/plugins/README.md), [contribution guidance](CONTRIBUTING.md), and [CLA](CLA.md).
 
+Installed ZIP plugins and their saved data persist across application updates. Authors can declare supported app releases or ranges; missing/mismatched versions show caution and backup advice. [Compatibility and updates](docs/plugins/compatibility-and-updates.md).
+
 The project is evolving. Providers require your credentials and permissions; external invitations and MongoDB/OCR search are deferred. [Feature guides](docs/README.md) describe behavior and limits.
 
 ## License

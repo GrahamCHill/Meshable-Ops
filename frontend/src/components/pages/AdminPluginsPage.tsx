@@ -11,8 +11,11 @@ import {PluginRemoval} from '../admin/plugins/PluginRemoval'
 import {useState} from 'react'
 import {PluginInstaller} from '../admin/plugins/PluginInstaller'
 import {MessagingMembers} from '../admin/plugins/MessagingMembers'
+import {bundledRoutes} from '../../plugins/registry'
+import {useAccess} from '../../api/access'
 
 export function AdminPluginsPage() {
+  const access=useAccess()
   const plugins=useQuery({queryKey:['admin-plugins'],queryFn:pluginsApi.installed});const [params,setParams]=useSearchParams();const [filter,setFilter]=useState('');const [category,setCategory]=useState('');const [showRemoved,setShowRemoved]=useState(false)
   const selected=plugins.data?.find(plugin=>plugin.manifest.id===params.get('plugin'));const tab=params.get('tab')??'general'
   const hasConfiguration=selected?.manifest.hasAdminSettings&&selected.manifest.settingsFields.length>0
@@ -24,7 +27,7 @@ export function AdminPluginsPage() {
     {plugins.isLoading&&<p role="status">Loading plugins…</p>}{plugins.isError&&<p role="alert">Unable to load plugins. <button onClick={()=>void plugins.refetch()}>Retry</button></p>}
     {params.has('plugin')&&!selected&&!plugins.isLoading&&<p role="alert">Plugin unavailable. <Link to="/admin/plugins">Back to plugins</Link></p>}
     {selected?<><Link to="/admin/plugins">Back to plugins</Link>{selected.manifest.banner&&<img className="plugin-banner" src={`/api/admin/plugins/${selected.manifest.id}/assets/banner`} alt="" onError={e=>{e.currentTarget.hidden=true}}/>}
-      <p>{selected.manifest.categories.join(' · ')} · Version {selected.manifest.version} · {selected.source==='ZIP'?'Uploaded ZIP':'Bundled'}</p>{relationships(selected)}<PluginCompatibility plugin={selected}/>
+      <p>{selected.manifest.categories.join(' · ')} · Version {selected.manifest.version} · {selected.source==='ZIP'?'Uploaded ZIP':'Bundled'}</p>{!!selected.manifest.runtimes?.length&&<p>Runtimes: {selected.manifest.runtimes.map(runtime=>({REACT:'React',KOTLIN:'Kotlin',PYTHON:'Python'}[runtime])).join(', ')}</p>}{selected.source==='BUNDLED'&&selected.active&&<div className="inline-actions">{bundledRoutes.filter(route=>route.pluginId===selected.manifest.id&&access.can(route.feature)).map(route=><Link key={route.path} className="button button-secondary" to={route.path}>{route.label}</Link>)}</div>}{relationships(selected)}<PluginCompatibility plugin={selected}/>
       {selected.blockedBySecurity&&<p role="status">Blocked by the global third-party extensions security setting.</p>}{selected.source==='ZIP'&&<p className="field-help">Author: {selected.author?.name||'Not provided'} · Organisation: {selected.author?.organization||'Not provided'} · {selected.author?.email||'No email supplied'}</p>}
       <nav className="workspace-tabs" aria-label="Plugin management">{tabs.map(item=><button key={item.id} aria-current={tab===item.id?'page':undefined} onClick={()=>setParams({plugin:selected.manifest.id,tab:item.id})}>{item.label}</button>)}</nav>
       {selected.removed?<PluginRemoval plugin={selected}/>:tab==='removal'?<PluginRemoval plugin={selected}/>:tab==='configuration'?hasConfiguration?<PluginConfigurationForm key={selected.manifest.id} plugin={selected}/>:<p>This plugin has no administrator configuration.</p>:tab==='members'&&['discord','telegram','teams'].includes(selected.manifest.id)?<MessagingMembers key={selected.manifest.id} pluginId={selected.manifest.id}/>:tab==='connections'?<PluginConnections plugin={selected}/>:tab==='data'&&selected.manifest.tables.length?<PluginDataControls plugin={selected}/>:<PluginSetting key={selected.manifest.id} plugin={selected}/>}

@@ -1,7 +1,7 @@
 import {useState} from 'react'
 import {useQuery} from '@tanstack/react-query'
 import {useAccess} from '../../../api/access'
-import {documentsApi} from '../../../api/documents'
+import {documentsApi} from '../documents/api'
 import {Button} from '../../../components/ui'
 import type {CalendarDocumentLink,CalendarParticipant} from './api'
 

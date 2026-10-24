@@ -12,6 +12,8 @@ This guide explains the practical deployment shapes supported by this repository
 
 Compose containers and volumes use project-scoped names. For a clean installation alongside stopped older resources, choose a new project name and fresh private settings; preserve the old volumes. Keep the same project name and keys when upgrading. Concurrent installations require distinct published ports and separate deployment directories. See [development setup](getting-started.md#operations).
 
+Installed ZIP plugins and their artwork, configuration, access choices, and records persist in PostgreSQL across container updates. Preserve the same database and wrapping key; compatibility is re-evaluated against the packaged app release and missing/mismatched version declarations produce advisory warnings. See [plugin compatibility and backups](plugins/compatibility-and-updates.md).
+
 ## Deployment Shapes
 
 The same application can be deployed in a few different ways.

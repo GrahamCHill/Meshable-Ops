@@ -21,8 +21,6 @@ export const adminGroups = [
     { to: '/admin/webhooks', label: 'Webhooks', description: 'Send JSON, receive signed requests, and review deliveries.' },
   ] },
   { id: 'documents-workflows', label: 'Documents & workflows', description: 'Reusable documents and the processes that use them.', items: [
-    { to: '/admin/workflows', label: 'Workflow builder', description: 'Design and publish the steps members follow in Workflows.' },
-    { to: '/admin/document-templates', label: 'Document templates', description: 'Design reusable documents with your own content, fields, and layout.' },
   ] },
   { id: 'analytics-search', label: 'Analytics & search', description: 'Search providers, dashboards, and analytics authoring.', items: [
     { to: '/admin/ai', label: 'AI & search', description: 'Configure AI providers, protect API keys, and index shared documents.' },

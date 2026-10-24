@@ -58,7 +58,7 @@ class NotificationFixture {
         doAnswer {call -> val key="${call.arguments[0]}:${call.arguments[1]}:${call.arguments[4]}";if(claimed.add(key)) UUID.randomUUID() else null}.`when`(journal).claim(anyString(),anyString(),any<NotificationTarget>() ?: NotificationTarget(),anyString(),anyString())
     }
     val transports=NotificationTransports(email,emailSettings,listOf(sms),plugins)
-    val catalogue=NotificationCatalogue(emptyList(),plugins)
+    val catalogue=NotificationCatalogue(listOf(com.starter.plugins.documents.DocumentNotifications(),com.starter.plugins.workflows.WorkflowNotifications()),plugins)
     val renderer=NotificationRenderer()
     val settings=NotificationSettingsService(records,transports,catalogue,renderer,mapper,mock(JdbcTemplate::class.java),guard)
     val preferences=NotificationPreferencesService(preferenceRecords,settings,catalogue,transports,actors,mapper,mock(JdbcTemplate::class.java))

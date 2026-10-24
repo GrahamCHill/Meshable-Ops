@@ -1,7 +1,7 @@
 package com.starter.projects
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.starter.documents.WeasyRendererClient
+import com.starter.rendering.WeasyRendererClient
 import com.starter.dto.*
 import com.starter.email.EmailAttachment
 import com.starter.exception.BadRequestException

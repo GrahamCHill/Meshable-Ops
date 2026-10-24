@@ -21,9 +21,9 @@ class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: P
     init {
         val all = definitions.map { it.manifest }
         require(all.map { it.id }.distinct().size == all.size) { "Plugin IDs must be unique" }
-        all.forEach {
-            PluginManifests.validateIdentity(it)
-            PluginManifests.validate(it)
+        definitions.forEach {
+            PluginManifests.validateIdentity(it.manifest)
+            PluginManifests.validate(it.manifest, it.retainedTables)
         }
         bundled = all.map(PluginPresentation::defaults).associateBy { it.id }
     }
@@ -32,7 +32,15 @@ class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: P
         val saved = settings.findAll().associateBy { it.pluginId }
         return catalogue(saved, "ADMIN")
     }
-    fun available(role: String) = catalogue(settings.findAll().associateBy { it.pluginId }, role).filter { it.active && (access?.allows("plugin.${it.manifest.id}") != false) }
+    fun available(role: String) = catalogue(settings.findAll().associateBy { it.pluginId }, role).filter { it.active }
+
+    private fun accessFeature(id: String) = modules[id]?.accessFeature ?: "plugin.$id"
+    private fun canAccess(id: String) = modules[id]?.accessViews?.any { access?.allows(it.id) != false } ?: (access?.allows(accessFeature(id)) != false)
+    fun effectiveAccess(value: com.starter.access.MyAccess): com.starter.access.MyAccess {
+        val active = available(value.role).map { it.manifest.id }.toSet()
+        val hidden = modules.values.filter { it.manifest.id !in active }.flatMap { it.accessViews }.map { it.id }.toSet()
+        return value.copy(features = value.features - hidden)
+    }
 
     fun definition(id: String) = manifests[id] ?: throw NotFoundException("Plugin not installed")
     fun validateConfiguration(id: String, values: Map<String, String>) { definition(id); modules[id]?.validateConfiguration(values) }
@@ -48,8 +56,8 @@ class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: P
         if (available(role).none { it.manifest.id == provider && capability in it.manifest.capabilities }) throw NotFoundException("Supporting plugin unavailable")
     }
 
-    fun requireTable(id: String, table: String, role: String, write: Boolean = false) {
-        requireAvailable(id, role)
+    fun requireTable(id: String, table: String, role: String, write: Boolean = false, supporting: Boolean = false) {
+        if (supporting) requireEnabled(id, role) else requireAvailable(id, role)
         val policy = view(definition(id), settings.findById(id).orElse(null)).tableAccess[table]
             ?: throw NotFoundException("Plugin table not declared")
         if (com.starter.access.Roles.plugin(role) !in (if (write) policy.writeRoles else policy.readRoles)) throw ForbiddenException("Your role cannot ${if (write) "change" else "read"} this plugin table")
@@ -57,14 +65,20 @@ class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: P
 
     @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
     fun requireAvailable(id: String, role: String) {
-        if (access?.allows("plugin.$id") == false) throw NotFoundException("Plugin unavailable")
+        if (!canAccess(id)) throw NotFoundException("Plugin unavailable")
+        requireEnabled(id, role)
+    }
+
+    /** Capability composition may grant a run PDF without granting access to the owner's document library. */
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    fun requireEnabled(id: String, role: String) {
         val manifest = manifests[id] ?: throw NotFoundException("Plugin unavailable")
         val view = view(manifest, settings.findById(id).orElse(null))
         if (!view.enabled || view.removed || view.blockedBySecurity || com.starter.access.Roles.plugin(role) !in view.allowedRoles) throw NotFoundException("Plugin unavailable")
         if (manifest.requiresCapabilities.isNotEmpty() || manifest.requires.isNotEmpty() || manifest.incompatibleWith.isNotEmpty() || manifest.apiVersion != 1 || id in bundled && packages?.contains(id) == true || manifests.values.any { id in it.incompatibleWith }) {
             val saved = settings.findAll().associateBy { it.pluginId }.toMutableMap()
             settings.findById(id).orElse(null)?.let { saved[id] = it }
-            if (catalogue(saved, role).none { it.manifest.id == id && it.active }) throw NotFoundException("Plugin unavailable: check plugin API compatibility, conflicts, and required supporting plugins")
+            if (catalogue(saved, role, false).none { it.manifest.id == id && it.active }) throw NotFoundException("Plugin unavailable: check plugin API compatibility, conflicts, and required supporting plugins")
         }
     }
 
@@ -81,9 +95,9 @@ class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: P
         val saved = settings.saveAndFlush(row)
         return catalogue(settings.findAll().associateBy { it.pluginId } + (id to saved), "ADMIN").first { it.manifest.id == id }
     }
-    private fun catalogue(saved: Map<String, PluginSettings>, role: String): List<PluginView> {
+    private fun catalogue(saved: Map<String, PluginSettings>, role: String, checkAccess: Boolean = true): List<PluginView> {
         val base = manifests.values.sortedBy { it.name }.map { view(it, saved[it.id]) }
-        val candidates = base.filter { it.enabled && !it.removed && !it.blockedBySecurity && com.starter.access.Roles.plugin(role) in it.allowedRoles && access?.allows("plugin.${it.manifest.id}") != false }
+        val candidates = base.filter { it.enabled && !it.removed && !it.blockedBySecurity && com.starter.access.Roles.plugin(role) in it.allowedRoles && (!checkAccess || canAccess(it.manifest.id)) }
         val issues = base.associate { plugin -> plugin.manifest.id to buildSet {
             if (plugin.source == "ZIP" && plugin.manifest.id in bundled) add("An installed ZIP plugin has the same ID as a bundled module in this release. Both are blocked; the uploaded package and its data are retained. Resolve the ID conflict before enabling it.")
             if (plugin.manifest.apiVersion != 1) add("Requires host plugin API ${plugin.manifest.apiVersion}; this host supports 1")

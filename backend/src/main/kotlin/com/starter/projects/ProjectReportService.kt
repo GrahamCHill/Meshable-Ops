@@ -1,6 +1,6 @@
 package com.starter.projects
 
-import com.starter.documents.WeasyRendererClient
+import com.starter.rendering.WeasyRendererClient
 import com.starter.dto.SendEmailRequest
 import com.starter.email.EmailAttachment
 import com.starter.exception.BadRequestException

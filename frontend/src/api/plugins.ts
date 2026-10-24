@@ -4,7 +4,7 @@ import { useAuthStore } from '../hooks/useAuthStore'
 
 export interface PluginView {
   manifest: { id: string; name: string; navigationLabel: string; version: string; apiVersion: number; description: string; extensions: ('PAGE' | 'API' | 'DATABASE' | 'SEARCH' | 'SETTINGS' | 'NOTIFICATIONS')[]; menuItems: {path: string; label: string; roles: string[]}[]; tables: {name: string; label: string}[]; settingsFields: PluginSettingField[]; supportedRoles: string[]; capabilities: Record<string,string>; requiresCapabilities: string[]; contextTargets: ('PROJECT' | 'CLIENT')[];
-    categories: string[]; icon?: string; banner?: string; requires: string[]; extends: string[]; incompatibleWith: Record<string,string>; hasAdminSettings: boolean; adminMenu?: {category: string; categoryLabel: string; label: string}; providesSms: boolean; placements: {slot: string; label: string; section: string; mode: 'LINK'|'PANEL'}[]; compatibleVersions: string[] }
+    categories: string[]; icon?: string; banner?: string; requires: string[]; extends: string[]; incompatibleWith: Record<string,string>; hasAdminSettings: boolean; adminMenu?: {category: string; categoryLabel: string; label: string}; providesSms: boolean; placements: {slot: string; label: string; section: string; mode: 'LINK'|'PANEL'}[]; compatibleVersions: string[]; runtimes: ('REACT'|'KOTLIN'|'PYTHON')[] }
   enabled: boolean
   active: boolean
   missingDependencies: string[]

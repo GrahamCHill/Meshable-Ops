@@ -8,7 +8,6 @@ import sys
 from threading import BoundedSemaphore
 
 from fastapi import FastAPI, HTTPException, Request, Response
-from backend.generator import DocumentTemplate
 
 app = FastAPI(title="Internal WeasyCanvas renderer", docs_url=None, redoc_url=None, openapi_url=None)
 workers = BoundedSemaphore(2)
@@ -38,24 +37,6 @@ def health():
     return {"status": "UP", "renderer": "WeasyCanvas 0.8.0 / WeasyPrint"}
 
 
-@app.post("/validate")
-async def validate(request: Request):
-    value = await payload(request)
-    try:
-        template = DocumentTemplate.model_validate(value["template"])
-        if any(image.assetKey for image in template.images):
-            raise ValueError()
-        return {"valid": True}
-    except ValueError:
-        raise HTTPException(400, "Invalid template structure, field bindings, image source, or layout") from None
-
-
-@app.post("/render")
-async def render(request: Request):
-    value = await payload(request)
-    return await render_payload(value)
-
-
 @app.post("/reports/render")
 async def render_report(request: Request):
     value = await payload(request, "report")
@@ -82,3 +63,8 @@ async def render_payload(value):
         raise HTTPException(503, "Document rendering timed out") from None
     finally:
         workers.release()
+
+
+# Reviewed source plugins register routes explicitly; requests cannot import arbitrary modules.
+from plugins.registry import register_routes
+register_routes(app, payload, render_payload)

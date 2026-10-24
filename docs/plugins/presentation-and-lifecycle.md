@@ -7,6 +7,7 @@ Plugin API version 1 now supports artwork, categories, explicit dependencies, op
   "id": "client-notes",
   "name": "Client notes",
   "version": "1.0.0",
+  "compatibleVersions": ["1.0.0", ">=1.1.0 <2.0.0"],
   "description": "Notes beside client work",
   "extensions": ["PAGE", "DATABASE", "SETTINGS"],
   "categories": ["Clients", "Operations"],
@@ -33,6 +34,8 @@ Bundled authors can place artwork under `backend/src/main/resources/plugins/<id>
 The plugin catalogue can filter up to five short categories per plugin. The icon appears in its catalogue entry; the banner appears in the catalogue/settings and workspace plugin page. Artwork endpoints enforce member plugin access or administrator plugin-management permission.
 
 ## Requires, extends, and incompatibility
+
+Application release compatibility is separate: [`compatibleVersions`](compatibility-and-updates.md) accepts exact versions and ranges and produces advisory warnings. Missing or mismatched release declarations do not block use or remove installed state after an update.
 
 - `requires` lists plugin IDs that must be installed, enabled, compatible, and available to the role before this plugin becomes active. Cycles cannot activate themselves.
 - `extends` lists optional integrations. Missing these leaves the base plugin usable. It describes a relationship; it does not automatically implement an adapter or enable another plugin.

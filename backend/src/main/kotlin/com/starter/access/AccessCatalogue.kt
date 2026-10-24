@@ -9,8 +9,7 @@ class AccessCatalogue(private val plugins: List<WorkspacePlugin>, private val pa
     fun maximum(role: String) = features.filter { if (Roles.admin(role)) it.id !in setOf("admin.access", "admin.security") else !it.admin }.map { it.id }.toSet()
     val features get() = listOf(
         AccessFeature("home", "Home", "/"), AccessFeature("dashboards", "Dashboards", "/dashboards"),
-        AccessFeature("storage", "Storage", "/storage"), AccessFeature("documents", "Documents", "/documents"),
-        AccessFeature("workflows", "Workflows", "/workflows"), AccessFeature("events", "Events", "/events"),
+        AccessFeature("storage", "Storage", "/storage"), AccessFeature("events", "Events", "/events"),
         AccessFeature("search", "Search and AI assistant", "/search"),
         AccessFeature("projects", "Clients and projects", "/projects"),
         AccessFeature("admin.projects", "Project tags, teams, and custom roles", "/admin/projects", true),
@@ -22,8 +21,6 @@ class AccessCatalogue(private val plugins: List<WorkspacePlugin>, private val pa
         AccessFeature("admin.notifications", "Notifications and email", "/admin/notifications", true),
         AccessFeature("admin.shares", "File sharing", "/admin/shares", true),
         AccessFeature("admin.webhooks", "Webhooks", "/admin/webhooks", true),
-        AccessFeature("admin.workflows", "Workflow builder", "/admin/workflows", true),
-        AccessFeature("admin.templates", "Document template editor", "/admin/document-templates", true),
         AccessFeature("admin.ai", "AI configuration", "/admin/ai", true),
         AccessFeature("admin.superset", "Superset authoring", "/admin/superset-graph-builder", true),
         AccessFeature("admin.dashboards", "Dashboard links", "/admin/dashboard-links", true),
@@ -31,7 +28,7 @@ class AccessCatalogue(private val plugins: List<WorkspacePlugin>, private val pa
         AccessFeature("admin.audit", "Audit and backup", "/admin/audit", true),
         AccessFeature("admin.access", "Access controls", "/admin/access-controls", true),
         AccessFeature("admin.security", "Extension security", "/admin/security", true),
-    ) + (plugins.map { it.manifest } + (packages?.manifests() ?: emptyList())).map { AccessFeature("plugin.${it.id}", it.name, "/plugins/${it.id}") }
+    ) + plugins.flatMap { it.accessViews } + (packages?.manifests() ?: emptyList()).map { AccessFeature("plugin.${it.id}", it.name, "/plugins/${it.id}") }
 
     fun defaults(role: String): Set<String> = features.filter {
         when (role) {

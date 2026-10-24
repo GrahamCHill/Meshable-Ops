@@ -30,7 +30,7 @@ class NotificationSettingsService(private val records: NotificationSettingsRepos
         val row=records.findById(1).orElse(null);val config=row?.let {mapper.readValue(it.configurationJson,NotificationConfiguration::class.java)} ?: NotificationConfiguration()
         val visible = transports.visible(); val visibleIds = visible.map { it.id }.toSet()
         return NotificationSettingsView(row?.revision ?: -1,visible.map {NotificationMethodView(it,methodEnabled(it.id,config),transports.available(it.id))},
-            catalogue.all().map {definition -> val rule=rule(definition,config);NotificationDefinitionView(definition,rule.copy(allowedMethods=rule.allowedMethods.intersect(visibleIds),defaultMethods=rule.defaultMethods.intersect(visibleIds),templates=visible.filter {it.id in eligible(definition)}.associate {it.id to template(definition,it,rule)}),eligible(definition).intersect(visibleIds))})
+            catalogue.all().filter(catalogue::active).map {definition -> val rule=rule(definition,config);NotificationDefinitionView(definition,rule.copy(allowedMethods=rule.allowedMethods.intersect(visibleIds),defaultMethods=rule.defaultMethods.intersect(visibleIds),templates=visible.filter {it.id in eligible(definition)}.associate {it.id to template(definition,it,rule)}),eligible(definition).intersect(visibleIds))})
     }
     @Transactional
     fun save(request: NotificationSettingsRequest): NotificationSettingsView {

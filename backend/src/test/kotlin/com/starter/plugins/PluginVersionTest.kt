@@ -15,6 +15,18 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 class PluginVersionTest {
+    @Test fun `packaged release metadata and every bundled compatibility declaration agree`() {
+        val policy=PluginVersionPolicy()
+        assertThat(PluginVersionRules.version(policy.applicationVersion)).isNotNull()
+        val plugins=listOf(com.starter.plugins.kanban.KanbanPlugin(),com.starter.plugins.calendar.CalendarPlugin(),
+            com.starter.plugins.calendar.GoogleCalendarPlugin(),com.starter.plugins.calendar.MicrosoftCalendarPlugin(),com.starter.plugins.calendar.CalDavCalendarPlugin(),
+            com.starter.plugins.discord.DiscordPlugin(),com.starter.plugins.telegram.TelegramPlugin(),com.starter.plugins.teams.TeamsPlugin(),com.starter.plugins.whatsapp.WhatsAppPlugin(),
+            com.starter.plugins.sourcecontrol.GitHubPlugin(),com.starter.plugins.sourcecontrol.GitLabPlugin(),com.starter.plugins.sourcecontrol.GiteaPlugin(),
+            com.starter.plugins.sharepoint.SharePointPlugin(),com.starter.plugins.onedrive.OneDrivePlugin(),
+            com.starter.plugins.documents.DocumentsPlugin(),com.starter.plugins.workflows.WorkflowsPlugin())
+        plugins.forEach { plugin -> assertThat(plugin.manifest.compatibleVersions).describedAs(plugin.manifest.id).isNotEmpty()
+            assertThat(policy.assess(plugin.manifest).status).describedAs(plugin.manifest.id).isEqualTo(PluginVersionStatus.COMPATIBLE) }
+    }
     private fun manifest(vararg versions: String) = PluginManifest("version-test","Version test","9.0.0","Version checks",compatibleVersions=versions.toList())
     private fun policy(version: String): PluginVersionPolicy {
         val app=mock(ApplicationVersion::class.java);`when`(app.current()).thenReturn(version);return PluginVersionPolicy(app)

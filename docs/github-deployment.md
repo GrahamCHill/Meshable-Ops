@@ -10,6 +10,8 @@ The upstream owner enables **Settings > General > Template repository** once. Us
 
 To publish a stable starting point, run **Actions > Release template version** from the default branch and enter a version such as `1.0.0`. Checks must pass before it creates tag/release `template-v1.0.0` and matching branch `template/v1.0.0`. Published refs are never moved by the workflow; choose a new version for updates.
 
+The requested version must match `backend/pom.xml` and `frontend/package.json`; bump/test them and the frontend lockfile before publishing a new release. This keeps plugin [application compatibility warnings](plugins/compatibility-and-updates.md) aligned with the actual packaged version. Bundled plugin declarations are checked against that release too.
+
 To use a particular version, choose **Include all branches** when creating from the template. Create your own working branch from the desired version:
 
 ```bash
