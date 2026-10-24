@@ -50,6 +50,10 @@ object ProjectAccessSql {
             AND jsonb_exists(COALESCE(CAST($alias.details_json AS jsonb)->'groupIds', '[]'::jsonb), CAST(g.id AS text))
             AND jsonb_exists(COALESCE(CAST(g.details_json AS jsonb)->'memberIds', '[]'::jsonb), ?)))"""
     fun args(actor: User): Array<Any> = arrayOf(Roles.admin(actor.role), actor.id, actor.id.toString(), actor.id.toString())
-    fun boardPredicate(alias: String = "b") = "(($alias.project_id IS NULL AND (? OR $alias.owner_id = ?)) OR (? AND EXISTS (SELECT 1 FROM workspace_projects p WHERE p.id = $alias.project_id AND ${predicate()})))"
-    fun boardArgs(actor: User, projects: Boolean): Array<Any> = arrayOf(Roles.admin(actor.role), actor.id, projects, *args(actor))
+    fun boardPredicate(alias: String = "b") = """(($alias.project_id IS NULL AND (? OR $alias.owner_id = ?)) OR (? AND EXISTS (SELECT 1 FROM workspace_projects p WHERE p.id = $alias.project_id AND ${predicate()}
+        AND (CAST($alias.team_ids_json AS jsonb) = '[]'::jsonb OR ? OR p.lead_id = ?
+            OR EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(CAST(p.details_json AS jsonb)->'members', '[]'::jsonb)) member WHERE member->>'userId' = ? AND member->>'role' = 'MANAGER')
+            OR EXISTS (SELECT 1 FROM workspace_work_groups g WHERE g.kind = 'TEAM' AND jsonb_exists(CAST(g.details_json AS jsonb)->'memberIds', ?)
+                AND (jsonb_exists(CAST($alias.team_ids_json AS jsonb), CAST(g.id AS text)) OR (g.project_role = 'MANAGER' AND jsonb_exists(CAST(p.details_json AS jsonb)->'groupIds', CAST(g.id AS text)))))))))"""
+    fun boardArgs(actor: User, projects: Boolean): Array<Any> = arrayOf(Roles.admin(actor.role), actor.id, projects, *args(actor), Roles.admin(actor.role), actor.id, actor.id.toString(), actor.id.toString())
 }

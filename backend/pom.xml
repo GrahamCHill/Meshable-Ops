@@ -15,8 +15,8 @@
   <artifactId>backend</artifactId>
   <version>1.0.0</version>
   <packaging>jar</packaging>
-  <name>WeaveOps Backend</name>
-  <description>WeaveOps self-hosted business operations workspace</description>
+  <name>Meshable Ops Backend</name>
+  <description>Meshable Ops self-hosted business operations workspace</description>
   <licenses>
     <license>
       <name>GNU Affero General Public License, version 3 only (AGPL-3.0-only)</name>

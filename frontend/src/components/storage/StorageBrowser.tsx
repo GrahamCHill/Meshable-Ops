@@ -11,12 +11,12 @@ import { useDocumentAccess } from '../../api/documentAccess'
 import { sharesApi } from '../../api/shares'
 import { SharePdfDialog } from './SharePdfDialog'
 
-export function StorageBrowser({ folder, onClose, initialPath = '' }: Readonly<{ folder: Item; onClose: () => void; initialPath?: string }>) {
+export function StorageBrowser({ folder, onClose, initialPath = '', initialFile }: Readonly<{ folder: Item; onClose: () => void; initialPath?: string; initialFile?: string }>) {
   const qc = useQueryClient()
   const { user } = useAuthStore()
   const [path, setPath] = useState(initialPath)
   const [transferError, setTransferError] = useState('')
-  const [pdfPath, setPdfPath] = useState<string>()
+  const [pdfPath, setPdfPath] = useState<string | undefined>(initialFile?.toLowerCase().endsWith('.pdf') ? initialFile : undefined)
   const [sharePath, setSharePath] = useState<string>()
   const access = useDocumentAccess()
   const features = useAccess()

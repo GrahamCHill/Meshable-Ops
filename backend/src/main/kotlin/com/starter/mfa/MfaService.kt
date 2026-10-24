@@ -104,9 +104,9 @@ class MfaService(
         if (kind == ChallengePurpose.SETUP_TOTP) challenge.pendingSecret = Totp.secret() else sendCode(challenge)
         challenges.saveAndFlush(challenge); credentials.saveAndFlush(saved)
         val secret = challenge.pendingSecret
-        val label = URLEncoder.encode("WeaveOps:${user.email}", Charsets.UTF_8).replace("+", "%20")
+        val label = URLEncoder.encode("Meshable Ops:${user.email}", Charsets.UTF_8).replace("+", "%20")
         return MfaSetupResponse(raw, challenge.expiresAt.toString(), secret,
-            secret?.let { "otpauth://totp/$label?secret=$it&issuer=WeaveOps&algorithm=SHA1&digits=6&period=30" })
+            secret?.let { "otpauth://totp/$label?secret=$it&issuer=Meshable%20Ops&algorithm=SHA1&digits=6&period=30" })
     }
 
     @Transactional(noRollbackFor = [BadCredentialsException::class, TooManyRequestsException::class])

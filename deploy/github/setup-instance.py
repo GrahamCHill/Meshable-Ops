@@ -7,7 +7,7 @@ from instance import environment, local_environment, write_new
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Create private WeaveOps settings without development accounts")
+    parser = argparse.ArgumentParser(description="Create private Meshable Ops settings without development accounts")
     parser.add_argument("--local", action="store_true", help="Generate .env for local Compose development")
     parser.add_argument("--domain")
     parser.add_argument("--admin-email", required=True)

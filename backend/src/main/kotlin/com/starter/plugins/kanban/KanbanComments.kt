@@ -82,7 +82,7 @@ class KanbanMentions(private val publisher: NotificationPublisher, private val u
 class KanbanNotificationDefinitions : NotificationDefinitionProvider {
     override val pluginId = "kanban"
     override fun definitions() = listOf(NotificationDefinition("kanban.mention", "Card mentions", "Notify an internal board member when tagged in a comment.", NotificationCategory.GENERAL,
-        setOf("applicationName", "recipientName", "subject", "message", "cardTitle", "boardName", "link"), "{{subject}}", "{{message}} {{link}}"))
+        setOf("applicationName", "recipientName", "subject", "message", "cardTitle", "boardName", "link"), "{{subject}}", "{{message}} {{link}}", privateToRecipient = true))
 }
 
 @RestController @RequestMapping("/api/plugins/kanban/boards/{boardId}/cards/{cardId}/comments")

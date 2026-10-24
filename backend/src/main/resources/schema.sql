@@ -152,11 +152,3 @@ ALTER TABLE storage_connections ALTER COLUMN secret_key TYPE TEXT;
 
 -- JPA creates ai_settings before supplemental schema initialization. Secret fields are encrypted by the entity converter.
 
--- Reviewed messaging plugins share one fixed identity schema, with separately owned tables.
-DO $$
-DECLARE plugin TEXT;
-BEGIN
-    FOREACH plugin IN ARRAY ARRAY['discord', 'telegram', 'teams'] LOOP
-        EXECUTE format('CREATE TABLE IF NOT EXISTS %I (user_id UUID PRIMARY KEY, remote_user_id VARCHAR(200) NOT NULL, remote_name VARCHAR(160) NOT NULL, destination_id VARCHAR(200) NOT NULL, revision BIGINT NOT NULL DEFAULT 0)', 'plugin_' || plugin || '_identities');
-    END LOOP;
-END $$;

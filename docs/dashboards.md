@@ -1,6 +1,6 @@
 # Embedded dashboards and Superset authoring
 
-WeaveOps displays role-controlled analytics through its own application shell. Superset remains an internal service; admins author reports through the app's Superset workspace.
+Meshable Ops displays role-controlled analytics through its own application shell. Superset remains an internal service; admins author reports through the app's Superset workspace.
 
 ## Publish and navigate dashboards
 

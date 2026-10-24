@@ -1,0 +1,30 @@
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import api from '../../../api/http'
+import { getErrorMessage } from '../adminUtils'
+import { Button } from '../../ui'
+
+interface Identity {userId: string; remoteUserId: string; remoteName: string; destinationId: string; revision: number}
+export function MessagingMembers({pluginId}: {pluginId: string}) {
+  const root = `/admin/plugins/${pluginId}`; const client = useQueryClient()
+  const members = useQuery({queryKey: ['messaging-members', pluginId], queryFn: () => api.get<Identity[]>(`${root}/members`).then(r => r.data)})
+  const people = useQuery({queryKey: ['messaging-member-options', pluginId], queryFn: () => api.get<{id: string; name: string; email: string}[]>(`${root}/member-options`).then(r => r.data)})
+  const destinations = useQuery({queryKey: ['messaging-destinations', pluginId], queryFn: () => api.get<string[]>(`/plugins/${pluginId}/destinations`).then(r => r.data), retry: false})
+  const [draft, setDraft] = useState<Identity>({userId: '', remoteUserId: '', remoteName: '', destinationId: '', revision: -1})
+  const [destination, setDestination] = useState(''); const [text, setText] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [notice, setNotice] = useState('')
+  const run = async (action: () => Promise<void>) => {setBusy(true); setError(''); setNotice(''); try {await action()} catch (failure) {setError(getErrorMessage(failure, 'Unable to update this messaging connection.'))} finally {setBusy(false)}}
+  return <div className="page-stack"><h2>Internal member identity links</h2><p>Map internal accounts to provider IDs and display names. These are administrator-configured links, not an OAuth identity-verification flow. Private notifications never fall back to a shared destination.</p>
+    {(members.isError || people.isError) && <p role="alert">Unable to load member links.</p>}
+    <form className="page-stack" onSubmit={event => {event.preventDefault(); void run(async () => {await api.put(`${root}/members/${draft.userId}`, draft); await client.invalidateQueries({queryKey: ['messaging-members', pluginId]}); setDraft({userId: '', remoteUserId: '', remoteName: '', destinationId: '', revision: -1}); setNotice('Member link saved.')})}}><fieldset disabled={busy} className="page-stack">
+      <label className="form-field">Internal member<select required value={draft.userId} onChange={event => setDraft(members.data?.find(item => item.userId === event.target.value) ?? {userId: event.target.value, remoteUserId: '', remoteName: '', destinationId: '', revision: -1})}><option value="">Choose member</option>{people.data?.map(person => <option key={person.id} value={person.id}>{person.name} · {person.email}</option>)}</select></label>
+      <label className="form-field">{pluginId === 'teams' ? 'Entra user UUID' : `${pluginId === 'discord' ? 'Discord' : 'Telegram'} numeric user ID`}<input required maxLength={200} value={draft.remoteUserId} onChange={event => setDraft({...draft, remoteUserId: event.target.value})} /></label>
+      <label className="form-field">Provider username / display name<input maxLength={160} value={draft.remoteName} onChange={event => setDraft({...draft, remoteName: event.target.value})} /></label>
+      {pluginId === 'teams' && <label className="form-field">Existing one-to-one Graph chat ID<input required maxLength={200} value={draft.destinationId} onChange={event => setDraft({...draft, destinationId: event.target.value})} /><small>Graph mode requires delegated send and chat/member read permissions. The service checks the chat is one-to-one and contains this member.</small></label>}
+      {pluginId === 'telegram' && <p>The member must start a private chat with the bot first. Their positive user ID is used as the private chat ID.</p>}
+      <div><Button type="submit" loading={busy} disabled={!draft.userId}>Save member link</Button></div></fieldset></form>
+    <div className="project-table-wrap"><table className="project-table"><thead><tr><th>Internal member</th><th>Provider name</th><th>Provider ID</th><th>Action</th></tr></thead><tbody>{members.data?.map(item => <tr key={item.userId}><td>{people.data?.find(person => person.id === item.userId)?.name ?? 'Unavailable member'}</td><td>{item.remoteName}</td><td>{item.remoteUserId}</td><td><Button variant="ghost" disabled={busy} onClick={() => void run(async () => {await api.delete(`${root}/members/${item.userId}`, {params: {revision: item.revision}}); await client.invalidateQueries({queryKey: ['messaging-members', pluginId]}); setNotice('Member link removed.')})}>Unlink</Button></td></tr>)}</tbody></table></div>
+    <h2>Post to an approved chat</h2><p>Shared posts are explicit actions. Configure approved destination IDs in Configuration, enable the plugin, then reload this view. Member notification preferences do not apply to shared posts.</p>
+    {destinations.isError ? <p>Enable and configure the plugin before posting.</p> : <form className="page-stack" onSubmit={event => {event.preventDefault(); void run(async () => {const result = (await api.post<{status: string; message: string}>(`/plugins/${pluginId}/post`, {destination, text})).data; setNotice(`${result.status}: ${result.message}`)})}}><fieldset disabled={busy} className="page-stack"><label className="form-field">Destination<select required value={destination} onChange={event => setDestination(event.target.value)}><option value="">Choose approved chat</option>{destinations.data?.map(id => <option key={id} value={id}>{id}</option>)}</select></label><label className="form-field">Message<textarea required rows={4} maxLength={pluginId === 'discord' ? 2000 : 4000} value={text} onChange={event => setText(event.target.value)} /></label><div><Button type="submit" loading={busy} disabled={!destination}>Post message</Button></div></fieldset></form>}
+    {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
+  </div>
+}

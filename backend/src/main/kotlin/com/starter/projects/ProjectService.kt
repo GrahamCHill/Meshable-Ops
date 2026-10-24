@@ -48,7 +48,9 @@ class ProjectService(private val projects: ProjectRepository, private val client
         val people = value.members.map { it.userId }.toSet() + input.leadId
         if (users.findAllById(people).filter { it.active && it.role != "EXTERNAL" }.map { it.id }.toSet() != people) throw BadRequestException("Choose active internal project members and a lead")
         if (groups.findAllById(value.groupIds).filter { it.kind == GroupKind.TEAM }.map { it.id }.toSet() != value.groupIds) throw BadRequestException("Choose explicit team groups for project access; department tags do not grant access")
-        if (!settings.current().settings.tags.map { it.id }.containsAll(value.tagIds)) throw BadRequestException("Choose existing project tags")
+        val knownTags = settings.current().settings.tags.map { it.id }.toSet()
+        val priorTags = if (id == null) emptySet() else policy.details(row).tagIds
+        if (!(knownTags + priorTags).containsAll(value.tagIds)) throw BadRequestException("Choose existing project tags")
         input.clientId?.let { client(actor, it) }
         ProjectValidation.contacts(value.contacts); ProjectValidation.links(value.links)
         val linked = value.storage.map { link ->
@@ -61,7 +63,7 @@ class ProjectService(private val projects: ProjectRepository, private val client
         if (linked.map { it.id }.distinct().size != linked.size) throw BadRequestException("Storage link IDs must be unique")
         val hidden = if (id == null) emptyList() else policy.details(row).storage.filter { !visibleStorage(actor, it) }
         row.name = input.name.trim(); row.leadId = input.leadId; row.clientId = input.clientId; row.category = input.category
-        row.detailsJson = mapper.writeValueAsString(value.copy(storage = (hidden + linked).distinctBy { it.id })); row.updatedAt = Instant.now()
+        row.detailsJson = mapper.writeValueAsString(value.copy(tagIds = value.tagIds.intersect(knownTags), storage = (hidden + linked).distinctBy { it.id })); row.updatedAt = Instant.now()
         if (id == null && policy.role(actor, row) !in setOf(ProjectRole.TEAM_LEAD, ProjectRole.MANAGER)) throw BadRequestException("Include yourself as the project lead or a manager when creating a project")
         return view(projects.saveAndFlush(row), actor)
     }

@@ -1,6 +1,6 @@
-<img src="frontend/public/brand-mark.svg" alt="WeaveOps" width="56" height="56" />
+<img src="frontend/public/brand-mark.svg" alt="Meshable Ops" width="56" height="56" />
 
-# WeaveOps
+# Meshable Ops
 
 ### Bring your documents, workflows, and business data together.
 
@@ -8,7 +8,7 @@
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Self hosted](https://img.shields.io/badge/Deployment-Self_hosted-334155.svg)](docs/deployment.md)
 
-**WeaveOps is an extensible, self-hosted business operations workspace.** Give your team one place to work with client files, create documents, follow processes, find information, and explore dashboards—with access controls that follow the data.
+**Meshable Ops is an extensible, self-hosted business operations workspace.** Give your team one place to work with client files, create documents, follow processes, find information, and explore dashboards—with access controls that follow the data.
 
 Built for growing businesses and teams building their own internal platforms. Start with the core workspace, enable the plugins you need, and make it your own with your business name, branding, and integrations.
 
@@ -165,6 +165,6 @@ Report reproducible issues, improve the guides, or add a focused plugin. Start w
 
 ## Licensing
 
-**AGPL-3.0-only, with an alternative commercial licensing path.** The public license covers original WeaveOps code and the project owner's imported WeasyCanvas snapshot. Commercial use is allowed under the AGPL; a different grant requires a separate written commercial agreement. Premium commercial terms are reserved for a future offering and are not granted by this repository.
+**AGPL-3.0-only, with an alternative commercial licensing path.** The public license covers original Meshable Ops code and the project owner's imported WeasyCanvas snapshot. Commercial use is allowed under the AGPL; a different grant requires a separate written commercial agreement. Premium commercial terms are reserved for a future offering and are not granted by this repository.
 
 Read [LICENSE](LICENSE), the [licensing guide](LICENSING.md), and [commercial licensing notice](COMMERCIAL-LICENSE.md). Apache Superset remains Apache-2.0; other components keep their own licenses. See [third-party notices](THIRD_PARTY_NOTICES.md).

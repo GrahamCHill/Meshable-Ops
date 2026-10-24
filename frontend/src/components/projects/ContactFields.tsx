@@ -1,0 +1,12 @@
+import type { Contact, WebLink } from '../../api/projects'
+import { Button } from '../ui'
+
+export function ContactFields({value, onChange}: {value: Contact[]; onChange: (value: Contact[]) => void}) {
+  return <div className="page-stack">{value.map((contact, index) => <fieldset className="page-stack" key={contact.id}><legend>Contact {index + 1}</legend><div className="project-fields">{(['name', 'position', 'email', 'phone'] as const).map(key => <label className="form-field" key={key}>{key === 'position' ? 'Role / position' : key}<input type={key === 'email' ? 'email' : 'text'} required={key === 'name'} maxLength={key === 'email' ? 254 : 160} value={contact[key]} onChange={event => onChange(value.map(item => item.id === contact.id ? {...item, [key]: event.target.value} : item))} /></label>)}</div><Button type="button" variant="ghost" onClick={() => onChange(value.filter(item => item.id !== contact.id))}>Remove contact</Button></fieldset>)}<div><Button type="button" variant="secondary" disabled={value.length >= 30} onClick={() => onChange([...value, {id: crypto.randomUUID(), name: '', email: '', phone: '', position: ''}])}>Add contact</Button></div></div>
+}
+export function LinkFields({value, onChange}: {value: WebLink[]; onChange: (value: WebLink[]) => void}) {
+  return <div className="page-stack">{value.map((link, index) => <div className="project-fields" key={index}><label className="form-field">Link label<input required maxLength={160} value={link.label} onChange={event => onChange(value.map((item, i) => i === index ? {...item, label: event.target.value} : item))} /></label><label className="form-field">Web URL<input required type="url" maxLength={2000} value={link.url} onChange={event => onChange(value.map((item, i) => i === index ? {...item, url: event.target.value} : item))} /></label><Button type="button" variant="ghost" onClick={() => onChange(value.filter((_, i) => i !== index))}>Remove link</Button></div>)}<div><Button type="button" variant="secondary" onClick={() => onChange([...value, {label: '', url: ''}])} disabled={value.length >= 50}>Add web link</Button></div></div>
+}
+export function Contacts({contacts}: {contacts: Contact[]}) {
+  return contacts.length ? <div className="project-table-wrap"><table className="project-table"><thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th></tr></thead><tbody>{contacts.map(contact => <tr key={contact.id}><td>{contact.name}</td><td>{contact.position}</td><td>{contact.email}</td><td>{contact.phone}</td></tr>)}</tbody></table></div> : <p>No contacts set.</p>
+}

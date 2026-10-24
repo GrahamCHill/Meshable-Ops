@@ -1,6 +1,6 @@
 # Template versions and GitHub deployment
 
-Each copy of WeaveOps can run its own checks and deploy to an existing Linux VM over SSH. Actions sends the tested source revision and Docker builds it on the VM; no registry account is needed. Deployment stays off until the new repository's owner configures it.
+Each copy of Meshable Ops can run its own checks and deploy to an existing Linux VM over SSH. Actions sends the tested source revision and Docker builds it on the VM; no registry account is needed. Deployment stays off until the new repository's owner configures it.
 
 ## Create your copy
 

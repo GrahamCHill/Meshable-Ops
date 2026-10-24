@@ -1,6 +1,6 @@
 # Search and AI crawler exclusion
 
-WeaveOps is a private business workspace. Every installation ships with crawler exclusion enabled; there is no admin switch that can accidentally publish the app to crawlers.
+Meshable Ops is a private business workspace. Every installation ships with crawler exclusion enabled; there is no admin switch that can accidentally publish the app to crawlers.
 
 | Layer | Policy |
 | --- | --- |

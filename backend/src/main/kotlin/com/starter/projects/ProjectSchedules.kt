@@ -110,7 +110,7 @@ class WorkScheduleRunner(private val schedules: WorkSchedules, private val recor
                 }
                 row.lastStatus = if (result.isNotEmpty() && result.all { it.status in setOf("ACCEPTED", "SKIPPED") }) "ACCEPTED" else "DELIVERY_UNAVAILABLE"
             } catch (_: Exception) { row.lastStatus = "FAILED_CHECK_ACCESS_AND_PROVIDERS" }
-            records.saveAndFlush(row)
+            try { records.saveAndFlush(row) } catch (_: org.springframework.orm.ObjectOptimisticLockingFailureException) { /* Preserve a concurrent schedule edit. */ }
         }
     }
 }

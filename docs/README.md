@@ -1,6 +1,6 @@
-# WeaveOps documentation
+# Meshable Ops documentation
 
-WeaveOps combines shared storage, document generation, workflow design, search, communication, and analytics in one business workspace. Start with local setup or choose the guide for your task.
+Meshable Ops combines shared storage, document generation, workflow design, search, communication, and analytics in one business workspace. Start with local setup or choose the guide for your task.
 
 The implementation uses PostgreSQL/pgvector for storage metadata, content chunks, search, and configuration; S3/Azure Blob retains original files. MongoDB continues to store events and audit history. MongoDB search and OCR integration are deferred.
 

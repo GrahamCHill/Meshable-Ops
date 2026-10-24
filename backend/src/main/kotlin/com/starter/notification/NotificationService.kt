@@ -34,7 +34,7 @@ class NotificationService(private val transports: NotificationTransports,private
         val definition=catalogue.get(event);val method=transports.get(methodId)
         if(definition.category==NotificationCategory.SECURITY && (!method.supportsOtp || methodId !in target.verifiedMethods || method.recipientKind==NotificationRecipientKind.FIXED))
             throw BadRequestException("Verification codes require a verified direct recipient and an OTP-capable delivery method")
-        val recipient=when(method.recipientKind) {NotificationRecipientKind.EMAIL -> target.email;NotificationRecipientKind.PHONE -> target.phone;NotificationRecipientKind.FIXED -> ""}
+        val recipient=when(method.recipientKind) {NotificationRecipientKind.EMAIL -> target.email;NotificationRecipientKind.PHONE -> target.phone;NotificationRecipientKind.FIXED -> "";NotificationRecipientKind.MEMBER -> target.userId?.toString() ?: throw BadRequestException("Choose an internal member for this delivery method")}
         val rule=settings.rule(definition);val configured=settings.template(definition,method,rule);val template=htmlOverride?.let {configured.copy(html=it)} ?: configured
         val rendered=renderer.render(definition,method,template,mapOf("applicationName" to branding.current().applicationName,"recipientName" to target.name.ifBlank {"Member"},"subject" to definition.label,"message" to "")+values)
         val message=ChannelMessage(if(method.parameterized) "" else rendered.text,recipient,if(method.parameterized) rendered.parameters else emptyList(),rendered.subject,rendered.html,template.providerTemplate,attachments)

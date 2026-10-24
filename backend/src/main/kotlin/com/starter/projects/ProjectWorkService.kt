@@ -20,6 +20,12 @@ data class DeliveryRisk(val userId: UUID, val name: String, val score: Int, val 
 @Service
 class ProjectWorkService(private val boards: KanbanRepository, private val mapper: ObjectMapper, private val access: ProjectAccess,
     private val boardAccess: ProjectBoardAccess, private val registry: PluginRegistry, private val users: UserRepository) {
+    fun sprints(email: String, projectId: UUID): List<Map<String, Any>> {
+        val actor = access.actor(email); access.require(projectId, actor)
+        if (!access.hasFeature(actor, "plugin.kanban") || registry.available(actor.role).none { it.manifest.id == "kanban" }) return emptyList()
+        registry.requireTable("kanban", "plugin_kanban_boards", actor.role)
+        return boards.findByProjectId(projectId).filter { boardAccess.readable(actor, it) }.flatMap { board -> mapper.readValue(board.contentJson, KanbanContent::class.java).sprints.map { mapOf("boardId" to board.id, "boardName" to board.name, "sprint" to it) } }
+    }
     fun work(projectId: UUID, actor: User): List<ProjectWorkItem> {
         access.require(projectId, actor)
         if (registry.available(actor.role).none { it.manifest.id == "kanban" } || !access.hasFeature(actor, "plugin.kanban")) return emptyList()
@@ -31,7 +37,8 @@ class ProjectWorkService(private val boards: KanbanRepository, private val mappe
     fun risks(email: String, projectId: UUID): List<DeliveryRisk> {
         val actor = access.actor(email); val project = access.require(projectId, actor, true)
         val cards = work(projectId, actor).map { it.card }
-        return users.findAllById(access.members(project)).filter { it.active && it.role != "EXTERNAL" && access.canRead(it, project) }.map { user ->
+        val assignees = cards.mapNotNull { it.assigneeId }.toSet()
+        return users.findAllById(access.members(project)).filter { it.id in assignees && it.active && it.role != "EXTERNAL" && access.canRead(it, project) }.map { user ->
             score(user.id, user.name ?: user.username, cards.filter { it.assigneeId == user.id }, LocalDate.now(ZoneOffset.UTC))
         }
     }
@@ -53,4 +60,5 @@ class ProjectWorkService(private val boards: KanbanRepository, private val mappe
 class ProjectWorkController(private val work: ProjectWorkService, private val access: ProjectAccess) {
     @GetMapping("/work") fun work(@AuthenticationPrincipal actor: UserDetails, @PathVariable id: UUID) = work.work(id, access.actor(actor.username))
     @GetMapping("/risks") fun risks(@AuthenticationPrincipal actor: UserDetails, @PathVariable id: UUID) = work.risks(actor.username, id)
+    @GetMapping("/sprints") fun sprints(@AuthenticationPrincipal actor: UserDetails, @PathVariable id: UUID) = work.sprints(actor.username, id)
 }

@@ -41,6 +41,9 @@ const WorkflowsPage = lazy(() => import('./components/pages/WorkflowsPage'))
 const PluginPage = lazy(() => import('./plugins/PluginPage'))
 const AdminNotificationsPage = lazy(() => import('./components/pages/AdminNotificationsPage'))
 const NotificationPreferencesPage = lazy(() => import('./components/pages/NotificationPreferencesPage'))
+const ProjectsPage = lazy(() => import('./components/pages/ProjectsPage'))
+const ProjectDetailPage = lazy(() => import('./components/pages/ProjectDetailPage'))
+const AdminProjectSettingsPage = lazy(() => import('./components/pages/AdminProjectSettingsPage'))
 const loading = (children: React.ReactNode) => <Suspense fallback={<p role="status">Loading workspace…</p>}>{children}</Suspense>
 
 const makeQueryClient = () => new QueryClient({
@@ -81,6 +84,9 @@ function App() {
                       </AdminRoute>
                     } />
                     <Route path="/admin/access-controls" element={<AdminRoute>{loading(<AdminAccessPage />)}</AdminRoute>} />
+                    <Route path="/admin/projects" element={<AdminRoute>{loading(<AdminProjectSettingsPage />)}</AdminRoute>} />
+                    <Route path="/projects" element={loading(<ProjectsPage />)} />
+                    <Route path="/projects/:projectId" element={loading(<ProjectDetailPage />)} />
                     <Route path="/admin/security" element={<AdminRoute><AdminSecurityPage /></AdminRoute>} />
                     <Route path="/admin/sections/:sectionId" element={<AdminRoute><AdminSectionPage /></AdminRoute>} />
                     <Route path="/admin/users" element={<AdminRoute>{loading(<AdminUsersPage />)}</AdminRoute>} />

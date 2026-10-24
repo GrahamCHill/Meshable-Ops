@@ -13,7 +13,7 @@ class NotificationSettingsService(private val records: NotificationSettingsRepos
     private val jdbc: JdbcTemplate,private val mfa: EmailMfaGuard) {
     fun configuration(): NotificationConfiguration=records.findById(1).orElse(null)?.let {mapper.readValue(it.configurationJson,NotificationConfiguration::class.java)} ?: NotificationConfiguration()
     fun methodEnabled(id: String,config: NotificationConfiguration=configuration())=config.methods[id] ?: (id=="email")
-    fun eligible(definition: NotificationDefinition)=transports.all().filter {method -> when(definition.category) {
+    fun eligible(definition: NotificationDefinition)=transports.all().filter {method -> (!definition.privateToRecipient || method.recipientKind != NotificationRecipientKind.FIXED) && when(definition.category) {
         NotificationCategory.SECURITY -> method.supportsOtp && method.recipientKind!=NotificationRecipientKind.FIXED
         NotificationCategory.TRANSACTIONAL -> method.id=="email"
         else -> true

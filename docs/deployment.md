@@ -1,4 +1,4 @@
-# WeaveOps deployment guide
+# Meshable Ops deployment guide
 
 For independent template copies deploying automatically to an existing Linux VM, follow [GitHub Actions deployment](github-deployment.md). It includes fresh-instance credentials, an initializer without development users, verified SSH, and persisted release/data directories.
 

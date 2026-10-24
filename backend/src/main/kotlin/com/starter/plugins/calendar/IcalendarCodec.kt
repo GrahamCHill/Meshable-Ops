@@ -9,7 +9,7 @@ object IcalendarCodec {
     private val stamp = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'").withZone(ZoneOffset.UTC)
     private val localTime = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")
     fun export(events: List<CalendarEventView>,uidOverrides: Map<String,String> = emptyMap()): String {
-        val lines = mutableListOf("BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//WeaveOps//Calendar//EN","CALSCALE:GREGORIAN")
+        val lines = mutableListOf("BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Meshable Ops//Calendar//EN","CALSCALE:GREGORIAN")
         events.forEach { event ->
             lines += listOf("BEGIN:VEVENT","UID:${escape(uidOverrides[event.id] ?: "${event.id}@weaveops")}","DTSTAMP:${stamp.format(Instant.now())}","SUMMARY:${escape(event.title)}","DESCRIPTION:${escape(event.description)}")
             listOf("DTSTART" to event.start,"DTEND" to event.end).forEach { (key,value) -> lines += if (event.allDay) "$key;VALUE=DATE:${LocalDate.parse(value).format(DateTimeFormatter.BASIC_ISO_DATE)}" else "$key:${stamp.format(Instant.parse(value))}" }

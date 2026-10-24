@@ -14,6 +14,7 @@ interface NotificationChannelAdapter {
     val parameterized: Boolean get() = false
     val maxTextLength: Int get() = 4000
     fun available(): Boolean
+    fun reachable(userId: java.util.UUID): Boolean = true
     fun send(message: ChannelMessage): EmailDeliveryResult
 }
 data class ChannelMessage(val text: String = "", val recipient: String = "", val templateParameters: List<String> = emptyList(),

@@ -9,14 +9,14 @@ export function useBranding() {
 
 export function Brand({ className = '' }: { className?: string }) {
   const { data } = useBranding()
-  const name = data?.settings?.applicationName ?? 'WeaveOps'
+  const name = data?.settings?.applicationName ?? 'Meshable Ops'
   return <div className={`brand ${className}`} title={name}><img className="brand-logo" src={brandImage(data, 'LOGO')} alt="" onError={event => { if (!event.currentTarget.src.endsWith(defaultBrandImage)) event.currentTarget.src = defaultBrandImage }} /><span>{name}</span></div>
 }
 
 export function BrandingHead() {
   const { data } = useBranding()
   useEffect(() => {
-    document.title = data?.settings?.applicationName ?? 'WeaveOps'
+    document.title = data?.settings?.applicationName ?? 'Meshable Ops'
     const root = document.documentElement.style
     const settings = data?.settings
     const background = validColour(settings?.sidebarBackgroundColor) ? settings.sidebarBackgroundColor : undefined

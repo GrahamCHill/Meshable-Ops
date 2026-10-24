@@ -16,6 +16,7 @@ const nav = [
   { to: '/', label: 'Home' },
   { to: '/dashboards', label: 'Dashboards' },
   { to: '/storage', label: 'Storage' },
+  { to: '/projects', label: 'Projects' },
   { to: '/documents', label: 'Documents' },
   { to: '/workflows', label: 'Workflows' },
   { to: '/events', label: 'Events' },

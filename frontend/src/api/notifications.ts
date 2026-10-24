@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import api from './http'
-export type DeliveryMethod = { id: string; label: string; pluginId: string | null; recipientKind: 'EMAIL' | 'PHONE' | 'FIXED'; supportsOtp: boolean; supportsHtml: boolean; supportsAttachments: boolean; parameterized: boolean; maxTextLength: number }
+export type DeliveryMethod = { id: string; label: string; pluginId: string | null; recipientKind: 'EMAIL' | 'PHONE' | 'FIXED' | 'MEMBER'; supportsOtp: boolean; supportsHtml: boolean; supportsAttachments: boolean; parameterized: boolean; maxTextLength: number }
 export type DeliveryMethodView = { method: DeliveryMethod; enabled: boolean; available: boolean }
 export type MessageTemplate = { subject: string; text: string; html: string; parameters: string[]; providerTemplate: string }
 export type NotificationRule = { enabled: boolean; allowedMethods: string[]; defaultMethods: string[]; allowMemberChoice: boolean; templates: Record<string, MessageTemplate> }

@@ -13,7 +13,7 @@ export interface BrandingSettings {
 }
 export interface LoginImage { slot: number; version: string }
 export interface Branding { logoVersion: string | null; faviconVersion: string | null; settings: BrandingSettings; loginImages: LoginImage[] }
-export const defaultBrandingSettings: BrandingSettings = { applicationName: 'WeaveOps', sidebarBackgroundColor: null, sidebarTextColor: null, linkColor: null, loginBackgroundMode: 'NONE', loginBackgroundSlot: null, slideshowSeconds: 8, revision: 0 }
+export const defaultBrandingSettings: BrandingSettings = { applicationName: 'Meshable Ops', sidebarBackgroundColor: null, sidebarTextColor: null, linkColor: null, loginBackgroundMode: 'NONE', loginBackgroundSlot: null, slideshowSeconds: 8, revision: 0 }
 export const defaultBrandImage = '/brand-mark.svg'
 export const brandingApi = {
   current: () => api.get<Branding>('/branding').then(response => response.data),

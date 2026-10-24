@@ -8,7 +8,7 @@ These are three independent plugins with encrypted access tokens and their own s
 | `gitlab` | Blank uses `https://gitlab.com`; self-managed base excludes `/api/v4` | `group/repo` or `group/subgroup/repo` |
 | `gitea` | Required HTTPS server base, including any installation prefix; exclude `/api/v1` | `owner/repo` |
 
-Set **Allowed repositories** to at most 20 comma-separated paths. Every lookup is checked against this allowlist before a network request. Use an appropriate read-only token scoped to the selected repositories. GitHub fine-grained tokens need repository metadata and pull-request read permissions. For GitLab, use a suitable project/group/personal read-API token; Gitea token scopes depend on its installed version. Account consent and repository permissions are managed at the provider, not granted by WeaveOps.
+Set **Allowed repositories** to at most 20 comma-separated paths. Every lookup is checked against this allowlist before a network request. Use an appropriate read-only token scoped to the selected repositories. GitHub fine-grained tokens need repository metadata and pull-request read permissions. For GitLab, use a suitable project/group/personal read-API token; Gitea token scopes depend on its installed version. Account consent and repository permissions are managed at the provider, not granted by Meshable Ops.
 
 Each provider defaults to administrator access. The administrator may explicitly enable all signed-in users. Enabling member access shares metadata for the approved repositories using the saved server account. It does not use individual members' Git credentials. Members still need Kanban table access and ownership of the board; administrators can manage all boards.
 

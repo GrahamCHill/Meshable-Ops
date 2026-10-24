@@ -11,6 +11,7 @@ import java.util.UUID
 @Service
 class NotificationPublisher(private val catalogue: NotificationCatalogue,private val preferences: NotificationPreferencesService,
     private val users: UserRepository,private val notifications: NotificationService,private val rates: RateLimits) {
+    fun internalMembers(): List<Map<String, Any>> = users.findAll().filter { it.active && it.role != "EXTERNAL" }.map { mapOf("id" to it.id, "name" to (it.name ?: it.username)) }
     fun publish(event: String,userId: UUID,values: Map<String,String>,key: String=UUID.randomUUID().toString(),selectedMethods: Set<String>?=null): Map<String,EmailDeliveryResult> {
         val actor=users.findById(userId).orElse(null)?.takeIf {it.active} ?: throw NotFoundException("Notification recipient unavailable")
         val definition=catalogue.get(event)

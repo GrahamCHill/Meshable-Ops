@@ -10,7 +10,7 @@ Branding uses `BrandingAsset`, `BrandingPreferencesRecord`, and `BrandingLoginIm
 
 GitHub workflows live in `.github/workflows/`; `checks.yml` is reused by deployment and template releases. Host setup, effective Compose validation, SSH transfer, and release activation are split under `deploy/github/`. Run its Python tests, `check-config.py`, `bash -n` on the scripts, and actionlint when changing deployment. See [template deployment](github-deployment.md).
 
-WeaveOps is the product name. Existing `com.starter` package paths, Docker storage names, development buckets, and the versioned backup format remain stable so the rebrand does not change persisted data or integration contracts.
+Meshable Ops is the product name. Existing `com.starter` package paths, Docker storage names, development buckets, and the versioned backup format remain stable so the rebrand does not change persisted data or integration contracts.
 
 Files are grouped by feature and responsibility. Page components compose the screen; API modules own requests and response types; hooks own stateful workflows. Related components sit together so a change to one feature does not require editing a general application file.
 

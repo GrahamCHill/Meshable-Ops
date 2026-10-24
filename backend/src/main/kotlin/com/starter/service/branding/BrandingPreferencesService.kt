@@ -32,6 +32,6 @@ class BrandingPreferencesService(private val repository: BrandingPreferencesRepo
         if (!normalized.matches(Regex("#[0-9a-fA-F]{6}"))) throw BadRequestException("Colours must use six-digit hex values, such as #245A78")
         return normalized.lowercase()
     }
-    private fun view(row: BrandingPreferencesRecord) = BrandingPreferences(row.applicationName, row.sidebarBackgroundColor, row.sidebarTextColor,
+    private fun view(row: BrandingPreferencesRecord) = BrandingPreferences(if (row.applicationName == "WeaveOps") "Meshable Ops" else row.applicationName, row.sidebarBackgroundColor, row.sidebarTextColor,
         row.linkColor, row.loginBackgroundMode, row.loginBackgroundSlot, row.slideshowSeconds, row.revision)
 }

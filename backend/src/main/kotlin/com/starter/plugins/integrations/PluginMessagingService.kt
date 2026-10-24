@@ -71,8 +71,15 @@ abstract class MessagingChannelAdapter(override val channel: String, private val
             catch (_: NotFoundException) { EmailDeliveryResult("DISABLED", "This notification plugin was disabled") }
     }
 }
-@Component class TelegramChannelAdapter(messaging: PluginMessagingService) : MessagingChannelAdapter("telegram", messaging) {override val label="Telegram"}
-@Component class TeamsChannelAdapter(messaging: PluginMessagingService) : MessagingChannelAdapter("teams", messaging) {override val label="Microsoft Teams"}
+abstract class MemberChannelAdapter(override val channel: String, private val members: MemberMessaging) : NotificationChannelAdapter {
+    override val recipientKind = com.starter.notification.NotificationRecipientKind.MEMBER
+    override fun available() = members.available(channel)
+    override fun reachable(userId: java.util.UUID) = members.reachable(channel, userId)
+    override fun send(message: ChannelMessage) = members.sendMember(channel, message)
+}
+@Component class TelegramChannelAdapter(members: MemberMessaging) : MemberChannelAdapter("telegram", members) {override val label="Telegram"}
+@Component class TeamsChannelAdapter(members: MemberMessaging) : MemberChannelAdapter("teams", members) {override val label="Microsoft Teams"}
+@Component class DiscordChannelAdapter(members: MemberMessaging) : MemberChannelAdapter("discord", members) {override val label="Discord"; override val maxTextLength = 2000}
 @Component class WhatsAppChannelAdapter(messaging: PluginMessagingService) : MessagingChannelAdapter("whatsapp", messaging) {
     override val label="WhatsApp Business"
     override val recipientKind=com.starter.notification.NotificationRecipientKind.PHONE

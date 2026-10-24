@@ -1,4 +1,4 @@
-# Contributing to WeaveOps
+# Contributing to Meshable Ops
 
 Help improve business workflows, documentation, accessibility, integrations, and the plugin ecosystem. Use the [issue tracker](https://github.com/GrahamCHill/Contract-Management-Template/issues) to describe a reproducible problem or discuss a substantial change before implementation.
 

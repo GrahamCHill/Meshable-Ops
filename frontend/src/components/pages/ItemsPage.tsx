@@ -23,8 +23,9 @@ export function ItemsPage() {
   const connectionId = params.get('connection') ?? undefined
   const linkedFolderId = params.get('folder')
   const linkedPath = params.get('path') ?? ''
+  const linkedFile = params.get('file') ?? undefined
   const linkedFolder = useQuery({ queryKey: ['storage-folder', linkedFolderId], queryFn: () => itemsApi.get(linkedFolderId!), enabled: !!linkedFolderId })
-  const closeLinkedFolder = () => setParams(previous => { const next = new URLSearchParams(previous); next.delete('folder'); next.delete('path'); return next })
+  const closeLinkedFolder = () => setParams(previous => { const next = new URLSearchParams(previous); next.delete('folder'); next.delete('path'); next.delete('file'); return next })
   const [page, setPage] = useState(0)
   useEffect(() => { setSelected(null); setPage(0); setEditing(null); setShowCreate(false) }, [connectionId])
   const locations = useQuery({ queryKey: ['storage-connections'], queryFn: storageConnectionsApi.list })
@@ -51,7 +52,7 @@ export function ItemsPage() {
   if (linkedFolderId) {
     if (linkedFolder.isLoading) return <div role="status"><Spinner /> Loading shared folder…</div>
     if (linkedFolder.isError || !linkedFolder.data) return <div className="page-stack"><p role="alert">This folder is unavailable or no longer shared.</p><Button variant="ghost" onClick={closeLinkedFolder}>Back to Storage</Button></div>
-    return <StorageBrowser key={`${linkedFolderId}-${linkedPath}`} folder={linkedFolder.data} initialPath={linkedPath} onClose={closeLinkedFolder} />
+    return <StorageBrowser key={`${linkedFolderId}-${linkedPath}-${linkedFile}`} folder={linkedFolder.data} initialPath={linkedPath} initialFile={linkedFile} onClose={closeLinkedFolder} />
   }
   if (selected) return <StorageBrowser folder={selected} onClose={() => setSelected(null)} />
 

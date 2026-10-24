@@ -14,6 +14,7 @@ class AdminNotificationController(private val settings: NotificationSettingsServ
     private val transports: NotificationTransports,private val renderer: NotificationRenderer,private val deliveries: NotificationDeliveryRepository,
     private val notifications: NotificationService,private val publisher: NotificationPublisher,private val actors: PluginActor,private val rates: RateLimits) {
     @GetMapping fun settings(@AuthenticationPrincipal user: UserDetails): NotificationSettingsView {actors.fresh(user.username);return settings.view()}
+    @GetMapping("/members") fun members(@AuthenticationPrincipal user: UserDetails): List<Map<String, Any>> { actors.fresh(user.username); return publisher.internalMembers() }
     @PutMapping fun save(@AuthenticationPrincipal user: UserDetails,@Valid @RequestBody request: NotificationSettingsRequest): NotificationSettingsView {actors.fresh(user.username);return settings.save(request)}
     @PostMapping("/preview") fun preview(@AuthenticationPrincipal user: UserDetails,@Valid @RequestBody request: NotificationPreviewRequest): NotificationPreview {
         actors.fresh(user.username);return renderer.preview(catalogue.get(request.notificationId),transports.get(request.methodId),request.template)

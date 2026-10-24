@@ -1,0 +1,11 @@
+.project-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); align-items: end; gap: 16px; }
+.project-table-wrap { overflow: auto; }
+.project-table { width: 100%; border-collapse: collapse; text-align: left; }
+.project-table th, .project-table td { padding: 12px 14px; vertical-align: top; }
+.project-table thead { background: var(--color-surface-2); }
+.project-choices { display: flex; flex-wrap: wrap; gap: 12px 20px; }
+.project-choices label { display: flex; align-items: center; gap: 7px; }
+.project-member-list { max-height: 340px; overflow: auto; display: grid; gap: 10px; }
+.project-note { white-space: pre-wrap; overflow-wrap: anywhere; }
+.project-details { max-width: 1200px; }
+.project-section { padding: 16px 0; }

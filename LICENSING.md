@@ -1,15 +1,15 @@
-# WeaveOps licensing
+# Meshable Ops licensing
 
-Copyright (C) 2026 Graham Hill and the WeaveOps contributors.
+Copyright (C) 2026 Graham Hill and the Meshable Ops contributors.
 
 ## Two licensing paths
 
-Original WeaveOps code is offered under either:
+Original Meshable Ops code is offered under either:
 
 1. **GNU Affero General Public License, version 3 only (`AGPL-3.0-only`)**, whose complete, unmodified text is in [LICENSE](LICENSE); or
 2. **A separate commercial license**, if you obtain an express written agreement from the relevant copyright holder or an authorized commercial licensor.
 
-The AGPL option is available immediately. This repository does not grant a commercial license, publish commercial contract terms, or promise a premium edition. A future commercial agreement can provide alternative permissions for the WeaveOps code covered by that agreement. Merely paying for hosting, support, or a subscription does not grant those permissions unless the agreement expressly says so.
+The AGPL option is available immediately. This repository does not grant a commercial license, publish commercial contract terms, or promise a premium edition. A future commercial agreement can provide alternative permissions for the Meshable Ops code covered by that agreement. Merely paying for hosting, support, or a subscription does not grant those permissions unless the agreement expressly says so.
 
 Contact the [project maintainer](https://github.com/GrahamCHill) to discuss commercial licensing. A future premium offering can include separately licensed original modules and services; its scope and terms must be stated in its own agreement. Existing AGPL permissions for released copies remain available under the AGPL; a commercial offering does not revoke them.
 
@@ -29,15 +29,15 @@ The AGPL is a strong copyleft **open source** license. It permits commercial use
 
 Among other obligations, distributing covered software requires satisfying the AGPL's license/notice and Corresponding Source provisions. Under section 13, if you modify the program and users interact with that version remotely over a network, that version must prominently offer those users its Corresponding Source at no charge. Internal network users can also be users of a modified deployment. A source offer should identify the actual running revision and include the necessary covered source and build/install material; a link to an unrelated or outdated public branch is insufficient.
 
-Corresponding Source concerns covered software. Ordinary business records, uploaded client files, credentials, and generated documents do not become AGPL-licensed merely because they are processed by WeaveOps. Material copied from licensed code or assets into an output can have separate obligations. The license itself controls the exact requirements.
+Corresponding Source concerns covered software. Ordinary business records, uploaded client files, credentials, and generated documents do not become AGPL-licensed merely because they are processed by Meshable Ops. Material copied from licensed code or assets into an output can have separate obligations. The license itself controls the exact requirements.
 
 LGPL would allow more proprietary linking, and ordinary GPL does not add the AGPL's network-interaction condition. AGPLv3 is the public-license choice here because this application is used through a browser and server.
 
 ## Apache Superset compatibility
 
-Apache Superset and its embedded SDK retain **Apache-2.0** licensing. Apache-2.0 code can be included in GPLv3-compatible copyleft works while preserving the Apache license and applicable notices; this project uses the AGPLv3 family and keeps Superset as a separate service. WeaveOps does **not** relicense Superset, claim Apache endorsement, or grant proprietary rights to Apache or other upstream code through its commercial option.
+Apache Superset and its embedded SDK retain **Apache-2.0** licensing. Apache-2.0 code can be included in GPLv3-compatible copyleft works while preserving the Apache license and applicable notices; this project uses the AGPLv3 family and keeps Superset as a separate service. Meshable Ops does **not** relicense Superset, claim Apache endorsement, or grant proprietary rights to Apache or other upstream code through its commercial option.
 
-The project's licensing choice does not make WeaveOps code eligible for inclusion in an Apache-licensed upstream project on Apache terms. Nor does compatibility with Superset establish that every dependency or future plugin has been audited. Redis, MongoDB, development storage, and other services have independent version-specific terms; preserve their notices and assess the exact distribution and hosting model.
+The project's licensing choice does not make Meshable Ops code eligible for inclusion in an Apache-licensed upstream project on Apache terms. Nor does compatibility with Superset establish that every dependency or future plugin has been audited. Redis, MongoDB, development storage, and other services have independent version-specific terms; preserve their notices and assess the exact distribution and hosting model.
 
 ## Contributions and future commercial licensing
 

@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import java.time.Instant
 import java.util.UUID
 
-enum class NotificationRecipientKind { EMAIL, PHONE, FIXED }
+enum class NotificationRecipientKind { EMAIL, PHONE, FIXED, MEMBER }
 enum class NotificationCategory { GENERAL, WORKFLOW, SECURITY, TRANSACTIONAL }
 data class NotificationMethod(val id: String,val label: String,val pluginId: String?,val recipientKind: NotificationRecipientKind,
     val supportsOtp: Boolean=false,val supportsHtml: Boolean=false,val supportsAttachments: Boolean=false,
@@ -25,7 +25,7 @@ data class NotificationSettingsRequest(@field:Min(-1) val revision: Long=-1,val 
     @field:Valid val rules: Map<String,NotificationRule> = emptyMap())
 data class NotificationSettingsView(val revision: Long,val methods: List<NotificationMethodView>,val notifications: List<NotificationDefinitionView>)
 data class NotificationDefinition(val id: String,val label: String,val description: String,val category: NotificationCategory,
-    val variables: Set<String>,val subject: String,val text: String,val enabledByDefault: Boolean=true,val pluginId: String?=null)
+    val variables: Set<String>,val subject: String,val text: String,val enabledByDefault: Boolean=true,val pluginId: String?=null, val privateToRecipient: Boolean = false)
 data class NotificationDefinitionView(val definition: NotificationDefinition,val rule: NotificationRule,val eligibleMethods: Set<String>)
 data class NotificationConfiguration(val methods: Map<String,Boolean> = emptyMap(),val rules: Map<String,NotificationRule> = emptyMap())
 data class NotificationPreferenceRequest(@field:Min(-1) val revision: Long=-1,val choices: Map<String,Set<String>> = emptyMap())

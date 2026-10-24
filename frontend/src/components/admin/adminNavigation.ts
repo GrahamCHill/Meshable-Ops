@@ -6,6 +6,7 @@ export const adminGroups = [
   { id: 'people-security', label: 'People & security', description: 'Accounts, permissions, external access, and extension security.', items: [
     { to: '/admin/access-controls', label: 'Access controls', description: 'Control role features, member views, external sharing, and protected cloud directories.' },
     { to: '/admin/users', label: 'Users', description: 'Manage accounts, roles, and upload permissions.' },
+    { to: '/admin/projects', label: 'Project tags & teams', description: 'Shared tags, departments, custom team roles, memberships, and identity contacts.' },
     { to: '/admin/security', label: 'Security', description: 'Allow third-party extensions and manage account protection.' },
     { to: '/account/security', label: 'My security & MFA', description: 'Set up authenticator or email verification and recovery codes.' },
   ] },

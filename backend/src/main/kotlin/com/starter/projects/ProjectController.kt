@@ -26,6 +26,7 @@ class ProjectSettingsController(private val settings: ProjectSettingsService) {
     @GetMapping fun get() = settings.current()
     @PutMapping fun save(@RequestBody value: ProjectSettingsView) = settings.save(value)
     @GetMapping("/groups") fun groups() = settings.groups()
+    @GetMapping("/people") fun people() = settings.people()
     @PostMapping("/groups") fun create(@RequestBody value: WorkGroupInput) = settings.saveGroup(null, value)
     @PutMapping("/groups/{id}") fun update(@PathVariable id: UUID, @RequestBody value: WorkGroupInput) = settings.saveGroup(id, value)
 }

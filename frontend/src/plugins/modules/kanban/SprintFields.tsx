@@ -1,0 +1,6 @@
+import { Button } from '../../../components/ui'
+import type { BoardSprint } from './api'
+
+export function SprintFields({value, onChange, disabled}: {value: BoardSprint[]; onChange: (value: BoardSprint[]) => void; disabled: boolean}) {
+  return <details><summary>Sprints</summary><fieldset disabled={disabled} className="page-stack">{value.map(sprint => <div className="project-fields" key={sprint.id}><label className="form-field">Sprint name<input required maxLength={100} value={sprint.name} onChange={event => onChange(value.map(item => item.id === sprint.id ? {...item, name: event.target.value} : item))} /></label><label className="form-field">Sprint start<input type="date" required value={sprint.startDate} onChange={event => onChange(value.map(item => item.id === sprint.id ? {...item, startDate: event.target.value} : item))} /></label><label className="form-field">Sprint end<input type="date" min={sprint.startDate} required value={sprint.endDate} onChange={event => onChange(value.map(item => item.id === sprint.id ? {...item, endDate: event.target.value} : item))} /></label></div>)}<div><Button type="button" variant="secondary" onClick={() => onChange([...value, {id: crypto.randomUUID(), name: 'New sprint', startDate: new Date().toISOString().slice(0, 10), endDate: new Date().toISOString().slice(0, 10)}])}>Add sprint</Button></div></fieldset></details>
+}

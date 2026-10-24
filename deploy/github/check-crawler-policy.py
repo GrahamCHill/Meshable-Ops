@@ -42,7 +42,7 @@ def main():
     opener = build_opener(NoRedirects())
 
     def read(path):
-        request = Request(base + path, headers={"User-Agent": "WeaveOps-Deployment-Check"})
+        request = Request(base + path, headers={"User-Agent": "Meshable Ops-Deployment-Check"})
         try:
             response = opener.open(request, timeout=30)
         except HTTPError as error:

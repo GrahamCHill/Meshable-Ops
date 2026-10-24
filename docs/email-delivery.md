@@ -54,7 +54,7 @@ These fields are documented in [`.env.example`](../.env.example) and forwarded t
 APP_EMAIL_ENABLED=true
 APP_EMAIL_PROVIDER=SMTP
 APP_EMAIL_FROM_ADDRESS=notifications@example.com
-APP_EMAIL_FROM_NAME=WeaveOps
+APP_EMAIL_FROM_NAME=Meshable Ops
 APP_EMAIL_REPLY_TO=support@example.com
 APP_EMAIL_SMTP_HOST=smtp.example.com
 APP_EMAIL_SMTP_PORT=587

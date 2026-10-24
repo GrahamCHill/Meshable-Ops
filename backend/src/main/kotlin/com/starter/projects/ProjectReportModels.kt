@@ -16,8 +16,9 @@ data class ProjectReportDocument(val title: String, val organization: String, va
 @Entity @Table(name = "workspace_project_reports", indexes = [Index(columnList = "project_id,created_at")])
 class ProjectReportRecord(@Id val id: UUID = UUID.randomUUID(), val projectId: UUID = UUID.randomUUID(), val createdBy: UUID = UUID.randomUUID(),
     @Enumerated(EnumType.STRING) val kind: ProjectReportKind = ProjectReportKind.PERIOD, val fromDate: LocalDate = LocalDate.now(), val toDate: LocalDate = LocalDate.now(),
-    val createdAt: Instant = Instant.now(), @get:JsonIgnore @Column(columnDefinition = "bytea", nullable = false) val pdf: ByteArray = byteArrayOf())
-interface ProjectReportMetadata { val id: UUID; val projectId: UUID; val kind: ProjectReportKind; val fromDate: LocalDate; val toDate: LocalDate; val createdAt: Instant }
+    val createdAt: Instant = Instant.now(), @get:JsonIgnore @Column(columnDefinition = "bytea", nullable = false) val pdf: ByteArray = byteArrayOf(),
+    @get:JsonIgnore @Column(columnDefinition = "TEXT DEFAULT '[]'", nullable = false) val boardIdsJson: String = "[]")
+interface ProjectReportMetadata { val id: UUID; val projectId: UUID; val kind: ProjectReportKind; val fromDate: LocalDate; val toDate: LocalDate; val createdAt: Instant; val boardIdsJson: String }
 interface ProjectReportRepository : JpaRepository<ProjectReportRecord, UUID> { fun findTop100ByProjectIdOrderByCreatedAtDesc(projectId: UUID): List<ProjectReportMetadata> }
 data class ProjectReportView(val id: UUID, val projectId: UUID, val kind: ProjectReportKind, val from: LocalDate, val to: LocalDate, val createdAt: Instant,
     val deliveries: Map<UUID, com.starter.dto.EmailDeliveryResult> = emptyMap())

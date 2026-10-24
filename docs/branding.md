@@ -4,7 +4,7 @@ Open **Administration > Branding** (`/admin/branding`) to set the business name,
 
 ## Name and colours
 
-Set **Application name** to the business name (1–80 characters). It appears in navigation, above the sign-in form, and in the browser tab title. The default is WeaveOps.
+Set **Application name** to the business name (1–80 characters). It appears in navigation, above the sign-in form, and in the browser tab title. The default is Meshable Ops.
 
 The colour controls accept six-digit hex values for the sidebar background, sidebar text/links, and content links. Unchecked overrides follow the light/dark theme. If a sidebar background is customized without an explicit text colour, the app chooses black or white for contrast. Overrides apply in both themes, including mobile navigation; check both when choosing colours. Buttons and navigation cards retain their basic layouts.
 

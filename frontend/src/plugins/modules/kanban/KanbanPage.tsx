@@ -22,11 +22,12 @@ function Boards() {
   const canWrite = !!role && !!plugins.data?.find(item => item.manifest.id === 'kanban')?.tableAccess.plugin_kanban_boards?.writeRoles.includes(role)
   const client = useQueryClient()
   const selected = params.get('board') ?? ''
-  const setSelected = (id: string) => setParams(id ? {board:id} : {})
+  const projectId = params.get('project') ?? undefined
+  const setSelected = (id: string) => setParams({...projectId ? {project: projectId} : {}, ...id ? {board: id} : {}})
   const [dirty, setDirty] = useState(false)
   const [fresh, setFresh] = useState(blankBoard)
   const [generation, setGeneration] = useState(0)
-  const list = useQuery({ queryKey: ['plugin-kanban-boards', userId, role], queryFn: boardsApi.list })
+  const list = useQuery({ queryKey: ['plugin-kanban-boards', userId, role, projectId], queryFn: () => boardsApi.list(projectId) })
   const board = useQuery({ queryKey: ['plugin-kanban-board', userId, role, selected], queryFn: () => boardsApi.get(selected), enabled: !!selected && selected !== 'new', refetchOnWindowFocus: false })
   const saved = (value: Board) => {
     client.setQueryData(['plugin-kanban-board', userId, role, value.id], value)
@@ -34,7 +35,8 @@ function Boards() {
     setSelected(value.id); setDirty(false)
   }
   return <div className="page-stack">
-    <div className="page-heading"><div><h1>Boards</h1><p>Organize work with lists and cards.</p></div><Button disabled={dirty || !canWrite} onClick={() => { setFresh(blankBoard()); setSelected('new'); setGeneration(value => value + 1) }}>New board</Button></div>
+    <div className="page-heading"><div><h1>Boards</h1><p>Projects, sprints, assignments, reviews, and Git links.</p></div><Button disabled={dirty || !canWrite} onClick={() => { setFresh({...blankBoard(), projectId: projectId ?? null}); setSelected('new'); setGeneration(value => value + 1) }}>New board</Button></div>
+    {projectId && <Link to={`/projects/${projectId}`}>Back to project</Link>}
     {!canWrite && <p className="field-help">Your role has read-only access to these boards.</p>}
     <div className="inline-actions"><label className="form-field">Saved board<select value={selected} disabled={dirty} onChange={event => setSelected(event.target.value)}><option value="">Select a board</option>{selected === 'new' && <option value="new">Unsaved board</option>}{list.data?.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>{dirty && <Button variant="ghost" onClick={() => { setDirty(false); setGeneration(value => value + 1); if (selected === 'new') setSelected(''); else void board.refetch() }}>Discard changes</Button>}</div>
     {list.isLoading && <p role="status">Loading boards…</p>}
@@ -42,6 +44,6 @@ function Boards() {
     {!selected && list.data?.length === 0 && <p>Create your first board to get started.</p>}
     {selected && selected !== 'new' && board.isLoading && <p role="status">Loading board…</p>}
     {selected && selected !== 'new' && board.isError && <p role="alert">This board is unavailable. <button onClick={() => void board.refetch()}>Retry</button></p>}
-    <fieldset disabled={!canWrite} className="page-stack">{selected === 'new' ? <BoardEditor key={`new-${generation}`} initial={fresh} onSaved={saved} onDirty={setDirty} readOnly={!canWrite} /> : !board.isError && board.data && selected === board.data.id && <BoardEditor key={`${board.data.id}-${board.data.revision}-${generation}`} id={board.data.id} initial={board.data} onSaved={saved} onDirty={setDirty} readOnly={!canWrite} />}</fieldset>
+    <div className="page-stack">{selected === 'new' ? <BoardEditor key={`new-${generation}`} initial={fresh} onSaved={saved} onDirty={setDirty} readOnly={!canWrite} /> : !board.isError && board.data && selected === board.data.id && <BoardEditor key={`${board.data.id}-${board.data.revision}-${generation}`} id={board.data.id} initial={board.data} onSaved={saved} onDirty={setDirty} readOnly={!canWrite} />}</div>
   </div>
 }

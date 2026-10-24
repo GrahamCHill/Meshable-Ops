@@ -11,9 +11,14 @@ import org.springframework.stereotype.Service
 import java.util.UUID
 
 @Service
-class ProjectBoardAccess(private val projects: ProjectAccess, private val users: UserRepository, private val jdbc: JdbcTemplate) {
+class ProjectBoardAccess(private val projects: ProjectAccess, private val users: UserRepository, private val jdbc: JdbcTemplate,
+    private val mapper: com.fasterxml.jackson.databind.ObjectMapper, private val groups: WorkGroupRepository) {
+    fun teams(row: KanbanBoard): Set<UUID> = mapper.readValue(row.teamIdsJson, object : com.fasterxml.jackson.core.type.TypeReference<Set<UUID>>() {})
     fun readable(actor: User, row: KanbanBoard): Boolean = projects.hasFeature(actor, "plugin.kanban") &&
-        (row.projectId?.let { runCatching { projects.require(it, actor) }.isSuccess } ?: (row.ownerId == actor.id || Roles.admin(actor.role)))
+        (row.projectId?.let { runCatching {
+            val project = projects.require(it, actor)
+            teams(row).let { ids -> ids.isEmpty() || Roles.admin(actor.role) || project.leadId == actor.id || projects.role(actor, project) == ProjectRole.MANAGER || groups.findAllById(ids).any { it.kind == GroupKind.TEAM && actor.id in projects.groupDetails(it).memberIds } }
+        }.getOrDefault(false) } ?: (row.ownerId == actor.id || Roles.admin(actor.role)))
     fun require(actor: User, row: KanbanBoard) { if (!readable(actor, row)) throw NotFoundException("Board unavailable") }
     fun requireManager(actor: User, row: KanbanBoard) { require(actor, row); row.projectId?.let { projects.require(it, actor, true) } }
     fun attach(actor: User, row: KanbanBoard, projectId: UUID?) {
@@ -22,8 +27,17 @@ class ProjectBoardAccess(private val projects: ProjectAccess, private val users:
         row.projectId?.let { projects.require(it, actor, true) }
         projectId?.let { projects.require(it, actor, true) }
     }
-    fun list(actor: User): List<KanbanSummary> = jdbc.query("SELECT b.id, b.owner_id, b.name, b.updated_at, b.project_id FROM plugin_kanban_boards b WHERE ${ProjectAccessSql.boardPredicate()} ORDER BY b.updated_at DESC, b.id LIMIT 100",
-        { rs, _ -> KanbanSummary(rs.getObject("id", UUID::class.java), rs.getObject("owner_id", UUID::class.java), rs.getString("name"), rs.getTimestamp("updated_at").toInstant(), rs.getObject("project_id", UUID::class.java)) }, *sqlArgs(actor))
+    fun validateTeams(actor: User, row: KanbanBoard, projectId: UUID?, teams: Set<UUID>) {
+        if (teams.size > 30) throw BadRequestException("Choose up to 30 board teams")
+        if (teams != this.teams(row)) requireManager(actor, row)
+        if (projectId == null && teams.isNotEmpty()) throw BadRequestException("Team restrictions require a linked project")
+        projectId?.let { id -> if (!projects.details(projects.require(id, actor)).groupIds.containsAll(teams)) throw BadRequestException("Board teams must be explicit teams linked to this project") }
+    }
+    fun list(actor: User, projectId: UUID? = null): List<KanbanSummary> {
+        projectId?.let { projects.require(it, actor) }
+        return jdbc.query("SELECT b.id, b.owner_id, b.name, b.updated_at, b.project_id FROM plugin_kanban_boards b WHERE ${ProjectAccessSql.boardPredicate()} ${if (projectId == null) "" else "AND b.project_id = ?"} ORDER BY b.updated_at DESC, b.id LIMIT 200",
+            { rs, _ -> KanbanSummary(rs.getObject("id", UUID::class.java), rs.getObject("owner_id", UUID::class.java), rs.getString("name"), rs.getTimestamp("updated_at").toInstant(), rs.getObject("project_id", UUID::class.java)) }, *(sqlArgs(actor).toList() + listOfNotNull(projectId)).toTypedArray())
+    }
     fun sqlArgs(actor: User) = ProjectAccessSql.boardArgs(actor, projects.hasFeature(actor, "projects"))
     fun members(actor: User, row: KanbanBoard): List<ProjectPerson> {
         require(actor, row)

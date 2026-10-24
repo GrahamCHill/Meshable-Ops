@@ -3,7 +3,7 @@ import api from './http'
 import { useAuthStore } from '../hooks/useAuthStore'
 
 export interface PluginView {
-  manifest: { id: string; name: string; navigationLabel: string; version: string; apiVersion: number; description: string; extensions: ('PAGE' | 'API' | 'DATABASE' | 'SEARCH' | 'SETTINGS' | 'NOTIFICATIONS')[]; menuItems: {path: string; label: string; roles: string[]}[]; tables: {name: string; label: string}[]; settingsFields: PluginSettingField[]; supportedRoles: string[]; capabilities: Record<string,string>; requiresCapabilities: string[] }
+  manifest: { id: string; name: string; navigationLabel: string; version: string; apiVersion: number; description: string; extensions: ('PAGE' | 'API' | 'DATABASE' | 'SEARCH' | 'SETTINGS' | 'NOTIFICATIONS')[]; menuItems: {path: string; label: string; roles: string[]}[]; tables: {name: string; label: string}[]; settingsFields: PluginSettingField[]; supportedRoles: string[]; capabilities: Record<string,string>; requiresCapabilities: string[]; contextTargets: ('PROJECT' | 'CLIENT')[] }
   enabled: boolean
   active: boolean
   missingDependencies: string[]

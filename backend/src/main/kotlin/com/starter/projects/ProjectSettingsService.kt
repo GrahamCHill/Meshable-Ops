@@ -13,6 +13,7 @@ class ProjectSettingsService(private val records: ProjectSettingsRepository, pri
     private val users: UserRepository, private val mapper: ObjectMapper, private val access: AccessControlService) {
     fun current() = records.findById(1).orElse(null)?.let { ProjectSettingsView(mapper.readValue(it.settingsJson, ProjectSettings::class.java), it.revision) } ?: ProjectSettingsView(ProjectSettings(), -1)
     fun groups() = groups.findAll().sortedBy { it.name }.map(::view)
+    fun people() = users.findAll().filter { it.active && it.role != "EXTERNAL" }.map { ProjectPerson(it.id, it.name ?: it.username, it.email) }
     @Transactional
     fun save(request: ProjectSettingsView): ProjectSettingsView {
         access.requireFeature("admin.projects")
@@ -34,11 +35,14 @@ class ProjectSettingsService(private val records: ProjectSettingsRepository, pri
         ProjectValidation.name(request.name, 100)
         if (request.description.length > 1000 || request.details.memberIds.size > 500 || request.details.tagIds.size > 100) throw BadRequestException("Group details exceed their limits")
         val internal = users.findAllById(request.details.memberIds).filter { it.active && it.role != "EXTERNAL" }.map { it.id }.toSet()
-        if (internal != request.details.memberIds || !current().settings.tags.map { it.id }.containsAll(request.details.tagIds)) throw BadRequestException("Choose active internal members and existing tags")
+        if (internal != request.details.memberIds) throw BadRequestException("Choose active internal members")
         val row = id?.let { groups.findById(it).orElseThrow { NotFoundException("Group unavailable") } } ?: WorkGroupRecord()
         if (id != null && row.revision != request.revision) throw ConflictException("This group changed. Reload before saving.")
+        val tags = current().settings.tags.map { it.id }.toSet()
+        val priorTags = if (id == null) emptySet() else mapper.readValue(row.detailsJson, WorkGroupData::class.java).tagIds
+        if (!(tags + priorTags).containsAll(request.details.tagIds)) throw BadRequestException("Choose existing tags")
         row.name = request.name.trim(); row.description = request.description; row.kind = request.kind; row.projectRole = request.projectRole
-        row.detailsJson = mapper.writeValueAsString(request.details)
+        row.detailsJson = mapper.writeValueAsString(request.details.copy(tagIds = request.details.tagIds.intersect(tags)))
         return view(groups.saveAndFlush(row))
     }
     private fun view(row: WorkGroupRecord) = WorkGroupView(row.id, row.name, row.description, row.kind, row.projectRole, mapper.readValue(row.detailsJson, WorkGroupData::class.java), row.revision)
