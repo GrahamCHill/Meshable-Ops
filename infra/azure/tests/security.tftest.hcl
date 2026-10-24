@@ -73,6 +73,28 @@ run "private_vm_and_managed_storage" {
 
   assert {
     condition = (
+      !azurerm_subnet.app.default_outbound_access_enabled &&
+      azurerm_network_interface.app.ip_configuration[0].subnet_id == azurerm_subnet.app.id &&
+      azurerm_network_interface_security_group_association.app.network_interface_id == azurerm_network_interface.app.id &&
+      azurerm_network_interface_security_group_association.app.network_security_group_id == azurerm_network_security_group.app.id &&
+      azurerm_linux_virtual_machine.app.disable_password_authentication && length(azurerm_bastion_host.app) == 0
+    )
+    error_message = "Use the explicit outbound path, attach the firewall to the private NIC, and require SSH keys. Bastion must remain opt-in."
+  }
+
+  assert {
+    condition = (
+      one([for rule in azurerm_network_security_group.app.security_rule : rule if rule.name == "ssh"]).source_address_prefix == var.admin_cidr &&
+      one([for rule in azurerm_network_security_group.app.security_rule : rule if rule.name == "load-balancer-probe"]).source_address_prefix == "AzureLoadBalancer" &&
+      one([for rule in azurerm_network_security_group.app.security_rule : rule if rule.name == "deny-other-inbound"]).priority == 200 &&
+      one([for rule in azurerm_network_security_group.app.security_rule : rule if rule.name == "deny-other-inbound"]).access == "Deny" &&
+      alltrue([for rule in azurerm_network_security_group.app.security_rule : contains(["80", "443", "22"], rule.destination_port_range) || rule.access == "Deny"])
+    )
+    error_message = "Allow only web, trusted private SSH and health probes, and override Azure's broad default VNet ingress."
+  }
+
+  assert {
+    condition = (
       azurerm_lb.app.frontend_ip_configuration[0].public_ip_address_id == azurerm_public_ip.app.id &&
       toset([for rule in azurerm_lb_rule.web : rule.frontend_port]) == toset([80, 443]) &&
       alltrue([for rule in azurerm_lb_rule.web : rule.protocol == "Tcp" && rule.backend_port == rule.frontend_port &&
@@ -114,4 +136,46 @@ run "private_vm_and_managed_storage" {
     )
     error_message = "Document storage must stay private and enforce HTTPS with TLS 1.2."
   }
+}
+
+run "bastion_without_existing_vpn" {
+  command = apply
+  variables {
+    enable_bastion = true
+    admin_cidr     = null
+    vnet_cidr      = "10.48.0.0/20"
+  }
+  override_resource {
+    target = azurerm_subnet.bastion[0]
+    values = { id = "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/test/providers/Microsoft.Network/virtualNetworks/test/subnets/AzureBastionSubnet" }
+  }
+  assert {
+    condition = (
+      azurerm_bastion_host.app[0].sku == "Standard" && azurerm_bastion_host.app[0].tunneling_enabled &&
+      azurerm_subnet.bastion[0].name == "AzureBastionSubnet" &&
+      azurerm_subnet.bastion[0].address_prefixes == tolist(["10.48.0.128/26"]) &&
+      azurerm_subnet.app.address_prefixes == tolist(["10.48.0.16/28"]) &&
+      azurerm_bastion_host.app[0].ip_configuration[0].subnet_id == azurerm_subnet.bastion[0].id &&
+      azurerm_bastion_host.app[0].ip_configuration[0].public_ip_address_id == azurerm_public_ip.bastion[0].id &&
+      azurerm_public_ip.bastion[0].sku == "Standard" && azurerm_public_ip.bastion[0].allocation_method == "Static" &&
+      one([for rule in azurerm_network_security_group.app.security_rule : rule if rule.name == "bastion-ssh"]).source_address_prefix == azurerm_subnet.bastion[0].address_prefixes[0] &&
+      length([for rule in azurerm_network_security_group.app.security_rule : rule if rule.name == "ssh"]) == 0
+    )
+    error_message = "Optional Bastion needs its own /26 subnet/static IP and an SSH rule limited to that subnet; no VPN/public SSH rule is needed."
+  }
+}
+
+run "require_administrative_path" {
+  command = plan
+  variables {
+    enable_bastion = false
+    admin_cidr     = null
+  }
+  expect_failures = [azurerm_linux_virtual_machine.app]
+}
+
+run "reject_worldwide_ssh" {
+  command = plan
+  variables { admin_cidr = "0.0.0.0/0" }
+  expect_failures = [var.admin_cidr]
 }

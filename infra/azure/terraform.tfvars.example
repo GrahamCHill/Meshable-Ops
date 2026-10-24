@@ -2,10 +2,13 @@ repository_url = "https://github.com/example/Contract-Management-Tool.git"
 app_domain = "contracts.example.com"
 acme_email = "admin@example.com"
 ssh_public_key = "ssh-ed25519 AAAA..."
-# VPN client subnet with private connectivity to the VNet.
-admin_cidr = "10.50.0.0/24"
+# Provisions a billed Standard Bastion for private SSH; no VPN is needed in this mode.
+enable_bastion = true
+# Alternatively disable Bastion and provide a CIDR with actual private VPN/peering connectivity.
+# admin_cidr = "10.50.0.0/24"
+vnet_cidr = "10.40.0.0/16"
 jwt_secret = "replace-with-a-long-random-value"
 superset_secret_key = "replace-with-a-long-random-value"
 guest_token_jwt_secret = "replace-with-a-long-random-value"
 superset_admin_password = "replace-with-a-strong-password"
-bootstrap_users_json = "[{\"email\":\"admin@example.com\",\"username\":\"admin\",\"password\":\"replace-me\",\"role\":\"ADMIN\"}]"
+bootstrap_users_json = "[{\"email\":\"admin@example.com\",\"username\":\"admin\",\"password\":\"replace-me\",\"role\":\"SUPER_ADMIN\"}]"

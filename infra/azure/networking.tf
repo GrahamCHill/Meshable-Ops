@@ -1,15 +1,16 @@
 resource "azurerm_virtual_network" "app" {
   name                = "${var.name}-vnet"
-  address_space       = ["10.40.0.0/16"]
+  address_space       = [var.vnet_cidr]
   location            = var.location
   resource_group_name = azurerm_resource_group.app.name
 }
 
 resource "azurerm_subnet" "app" {
-  name                 = "app"
-  resource_group_name  = azurerm_resource_group.app.name
-  virtual_network_name = azurerm_virtual_network.app.name
-  address_prefixes     = ["10.40.1.0/24"]
+  name                            = "app"
+  resource_group_name             = azurerm_resource_group.app.name
+  virtual_network_name            = azurerm_virtual_network.app.name
+  address_prefixes                = [cidrsubnet(var.vnet_cidr, 8, 1)]
+  default_outbound_access_enabled = false
 }
 
 resource "azurerm_network_interface" "app" {

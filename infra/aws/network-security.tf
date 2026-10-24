@@ -1,7 +1,7 @@
 resource "aws_security_group" "app" {
   name_prefix = "${var.name}-"
-  description = "Contract Management ingress"
-  vpc_id      = data.aws_vpc.default.id
+  description = "Meshable Ops web ingress and restricted administration"
+  vpc_id      = aws_vpc.app.id
   ingress {
     description = "HTTP"
     from_port   = 80

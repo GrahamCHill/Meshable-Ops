@@ -6,6 +6,20 @@ variable "location" {
   type    = string
   default = "southafricanorth"
 }
+variable "vnet_cidr" {
+  type        = string
+  default     = "10.40.0.0/16"
+  description = "Dedicated IPv4 VNet range (/16 through /20). App/Bastion subnets are derived automatically; avoid overlap with connected networks."
+  validation {
+    condition     = can(cidrnetmask(var.vnet_cidr)) && try(tonumber(split("/", var.vnet_cidr)[1]) >= 16 && tonumber(split("/", var.vnet_cidr)[1]) <= 20, false)
+    error_message = "Use an IPv4 VNet CIDR with a /16 through /20 prefix."
+  }
+}
+variable "enable_bastion" {
+  type        = bool
+  default     = false
+  description = "Provision a billed Standard Azure Bastion and its dedicated subnet/public IP for private VM administration without an existing VPN."
+}
 variable "vm_size" {
   type    = string
   default = "Standard_D4s_v5"
@@ -28,7 +42,12 @@ variable "ssh_public_key" {
 }
 variable "admin_cidr" {
   type        = string
-  description = "Source CIDR allowed to SSH over private connectivity to the VNet (for example, a VPN client subnet)."
+  default     = null
+  description = "Optional trusted IPv4 SSH source over existing private connectivity, such as a connected VPN subnet. Otherwise enable Bastion."
+  validation {
+    condition     = var.admin_cidr == null ? true : can(cidrnetmask(var.admin_cidr)) && try(tonumber(split("/", var.admin_cidr)[1]) > 0, false)
+    error_message = "Use a restricted IPv4 CIDR for private SSH; 0.0.0.0/0 is not allowed."
+  }
 }
 variable "storage_root_path" {
   type    = string

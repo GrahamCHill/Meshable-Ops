@@ -4,6 +4,18 @@ output "public_ip" {
 output "private_ip" {
   value = azurerm_network_interface.app.private_ip_address
 }
+output "resource_group" {
+  value = azurerm_resource_group.app.name
+}
+output "virtual_network_id" {
+  value = azurerm_virtual_network.app.id
+}
+output "vm_id" {
+  value = azurerm_linux_virtual_machine.app.id
+}
+output "bastion_name" {
+  value = var.enable_bastion ? azurerm_bastion_host.app[0].name : null
+}
 output "application_url" {
   value = "https://${var.app_domain}"
 }

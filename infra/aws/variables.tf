@@ -6,6 +6,15 @@ variable "aws_region" {
   type    = string
   default = "af-south-1"
 }
+variable "vpc_cidr" {
+  type        = string
+  default     = "10.42.0.0/16"
+  description = "Dedicated IPv4 VPC range (/16 through /20). The app subnet is derived automatically; choose a range that does not overlap connected networks."
+  validation {
+    condition     = can(cidrnetmask(var.vpc_cidr)) && try(tonumber(split("/", var.vpc_cidr)[1]) >= 16 && tonumber(split("/", var.vpc_cidr)[1]) <= 20, false)
+    error_message = "Use an IPv4 VPC CIDR with a /16 through /20 prefix."
+  }
+}
 variable "instance_type" {
   type    = string
   default = "t3.large"
@@ -28,7 +37,11 @@ variable "ssh_public_key" {
 }
 variable "admin_cidr" {
   type        = string
-  description = "CIDR allowed to SSH to the VM."
+  description = "Trusted IPv4 source CIDR allowed to SSH to the VM, usually your public IP with /32."
+  validation {
+    condition     = can(cidrnetmask(var.admin_cidr)) && try(tonumber(split("/", var.admin_cidr)[1]) > 0, false)
+    error_message = "Use a valid restricted IPv4 CIDR for SSH; 0.0.0.0/0 is not allowed."
+  }
 }
 variable "storage_root_path" {
   type    = string

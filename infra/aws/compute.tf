@@ -17,9 +17,12 @@ resource "aws_key_pair" "app" {
 }
 
 resource "aws_instance" "app" {
+  # Cloud-init must see the intended subnet route, not the VPC's empty main table.
+  depends_on = [aws_route.internet, aws_route_table_association.app, aws_iam_role_policy.documents]
+
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.instance_type
-  subnet_id                   = data.aws_subnets.default.ids[0]
+  subnet_id                   = aws_subnet.app.id
   associate_public_ip_address = false
   vpc_security_group_ids      = [aws_security_group.app.id]
   iam_instance_profile        = aws_iam_instance_profile.app.name

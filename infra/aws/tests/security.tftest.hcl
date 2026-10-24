@@ -6,11 +6,6 @@ mock_provider "aws" {
 }
 
 override_data {
-  target = data.aws_subnets.default
-  values = { ids = ["subnet-0123456789abcdef0"] }
-}
-
-override_data {
   target = data.aws_caller_identity.current
   values = { account_id = "123456789012" }
 }
@@ -40,6 +35,30 @@ variables {
 
 run "secure_storage_and_explicit_networking" {
   command = apply
+
+  assert {
+    condition = (
+      aws_vpc.app.enable_dns_support && aws_vpc.app.enable_dns_hostnames &&
+      aws_subnet.app.vpc_id == aws_vpc.app.id && !aws_subnet.app.map_public_ip_on_launch &&
+      aws_instance.app.subnet_id == aws_subnet.app.id && aws_security_group.app.vpc_id == aws_vpc.app.id &&
+      aws_internet_gateway.app.vpc_id == aws_vpc.app.id && aws_route_table.app.vpc_id == aws_vpc.app.id &&
+      aws_route.internet.route_table_id == aws_route_table.app.id && aws_route.internet.destination_cidr_block == "0.0.0.0/0" &&
+      aws_route.internet.gateway_id == aws_internet_gateway.app.id &&
+      aws_route_table_association.app.subnet_id == aws_subnet.app.id &&
+      aws_route_table_association.app.route_table_id == aws_route_table.app.id
+    )
+    error_message = "Create a dedicated DNS-enabled VPC, explicitly routed subnet, gateway, and matching security group; never rely on a default VPC."
+  }
+
+  assert {
+    condition = (
+      length(aws_security_group.app.ingress) == 3 && alltrue([
+        for rule in aws_security_group.app.ingress : rule.protocol == "tcp" && rule.from_port == rule.to_port &&
+        (contains([80, 443], rule.from_port) ? rule.cidr_blocks == tolist(["0.0.0.0/0"]) : rule.from_port == 22 && rule.cidr_blocks == tolist([var.admin_cidr]))
+      ])
+    )
+    error_message = "Only web ports may be public; SSH must be limited to the configured trusted CIDR."
+  }
 
   assert {
     condition     = !aws_instance.app.associate_public_ip_address && aws_eip.app.instance == aws_instance.app.id
@@ -112,5 +131,20 @@ run "secure_storage_and_explicit_networking" {
       }
     )
     error_message = "Log delivery must be limited to S3 logging for this document bucket and account."
+  }
+}
+
+run "reject_worldwide_ssh" {
+  command = plan
+  variables { admin_cidr = "0.0.0.0/0" }
+  expect_failures = [var.admin_cidr]
+}
+
+run "custom_network_range" {
+  command = apply
+  variables { vpc_cidr = "10.48.0.0/20" }
+  assert {
+    condition     = aws_vpc.app.cidr_block == "10.48.0.0/20" && aws_subnet.app.cidr_block == "10.48.0.16/28"
+    error_message = "Custom VPC ranges must derive a valid, contained app subnet."
   }
 }

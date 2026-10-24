@@ -24,15 +24,55 @@ resource "azurerm_network_security_group" "app" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
+  dynamic "security_rule" {
+    for_each = var.admin_cidr == null ? [] : [var.admin_cidr]
+    content {
+      name                       = "ssh"
+      priority                   = 120
+      direction                  = "Inbound"
+      access                     = "Allow"
+      protocol                   = "Tcp"
+      source_port_range          = "*"
+      destination_port_range     = "22"
+      source_address_prefix      = security_rule.value
+      destination_address_prefix = "*"
+    }
+  }
+  dynamic "security_rule" {
+    for_each = var.enable_bastion ? [azurerm_subnet.bastion[0].address_prefixes[0]] : []
+    content {
+      name                       = "bastion-ssh"
+      priority                   = 125
+      direction                  = "Inbound"
+      access                     = "Allow"
+      protocol                   = "Tcp"
+      source_port_range          = "*"
+      destination_port_range     = "22"
+      source_address_prefix      = security_rule.value
+      destination_address_prefix = "*"
+    }
+  }
   security_rule {
-    name                       = "ssh"
-    priority                   = 120
+    name                       = "load-balancer-probe"
+    priority                   = 130
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = var.admin_cidr
+    destination_port_range     = "80"
+    source_address_prefix      = "AzureLoadBalancer"
+    destination_address_prefix = "*"
+  }
+  # Override Azure's default AllowVNetInBound; other VM/service ports stay closed.
+  security_rule {
+    name                       = "deny-other-inbound"
+    priority                   = 200
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
 }

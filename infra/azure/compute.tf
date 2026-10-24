@@ -6,18 +6,25 @@ resource "azurerm_linux_virtual_machine" "app" {
     azurerm_lb_outbound_rule.app,
   ]
 
-  name                  = "${var.name}-vm"
-  resource_group_name   = azurerm_resource_group.app.name
-  location              = var.location
-  size                  = var.vm_size
-  admin_username        = "appadmin"
-  network_interface_ids = [azurerm_network_interface.app.id]
+  name                            = "${var.name}-vm"
+  resource_group_name             = azurerm_resource_group.app.name
+  location                        = var.location
+  size                            = var.vm_size
+  admin_username                  = "appadmin"
+  disable_password_authentication = true
+  network_interface_ids           = [azurerm_network_interface.app.id]
   admin_ssh_key {
     username   = "appadmin"
     public_key = var.ssh_public_key
   }
   identity {
     type = "SystemAssigned"
+  }
+  lifecycle {
+    precondition {
+      condition     = var.enable_bastion || var.admin_cidr != null
+      error_message = "Enable Bastion or supply admin_cidr backed by existing private connectivity. The application load balancer does not expose SSH."
+    }
   }
   os_disk {
     caching              = "ReadWrite"
