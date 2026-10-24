@@ -41,7 +41,7 @@ def calculate(request, host):
 serve(calculate)
 ```
 
-Handlers receive `plugin {id, version}`, `actor {id, role}`, `path`, `method`, `query` (lists of strings), `body`, and `configuration` containing public settings only. Ordinary results become HTTP 200 JSON; `Response(body, status)` controls 2xx or 4xx/5xx status codes. Redirects, custom response headers, streaming responses and file downloads are not exposed. Unexpected failures return a generic 503 without source, stderr, credentials or request payloads.
+Handlers receive `plugin {id, version}`, `actor {id, role}`, `path`, `method`, `query` (lists of strings), `body`, and `configuration` containing public settings only. Ordinary results become HTTP 200 JSON; `Response(body, status)` controls 2xx or 4xx/5xx status codes. Redirects, custom response headers, streaming responses and file downloads are not exposed. The host marks plugin responses separately, so a plugin's own 401 does not clear the member's application session; actual app authentication failures retain normal sign-out behavior. Unexpected failures return a generic 503 without source, stderr, credentials or request payloads.
 
 For Kotlin, copy the [SDK](../../plugin-runtime/sdk/kotlin/PluginSdk.kt) into the plugin build, include Jackson and Kotlin dependencies in an executable JAR, and call `PluginWorker.serve { request, host -> ... }`. Return a JSON-compatible object or `BackendResponse(body, status)`. The [example Maven build](../../examples/plugins/full-stack/pom.xml) packages both SDK and dependencies. stdout is reserved for the JSON-line protocol; diagnostic stderr is bounded and discarded.
 
@@ -54,6 +54,8 @@ Backend code has no database connection, application JWT, raw setting secrets, D
 | `http` | `host.http(method, url, headers=..., body=..., credential=...)` | Exact declared HTTPS origins, public DNS, no redirects, bounded responses and safe headers |
 
 Without a route permission, the corresponding operation is denied even if the current user could otherwise access it. The host does not expose arbitrary SQL, shell commands, filesystem access or arbitrary application service calls. The same tables can be included/excluded from search using normal plugin administration. Business code can define validation, transformations, calculations and external-service integrations without being hardcoded into core modules.
+
+Host writes commit individually; a later worker failure does not roll back earlier operations. Use optimistic revisions and business-level idempotency where needed. Execution and provider requests are not automatically retried.
 
 For a provider key, declare a `SECRET` setting and an `allowedOrigins` entry such as `https://api.example.com`. Then request host-side credential injection:
 

@@ -8,6 +8,8 @@ Set **Application name** to the business name (1–80 characters). It appears in
 
 The colour controls accept six-digit hex values for the sidebar background, sidebar text/links, and content links. Unchecked overrides follow the light/dark theme. If a sidebar background is customized without an explicit text colour, the app chooses black or white for contrast. Overrides apply in both themes, including mobile navigation; check both when choosing colours. Buttons and navigation cards retain their basic layouts.
 
+Members can change their theme with the **Dark mode** sun/moon toggle in the account dropdown or **User settings > Appearance**. The choice is saved in the current browser. The switch supports keyboard input and skips its animation when reduced motion is preferred.
+
 The preview shows unsaved name/colour changes. **Save branding settings** saves identity, colour, and background preferences together. **Reload saved values** discards the current draft; **Use default settings** prepares the defaults for saving. Concurrent edits use a revision check: a stale save returns a conflict rather than overwriting another administrator's settings.
 
 ## Logo and favicon

@@ -19,7 +19,7 @@ class PluginBackendController(private val backend: PluginBackendService, private
             request.parameterMap.mapValues { it.value.toList() }, actors.current(user.username))
         val status = result.path("status").asInt(0)
         if (status !in 200..299 && status !in 400..599) throw PluginWorkerUnavailable()
-        return ResponseEntity.status(status).cacheControl(CacheControl.noStore()).body(result.get("body"))
+        return ResponseEntity.status(status).cacheControl(CacheControl.noStore()).header("X-Meshable-Plugin-Response", "1").body(result.get("body"))
     }
     /** Runner-only protocol. No application JWT or arbitrary plugin/user ID is accepted as authority. */
     @PostMapping("/internal/plugins/host-call")

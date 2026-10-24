@@ -6,9 +6,10 @@ import { pluginRole } from '../../../api/access'
 import { useAuthStore } from '../../../hooks/useAuthStore'
 import { getErrorMessage } from '../../../components/admin/adminUtils'
 import { Button } from '../../../components/ui'
+import {usePageDraft} from '../../../hooks/usePageDraft'
 
-export function CardDiscussion({boardId, cards, locked}: {boardId: string; cards: BoardCard[]; locked: boolean}) {
-  const [card, setCard] = useState(''); const [text, setText] = useState(''); const [mentions, setMentions] = useState<string[]>([]); const [error, setError] = useState(''); const [busy, setBusy] = useState(false)
+export function CardDiscussion({boardId, cards, locked, selectedCardId}: {boardId: string; cards: BoardCard[]; locked: boolean; selectedCardId?:string}) {
+  const [card, setCard] = useState(selectedCardId??''); const [text, setText] = usePageDraft(`comment:${boardId}:${selectedCardId??'list'}`, ''); const [mentions, setMentions] = usePageDraft<string[]>(`mentions:${boardId}:${selectedCardId??'list'}`, []); const [error, setError] = useState(''); const [busy, setBusy] = useState(false)
   const plugins = useAvailablePlugins(); const role = useAuthStore(state => pluginRole(state.user?.role ?? '')); const client = useQueryClient()
   const table = plugins.data?.find(plugin => plugin.manifest.id === 'kanban')?.tableAccess.plugin_kanban_comments
   const canRead = table?.readRoles.includes(role) === true; const canWrite = table?.writeRoles.includes(role) === true

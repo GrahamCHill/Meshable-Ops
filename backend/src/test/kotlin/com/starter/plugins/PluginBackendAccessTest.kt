@@ -118,4 +118,16 @@ class PluginBackendAccessTest {
         verify(tickets).finish("private-invocation-ticket")
         verify(config, never()).current("zip-code")
     }
+    @Test fun `plugin error responses are marked separately from application authentication failures`() {
+        val service = mock(PluginBackendService::class.java)
+        val actor = mock(PluginActor::class.java)
+        val principal = org.springframework.security.core.userdetails.User.withUsername(user.email).password("unused").roles("USER").build()
+        `when`(actor.current(user.email)).thenReturn(user)
+        `when`(service.invoke("zip-code", "/run", "POST", null, emptyMap(), user)).thenReturn(json.readTree("{\"status\":401,\"body\":{\"error\":\"Plugin provider needs configuration\"}}"))
+        val controller = PluginBackendController(service, broker, actor)
+        val response = controller.invoke("zip-code", principal, org.springframework.mock.web.MockHttpServletRequest("POST", "/api/plugins/zip-code/backend/run"), null)
+        assertThat(response.statusCode.value()).isEqualTo(401)
+        assertThat(response.headers.getFirst("X-Meshable-Plugin-Response")).isEqualTo("1")
+        assertThat(response.headers.cacheControl).isEqualTo("no-store")
+    }
 }

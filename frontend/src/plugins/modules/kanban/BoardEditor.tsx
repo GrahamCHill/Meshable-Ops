@@ -1,57 +1,97 @@
-import { useEffect, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { Button } from '../../../components/ui'
-import { getErrorMessage } from '../../../components/admin/adminUtils'
-import { boardsApi, type Board, type BoardCard, type BoardInput } from './api'
-import { CardEditor } from './CardEditor'
-import { DevelopmentLinks } from './DevelopmentLinks'
-import { BoardProjectFields } from './BoardProjectFields'
-import { SprintFields } from './SprintFields'
-import { CardDiscussion } from './CardDiscussion'
-import { projectsApi } from '../../../api/projects'
-import { useAuthStore } from '../../../hooks/useAuthStore'
+import {useEffect,useState} from 'react'
+import {useMutation,useQuery} from '@tanstack/react-query'
+import {Link} from 'react-router-dom'
+import {Button} from '../../../components/ui'
+import {getErrorMessage} from '../../../components/admin/adminUtils'
+import {usePageDraft,useDiscardPageDraft} from '../../../hooks/usePageDraft'
+import {boardsApi,type Board,type BoardCard,type BoardInput} from './api'
+import {CardEditor} from './CardEditor'
+import {BoardConfiguration} from './BoardConfiguration'
+import {DevelopmentLinks} from './DevelopmentLinks'
+import {TicketTile} from './TicketTile'
+import {WorkCharts} from '../../../components/projects/WorkCharts'
+import {boardSummary} from './boardSummary'
 import '../../../styles/projects.css'
 
-export function BoardEditor({ id, initial, onSaved, onDirty, readOnly = false }: { id?: string; initial: BoardInput; onSaved: (board: Board) => void; onDirty: (dirty: boolean) => void; readOnly?: boolean }) {
-  const [draft, setDraft] = useState(initial)
-  const [dirty, setDirty] = useState(!id)
-  const [editing, setEditing] = useState<BoardCard>()
-  const user = useAuthStore(state => state.user)
-  const project = useQuery({queryKey: ['project', draft.projectId], queryFn: () => projectsApi.get(draft.projectId!), enabled: !!draft.projectId})
-  const members = useQuery({queryKey: ['board-assignees', id, draft.projectId, draft.teamIds], queryFn: () => id && draft.projectId === initial.projectId && JSON.stringify(draft.teamIds ?? []) === JSON.stringify(initial.teamIds ?? []) ? boardsApi.members(id) : draft.projectId ? projectsApi.members(draft.projectId) : Promise.resolve(user ? [{id: user.id, name: user.name ?? user.username, email: user.email}] : [])})
-  const save = useMutation({ mutationFn: () => boardsApi.save(id, draft), onSuccess: board => { setDirty(false); onDirty(false); onSaved(board) } })
-  useEffect(() => { onDirty(dirty || !!editing) }, [dirty, editing, onDirty])
-  useEffect(() => {
-    if (!dirty && !editing) return
-    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
-    window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
-  }, [dirty, editing])
-  const change = (next: BoardInput) => { if (readOnly) return; setDraft(next); setDirty(true); save.reset() }
-  const move = (cardId: string, columnId: string) => change({ ...draft, content: { ...draft.content, cards: draft.content.cards.map(card => {if (card.id !== cardId) return card; const status = draft.content.columns.find(column => column.id === columnId)?.status ?? card.status; return {...card, columnId, status, startDate: status === 'IN_PROGRESS' ? card.startDate ?? new Date().toISOString().slice(0, 10) : card.startDate, completionDate: status === 'DONE' ? card.completionDate ?? new Date().toISOString().slice(0, 10) : null} }) } })
-  const applyCard = (card: BoardCard) => {const column = draft.content.columns.find(column => column.status === card.status); const updated = {...card, columnId: column?.id ?? card.columnId}; change({...draft, content: {...draft.content, cards: draft.content.cards.some(item => item.id === card.id) ? draft.content.cards.map(item => item.id === card.id ? updated : item) : [...draft.content.cards, updated]}}); setEditing(undefined)}
-  return <div className="page-stack">
-    <div className="inline-actions"><label className="form-field">Board name<input required maxLength={120} value={draft.name} disabled={save.isPending || readOnly} onChange={event => change({ ...draft, name: event.target.value })} /></label><Button disabled={readOnly || save.isPending || !dirty || !draft.name.trim() || !!editing} onClick={() => save.mutate()}>Save board</Button><span role="status">{dirty ? 'Unsaved changes' : 'Saved'}</span></div>
-    <BoardProjectFields draft={draft} onChange={change} disabled={readOnly || save.isPending} />
-    <SprintFields value={draft.content.sprints ?? []} onChange={sprints => change({...draft, content: {...draft.content, sprints}})} disabled={readOnly || save.isPending || !!draft.projectId && !project.data?.canManage} />
-    {save.isError && <p role="alert" className="feedback error">{getErrorMessage(save.error, 'Unable to save board. Reload the saved board if another person has changed it.')}</p>}
-    <fieldset className="kanban-editor" disabled={save.isPending || readOnly}>
+export function BoardEditor({initial,onSaved,readOnly=false}: {initial:Board;onSaved:(board:Board)=>void;readOnly?:boolean}) {
+  const [draft,setDraft]=useState(initial)
+  const [editing,setEditing]=useState<BoardCard>()
+  const [configure,setConfigure]=useState(false)
+  const [tab,setTab]=useState('board')
+  const [query,setQuery]=useState(''),[assignee,setAssignee]=useState(''),[epic,setEpic]=useState(''),[tag,setTag]=useState(''),[sprint,setSprint]=useState('')
+  const [drag,setDrag]=useState<{kind:'ticket'|'column';id:string}>()
+  const [fresh,setFresh]=usePageDraft<Record<string,BoardCard>>('new-tickets:'+initial.id,{})
+  const discard=useDiscardPageDraft()
+  const members=useQuery({queryKey:['board-assignees',initial.id],queryFn:()=>boardsApi.members(initial.id)})
+  const accept=(board:Board)=>{setDraft(board);onSaved(board)}
+  const save=useMutation({mutationFn:(board:BoardInput)=>boardsApi.save(initial.id,board),onSuccess:accept})
+  const move=useMutation({mutationFn:({card,column,before}:{card:string;column:string;before?:string})=>boardsApi.move(initial.id,card,column,draft.revision,before),onSuccess:accept})
+  useEffect(()=>setDraft(initial),[initial])
+  const busy=save.isPending||move.isPending
+  const error=save.isError?getErrorMessage(save.error):move.isError?getErrorMessage(move.error):undefined
+  const canManage=draft.canManage&&!readOnly
+  const allowed=(card:string,column:string)=>!readOnly&&!busy&&draft.moves[card]?.includes(column)
+  const doMove=(card:string,column:string,before?:string)=>{if(!allowed(card,column)||card===before)return;move.mutate({card,column,before});setDrag(undefined)}
+  const add=(columnId:string)=>{
+    if(readOnly||busy)return
+    const card=fresh[columnId]??{id:crypto.randomUUID(),columnId,title:'',description:'',status:draft.content.columns.find(column=>column.id===columnId)?.status??'TODO',reviewerIds:[],tags:[],type:'TASK',priority:'MEDIUM'}
+    setFresh({...fresh,[columnId]:card});setEditing(card);save.reset()
+  }
+  const saveCard=(card:BoardCard)=>save.mutate({...draft,content:{...draft.content,cards:draft.content.cards.some(item=>item.id===card.id)?draft.content.cards.map(item=>item.id===card.id?card:item):[...draft.content.cards,card]}},{onSuccess:()=>{
+    discard('ticket:'+draft.id+':'+card.id);discard('ticket:'+draft.id+':'+card.id+':tags')
+    setFresh(Object.fromEntries(Object.entries(fresh).filter(([,item])=>item.id!==card.id)));setEditing(undefined)
+  }})
+  const cards=draft.content.cards.filter(card=>(!query||[card.title,card.reference,card.description,...card.tags??[]].join(' ').toLowerCase().includes(query.toLowerCase()))
+    &&(!assignee||(assignee==='unassigned'?!card.assigneeId:card.assigneeId===assignee))&&(!epic||(epic==='none'?!card.epicId:card.epicId===epic))
+    &&(!tag||card.tags?.includes(tag))&&(!sprint||(sprint==='backlog'?!card.sprintId:card.sprintId===sprint)))
+  const visible=tab==='backlog'?cards.filter(card=>!card.sprintId):cards
+  const clearFilters=()=>{setQuery('');setAssignee('');setEpic('');setTag('');setSprint('')}
+  const dropColumn=(target:string)=>{
+    if(drag?.kind!=='column'||!canManage||busy||drag.id===target)return
+    const columns=[...draft.content.columns],from=columns.findIndex(column=>column.id===drag.id),to=columns.findIndex(column=>column.id===target)
+    const [column]=columns.splice(from,1);columns.splice(to,0,column);save.mutate({...draft,content:{...draft.content,columns}});setDrag(undefined)
+  }
+  return <div className="page-stack kanban-workspace">
+    <div className="page-heading"><div><h1>{draft.name}</h1>{draft.projectId&&<Link to={'/projects/'+draft.projectId}>Open project</Link>}</div><div className="inline-actions">{canManage&&<Button variant="ghost" disabled={busy} onClick={()=>{save.reset();setConfigure(true)}}>Configure board</Button>}<Button disabled={readOnly||busy||draft.content.cards.length>=200} onClick={()=>add(draft.content.columns[0].id)}>Create ticket</Button></div></div>
+    <nav className="workspace-tabs" aria-label="Board views">{[['board','Board'],['backlog','Backlog'],['list','Tickets'],['summary','Summary']].map(([key,label])=><button key={key} aria-current={tab===key?'page':undefined} onClick={()=>setTab(key)}>{label}</button>)}</nav>
+    {readOnly&&<p className="field-help">Read-only board. You can inspect tickets and comments.</p>}
+    {tab!=='summary'&&<div className="kanban-filters">
+      <input type="search" aria-label="Search board" placeholder="Search board" value={query} onChange={e=>setQuery(e.target.value)}/>
+      <select aria-label="Filter assignee" value={assignee} onChange={e=>setAssignee(e.target.value)}><option value="">All assignees</option><option value="unassigned">Unassigned</option>{members.data?.map(person=><option key={person.id} value={person.id}>{person.name}</option>)}</select>
+      <select aria-label="Filter epic" value={epic} onChange={e=>setEpic(e.target.value)}><option value="">All epics</option><option value="none">No epic</option>{draft.content.epics?.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select>
+      <select aria-label="Filter tag" value={tag} onChange={e=>setTag(e.target.value)}><option value="">All tags</option>{[...new Set(draft.content.cards.flatMap(card=>card.tags??[]))].sort().map(value=><option key={value}>{value}</option>)}</select>
+      <select aria-label="Filter sprint" value={sprint} onChange={e=>setSprint(e.target.value)}><option value="">All sprints</option><option value="backlog">Backlog</option>{draft.content.sprints?.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select>
+      {(query||assignee||epic||tag||sprint)&&<Button variant="ghost" onClick={clearFilters}>Clear filters</Button>}
+      <span role="status">{visible.length} tickets{busy?' · Saving…':''}</span>
+    </div>}
+    {error&&!editing&&!configure&&<p role="alert">{error} Reload the board if it changed elsewhere.</p>}
+    {tab==='summary'?<WorkCharts value={boardSummary(draft,members.data??[])}/>:tab==='board'?<>
+      <p className="kanban-sr-only">Drag tickets between columns or open a ticket and choose its Column. Managers can drag column headings to reorder columns.</p>
       <div className="kanban-columns">
-        {draft.content.columns.map(column => <section className="kanban-column page-stack" key={column.id} aria-label={column.title}
-          onDragOver={event => { if (!readOnly && !save.isPending) event.preventDefault() }} onDrop={event => { event.preventDefault(); if (readOnly || save.isPending) return; const card = event.dataTransfer.getData('text/plain'); if (draft.content.cards.some(item => item.id === card)) move(card, column.id) }}>
-          <label className="form-field">List name<input aria-label={`${column.title} list name`} required maxLength={80} value={column.title} onChange={event => change({ ...draft, content: { ...draft.content, columns: draft.content.columns.map(item => item.id === column.id ? { ...item, title: event.target.value } : item) } })} /></label>
-          <label className="form-field">Status on move<select value={column.status ?? ''} onChange={event => change({...draft, content: {...draft.content, columns: draft.content.columns.map(item => item.id === column.id ? {...item, status: event.target.value as typeof column.status || null} : item)}})}><option value="">Keep ticket status</option><option value="TODO">To do</option><option value="IN_PROGRESS">In progress</option><option value="DONE">Done</option></select></label>
-          {draft.content.cards.filter(card => card.columnId === column.id).map(card => <article className="kanban-card page-stack" key={card.id} draggable={!readOnly && !save.isPending && !editing} onDragStart={event => event.dataTransfer.setData('text/plain', card.id)}>
-            {editing?.id === card.id ? <CardEditor card={editing} people={members.data} sprints={draft.content.sprints} onCancel={() => setEditing(undefined)} onSave={applyCard} /> : <><small>{card.reference || card.id}</small><h3>{card.title}</h3><small>{card.status?.toLowerCase().replace('_', ' ') ?? 'to do'} · {members.data?.find(person => person.id === card.assigneeId)?.name ?? 'Unassigned'}{card.storyPoints != null ? ` · ${card.storyPoints} points` : ''}{card.blocked ? ' · Blocked' : ''}</small>{card.dueDate && <small>Due {card.dueDate}</small>}{card.description && <p className="kanban-description">{card.description}</p>}<label className="form-field">Move {card.title}<select value={card.columnId} onChange={event => move(card.id, event.target.value)}>{draft.content.columns.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label><div className="inline-actions"><Button variant="ghost" size="sm" disabled={!!editing} onClick={() => setEditing(card)}>Edit card</Button><Button variant="ghost" size="sm" disabled={!!editing} onClick={() => change({ ...draft, content: { ...draft.content, cards: draft.content.cards.filter(item => item.id !== card.id) } })}>Remove card</Button></div></>}
-          </article>)}
-          {editing?.columnId === column.id && !draft.content.cards.some(card => card.id === editing.id) ? <CardEditor card={editing} people={members.data} sprints={draft.content.sprints} onCancel={() => setEditing(undefined)} onSave={applyCard} /> : <Button variant="ghost" disabled={!!editing || draft.content.cards.length >= 200} onClick={() => setEditing({ id: crypto.randomUUID(), columnId: column.id, title: '', description: '', status: column.status ?? 'TODO', reviewerIds: [] })}>Add card to {column.title}</Button>}
-          {draft.content.columns.length > 1 && !draft.content.cards.some(card => card.columnId === column.id) && <Button variant="ghost" size="sm" disabled={!!editing} onClick={() => change({ ...draft, content: { ...draft.content, columns: draft.content.columns.filter(item => item.id !== column.id) } })}>Remove empty list</Button>}
-        </section>)}
+        {draft.content.columns.map(column=>{
+          const canDrop=drag?.kind==='column'?canManage:drag?.kind==='ticket'&&allowed(drag.id,column.id)
+          return <section key={column.id} className={'kanban-column'+(canDrop?' can-drop':'')} aria-label={column.title}
+            onDragOver={e=>{if(canDrop){e.preventDefault();e.dataTransfer.dropEffect='move'}}}
+            onDrop={e=>{e.preventDefault();if(drag?.kind==='column')dropColumn(column.id);else if(drag?.kind==='ticket')doMove(drag.id,column.id)}}>
+            <header className="kanban-column-heading" draggable={canManage&&!busy} onDragStart={e=>{e.dataTransfer.setData('text/plain',column.id);e.dataTransfer.effectAllowed='move';setDrag({kind:'column',id:column.id})}} onDragEnd={()=>setDrag(undefined)}>
+              <h2>{column.title}</h2><span aria-label="Ticket count">{cards.filter(card=>card.columnId===column.id).length}</span>
+            </header>
+            <div className="kanban-column-tickets">{cards.filter(card=>card.columnId===column.id).map(card=><TicketTile key={card.id} card={card} epic={draft.content.epics?.find(item=>item.id===card.epicId)} person={members.data?.find(person=>person.id===card.assigneeId)} subtasks={draft.content.cards.filter(item=>item.parentId===card.id)} disabled={busy}
+              draggable={!readOnly&&!busy&&!!draft.moves[card.id]?.length} onOpen={()=>{save.reset();setEditing(card)}}
+              onDragStart={e=>{e.stopPropagation();e.dataTransfer.setData('text/plain',card.id);e.dataTransfer.effectAllowed='move';setDrag({kind:'ticket',id:card.id})}} onDragEnd={()=>setDrag(undefined)}
+              onDragOver={e=>{if(drag?.kind==='ticket'&&allowed(drag.id,column.id)){e.preventDefault();e.stopPropagation()}}}
+              onDrop={e=>{if(drag?.kind==='ticket'){e.preventDefault();e.stopPropagation();doMove(drag.id,column.id,card.id)}}}
+            />)}
+            {!readOnly&&<button type="button" className="kanban-add-ticket" disabled={busy||draft.content.cards.length>=200} onClick={()=>add(column.id)}>+ Create ticket</button>}
+            </div>
+          </section>
+        })}
+        {canManage&&<button className="kanban-add-column" disabled={busy} onClick={()=>{save.reset();setConfigure(true)}}>+ Add column</button>}
       </div>
-      <Button variant="secondary" disabled={!!editing || draft.content.columns.length >= 20} onClick={() => change({ ...draft, content: { ...draft.content, columns: [...draft.content.columns, { id: crypto.randomUUID(), title: 'New list' }] } })}>Add list</Button>
-    </fieldset>
-    {id && <DevelopmentLinks boardId={id} cards={draft.content.cards} locked={readOnly || dirty || !!editing || save.isPending} />}
-    {id && <CardDiscussion boardId={id} cards={draft.content.cards} locked={dirty || !!editing || save.isPending} />}
-    <p className="field-help">Private boards are limited to their owner and administrators. Project boards use project membership and optional team restrictions. Up to 20 lists and 200 cards per board.</p>
+    </>:<div className="project-table-wrap"><table className="project-table"><thead><tr><th>Ticket</th><th>Column</th><th>Assignee</th><th>Epic</th><th>Tags</th><th>Due</th></tr></thead><tbody>{visible.map(card=><tr key={card.id}><td><button className="kanban-ticket-link" onClick={()=>{save.reset();setEditing(card)}}>{card.reference} {card.title}</button></td><td>{draft.content.columns.find(column=>column.id===card.columnId)?.title}</td><td>{members.data?.find(person=>person.id===card.assigneeId)?.name??'Unassigned'}</td><td>{draft.content.epics?.find(item=>item.id===card.epicId)?.name??'–'}</td><td>{card.tags?.join(', ')}</td><td>{card.dueDate??'–'}</td></tr>)}</tbody></table>{!visible.length&&<p>No tickets match this view.</p>}</div>}
+    {configure&&canManage&&<BoardConfiguration id={draft.id} board={draft} people={members.data??[]} busy={busy} error={error} onSave={value=>save.mutate(value,{onSuccess:()=>{discard('board-config:'+draft.id);setConfigure(false)}})} onClose={()=>setConfigure(false)}/>}
+    {editing&&<CardEditor key={editing.id} boardId={draft.id} card={editing} cards={draft.content.cards} columns={draft.content.columns} epics={draft.content.epics} sprints={draft.content.sprints} people={members.data??[]} allowedColumns={draft.moves[editing.id]} busy={busy} readOnly={readOnly} error={error} onCancel={()=>setEditing(undefined)} onSave={saveCard}
+      onRemove={draft.content.cards.some(card=>card.id===editing.id)?()=>save.mutate({...draft,content:{...draft.content,cards:draft.content.cards.filter(card=>card.id!==editing.id)}},{onSuccess:()=>{discard('ticket:'+draft.id+':'+editing.id);setEditing(undefined)}}):undefined}/>}
+    <details><summary>Repositories and pull requests</summary><DevelopmentLinks boardId={draft.id} cards={draft.content.cards} locked={readOnly||busy}/></details>
   </div>
 }

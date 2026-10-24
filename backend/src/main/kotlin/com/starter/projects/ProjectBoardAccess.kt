@@ -21,6 +21,8 @@ class ProjectBoardAccess(private val projects: ProjectAccess, private val users:
         }.getOrDefault(false) } ?: (row.ownerId == actor.id || Roles.admin(actor.role)))
     fun require(actor: User, row: KanbanBoard) { if (!readable(actor, row)) throw NotFoundException("Board unavailable") }
     fun requireManager(actor: User, row: KanbanBoard) { require(actor, row); row.projectId?.let { projects.require(it, actor, true) } }
+    fun canManage(actor: User, row: KanbanBoard): Boolean = readable(actor, row) && (Roles.admin(actor.role) ||
+        (row.projectId?.let { projects.role(actor, projects.require(it, actor)) in setOf(ProjectRole.MANAGER, ProjectRole.TEAM_LEAD) } ?: (row.ownerId == actor.id)))
     fun attach(actor: User, row: KanbanBoard, projectId: UUID?) {
         if (row.projectId == projectId) return
         if (row.projectId == null && row.ownerId != actor.id && !Roles.admin(actor.role)) throw ForbiddenException("Only the board owner can share it with a project")
@@ -35,8 +37,11 @@ class ProjectBoardAccess(private val projects: ProjectAccess, private val users:
     }
     fun list(actor: User, projectId: UUID? = null): List<KanbanSummary> {
         projectId?.let { projects.require(it, actor) }
-        return jdbc.query("SELECT b.id, b.owner_id, b.name, b.updated_at, b.project_id FROM plugin_kanban_boards b WHERE ${ProjectAccessSql.boardPredicate()} ${if (projectId == null) "" else "AND b.project_id = ?"} ORDER BY b.updated_at DESC, b.id LIMIT 200",
-            { rs, _ -> KanbanSummary(rs.getObject("id", UUID::class.java), rs.getObject("owner_id", UUID::class.java), rs.getString("name"), rs.getTimestamp("updated_at").toInstant(), rs.getObject("project_id", UUID::class.java)) }, *(sqlArgs(actor).toList() + listOfNotNull(projectId)).toTypedArray())
+        return jdbc.query("""SELECT b.id, b.owner_id, b.name, b.updated_at, b.project_id,
+            jsonb_array_length(COALESCE(CAST(b.content_json AS jsonb)->'cards','[]'::jsonb)) AS ticket_count,
+            (SELECT count(*) FROM jsonb_array_elements(COALESCE(CAST(b.content_json AS jsonb)->'cards','[]'::jsonb)) card WHERE card->>'status' = 'DONE') AS completed_count
+            FROM plugin_kanban_boards b WHERE ${ProjectAccessSql.boardPredicate()} ${if (projectId == null) "" else "AND b.project_id = ?"} ORDER BY b.updated_at DESC, b.id LIMIT 200""",
+            { rs, _ -> KanbanSummary(rs.getObject("id", UUID::class.java), rs.getObject("owner_id", UUID::class.java), rs.getString("name"), rs.getTimestamp("updated_at").toInstant(), rs.getObject("project_id", UUID::class.java), rs.getInt("ticket_count"), rs.getInt("completed_count")) }, *(sqlArgs(actor).toList() + listOfNotNull(projectId)).toTypedArray())
     }
     fun sqlArgs(actor: User) = ProjectAccessSql.boardArgs(actor, projects.hasFeature(actor, "projects"))
     fun members(actor: User, row: KanbanBoard): List<ProjectPerson> {

@@ -1,49 +1,54 @@
-import { pluginRole } from '../../../api/access'
-import { useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAuthStore } from '../../../hooks/useAuthStore'
-import { Button } from '../../../components/ui'
-import { boardsApi, blankBoard, type Board } from './api'
-import { BoardEditor } from './BoardEditor'
-import { useAvailablePlugins } from '../../../api/plugins'
+import {useState} from 'react'
+import {Link,useParams,useSearchParams} from 'react-router-dom'
+import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query'
+import {pluginRole} from '../../../api/access'
+import {useAuthStore} from '../../../hooks/useAuthStore'
+import {useAvailablePlugins} from '../../../api/plugins'
+import {Button} from '../../../components/ui'
+import {getErrorMessage} from '../../../components/admin/adminUtils'
+import {boardsApi,blankBoard,type Board} from './api'
+import {BoardEditor} from './BoardEditor'
+import {BoardConfiguration} from './BoardConfiguration'
 import './kanban.css'
+import '../../../styles/projects.css'
 
 export default function KanbanPage() {
-  const { '*': section = '' } = useParams()
-  return section === 'guide' ? <div className="page-stack"><h1>Board guide</h1><p>Create a board, add lists for stages of work, then add cards. Move cards by dragging or choosing another list. Save changes before leaving.</p><p>Boards can be private or linked to projects with optional team restrictions. Assign members and reviewers, define sprints, and save before commenting or mentioning teammates. Enabled Git plugins add repository and pull-request links. Table permissions can make boards read only.</p><Link to="/plugins/kanban/boards">Open saved boards</Link></div> : <Boards />
+  const {'*':section=''}=useParams()
+  return section==='guide'?<div className="page-stack"><h1>Board guide</h1><p>Open a board card, create tickets, and drag them between columns. Open a ticket to change its column using the keyboard, add tags, choose an epic or sprint, and manage assignees, reviewers, subtasks and comments.</p><p>Board managers configure column order, reporting status, and entry/exit permissions. Both columns must permit a move. Private owners and project managers/team leads manage their boards; plugin table permissions still apply. Changes save immediately, and concurrent changes ask you to reload.</p><p>Closing a dialog keeps its draft on this page. Leaving the page clears it. Project dashboards use only boards and tickets you may access.</p><Link to="/plugins/kanban/boards">Open boards</Link></div>:<Boards/>
 }
 
 function Boards() {
-  const [params, setParams] = useSearchParams()
-  const userId = useAuthStore(state => state.user?.id)
-  const role = useAuthStore(state => pluginRole(state.user?.role ?? ''))
-  const plugins = useAvailablePlugins()
-  const canWrite = !!role && !!plugins.data?.find(item => item.manifest.id === 'kanban')?.tableAccess.plugin_kanban_boards?.writeRoles.includes(role)
-  const client = useQueryClient()
-  const selected = params.get('board') ?? ''
-  const projectId = params.get('project') ?? undefined
-  const setSelected = (id: string) => setParams({...projectId ? {project: projectId} : {}, ...id ? {board: id} : {}})
-  const [dirty, setDirty] = useState(false)
-  const [fresh, setFresh] = useState(blankBoard)
-  const [generation, setGeneration] = useState(0)
-  const list = useQuery({ queryKey: ['plugin-kanban-boards', userId, role, projectId], queryFn: () => boardsApi.list(projectId) })
-  const board = useQuery({ queryKey: ['plugin-kanban-board', userId, role, selected], queryFn: () => boardsApi.get(selected), enabled: !!selected && selected !== 'new', refetchOnWindowFocus: false })
-  const saved = (value: Board) => {
-    client.setQueryData(['plugin-kanban-board', userId, role, value.id], value)
-    void client.invalidateQueries({ queryKey: ['plugin-kanban-boards', userId, role] })
-    setSelected(value.id); setDirty(false)
+  const [params,setParams]=useSearchParams(),[create,setCreate]=useState(false),[query,setQuery]=useState('')
+  const [fresh]=useState(blankBoard)
+  const user=useAuthStore(state=>state.user),role=pluginRole(user?.role??'')
+  const plugins=useAvailablePlugins(),client=useQueryClient()
+  const canWrite=!!plugins.data?.find(item=>item.manifest.id==='kanban')?.tableAccess.plugin_kanban_boards?.writeRoles.includes(role)
+  const selected=params.get('board')??'',projectId=params.get('project')??undefined
+  const select=(id:string)=>setParams({...projectId?{project:projectId}:{},...id?{board:id}:{}})
+  const list=useQuery({queryKey:['plugin-kanban-boards',user?.id,role,projectId],queryFn:()=>boardsApi.list(projectId)})
+  const board=useQuery({queryKey:['plugin-kanban-board',user?.id,role,selected],queryFn:()=>boardsApi.get(selected),enabled:!!selected,refetchOnWindowFocus:false})
+  const saved=(value:Board)=>{
+    client.setQueryData(['plugin-kanban-board',user?.id,role,value.id],value)
+    void client.invalidateQueries({queryKey:['plugin-kanban-boards']})
+    void client.invalidateQueries({queryKey:['project-work-summary']})
+    if(selected!==value.id)select(value.id)
   }
+  const creation=useMutation({mutationFn:(input:Parameters<typeof boardsApi.save>[1])=>boardsApi.save(undefined,input),onSuccess:value=>{setCreate(false);saved(value)}})
+  if(selected)return <div className="page-stack"><div className="inline-actions"><button className="kanban-ticket-link" onClick={()=>select('')}>All boards</button>{projectId&&<Link to={'/projects/'+projectId}>Back to project</Link>}<Button variant="ghost" onClick={()=>void board.refetch()}>Reload board</Button></div>
+    {board.isLoading?<p role="status">Loading board…</p>:board.isError||!board.data?<p role="alert">This board is unavailable. Reload or return to all boards.</p>:<BoardEditor key={board.data.id} initial={board.data} onSaved={saved} readOnly={!canWrite}/>}
+  </div>
+  const items=list.data?.filter(item=>item.name.toLowerCase().includes(query.toLowerCase()))
   return <div className="page-stack">
-    <div className="page-heading"><div><h1>Boards</h1><p>Projects, sprints, assignments, reviews, and Git links.</p></div><Button disabled={dirty || !canWrite} onClick={() => { setFresh({...blankBoard(), projectId: projectId ?? null}); setSelected('new'); setGeneration(value => value + 1) }}>New board</Button></div>
-    {projectId && <Link to={`/projects/${projectId}`}>Back to project</Link>}
-    {!canWrite && <p className="field-help">Your role has read-only access to these boards.</p>}
-    <div className="inline-actions"><label className="form-field">Saved board<select value={selected} disabled={dirty} onChange={event => setSelected(event.target.value)}><option value="">Select a board</option>{selected === 'new' && <option value="new">Unsaved board</option>}{list.data?.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>{dirty && <Button variant="ghost" onClick={() => { setDirty(false); setGeneration(value => value + 1); if (selected === 'new') setSelected(''); else void board.refetch() }}>Discard changes</Button>}</div>
-    {list.isLoading && <p role="status">Loading boards…</p>}
-    {list.isError && <p role="alert">Unable to load boards. <button onClick={() => void list.refetch()}>Retry</button></p>}
-    {!selected && list.data?.length === 0 && <p>Create your first board to get started.</p>}
-    {selected && selected !== 'new' && board.isLoading && <p role="status">Loading board…</p>}
-    {selected && selected !== 'new' && board.isError && <p role="alert">This board is unavailable. <button onClick={() => void board.refetch()}>Retry</button></p>}
-    <div className="page-stack">{selected === 'new' ? <BoardEditor key={`new-${generation}`} initial={fresh} onSaved={saved} onDirty={setDirty} readOnly={!canWrite} /> : !board.isError && board.data && selected === board.data.id && <BoardEditor key={`${board.data.id}-${board.data.revision}-${generation}`} id={board.data.id} initial={board.data} onSaved={saved} onDirty={setDirty} readOnly={!canWrite} />}</div>
+    <div className="page-heading"><div><h1>Boards</h1><p>Organize work, plan sprints, and follow delivery.</p></div><Button disabled={!canWrite} onClick={()=>{creation.reset();setCreate(true)}}>New board</Button></div>
+    {projectId&&<Link to={'/projects/'+projectId}>Back to project</Link>}
+    <label className="form-field kanban-board-search">Find a board<input type="search" placeholder="Search boards" value={query} onChange={e=>setQuery(e.target.value)}/></label>
+    {list.isLoading&&<p role="status">Loading boards…</p>}{list.isError&&<p role="alert">Unable to load boards. <button onClick={()=>void list.refetch()}>Retry</button></p>}
+    <div className="kanban-board-grid">{items?.map(item=><button key={item.id} type="button" className="kanban-board-card" onClick={()=>select(item.id)}>
+      <span className="kanban-board-card-kind">{item.projectId?'Project board':'Private board'}</span><h2>{item.name}</h2><span>{item.ticketCount??0} tickets · {item.completedCount??0} completed</span>
+      <span className="kanban-board-progress" role="img" aria-label={(item.completedCount??0)+' of '+(item.ticketCount??0)+' tickets completed'}><i style={{width:((item.ticketCount?(item.completedCount??0)/item.ticketCount:0)*100)+'%'}}/></span>
+      <small>Updated {new Date(item.updatedAt).toLocaleDateString()}</small><span className="kanban-board-card-open">Open board →</span>
+    </button>)}</div>
+    {!list.isLoading&&!list.isError&&!items?.length&&<p>{query?'No boards match your search.':'Create a board to start organizing work.'}</p>}
+    {create&&<BoardConfiguration board={{...fresh,projectId:projectId??null}} people={user?[{id:user.id,name:user.name??user.username,email:user.email}]:[]} busy={creation.isPending} error={creation.isError?getErrorMessage(creation.error):undefined} onSave={input=>creation.mutate(input)} onClose={()=>setCreate(false)}/>}
   </div>
 }

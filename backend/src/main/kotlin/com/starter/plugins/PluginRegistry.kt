@@ -134,6 +134,6 @@ class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: P
             manifest.tables.associate { it.name to (overrides[it.name] ?: PluginTableAccess(it.readRoles, it.writeRoles)) },
             source = if (uploaded) "ZIP" else "BUNDLED", author = if (uploaded) packages?.author(manifest.id) else null,
             blockedBySecurity = uploaded && packages?.allowed() != true, removed = row?.removed == true,
-            applicationVersion=versions.applicationVersion, versionCompatibility=version.status, compatibilityWarnings=version.warnings)
+            applicationVersion=versions.applicationVersion, versionCompatibility=version.status, compatibilityWarnings=version.warnings, settingsRevision=row?.revision ?: -1)
     }
 }

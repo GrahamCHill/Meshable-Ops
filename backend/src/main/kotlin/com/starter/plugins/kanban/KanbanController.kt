@@ -12,4 +12,5 @@ class KanbanController(private val service: KanbanService) {
     @GetMapping("/{id}/members") fun members(@AuthenticationPrincipal user: UserDetails, @PathVariable id: UUID) = service.members(user.username, id)
     @PostMapping fun create(@AuthenticationPrincipal user: UserDetails, @RequestBody request: KanbanRequest) = service.save(user.username, null, request)
     @PutMapping("/{id}") fun update(@AuthenticationPrincipal user: UserDetails, @PathVariable id: UUID, @RequestBody request: KanbanRequest) = service.save(user.username, id, request)
+    @PostMapping("/{id}/cards/{cardId}/move") fun move(@AuthenticationPrincipal user: UserDetails, @PathVariable id: UUID, @PathVariable cardId: UUID, @RequestBody request: MoveTicketRequest) = service.move(user.username, id, cardId, request)
 }

@@ -13,7 +13,7 @@ class KanbanSearchProvider(private val jdbc: JdbcTemplate, private val projects:
     override val tableName = "plugin_kanban_boards"
 
     fun index(board: KanbanBoard, content: KanbanContent) {
-        val text = (listOf(board.name) + content.columns.map { it.title } + content.cards.flatMap { listOf(it.reference, it.title, it.description) }).joinToString("\n")
+        val text = (listOf(board.name) + content.columns.map { it.title } + content.epics.flatMap { listOf(it.name, it.description) } + content.cards.flatMap { listOf(it.reference, it.title, it.description) + it.tags }).joinToString("\n")
         jdbc.update("UPDATE plugin_kanban_boards SET search_text = ?, search_embedding = CAST(? AS vector) WHERE id = ?",
             text, LocalTextVectors.embed(text).joinToString(",", "[", "]"), board.id)
     }

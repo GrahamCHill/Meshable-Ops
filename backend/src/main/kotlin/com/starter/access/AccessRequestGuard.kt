@@ -18,7 +18,7 @@ class AccessRequestGuard(private val access: AccessControlService) : HandlerInte
         if (path == "/api/auth/superset-admin-access") access.requireFeature("admin.superset")
         else if (path.startsWith("/api/auth/") || path.startsWith("/api/account/") || path == "/api/access/me" ||
             path.startsWith("/api/branding") || path.startsWith("/api/shared/") || path.startsWith("/api/webhooks/incoming/")) return true
-        else if (path == "/api/plugins") return true // The catalogue filters individual page permissions.
+        else if (path == "/api/plugins" || path == "/api/navigation") return true // Catalogues filter individual page permissions.
         else if (path == "/api/document-access" || path == "/api/notifications/availability") {
             if (access.features(actor).intersect(setOf("storage", "documents", "workflows")).isEmpty()) throw ForbiddenException("Document features are unavailable")
         }

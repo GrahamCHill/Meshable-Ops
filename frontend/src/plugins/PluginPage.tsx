@@ -23,5 +23,5 @@ export default function PluginPage() {
   if (module?.navigationPath) return <Navigate to={module.navigationPath} replace/>
   const section = plugin?.manifest.menuItems.find(item => item.path === childPath.split('/')[0])
   if (childPath && (!section || !role || !section.roles.includes(role))) return <p role="alert">This plugin section is unavailable.</p>
-  return <PluginErrorBoundary key={pluginId}><div className="page-stack">{plugin.manifest.banner&&<img className="plugin-banner" src={`/api/plugins/${pluginId}/assets/banner`} alt="" onError={event=>{event.currentTarget.hidden=true}}/>}<Suspense fallback={<p role="status">Loading plugin…</p>}><Page plugin={plugin} /></Suspense></div></PluginErrorBoundary>
+  return <PluginErrorBoundary key={pluginId}><div className="page-stack">{plugin.manifest.showPageBanner&&plugin.manifest.banner&&<img className="plugin-banner" src={`/api/plugins/${pluginId}/assets/banner`} alt="" onError={event=>{event.currentTarget.hidden=true}}/>}<Suspense fallback={<p role="status">Loading plugin…</p>}><Page plugin={plugin} /></Suspense></div></PluginErrorBoundary>
 }

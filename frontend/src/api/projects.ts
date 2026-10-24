@@ -26,6 +26,7 @@ export interface ScheduleInput {enabled: boolean; kind: 'REPORT' | 'DIGEST'; cad
 export interface WorkSchedule {id: string; projectId: string | null; configuration: ScheduleInput; nextRunAt: string | null; lastRunAt: string | null; lastStatus: string | null}
 export const emptyDetails = (): ProjectDetails => ({description: '', members: [], groupIds: [], tagIds: [], contacts: [], links: [], storage: []})
 export const projectsApi = {
+  workSummary: (id:string) => api.get<import('../components/projects/WorkCharts').WorkSummary>(`/projects/${id}/work-summary`).then(r=>r.data),
   list: (query = '', category?: string, tags: string[] = []) => api.get<ProjectSummary[]>('/projects', {params: {query, category: category || undefined, tags: tags.length ? tags.join(',') : undefined}}).then(r => r.data),
   get: (id: string) => api.get<Project>(`/projects/${id}`).then(r => r.data),
   save: (id: string | undefined, input: ProjectInput) => (id ? api.put<Project>(`/projects/${id}`, input) : api.post<Project>('/projects', input)).then(r => r.data),

@@ -9,6 +9,7 @@ import { ContextExtensions } from '../projects/ContextExtensions'
 import { ProjectReportsPanel } from '../projects/ProjectReportsPanel'
 import { WorkDigestPanel } from '../projects/WorkDigestPanel'
 import { WorkSchedulesPanel } from '../projects/WorkSchedulesPanel'
+import {ProjectWorkOverview} from '../projects/ProjectWorkOverview'
 import { Button } from '../ui'
 import '../../styles/projects.css'
 
@@ -26,7 +27,7 @@ export default function ProjectDetailPage() {
     {edit ? <ProjectEditor id={value.id} initial={value} onCancel={() => setEdit(false)} onSave={saved => {client.setQueryData(['project', projectId], saved); void client.invalidateQueries({queryKey: ['projects']}); void client.invalidateQueries({queryKey: ['project-members', projectId]}); setEdit(false)}} /> : <>
       <nav className="inline-actions" aria-label="Project detail sections">{[['overview', 'Overview'], ['reports', 'Reports'], ...(value.canManage ? [['risk', 'Delivery risk'], ['digest', 'Team digests'], ['schedules', 'Schedules']] : [])].map(([key, label]) => <Button key={key} variant={tab === key ? 'secondary' : 'ghost'} onClick={() => setTab(key)}>{label}</Button>)}</nav>
       {tab === 'overview' && <><p className="project-note">{value.details.description}</p><section className="page-stack"><h2>People working on this project</h2>{members.data?.map(person => <div key={person.id}>{person.name} · {person.email}{person.id === value.leadId ? ' · Project lead' : ''}</div>)}</section>
-        {plugins.data?.some(plugin => plugin.manifest.id === 'kanban') && <div><Link className="button button-secondary" to={`/plugins/kanban/boards?project=${value.id}`}>Open project boards</Link></div>}
+        {plugins.data?.some(plugin => plugin.manifest.id === 'kanban') && <><ProjectWorkOverview projectId={value.id}/><div><Link className="button button-secondary" to={`/plugins/kanban/boards?project=${value.id}`}>Open project boards</Link></div></>}
         <section className="page-stack"><h2>Inherited contacts · {value.clientName}</h2><Contacts contacts={value.inheritedContacts} /><h2>Project contacts</h2><Contacts contacts={value.details.contacts} /></section>
         <section className="page-stack"><h2>Documents & folders</h2>{value.details.storage.map(link => {const parent = link.path.includes('/') ? link.path.slice(0, link.path.lastIndexOf('/') + 1) : ''; return <Link key={link.id} to={`/storage?folder=${link.folderId}&path=${encodeURIComponent(link.directory ? link.path : parent)}${!link.directory ? '&file=' + encodeURIComponent(link.path) : ''}`}>{link.label} · {link.directory ? 'Folder' : 'File'}</Link>})}{!value.details.storage.length && <p>No accessible storage references.</p>}</section>
         <section className="page-stack"><h2>Web links</h2>{value.details.links.map((link, index) => <a href={link.url} target="_blank" rel="noreferrer" key={index}>{link.label}</a>)}</section><ContextExtensions kind="PROJECT" id={value.id} /></>}

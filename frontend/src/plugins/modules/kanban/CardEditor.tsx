@@ -1,32 +1,47 @@
-import { useEffect, useRef, useState } from 'react'
-import { Button } from '../../../components/ui'
-import type { BoardCard } from './api'
-import type { BoardSprint, CardStatus } from './api'
-import type { Person } from '../../../api/projects'
+import {Button} from '../../../components/ui'
+import {Modal} from '../../../components/ui/Modal'
+import {usePageDraft} from '../../../hooks/usePageDraft'
+import type {BoardCard, BoardColumn, BoardEpic, BoardSprint} from './api'
+import type {Person} from '../../../api/projects'
+import {CardDiscussion} from './CardDiscussion'
 
-export function CardEditor({ card, onSave, onCancel, people = [], sprints = [] }: { card: BoardCard; onSave: (card: BoardCard) => void; onCancel: () => void; people?: Person[]; sprints?: BoardSprint[] }) {
-  const dialog = useRef<HTMLDialogElement>(null)
-  useEffect(() => {const element = dialog.current; element?.showModal(); return () => element?.close()}, [])
-  const [title, setTitle] = useState(card.title)
-  const [description, setDescription] = useState(card.description)
-  const [dueDate, setDueDate] = useState(card.dueDate ?? '')
-  const [fields, setFields] = useState(card)
-  return <dialog ref={dialog} className="project-dialog" aria-labelledby="edit-ticket-heading" onCancel={onCancel}><form className="page-stack" onSubmit={event => { event.preventDefault(); if (title.trim()) onSave({ ...fields, title: title.trim(), description, dueDate: dueDate || null }) }}>
-    <h2 id="edit-ticket-heading">{card.reference ? 'Edit ticket' : 'New ticket'}</h2>
-    <small>{card.reference || 'ID assigned when saved'} · {card.id}</small>
-    <label className="form-field">Card title<input autoFocus required maxLength={160} value={title} onChange={event => setTitle(event.target.value)} /></label>
-    <label className="form-field">Description<textarea rows={3} maxLength={2000} value={description} onChange={event => setDescription(event.target.value)} /></label>
-    <div className="project-fields">
-    <label className="form-field">Due date<input type="date" min="1900-01-01" max="9999-12-31" value={dueDate} onChange={event => setDueDate(event.target.value)} /></label>
-    <label className="form-field">Assignee<select value={fields.assigneeId ?? ''} onChange={event => setFields({...fields, assigneeId: event.target.value || null})}><option value="">Unassigned</option>{people.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label>
-    <label className="form-field">Status<select value={fields.status ?? 'TODO'} onChange={event => setFields({...fields, status: event.target.value as CardStatus, completionDate: event.target.value === 'DONE' ? fields.completionDate : null})}><option value="TODO">To do</option><option value="IN_PROGRESS">In progress</option><option value="DONE">Done</option></select></label>
-    <label className="form-field">Start date<input type="date" value={fields.startDate ?? ''} onChange={event => setFields({...fields, startDate: event.target.value || null})} /></label>
-    <label className="form-field">Completion date<input type="date" disabled={fields.status !== 'DONE'} value={fields.completionDate ?? ''} onChange={event => setFields({...fields, completionDate: event.target.value || null})} /><small>Filled automatically when completed if left blank.</small></label>
-    <label className="form-field">Sprint<select value={fields.sprintId ?? ''} onChange={event => setFields({...fields, sprintId: event.target.value || null})}><option value="">No sprint</option>{sprints.map(sprint => <option key={sprint.id} value={sprint.id}>{sprint.name}</option>)}</select></label>
-    <label className="form-field">Story points<input type="number" min={0} max={1000} step={0.5} value={fields.storyPoints ?? ''} onChange={event => setFields({...fields, storyPoints: event.target.value === '' ? null : Number(event.target.value)})} /></label>
-    </div>
-    <fieldset className="project-choices"><legend>Reviewers</legend>{people.map(person => <label key={person.id}><input type="checkbox" checked={fields.reviewerIds?.includes(person.id) ?? false} onChange={event => setFields({...fields, reviewerIds: event.target.checked ? [...(fields.reviewerIds ?? []), person.id] : fields.reviewerIds?.filter(id => id !== person.id)})} /> {person.name}</label>)}</fieldset>
-    <label><input type="checkbox" checked={fields.blocked ?? false} onChange={event => setFields({...fields, blocked: event.target.checked})} />Blocked</label>
-    <div className="inline-actions"><Button type="submit" disabled={!title.trim()}>Apply card</Button><Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button></div>
-  </form></dialog>
+export function CardEditor({boardId, card, columns, epics = [], cards, allowedColumns, onSave, onCancel, onRemove, people = [], sprints = [], busy = false, readOnly = false, error}: {
+  boardId?: string; card: BoardCard; columns: BoardColumn[]; epics?: BoardEpic[]; cards: BoardCard[]; allowedColumns?: string[];
+  onSave: (card: BoardCard) => void; onCancel: () => void; onRemove?: () => void; people?: Person[]; sprints?: BoardSprint[]; busy?: boolean; readOnly?: boolean; error?: string
+}) {
+  const key = 'ticket:' + (boardId ?? 'new') + ':' + card.id
+  const [draft, setDraft] = usePageDraft(key, card)
+  const [tags, setTags] = usePageDraft(key + ':tags', (card.tags ?? []).join(', '))
+  const change = (fields: Partial<BoardCard>) => setDraft(value => ({...value, ...fields}))
+  const tagValues = [...new Set(tags.split(',').map(value => value.trim()).filter(Boolean))]
+  const tagError = tagValues.length > 20 || tagValues.some(value => value.length > 40)
+  return <Modal title={card.reference || 'New ticket'} onClose={onCancel} busy={busy}>
+    <form className="page-stack" onSubmit={event => {event.preventDefault(); if (!readOnly && !tagError && draft.title.trim()) onSave({...draft, title: draft.title.trim(), tags: tagValues})}}>
+      <fieldset className="page-stack" disabled={busy || readOnly}>
+        <label className="form-field">Ticket title<input autoFocus required maxLength={160} value={draft.title} onChange={event => change({title:event.target.value})}/></label>
+        <label className="form-field">Description<textarea rows={5} maxLength={2000} value={draft.description} onChange={event => change({description:event.target.value})}/></label>
+        <div className="project-fields">
+          <label className="form-field">Column<select value={draft.columnId} onChange={event => {const column = columns.find(item => item.id === event.target.value); change({columnId:event.target.value, status:column?.status ?? draft.status})}}>{columns.map(column => <option key={column.id} value={column.id} disabled={column.id !== card.columnId && allowedColumns !== undefined && !allowedColumns.includes(column.id)}>{column.title}</option>)}</select></label>
+          <label className="form-field">Type<select value={draft.type ?? 'TASK'} onChange={event => change({type:event.target.value as BoardCard['type'], parentId:null})}>{['TASK','STORY','BUG','SUBTASK'].map(value => <option key={value} value={value}>{value.toLowerCase()}</option>)}</select></label>
+          <label className="form-field">Priority<select value={draft.priority ?? 'MEDIUM'} onChange={event => change({priority:event.target.value as BoardCard['priority']})}>{['LOW','MEDIUM','HIGH','URGENT'].map(value => <option key={value} value={value}>{value.toLowerCase()}</option>)}</select></label>
+          <label className="form-field">Assignee<select value={draft.assigneeId ?? ''} onChange={event => change({assigneeId:event.target.value || null})}><option value="">Unassigned</option>{people.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label>
+          <label className="form-field">Epic<select value={draft.epicId ?? ''} onChange={event => change({epicId:event.target.value || null})}><option value="">No epic</option>{epics.map(epic => <option key={epic.id} value={epic.id}>{epic.name}</option>)}</select></label>
+          <label className="form-field">Sprint<select value={draft.sprintId ?? ''} onChange={event => change({sprintId:event.target.value || null})}><option value="">Backlog / no sprint</option>{sprints.map(sprint => <option key={sprint.id} value={sprint.id}>{sprint.name}</option>)}</select></label>
+          <label className="form-field">Story points<input type="number" min={0} max={1000} step={0.5} value={draft.storyPoints ?? ''} onChange={event => change({storyPoints:event.target.value === '' ? null : Number(event.target.value)})}/></label>
+          <label className="form-field">Start date<input type="date" min="1900-01-01" max="9999-12-31" value={draft.startDate ?? ''} onChange={event => change({startDate:event.target.value || null})}/></label>
+          <label className="form-field">Due date<input type="date" min={draft.startDate || '1900-01-01'} max="9999-12-31" value={draft.dueDate ?? ''} onChange={event => change({dueDate:event.target.value || null})}/></label>
+          <label className="form-field">Completion date<input type="date" disabled={(columns.find(column => column.id === draft.columnId)?.status ?? draft.status) !== 'DONE'} min={draft.startDate || '1900-01-01'} max="9999-12-31" value={draft.completionDate ?? ''} onChange={event => change({completionDate:event.target.value || null})}/></label>
+        </div>
+        {draft.type === 'SUBTASK' && <label className="form-field">Parent ticket<select required value={draft.parentId ?? ''} onChange={event => change({parentId:event.target.value || null})}><option value="">Choose a parent ticket</option>{cards.filter(item => item.id !== card.id && !item.parentId).map(item => <option key={item.id} value={item.id}>{item.reference} {item.title}</option>)}</select></label>}
+        <label className="form-field">Tags<input value={tags} onChange={event => setTags(event.target.value)} placeholder="frontend, customer-request, release"/><small>Comma-separated, up to 20 tags of 40 characters each.</small></label>
+        {tagError && <p role="alert">Use up to 20 tags with at most 40 characters each.</p>}
+        <fieldset className="project-choices"><legend>Reviewers</legend>{people.map(person => <label key={person.id}><input type="checkbox" checked={draft.reviewerIds?.includes(person.id) ?? false} onChange={event => change({reviewerIds:event.target.checked ? [...(draft.reviewerIds ?? []),person.id] : draft.reviewerIds?.filter(id => id !== person.id)})}/>{person.name}</label>)}</fieldset>
+        <label><input type="checkbox" checked={draft.blocked ?? false} onChange={event => change({blocked:event.target.checked})}/> Blocked</label>
+      </fieldset>
+      {error && <p role="alert">{error}</p>}
+      <div className="inline-actions">{!readOnly && <Button type="submit" loading={busy} disabled={!draft.title.trim() || tagError || draft.type === 'SUBTASK' && !draft.parentId}>Save ticket</Button>}<Button type="button" variant="ghost" disabled={busy} onClick={onCancel}>Close</Button>{onRemove && !readOnly && <Button type="button" variant="ghost" disabled={busy || cards.some(item => item.parentId === card.id)} onClick={onRemove}>Delete ticket</Button>}</div>
+      <small>Draft fields are kept until you leave this page. Saved tickets receive a permanent reference.</small>
+    </form>
+    {boardId && card.reference && <CardDiscussion key={card.id} boardId={boardId} cards={[card]} selectedCardId={card.id} locked={busy}/>}
+  </Modal>
 }

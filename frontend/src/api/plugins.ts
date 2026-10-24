@@ -4,7 +4,7 @@ import { useAuthStore } from '../hooks/useAuthStore'
 
 export interface PluginView {
   manifest: { id: string; name: string; navigationLabel: string; version: string; apiVersion: number; description: string; extensions: ('PAGE' | 'API' | 'DATABASE' | 'SEARCH' | 'SETTINGS' | 'NOTIFICATIONS')[]; menuItems: {path: string; label: string; roles: string[]}[]; tables: {name: string; label: string}[]; settingsFields: PluginSettingField[]; supportedRoles: string[]; capabilities: Record<string,string>; requiresCapabilities: string[]; contextTargets: ('PROJECT' | 'CLIENT')[];
-    categories: string[]; icon?: string; banner?: string; requires: string[]; extends: string[]; incompatibleWith: Record<string,string>; hasAdminSettings: boolean; adminMenu?: {category: string; categoryLabel: string; label: string}; providesSms: boolean; placements: {slot: string; label: string; section: string; mode: 'LINK'|'PANEL'}[]; compatibleVersions: string[]; runtimes: ('REACT'|'KOTLIN'|'PYTHON')[] }
+    showPageBanner: boolean; categories: string[]; icon?: string; banner?: string; requires: string[]; extends: string[]; incompatibleWith: Record<string,string>; hasAdminSettings: boolean; adminMenu?: {category: string; categoryLabel: string; label: string}; providesSms: boolean; placements: {slot: string; label: string; section: string; mode: 'LINK'|'PANEL'}[]; compatibleVersions: string[]; runtimes: ('REACT'|'KOTLIN'|'PYTHON')[] }
   enabled: boolean
   active: boolean
   missingDependencies: string[]
@@ -19,12 +19,14 @@ export interface PluginView {
   versionCompatibility: 'COMPATIBLE' | 'UNKNOWN' | 'INCOMPATIBLE'
   compatibilityWarnings: string[]
   removed: boolean
+  settingsRevision: number
   author?: { name: string; organization: string; email: string; website: string }
 }
 export interface PluginSettingField {key: string; label: string; type: 'TEXT' | 'SECRET'; required: boolean; help: string; maxLength: number}
 export interface PluginConfiguration {values: Record<string, string>; configuredSecrets: string[]; missingRequired: string[]; revision: number; encryptionConfigured: boolean}
 export type PluginSettings = Pick<PluginView, 'enabled' | 'allowedRoles' | 'searchEnabled' | 'tableAccess'>
 export const pluginsApi = {
+  activation: (changes:{id:string;enabled:boolean;expectedRevision:number}[])=>api.put<PluginView[]>('/admin/plugins/activation',{changes}).then(response=>response.data),
   code: (id:string)=>api.get<{backend?:{modules:Record<string,{runtime:'PYTHON'|'KOTLIN';entrypoint:string}>;routes:{path:string;module:string;methods:string[];roles:string[];permissions:string[]}[];allowedOrigins:string[]};runnerConfigured:boolean;sha256:string}>(`/admin/plugins/${encodeURIComponent(id)}/code`).then(response=>response.data),
   remove: (id: string, confirmation: string) => api.delete(`/admin/plugins/${encodeURIComponent(id)}`, {data: {confirmation}}).then(() => undefined),
   restore: (id: string) => api.post(`/admin/plugins/${encodeURIComponent(id)}/restore`).then(() => undefined),

@@ -17,7 +17,7 @@ api.interceptors.response.use(
   res => res,
   err => {
     const authAttempt = /\/auth\/(login|mfa\/)|\/account\/mfa/.test(err.config?.url ?? '')
-    if (err.response?.status === 401 && !authAttempt) {
+    if (err.response?.status === 401 && !authAttempt && err.response?.headers?.['x-meshable-plugin-response'] !== '1') {
       localStorage.removeItem('token')
       window.location.href = '/login'
     }

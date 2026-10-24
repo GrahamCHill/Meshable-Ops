@@ -31,6 +31,7 @@ import { EventsPage } from './components/pages/EventsPage'
 import { LoginPage, RegisterPage } from './components/pages/AuthPages'
 import { useAuthStore } from './hooks/useAuthStore'
 import { ThemeProvider } from './hooks/useTheme'
+import {PageDraftProvider} from './hooks/usePageDraft'
 import './styles/global.css'
 
 const AdminUsersPage = lazy(() => import('./components/pages/AdminUsersPage').then(module => ({default: module.AdminUsersPage})))
@@ -65,6 +66,7 @@ function App() {
       <QueryClientProvider client={qc}>
         <BrandingHead />
         <BrowserRouter>
+          <PageDraftProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
@@ -122,6 +124,7 @@ function App() {
               </ProtectedRoute>
             } />
           </Routes>
+          </PageDraftProvider>
         </BrowserRouter>
       </QueryClientProvider>
     </ThemeProvider>

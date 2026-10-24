@@ -21,3 +21,8 @@ class AdminPluginController(private val registry: PluginRegistry) {
 class AdminPluginDataController(private val data: PluginDataService) {
     @PostMapping("/{id}/clear-data") fun clear(@PathVariable id: String, @RequestBody request: PluginClearRequest) = data.clear(id, request)
 }
+
+@RestController @RequestMapping("/api/admin/plugins") @PreAuthorize("hasRole('ADMIN')")
+class PluginActivationController(private val activation: PluginActivationService) {
+    @PutMapping("/activation") fun save(@RequestBody request: PluginActivationRequest) = activation.apply(request)
+}
