@@ -15,4 +15,5 @@ class BrandingPreferencesRecord(
     @Column(nullable = false) var slideshowSeconds: Int = 8,
     @Version var revision: Long = 0,
     @Column(columnDefinition = "TEXT", nullable = false) @org.hibernate.annotations.ColumnDefault("'{}'") var themesJson: String = "{}",
+    @Column(nullable = false, length = 120) @org.hibernate.annotations.ColumnDefault("''") var companyName: String = "",
 )

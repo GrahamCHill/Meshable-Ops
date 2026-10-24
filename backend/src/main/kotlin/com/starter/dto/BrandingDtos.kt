@@ -22,6 +22,7 @@ data class BrandingPreferences(
     val slideshowSeconds: Int = 8,
     val revision: Long = 0,
     val themes: WorkspaceThemes = WorkspaceThemes(),
+    val companyName: String = "",
 )
 data class LoginImageView(val slot: Int, val version: String)
 data class BrandingView(val logoVersion: String? = null, val faviconVersion: String? = null,

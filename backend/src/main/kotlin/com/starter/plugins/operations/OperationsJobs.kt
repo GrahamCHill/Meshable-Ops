@@ -85,7 +85,7 @@ class OperationsJobs(private val store:OperationsStore,private val access:Operat
             val job=claims.once(plugin,"daily:${now.toLocalDate()}",admin.id) ?: return@runCatching
             val status=runCatching {
                 if(plugin=="timecamp")timecamp.sync(admin.email,TimeCampSyncInput(now.toLocalDate().minusDays(7),now.toLocalDate().minusDays(1)))
-                else store.list("cloud-costs","kind='CONNECTION'").filter {store.decode(it,CloudConnection::class.java).enabled}.forEach {cloud.refresh(admin.email,it.id,CloudRefresh(now.toLocalDate().minusDays(7),now.toLocalDate().minusDays(1)))}
+                else store.list("cloud-costs","kind='CONNECTION'").filter {store.decode(it,CloudConnection::class.java).let {c->c.enabled&&cloud.providerEnabled(c.provider)}}.forEach {cloud.refresh(admin.email,it.id,CloudRefresh(now.toLocalDate().minusDays(7),now.toLocalDate().minusDays(1)))}
                 "COMPLETED"
             }.getOrDefault("FAILED_CHECK_CONFIGURATION_AND_RECONCILIATION")
             claims.finish(plugin,job,status)

@@ -41,4 +41,34 @@ class KanbanCompletionTest {
         val old=KanbanCompletion.read(KanbanContent(listOf(done.copy(title="Done",status=null)),listOf(card.copy(columnId=done.id,createdAt=null))))
         assertThat(old.cards.single().status).isEqualTo(CardStatus.DONE);assertThat(old.cards.single().completionDate).isNull();assertThat(old.cards.single().createdAt).isNull()
     }
+    @Test fun `entering a work started column dates a ticket once and preserves earlier start dates`() {
+        val started=KanbanColumn(UUID.randomUUID(),"Development",CardStatus.IN_PROGRESS,startsWork=true)
+        val review=KanbanColumn(UUID.randomUUID(),"Review",CardStatus.IN_PROGRESS,startsWork=false)
+        board.contentJson=mapper.writeValueAsString(KanbanContent(listOf(todo,started,review,done),listOf(card.copy(dueDate=LocalDate.now(ZoneOffset.UTC).minusDays(2)))))
+        val moved=service.move(user.email,board.id,card.id,MoveTicketRequest(started.id,0)).content.cards.single()
+        assertThat(moved.startDate).isEqualTo(LocalDate.now(ZoneOffset.UTC))
+        val recorded=LocalDate.parse("2026-10-01")
+        board.contentJson=mapper.writeValueAsString(KanbanContent(listOf(todo,started,review,done),listOf(card.copy(startDate=recorded))))
+        val again=service.move(user.email,board.id,card.id,MoveTicketRequest(started.id,0)).content.cards.single()
+        assertThat(again.startDate).isEqualTo(recorded)
+        service.move(user.email,board.id,card.id,MoveTicketRequest(todo.id,0))
+        assertThat(service.move(user.email,board.id,card.id,MoveTicketRequest(started.id,0)).content.cards.single().startDate).isEqualTo(recorded)
+    }
+    @Test fun `full saves date new work entries but unrelated saves and ordinary in progress columns do not invent dates`() {
+        val started=KanbanColumn(UUID.randomUUID(),"Development",CardStatus.IN_PROGRESS,startsWork=true)
+        val review=KanbanColumn(UUID.randomUUID(),"Review",CardStatus.IN_PROGRESS,startsWork=false)
+        val columns=listOf(todo,started,review,done)
+        val moved=service.save(user.email,board.id,KanbanRequest(board.name,KanbanContent(columns,listOf(card.copy(columnId=started.id)))))
+        assertThat(moved.content.cards.single().startDate).isEqualTo(LocalDate.now(ZoneOffset.UTC))
+        val undated=card.copy(columnId=started.id,status=CardStatus.IN_PROGRESS)
+        board.contentJson=mapper.writeValueAsString(KanbanContent(columns,listOf(undated)))
+        val edited=service.save(user.email,board.id,KanbanRequest(board.name,KanbanContent(columns,listOf(undated.copy(title="Edited")))))
+        assertThat(edited.content.cards.single().startDate).isNull()
+        assertThat(service.move(user.email,board.id,card.id,MoveTicketRequest(review.id,0)).content.cards.single().startDate).isNull()
+        val added=card.copy(id=UUID.randomUUID(),columnId=started.id)
+        val current=service.get(user.email,board.id).content
+        assertThat(service.save(user.email,board.id,KanbanRequest(board.name,current.copy(cards=current.cards+added))).content.cards.last().startDate).isEqualTo(LocalDate.now(ZoneOffset.UTC))
+        assertThat(KanbanCompletion.read(KanbanContent(listOf(started.copy(title="In progress",startsWork=null)))).columns.single().startsWork).isTrue()
+        assertThat(KanbanCompletion.read(KanbanContent(listOf(started.copy(title="In progress",startsWork=false)))).columns.single().startsWork).isFalse()
+    }
 }

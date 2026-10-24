@@ -35,7 +35,10 @@ private fun manifest(id:String,name:String,description:String,category:String,se
 }
 @Component class CloudCostsPlugin:OperationsPlugin() {
     override val manifest=manifest("cloud-costs","Cloud costs","Track AWS Cost Explorer, Azure subscription usage and Google Cloud billing exports against projects.","Finance",
-        listOf(flag("dailyEnabled","Enable daily refresh"),field("dailyTime","Daily refresh time","HH:mm","01:00"),field("timeZone","Timezone","IANA timezone","UTC")),capabilities=mapOf("cloud.costs" to "Project cloud spend"))
+        listOf(PluginSettingField("awsEnabled","Enable AWS costs",PluginFieldType.BOOLEAN,defaultValue="true",help="Allow AWS connections and refreshes. Existing cost history is retained when disabled."),
+            PluginSettingField("azureEnabled","Enable Azure costs",PluginFieldType.BOOLEAN,defaultValue="true",help="Allow Azure connections and refreshes."),
+            PluginSettingField("gcpEnabled","Enable Google Cloud costs",PluginFieldType.BOOLEAN,defaultValue="true",help="Allow GCP connections and refreshes."),
+            flag("dailyEnabled","Enable daily refresh"),field("dailyTime","Daily refresh time","HH:mm","01:00"),field("timeZone","Timezone","IANA timezone","UTC")),capabilities=mapOf("cloud.costs" to "Project cloud spend"))
 }
 @Component class BillingItemsPlugin:OperationsPlugin() {
     override val manifest=manifest("billing-items","Billing items & rates","Recurring flat charges, effective-dated developer rates and approved hours for invoice generation.","Finance",extends=setOf("timesheets","billing"),capabilities=mapOf("billing.items" to "Invoice source items"))

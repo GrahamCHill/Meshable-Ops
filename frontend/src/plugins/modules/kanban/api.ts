@@ -3,7 +3,7 @@ import { createPluginApi } from '../../sdk'
 export type CardStatus = 'TODO' | 'IN_PROGRESS' | 'DONE'
 export type MoveMode = 'EDITORS' | 'ASSIGNEE' | 'REVIEWERS' | 'SELECTED_MEMBERS' | 'MANAGERS'
 export interface ColumnPermission {mode: MoveMode; userIds: string[]}
-export interface BoardColumn { id: string; title: string; status?: CardStatus | null; enter?: ColumnPermission; leave?: ColumnPermission }
+export interface BoardColumn { id: string; title: string; status?: CardStatus | null; startsWork?: boolean | null; enter?: ColumnPermission; leave?: ColumnPermission }
 export interface BoardEpic {id: string; name: string; description: string; color: string}
 export type SprintStatus = 'PLANNED' | 'ACTIVE' | 'COMPLETED'
 export interface BoardSprint {id: string; name: string; startDate: string; endDate: string; status?: SprintStatus; goal?: string}
@@ -39,5 +39,5 @@ export const boardsApi = {
 }
 export interface BoardComment {id: string; authorId: string; authorName: string; text: string; mentionIds: string[]; createdAt: string; parentId?: string | null}
 export function blankBoard(): BoardInput {
-  return { name: 'New board', revision: 0, projectId: null, teamIds: [], content: { columns: [{id: crypto.randomUUID(), title: 'To do', status: 'TODO'}, {id: crypto.randomUUID(), title: 'In progress', status: 'IN_PROGRESS'}, {id: crypto.randomUUID(), title: 'Review', status: 'IN_PROGRESS'}, {id: crypto.randomUUID(), title: 'Testing', status: 'IN_PROGRESS'}, {id: crypto.randomUUID(), title: 'Done', status: 'DONE'}], cards: [], sprints: [] } }
+  return { name: 'New board', revision: 0, projectId: null, teamIds: [], content: { columns: [{id: crypto.randomUUID(), title: 'To do', status: 'TODO'}, {id: crypto.randomUUID(), title: 'In progress', status: 'IN_PROGRESS', startsWork: true}, {id: crypto.randomUUID(), title: 'Review', status: 'IN_PROGRESS', startsWork: false}, {id: crypto.randomUUID(), title: 'Testing', status: 'IN_PROGRESS', startsWork: false}, {id: crypto.randomUUID(), title: 'Done', status: 'DONE'}], cards: [], sprints: [] } }
 }

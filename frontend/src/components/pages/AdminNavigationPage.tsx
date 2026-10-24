@@ -11,7 +11,7 @@ import '../../styles/navigation-settings.css'
 
 export default function AdminNavigationPage() {
   const [params,setParams]=useSearchParams(),icons=params.get('tab')==='icons'
-  const client=useQueryClient(),query=useQuery({queryKey:['admin-navigation'],queryFn:navigationApi.admin})
+  const client=useQueryClient(),query=useQuery({queryKey:['admin-navigation'],queryFn:navigationApi.admin,refetchInterval:15000})
   const [draft,setDraft]=useState<NavigationPreferences>(),[dirty,setDirty]=useState(false)
   useEffect(()=>{if(query.data&&!dirty)setDraft(query.data.preferences)},[query.data,dirty])
   const save=useMutation({mutationFn:()=>navigationApi.save(draft!),onSuccess:async data=>{
@@ -22,7 +22,7 @@ export default function AdminNavigationPage() {
   return <div className="page-stack" style={{maxWidth:900}}><AdminPageHeader title="Navigation & section icons" description="Arrange workspace links and customize administration sections."/>
     <nav className="workspace-tabs" aria-label="Navigation settings"><button aria-current={!icons?'page':undefined} onClick={()=>setParams({})}>Menu ordering</button><button aria-current={icons?'page':undefined} onClick={()=>setParams({tab:'icons'})}>Section icons</button></nav>
     {icons?<AdminSectionIcons/>:<>
-    <p>Use the arrows to change the order. Permissions still determine which links each member sees. Administration stays pinned at the bottom. Disabled plugins retain their position, and new items appear after saved entries.</p>
+    <p>Use the arrows to change the order. Permissions still determine which links each member sees. Administration stays pinned at the bottom. Disabled plugins are hidden here; their saved positions are retained for when they are enabled again. New items appear after saved entries.</p>
     {query.isLoading&&<p role="status">Loading menu settings…</p>}{query.isError&&<p role="alert">Unable to load menu settings. <button onClick={()=>void query.refetch()}>Retry</button></p>}
     {draft&&query.data&&<form className="page-stack" onSubmit={e=>{e.preventDefault();save.mutate()}}>
       <h2>Main menu</h2><NavigationOrderList label="Main menu order" items={query.data.items} order={draft.order} disabled={save.isPending} onChange={order=>update({...draft,order})}/>

@@ -12,7 +12,7 @@ import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
 
 enum class BrandingImageProfile(val maxBytes: Int, val maxDimension: Int, val outputSize: Int) {
-    LOGO(1024 * 1024, 2048, 512), FAVICON(1024 * 1024, 2048, 64), LOGIN(5 * 1024 * 1024, 4096, 1920)
+    LOGO(1024 * 1024, 2048, 512), FAVICON(1024 * 1024, 2048, 64), LOGIN(5 * 1024 * 1024, 4096, 1920), REPORT_COVER(1024 * 1024, 4096, 1200)
 }
 
 object BrandingImages {

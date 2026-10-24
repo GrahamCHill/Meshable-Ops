@@ -10,6 +10,7 @@ export interface WorkspaceThemes { switchingEnabled: boolean; fixedMode: 'LIGHT'
 export const defaultWorkspaceThemes: WorkspaceThemes = { switchingEnabled: true, fixedMode: 'LIGHT', light: {}, dark: {}, custom: {} }
 export interface BrandingSettings {
   applicationName: string
+  companyName?: string
   sidebarBackgroundColor: string | null
   sidebarTextColor: string | null
   linkColor: string | null
@@ -21,7 +22,7 @@ export interface BrandingSettings {
 }
 export interface LoginImage { slot: number; version: string }
 export interface Branding { logoVersion: string | null; faviconVersion: string | null; settings: BrandingSettings; loginImages: LoginImage[] }
-export const defaultBrandingSettings: BrandingSettings = { applicationName: 'Meshable Ops', sidebarBackgroundColor: null, sidebarTextColor: null, linkColor: null, loginBackgroundMode: 'NONE', loginBackgroundSlot: null, slideshowSeconds: 8, revision: 0, themes: defaultWorkspaceThemes }
+export const defaultBrandingSettings: BrandingSettings = { applicationName: 'Meshable Ops', companyName: '', sidebarBackgroundColor: null, sidebarTextColor: null, linkColor: null, loginBackgroundMode: 'NONE', loginBackgroundSlot: null, slideshowSeconds: 8, revision: 0, themes: defaultWorkspaceThemes }
 export const defaultBrandImage = '/brand-mark.svg'
 export const brandingApi = {
   current: () => api.get<Branding>('/branding').then(response => response.data),

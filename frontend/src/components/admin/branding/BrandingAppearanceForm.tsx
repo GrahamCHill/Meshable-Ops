@@ -1,12 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { brandingApi, defaultBrandingSettings, type Branding, type BrandingSettings } from '../../../api/branding'
+import { brandingApi, defaultBrandingSettings, defaultWorkspaceThemes, type Branding, type BrandingSettings, type WorkspacePalette } from '../../../api/branding'
 import { WorkspaceThemeEditor } from './WorkspaceThemeEditor'
 import { getErrorMessage } from '../adminUtils'
 import { Button } from '../../ui'
 
 export function BrandingAppearanceForm({ branding }: { branding: Branding }) {
-  const settings = branding.settings ?? defaultBrandingSettings
+  const settings = useMemo(() => {
+    const saved = branding.settings ?? defaultBrandingSettings, themes = saved.themes ?? defaultWorkspaceThemes
+    const migrate = (palette:WorkspacePalette):WorkspacePalette => ({...palette,
+      sidebarBackground: palette.sidebarBackground ?? saved.sidebarBackgroundColor,
+      sidebarText: palette.sidebarText ?? saved.sidebarTextColor, link: palette.link ?? saved.linkColor})
+    return {...saved, themes:{...themes, light:migrate(themes.light), dark:migrate(themes.dark), custom:migrate(themes.custom)}}
+  }, [branding.settings])
   const images = branding.loginImages ?? []
   const client = useQueryClient()
   const [draft, setDraft] = useState(settings)
@@ -22,6 +28,8 @@ export function BrandingAppearanceForm({ branding }: { branding: Branding }) {
     <h2>Business identity</h2>
     <label className="form-field">Application name<input required maxLength={80} value={draft.applicationName} onChange={event => update({ applicationName: event.target.value })} /></label>
     <p className="field-help">Used in navigation, on sign-in, and as the browser tab title.</p>
+    <label className="form-field">Company name<input maxLength={120} value={draft.companyName??''} onChange={event=>update({companyName:event.target.value})}/></label>
+    <p className="field-help">Used by the companyName placeholder in report cover templates. The application name supplies siteName.</p>
     <WorkspaceThemeEditor value={draft.themes} onChange={themes => update({ themes, sidebarBackgroundColor: null, sidebarTextColor: null, linkColor: null })}/>
     <h2>Sign-in background</h2>
     <label className="form-field">Background display<select value={draft.loginBackgroundMode} onChange={event => update({ loginBackgroundMode: event.target.value as BrandingSettings['loginBackgroundMode'] })}><option value="NONE">No image</option><option value="SINGLE">Single image</option><option value="SLIDESHOW">Slideshow</option></select></label>

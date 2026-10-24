@@ -19,10 +19,11 @@ async def payload(request, kind="template"):
     if token and not hmac.compare_digest(request.headers.get("Authorization", "").encode(), ("Bearer " + token).encode()):
         raise HTTPException(401, "Renderer authentication required")
     raw = bytearray()
+    limit = 4 * 1024 * 1024 if kind in {'report', 'cover'} else MAX_BODY
     async for chunk in request.stream():
         raw.extend(chunk)
-        if len(raw) > MAX_BODY:
-            raise HTTPException(413, "Template payload must be 2 MB or smaller")
+        if len(raw) > limit:
+            raise HTTPException(413, "Document payload exceeds its size limit")
     try:
         value = json.loads(raw)
         if not isinstance(value, dict) or not isinstance(value.get(kind), dict):

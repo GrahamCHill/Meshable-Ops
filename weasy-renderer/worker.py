@@ -9,7 +9,7 @@ if __name__ == "__main__":
             import resource
             resource.setrlimit(resource.RLIMIT_AS, (768 * 1024 * 1024, 768 * 1024 * 1024))
             resource.setrlimit(resource.RLIMIT_CPU, (35, 35))
-        request = json.loads(sys.stdin.buffer.read(2 * 1024 * 1024 + 1))
+        request = json.loads(sys.stdin.buffer.read(4 * 1024 * 1024 + 1))
         if "report" in request:
             from report import render_report
             sys.stdout.buffer.write(render_report(request["report"]))

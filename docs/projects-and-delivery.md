@@ -4,7 +4,7 @@ The portfolio displays projects as responsive cards, grouped into workspace-defi
 
 On a project detail page, managers/team leads/admins can choose a built-in icon or upload WebP/PNG/JPEG up to 1 MiB (128 × 128 px recommended). Image reads enforce project membership; icons have their own revision, so editing artwork does not overwrite project details. [Repository links](plugins/source-control.md#project-links) connect projects directly to enabled Git providers without requiring a board.
 
-**Projects** is an internal-member workspace at `/projects`. The directory supports text search, configurable sections, and multiple tag filters (all selected tags must match). Workspace search also includes authorized project matches. Lists are bounded to 200 results; narrow filters for larger portfolios.
+**Projects** is an internal-member workspace at `/projects`. The directory supports text search, client, configurable section, and multiple tag filters (all selected tags must match). Each expanded section loads up to ten authorized projects at a time; **Load up to 10 more projects** fetches its next page. Collapsed sections do not fetch projects. Workspace search also includes authorized project matches.
 
 ## Project sections
 
@@ -12,7 +12,9 @@ Cards are grouped beneath ordered section headings, with a visible count and an 
 
 Open **Administration → People & security → Project settings → Sections** to create, rename, reorder, or remove sections and choose the default for new projects. Use up to 20 sections with unique names of at most 80 characters. For example, rename the defaults and add a fourth section to use **Prototypes**, **Active development**, **Deployed**, and **Sunsetted**. Settings apply to the workspace.
 
-Section IDs are stable: renaming or reordering does not move projects. A section containing projects cannot be removed; authorized project leaders/managers/admins must move those projects first through **Edit project → Details → Section**. Ordinary project members cannot change sections, and section membership grants no additional access. Existing `PROPOSAL`, `ACTIVE`, and `ARCHIVED` assignments are preserved on upgrade; legacy settings automatically receive the original sections. New projects use the configured default, including API creates that omit `category`.
+Section IDs are stable: renaming or reordering does not move projects. A section containing projects cannot be removed. In Project settings, administrators choose the inactive section and grant section movement to selected internal roles or users; administrators retain this ability. Authorized viewers can drag a project card onto a section, including a collapsed section, or use its **Move project** selector. The dedicated action changes only the section and rejects stale revisions. Full project edits enforce the same movement grant. Section membership grants no additional project access. Existing `PROPOSAL`, `ACTIVE`, and `ARCHIVED` assignments are preserved on upgrade; legacy settings automatically receive the original sections. New projects use the configured default, including API creates that omit `category`.
+
+Section headings expand/collapse their cards. A user-specific, non-secret cookie retains collapsed sections and client/section/tag filters for one year; another signed-in user gets a separate layout. The configured inactive section always starts collapsed on a new visit, even if the user expanded it previously. Project cards and other navigation cards open from their whole surface; secondary links, buttons, and move selectors retain their own actions.
 
 ## Clients, contacts, and files
 
@@ -24,7 +26,7 @@ Client owners and administrators edit inherited details; authorized project memb
 
 ## Roles and team boundaries
 
-Global roles are Super admin, Admin, Business Manager, Member, and External. **Business Manager** is a non-admin role that can create clients, projects and private boards. It follows member plugin/table policies, receives no admin-console access and gains no automatic access to unrelated projects or clients. Super admins can assign it from the Users roster; administrators can select it when creating a new account. Until configured separately, its feature limits inherit any existing Member role limits. Projects add scoped **Member**, **Team lead**, and **Manager** assignments. Project leads have Team lead authority. Only project managers, team leads, and authorized administrators edit projects, change sections, manage membership, configure project schedules, or send team reports/digests. External accounts cannot use projects.
+Global roles are Super admin, Admin, Business Manager, Member, and External. **Business Manager** is a non-admin role that can create clients, projects and private boards. It follows member plugin/table policies, receives no admin-console access and gains no automatic access to unrelated projects or clients. Super admins can assign it from the Users roster; administrators can select it when creating a new account. Until configured separately, its feature limits inherit any existing Member role limits. Projects add scoped **Member**, **Team lead**, and **Manager** assignments. Project leads have Team lead authority. Only project managers, team leads, and authorized administrators edit projects, manage membership, configure project schedules, or send team reports/digests. Moving sections additionally follows the workspace movement grants described above, including a dedicated limited action for authorized members. External accounts cannot use projects.
 
 Only administrators, Business Managers, or members with an existing project manager/team-lead assignment may create projects and clients. Authority can come from project lead, a direct leadership membership, or a leadership team explicitly linked to a project. Department membership alone does not qualify. Ordinary members cannot obtain creation authority by submitting themselves as lead/manager in a new record. Existing ownership/edit permissions remain.
 
@@ -52,7 +54,11 @@ Project Overview puts direct Kanban/Jira board links and repository shortcuts ne
 
 ## Reports and PDF attachments
 
-**Reports** generates sprint, monthly, or custom-period PDFs on demand (up to 366 days and 1,500 tickets). Choose a board to narrow scope. PDFs include a cover, repeating table headers, page numbers, and ticket details with descriptions excerpted to 500 characters. The private Python WeasyPrint service renders escaped structured data. Reports describe the current task snapshot matched by dates/open work; they are not a historical event ledger.
+**Reports** generates sprint, monthly, or custom-period PDFs on demand (up to 366 days and 1,500 tickets). Choose a board to narrow scope. An unnumbered cover and index precede numbered page 1 (Kanban summary), page 2 (additional insights), page 3 (average ticket lead time), then the ticket export. Fixed-width columns, repeating table headers, bounded cell excerpts and eight-line limits keep long titles/descriptions readable. Reports describe the current task snapshot matched by dates/open work; they are not a historical event ledger.
+
+Project leaders and administrators can open **Design report cover**, edit up to 30,000 characters of HTML/CSS, download a WeasyPrint preview and save a revision-checked design for future reports. Supported visible-text tokens are `{{organization}}`, `{{title}}`, `{{project}}`, `{{period}}`, `{{ticketCount}}`, and `{{generatedAt}}`. The server renders and validates the actual single-page A4 cover before saving it. The cover is isolated from index/body styles; scripts, forms, external resources, resource-loading CSS and attribute tokens are rejected. Bounded embedded PNG/JPEG/WebP images are supported. Designs live in `workspace_project_report_designs`.
+
+Lead time measures ticket start date through completion in calendar days; same-day completion is zero. A column tagged **Work started** stamps an empty start date with the UTC date when a ticket enters it, while retaining an existing date. Ordinary edits and Review/Testing columns do not invent start dates. Completed tickets without start/completion dates are excluded and their coverage is shown. Creation timestamps remain server-owned provenance and do not affect lead time. Jira metrics use the same summary cards, stage donut, legend and breakdown styling as Kanban.
 
 PDFs are saved in PostgreSQL with their source board IDs. Listing/downloading rechecks current project and board access, including team revocation. Admin PDF download policy applies: watermark mode personalizes each copy; disabled downloads also block attachments.
 
@@ -75,5 +81,7 @@ The backend checks each minute, claims due rows in PostgreSQL, advances deadline
 ## APIs and extensions
 
 See [API reference](api.md#projects-and-delivery) for clients, projects, members, work, sprints, indicators, reports, digests, and schedules. Existing project/group/schedule edits require revisions.
+
+`GET /api/projects/page` accepts `category`, `query`, `clientId`, `tags`, `offset` and `limit` (1-10), applying visibility and filters before pagination. `POST /api/projects/{id}/section` accepts `{sectionId, revision}`. Cover design uses `GET/PUT /api/projects/{id}/reports/design` and `POST /api/projects/{id}/reports/design/preview`.
 
 Plugins declare `contextTargets: ["PROJECT", "CLIENT"]` to appear in authorized contexts. Reviewed modules can add computed panels with `WorkspaceContextProvider`; ZIP pages receive context through the SDK. This never grants project or storage access. See [context extensions](plugins/project-contexts.md).

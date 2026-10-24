@@ -29,12 +29,15 @@ data class CloudSpend(val connectionId:UUID,val provider:CloudProvider,val date:
 data class CloudRefresh(val from:LocalDate,val to:LocalDate)
 
 @Service
-class CloudCosts(private val store:OperationsStore,private val access:OperationsAccess,private val encryption:SecretEncryption,private val http:IntegrationHttpClient) {
+class CloudCosts(private val store:OperationsStore,private val access:OperationsAccess,private val encryption:SecretEncryption,private val http:IntegrationHttpClient,
+    private val providers:CloudProviders?=null) {
+    fun providerEnabled(provider:CloudProvider)=providers?.enabled(provider) ?: true
+    private fun requireProvider(provider:CloudProvider) {if(!providerEnabled(provider))throw BadRequestException("Enable ${provider.name} in Cloud costs settings before using this provider")}
     fun list(email:String,project:UUID):Map<String,Any> {
         val (actor,p)=access.project(email,"cloud-costs",project)
         val manage=com.starter.access.Roles.admin(actor.role)
         val connections=store.list("cloud-costs","project_id=? AND kind='CONNECTION'",project).map {mapOf("id" to it.id,"connection" to store.decode(it,CloudConnection::class.java),"revision" to it.revision,"credentialsConfigured" to !store.secret("cloud-costs",it.id).isNullOrBlank())}
-        return mapOf("connections" to connections,"canConfigure" to manage,"projectName" to p.name)
+        return mapOf("connections" to connections,"canConfigure" to manage,"projectName" to p.name,"enabledProviders" to (providers?.all() ?: CloudProvider.entries.associateWith {true}))
     }
     fun spend(email:String,project:UUID,from:LocalDate,to:LocalDate):List<Map<String,Any>> {
         access.project(email,"cloud-costs",project);OperationsValidation.dates(from,to)
@@ -42,6 +45,7 @@ class CloudCosts(private val store:OperationsStore,private val access:Operations
     }
     @Transactional fun connect(email:String,id:UUID?,input:CloudConnectionInput):OpsRow {
         val actor=access.admin(email,"cloud-costs",true);access.project(email,"cloud-costs",input.projectId,true,true)
+        requireProvider(input.connection.provider)
         validate(input.connection)
         val old=id?.let {store.get("cloud-costs",it).also {r->if(r.kind!="CONNECTION"||r.projectId!=input.projectId)throw NotFoundException("Connection unavailable")}}
         val previous=old?.let {store.decode(it,CloudConnection::class.java)}
@@ -63,10 +67,12 @@ class CloudCosts(private val store:OperationsStore,private val access:Operations
         val row=store.get("cloud-costs",id);if(row.kind!="CONNECTION")throw NotFoundException("Connection unavailable")
         access.project(email,"cloud-costs",row.projectId!!,true,true)
         val connection=store.decode(row,CloudConnection::class.java);if(!connection.enabled)throw BadRequestException("Enable this connection first")
+        requireProvider(connection.provider)
         val encrypted=store.secret("cloud-costs",id)
         val credentials=encryption.decrypt(encrypted)?.let {store.mapper.readTree(it)} ?: store.mapper.createObjectNode()
         val result=when(connection.provider){CloudProvider.AWS->aws(id,connection,credentials,input);CloudProvider.AZURE->azure(id,connection,credentials,input);CloudProvider.GCP->google(id,connection,credentials,input)}
         access.admin(email,"cloud-costs",true)
+        requireProvider(connection.provider)
         if(store.get("cloud-costs",id).revision!=row.revision||store.secret("cloud-costs",id)!=encrypted)throw ConflictException("Cloud connection changed while refreshing")
         persist(row,result,input)
         return ImportResult(result.size,0)

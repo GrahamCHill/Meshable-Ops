@@ -14,10 +14,24 @@ class ProjectReportsTest(unittest.TestCase):
         self.assertIn("break-after:page", html)
         self.assertIn("table-header-group", html)
 
+    def test_index_table_labels_content_and_page_columns(self):
+        from report import index_html
+        html=index_html(ReportDocument.model_validate(self.value()),4)
+        self.assertIn('<thead><tr><th scope="col">Content</th><th scope="col">Page</th></tr></thead>',html)
+
     def test_rejects_oversized_or_ragged_tables(self):
         value = self.value(); value["sections"][0]["rows"] = [["one", "two"]]
         with self.assertRaises(ValueError):
             ReportDocument.model_validate(value)
+
+    def test_lead_time_explains_start_to_completion_and_missing_start_dates(self):
+        value = self.value()
+        value['leadTime'] = {'missingStart': 2, 'completedTickets': 3, 'sampleSize': 1, 'averageDays': 4}
+        html = report_html(value)
+        self.assertIn('from the ticket start date to its recorded completion date', html)
+        self.assertIn('2 completed tickets have no start date', html)
+        self.assertNotIn('creation-to-completion', html)
+        self.assertNotIn('Recorded cycle time', html)
 
     def test_numbered_pages_follow_the_requested_order_and_export_cells_are_bounded(self):
         value = self.value()

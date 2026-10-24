@@ -57,11 +57,13 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
         val old = previous.cards.associateBy { it.id }
         val now=Instant.now()
         val normalized = requested.copy(cards = requested.cards.map { card ->
-            val status = requested.columns.first { it.id == card.columnId }.status ?: card.status
+            val column = requested.columns.first { it.id == card.columnId }
+            val status = column.status ?: card.status
+            val enteredStart = column.startsWork == true && old[card.id]?.columnId != card.columnId
             card.copy(status = status, tags = card.tags.map(String::trim),
             createdAt = old[card.id]?.createdAt ?: now.takeIf {card.id !in old},
             reference = old[card.id]?.reference?.takeIf { it.isNotBlank() } ?: "B-${row.id.toString().take(6).uppercase()}-${row.nextCardNumber++}",
-            startDate = if (status == CardStatus.IN_PROGRESS) card.startDate ?: java.time.LocalDate.now(java.time.ZoneOffset.UTC) else card.startDate,
+            startDate = if (enteredStart) card.startDate ?: old[card.id]?.startDate ?: now.atZone(java.time.ZoneOffset.UTC).toLocalDate() else card.startDate,
             completionDate = if (status == CardStatus.DONE) card.completionDate ?: old[card.id]?.completionDate ?: java.time.LocalDate.now(java.time.ZoneOffset.UTC).takeIf {old[card.id]?.status != CardStatus.DONE} else null) })
         val completedSprints = previous.sprints.filter { it.status == SprintStatus.COMPLETED }.map { it.id }.toSet()
         val parents = normalized.cards.filter { it.parentId == null }.associate { card ->
@@ -164,11 +166,12 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
     internal fun validate(request: KanbanRequest) {
         KanbanRules.validate(request.content)
         val columns = request.content.columns; val cards = request.content.cards
+        if (columns.any { it.startsWork == true && it.status != CardStatus.IN_PROGRESS }) throw BadRequestException("Work started columns must use In progress status")
         if (request.name.isBlank() || request.name.length > 120 || columns.size !in 1..20 || cards.size > 200) throw BadRequestException("Use a board name, 1–20 lists, and at most 200 cards")
         if (columns.map { it.id }.distinct().size != columns.size || cards.map { it.id }.distinct().size != cards.size) throw BadRequestException("List and card IDs must be unique")
         val ids = columns.map { it.id }.toSet()
         if (cards.any { listOfNotNull(it.startDate, it.dueDate, it.completionDate).any { date -> date.year !in 1900..9999 } ||
-            it.startDate != null && it.dueDate != null && it.startDate > it.dueDate || it.startDate != null && it.completionDate != null && it.startDate > it.completionDate ||
+            it.startDate != null && it.completionDate != null && it.startDate > it.completionDate ||
             it.storyPoints?.let { points -> !points.isFinite() || points < 0 || points > 1000 } == true || it.reviewerIds.size > 20 }) throw BadRequestException("Choose valid dates, up to 1000 story points, and up to 20 reviewers")
         val sprints = request.content.sprints
         if (sprints.size > 100 || sprints.map { it.id }.distinct().size != sprints.size || sprints.any { it.name.isBlank() || it.name.length > 100 || it.endDate < it.startDate || it.startDate.year !in 1900..9999 || it.endDate.year !in 1900..9999 } || cards.any { it.sprintId != null && sprints.none { sprint -> sprint.id == it.sprintId } }) throw BadRequestException("Use valid named sprints and link cards to existing sprints")

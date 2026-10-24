@@ -13,7 +13,7 @@ export function PluginInstaller() {
   const client = useQueryClient(); const [file, setFile] = useState<File>(); const [inputKey, setInputKey] = useState(0)
   const install = useMutation({mutationFn: () => pluginsApi.install(file!), onSuccess: async () => {
     setFile(undefined); setInputKey(value => value + 1)
-    await Promise.all(['admin-plugins', 'plugins', 'my-access', 'access-policy'].map(key => client.invalidateQueries({queryKey: [key]})))
+    await Promise.all(['admin-plugins', 'plugins', 'my-access', 'access-policy','admin-navigation','workspace-navigation','admin-section-artwork','admin-section-icons'].map(key => client.invalidateQueries({queryKey: [key]})))
   }})
   if (!superAdmin) return null
   return <section className="page-stack" aria-labelledby="install-plugin-title">

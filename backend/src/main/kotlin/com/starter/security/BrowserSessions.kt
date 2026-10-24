@@ -39,6 +39,7 @@ class BrowserSessions(private val rows: BrowserSessionRepository,private val jwt
     }
     @Transactional fun revoke(request: HttpServletRequest) {
         val token=authToken(request) ?: return
+        if(!runCatching {valid(token,request)}.getOrDefault(false))return
         val context=runCatching {jwt.browserContext(token)}.getOrNull() ?: return
         val record=rows.findById(context.first).orElse(null) ?: return
         val proof=cookie(request,"app_session") ?: return

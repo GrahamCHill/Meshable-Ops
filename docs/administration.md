@@ -63,3 +63,9 @@ Saved provider credentials are encrypted with the persistent server wrapping key
 Server-side ownership, role, feature, and storage-access checks enforce permissions. Superset authoring also has an authenticated proxy boundary. Download permission and watermark policies apply independently of upload permission. See [architecture](architecture.md), [document access](document-access.md), and the [documentation index](README.md) for each feature's controls.
 
 Disabled plugins do not expose configuration shortcuts in admin categories or delivery methods in Notifications. Their installation/configuration remains accessible in the Plugins catalogue. Calendar opens directly; its empty Events submenu has been removed.
+
+## Integrated plugin settings
+
+Plugin settings open at `/admin/sections/{category}/plugins/{pluginId}` within the owning administration category, with category breadcrumbs and a back link. The page contains the configuration form and, for supported messaging plugins, People & chats. It does not open the plugin catalogue or launch the plugin's user-facing page. Existing `?plugin=...&tab=configuration` bookmarks redirect to this page for active plugins.
+
+Disabled, removed, blocked or unavailable plugins have no Settings shortcuts or editable Settings/People tabs. Direct settings bookmarks show an unavailable message. The Plugins catalogue still provides activation, dependency information, data clearing and removal/restore controls, and retains saved configuration for when the plugin is re-enabled. Plugins declaring no administrator settings have no settings page.

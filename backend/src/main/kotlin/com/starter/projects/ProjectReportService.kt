@@ -45,11 +45,13 @@ class ProjectReportService(private val access: ProjectAccess, private val projec
                 "Start: ${card.startDate ?: "—"}\nDue: ${card.dueDate ?: "—"}\nDone: ${card.completionDate ?: "—"}", card.description).mapIndexed {index,cell->ProjectReportAnalytics.excerpt(cell,ProjectReportAnalytics.cellLimits[index])}
         }) }.ifEmpty { listOf(ProjectReportSection("Project activity", listOf("Result"), listOf(listOf("No tickets matched the selected period or sprint.")))) }
         val context = projects.get(email, id)
+        val cover=covers?.context(id)
         val pdf = renderer.report(ProjectReportDocument("${request.kind.name.lowercase().replaceFirstChar { it.titlecase() }} report", branding.current().applicationName,
             "${project.name} · ${context.clientName}", "${request.from} — ${request.to}", listOf("${cards.size} tickets in scope", "${cards.count { it.card.status == CardStatus.DONE }} completed; ${cards.count { it.card.status == CardStatus.IN_PROGRESS }} in progress",
                 "${cards.sumOf { it.card.storyPoints ?: 0.0 }} story points", "Project lead: ${users.findById(project.leadId).orElse(null)?.let { it.name ?: it.username } ?: "Member"}", "Confidential delivery-risk scores and personal calendars are excluded."), sections,
             ProjectWorkService.summarize(cards,names.mapKeys {it.key.toString()},LocalDate.now(java.time.ZoneOffset.UTC)),
-            ProjectReportAnalytics.insights(cards,LocalDate.now(java.time.ZoneOffset.UTC)),ProjectReportAnalytics.leadTime(cards),covers?.currentHtml(id)))
+            ProjectReportAnalytics.insights(cards,LocalDate.now(java.time.ZoneOffset.UTC)),ProjectReportAnalytics.leadTime(cards),cover?.html,
+            cover?.assets.orEmpty(),cover?.siteName ?: branding.current().applicationName,cover?.companyName.orEmpty(),cover?.siteLogo.orEmpty()))
         access.require(id, access.actor(email), request.sendEmail)
         val saved = reports.saveAndFlush(ProjectReportRecord(projectId = id, createdBy = actor.id, kind = request.kind, fromDate = request.from, toDate = request.to, pdf = pdf, boardIdsJson = mapper.writeValueAsString(boardIds)))
         val deliveries = recipients.associate { recipient ->

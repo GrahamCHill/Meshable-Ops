@@ -2,15 +2,14 @@ package com.starter.projects
 
 import com.starter.plugins.kanban.*
 import java.time.LocalDate
-import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 
 data class ReportInsight(val label: String,val count: Int)
 data class ReportInsights(val metrics: List<ReportInsight> = emptyList(),val priorities: List<WorkBreakdown> = emptyList(),
     val types: List<WorkBreakdown> = emptyList(),val observations: List<String> = emptyList())
 data class ReportLeadTime(val averageDays: Double? = null,val medianDays: Double? = null,val fastestDays: Long? = null,val slowestDays: Long? = null,
-    val sampleSize: Int = 0,val completedTickets: Int = 0,val missingCreation: Int = 0,val missingCompletion: Int = 0,val invalidDates: Int = 0,
-    val cycleAverageDays: Double? = null,val cycleSampleSize: Int = 0,val distribution: List<WorkBreakdown> = emptyList(),val boards: List<ReportBoardLeadTime> = emptyList())
+    val sampleSize: Int = 0,val completedTickets: Int = 0,val missingStart: Int = 0,val missingCompletion: Int = 0,val invalidDates: Int = 0,
+    val distribution: List<WorkBreakdown> = emptyList(),val boards: List<ReportBoardLeadTime> = emptyList())
 data class ReportBoardLeadTime(val board: String,val count: Int,val averageDays: Double)
 object ProjectReportAnalytics {
     fun insights(items: List<ProjectWorkItem>,today: LocalDate): ReportInsights {
@@ -29,18 +28,15 @@ object ProjectReportAnalytics {
     fun leadTime(items: List<ProjectWorkItem>): ReportLeadTime {
         val done=items.filter {it.card.status==CardStatus.DONE}
         val samples=done.mapNotNull {item->
-            val start=item.card.createdAt?.atZone(ZoneOffset.UTC)?.toLocalDate();val end=item.card.completionDate
+            val start=item.card.startDate;val end=item.card.completionDate
             if(start==null || end==null || end<start)null else item to ChronoUnit.DAYS.between(start,end)
         }
-        val days=samples.map {it.second}.sorted();val cycle=done.mapNotNull {item->
-            val start=item.card.startDate;val end=item.card.completionDate
-            if(start==null || end==null || end<start)null else ChronoUnit.DAYS.between(start,end)
-        }
+        val days=samples.map {it.second}.sorted()
         val bounds=listOf("Same day" to (0L..0L),"1-2 days" to (1L..2L),"3-7 days" to (3L..7L),"8-14 days" to (8L..14L),"15+ days" to (15L..Long.MAX_VALUE))
         return ReportLeadTime(days.takeIf {it.isNotEmpty()}?.average(),days.takeIf {it.isNotEmpty()}?.let {if(it.size%2==0)(it[it.size/2-1]+it[it.size/2])/2.0 else it[it.size/2].toDouble()},
-            days.firstOrNull(),days.lastOrNull(),days.size,done.size,done.count {it.card.createdAt==null},done.count {it.card.completionDate==null},
-            done.count {it.card.createdAt!=null && it.card.completionDate!=null && it.card.completionDate<it.card.createdAt.atZone(ZoneOffset.UTC).toLocalDate()},
-            cycle.takeIf {it.isNotEmpty()}?.average(),cycle.size,bounds.map {(label,range)->WorkBreakdown(label,label,days.count {it in range})},
+            days.firstOrNull(),days.lastOrNull(),days.size,done.size,done.count {it.card.startDate==null},done.count {it.card.completionDate==null},
+            done.count {it.card.startDate!=null && it.card.completionDate!=null && it.card.completionDate<it.card.startDate},
+            bounds.map {(label,range)->WorkBreakdown(label,label,days.count {it in range})},
             samples.groupBy {it.first.boardId}.values.map {values->ReportBoardLeadTime(values.first().first.boardName,values.size,values.map {it.second}.average())}.sortedByDescending {it.count}.take(8))
     }
     val cellLimits=listOf(160,140,90,110,240)

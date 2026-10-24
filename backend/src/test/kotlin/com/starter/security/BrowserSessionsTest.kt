@@ -41,6 +41,7 @@ class BrowserSessionsTest {
         val context=service.create(account.id,60000);val token=token(context)
         val request=MockHttpServletRequest("POST","/api/projects");request.setCookies(Cookie("app_session",context.fingerprint),Cookie("app_auth_token",token))
         assertThat(service.valid(token,request)).isFalse()
+        service.revoke(request);assertThat(records[context.id]!!.revokedAt).isNull()
         request.addHeader("X-XSRF-TOKEN",context.csrf)
         assertThat(service.valid(token,request)).isTrue()
         service.revoke(request);assertThat(service.valid(token,request)).isFalse()

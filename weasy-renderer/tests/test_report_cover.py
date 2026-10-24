@@ -3,6 +3,28 @@ from report_cover import cover_html, validate_cover_html, render_cover_document
 
 
 class ReportCoverTest(unittest.TestCase):
+    def test_branding_and_named_images_resolve_in_images_and_css_without_external_requests(self):
+        from report_cover import EMPTY_IMAGE
+        source='<h1>{{siteName}}</h1><p>{{companyName}}</p><img src="{{siteLogo}}"><img src="images/Banner.PNG"><div style="background-image:url(\'art/Banner.PNG\')">Cover</div>'
+        html=cover_html({'html':source,'siteName':'Site & Co','companyName':'Company <Ltd>','siteLogo':EMPTY_IMAGE,'assets':{'banner.png':EMPTY_IMAGE}})
+        self.assertIn('Site &amp; Co',html)
+        self.assertIn('Company &lt;Ltd&gt;',html)
+        self.assertEqual(html.count(EMPTY_IMAGE),3)
+        self.assertNotIn('images/Banner.PNG',html)
+        self.assertEqual(len(render_cover_document({'html':source,'assets':{'banner.png':EMPTY_IMAGE}}).pages),1)
+
+    def test_missing_duplicate_or_unsafe_image_resources_cannot_silently_render(self):
+        from report_cover import EMPTY_IMAGE
+        for value in [
+            {'html':'<img src="missing.png">'},
+            {'html':'<img src="../secret.png">'},
+            {'html':'<style>body{background:url(https://example.test/a.png)}</style>'},
+            {'html':'<img src="{{project}}">'},
+            {'html':'<p>Cover</p>','assets':{'a.png':EMPTY_IMAGE,'A.PNG':EMPTY_IMAGE}},
+            {'html':'<p>Cover</p>','assets':{'a.png':'data:image/svg+xml;base64,PHN2Zz4='}},
+        ]:
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                cover_html(value)
     def test_cover_tokens_are_escaped_visible_text(self):
         value = cover_html({"html": "<h1>{{project}}</h1><p>{{period}}</p>", "project": "<script>stolen</script>", "period": "October"})
         self.assertIn("&lt;script&gt;stolen&lt;/script&gt;", value)

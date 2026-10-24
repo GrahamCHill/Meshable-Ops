@@ -7,7 +7,7 @@ object KanbanCompletion {
         else -> null
     }
     fun read(value: KanbanContent): KanbanContent {
-        val columns=value.columns.map {it.copy(status=status(it))}
+        val columns=value.columns.map {it.copy(status=status(it), startsWork=it.startsWork ?: (status(it)==CardStatus.IN_PROGRESS && it.title.trim().lowercase() in setOf("in progress","work started")))}
         val states=columns.associate {it.id to it.status}
         return value.copy(columns=columns,cards=value.cards.map {card->card.copy(status=states[card.columnId] ?: card.status)})
     }

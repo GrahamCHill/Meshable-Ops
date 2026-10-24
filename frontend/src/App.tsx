@@ -35,6 +35,7 @@ import './styles/global.css'
 
 const AdminUsersPage = lazy(() => import('./components/pages/AdminUsersPage').then(module => ({default: module.AdminUsersPage})))
 const AdminPluginsPage = lazy(() => import('./components/pages/AdminPluginsPage').then(module => ({default: module.AdminPluginsPage})))
+const AdminPluginSettingsPage = lazy(() => import('./components/pages/AdminPluginSettingsPage'))
 const AdminAccessPage = lazy(() => import('./components/pages/AdminAccessPage'))
 const PluginPage = lazy(() => import('./plugins/PluginPage'))
 const AdminNotificationsPage = lazy(() => import('./components/pages/AdminNotificationsPage'))
@@ -91,6 +92,7 @@ function App() {
                     <Route path="/projects/:projectId" element={loading(<ProjectDetailPage />)} />
                     <Route path="/admin/security" element={<AdminRoute><AdminSecurityPage /></AdminRoute>} />
                     <Route path="/admin/sections/:sectionId" element={<AdminRoute><AdminSectionPage /></AdminRoute>} />
+                    <Route path="/admin/sections/:sectionId/plugins/:pluginId" element={<AdminRoute>{loading(<AdminPluginSettingsPage />)}</AdminRoute>} />
                     <Route path="/admin/users" element={<AdminRoute>{loading(<AdminUsersPage />)}</AdminRoute>} />
                     <Route path="/admin/branding" element={<AdminRoute><AdminBrandingPage /></AdminRoute>} />
                     <Route path="/admin/navigation" element={<AdminRoute>{loading(<AdminNavigationPage />)}</AdminRoute>} />

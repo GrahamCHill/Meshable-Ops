@@ -48,7 +48,7 @@ Dependency and conflict checks also protect direct APIs. Disabling/removing a re
 
 ## Admin categories and optional settings
 
-`adminMenu.category` can use an existing admin group (`workspace`, `people-security`, `storage-sharing`, `communications`, `documents-workflows`, `analytics-search`, `operations`) or a custom slug with `categoryLabel`. The host adds a direct settings card there, including while a connection is disabled and needs configuration. Existing group names cannot be replaced by a plugin.
+`adminMenu.category` can use an existing admin group (`workspace`, `people-security`, `storage-sharing`, `communications`, `documents-workflows`, `analytics-search`, `operations`) or a custom slug with `categoryLabel`. The host adds a direct settings card there while the plugin is active. Enable it in the catalogue first; provider credentials can then be configured without launching its page. Existing group names cannot be replaced by a plugin.
 
 `adminMenu.icon` selects a default built-in section icon. Administrators can override category artwork with a built-in icon or uploaded WebP in **Workspace → Navigation & section icons**. See [navigation and artwork](../navigation-and-icons.md) for icon names, limits, permissions, and ordering.
 
@@ -69,3 +69,5 @@ These mechanisms extend the app across screens. Uploaded ZIPs can also provide [
 Super admins can remove a plugin after typing its ID. Removing a ZIP deletes the installed package; re-upload it to reinstall. Removing a bundled module disables/hides it and marks it removed; its compiled code remains in the image and **Show removed bundled plugins → Restore** reinstates it disabled.
 
 Removal retains business tables and encrypted configuration. **Clear data** remains a separate explicit operation to empty declared tables before removal. Reinstalling a ZIP can reuse retained fixed-schema tables; settings are left disabled until configured. Provider-side messages/files/calendar copies are unaffected. Back up PostgreSQL and the wrapping key before deleting business data.
+
+Settings shortcuts for active plugins use the integrated `/admin/sections/{category}/plugins/{id}` route. Disabled plugins retain catalogue activation/removal controls but expose no editable configuration menus. Their saved navigation positions are retained and hidden from the ordering editor.

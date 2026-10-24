@@ -19,7 +19,7 @@ enum class CardStatus { TODO, IN_PROGRESS, DONE }
 enum class MovePermission { EDITORS, ASSIGNEE, REVIEWERS, SELECTED_MEMBERS, MANAGERS }
 data class ColumnPermission(val mode: MovePermission = MovePermission.EDITORS, val userIds: Set<UUID> = emptySet())
 data class KanbanColumn(val id: UUID, val title: String, val status: CardStatus? = null,
-    val enter: ColumnPermission = ColumnPermission(), val leave: ColumnPermission = ColumnPermission())
+    val enter: ColumnPermission = ColumnPermission(), val leave: ColumnPermission = ColumnPermission(), val startsWork: Boolean? = null)
 data class KanbanCard(val id: UUID, val columnId: UUID, val title: String, val description: String = "", val dueDate: java.time.LocalDate? = null,
     val assigneeId: UUID? = null, val startDate: java.time.LocalDate? = null, val completionDate: java.time.LocalDate? = null,
     val sprintId: UUID? = null, val storyPoints: Double? = null, val reviewerIds: Set<UUID> = emptySet(), val status: CardStatus = CardStatus.TODO,

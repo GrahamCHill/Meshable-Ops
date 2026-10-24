@@ -20,7 +20,7 @@ class NavigationService(private val repository: NavigationSettingsRepository, pr
         return NavigationPreferences(json.readValue(row.orderJson, object : TypeReference<List<String>>() {}),
             json.readValue(row.submenusJson, object : TypeReference<Map<String, List<String>>>() {}), row.revision)
     }
-    fun admin() = NavigationView(current(), catalogue.all())
+    fun admin() = NavigationView(current(), catalogue.configurable())
     fun member(actor: User): NavigationView {
         val items = catalogue.visible(actor)
         val preferences = current()
@@ -48,7 +48,7 @@ class NavigationService(private val repository: NavigationSettingsRepository, pr
         val row = repository.findById(1).orElseGet { NavigationSettings() }
         row.orderJson = json.writeValueAsString(request.order); row.submenusJson = json.writeValueAsString(request.submenus)
         val saved = repository.saveAndFlush(row)
-        return NavigationView(request.copy(revision = saved.revision), items)
+        return NavigationView(request.copy(revision = saved.revision), catalogue.configurable())
     }
     private fun invalid(): Nothing = throw BadRequestException("Use each declared menu or section at most once. Menu settings cannot add new destinations.")
 }

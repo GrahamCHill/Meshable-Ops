@@ -1,6 +1,8 @@
 # Plugin settings
 
-Every installed plugin has a **Manage** entry in **Administration → Plugins** for activation, allowed roles, search, and table policies. **Settings** appears only when `hasAdminSettings` is true and editable configuration fields exist. **Connections** appears for declared relationships/features, and **Data** when the plugin owns tables. A plugin can add a direct settings card to an existing or custom admin category using `adminMenu`; see [presentation](presentation-and-lifecycle.md#admin-categories-and-optional-settings). URLs retain the selected plugin/tab, for example `/admin/plugins?plugin=telegram&tab=configuration`.
+Every installed plugin has a **Manage** entry in **Administration > Plugins** for activation and data/removal controls. A disabled plugin exposes activation only in its Manage form; its saved settings remain stored. **Settings** appears for active plugins when `hasAdminSettings` is true and editable configuration fields exist. It opens within the owning admin category, for example `/admin/sections/communications/plugins/telegram`, with section breadcrumbs and a back link. Messaging account mappings are on that same page's **People & chats** tab. Existing catalogue configuration bookmarks redirect there while active.
+
+Disabled, removed, blocked or unavailable plugins have no editable configuration menu or People & chats tab. A direct settings bookmark shows an unavailable message. **Connections** remains a read-only dependency summary, and **Data** remains available for declared tables. A plugin can add a settings card to an existing or custom admin category using `adminMenu`; see [presentation](presentation-and-lifecycle.md#admin-categories-and-optional-settings).
 
 Declare configuration fields in the backend manifest:
 

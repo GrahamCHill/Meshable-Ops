@@ -28,6 +28,16 @@ AWS/Azure cloud-init calls `provision-secrets.py` once to add missing database/w
 
 ## Existing installations
 
+### Browser sessions and transport
+
+Authentication now uses a server-recorded browser session in `user_browser_sessions`. The JWT and a separate random browser proof are sent only in HttpOnly cookies. Only proof/CSRF hashes are stored server-side, and the signed JWT binds the session ID to the proof hash. Copying the JWT or old local-storage data alone cannot authenticate another browser. Logout revokes the server record; expiry and account/MFA session-version checks still apply. Copying every cookie from a compromised browser can still compromise that session; this is not hardware-bound authentication.
+
+Login responses no longer expose a usable JWT. The frontend clears legacy JWT storage and retains only user display data and a non-secret, user-specific UI marker. Unsafe authenticated requests require the session's CSRF header; cross-site write/login requests are rejected. Authenticated responses use `Cache-Control: no-store`, and referrer headers are suppressed. The API client removes Authorization headers and rejects requests to another origin or non-HTTPS APIs outside localhost before transmission.
+
+Production requires HTTPS, `APP_AUTH_COOKIE_SECURE=true` (the default), and an exact trusted `CORS_ALLOWED_ORIGINS` configuration. Production Compose sets that origin to `https://${APP_DOMAIN}`. Secure cookies use the `__Host-` prefix, Path `/`, no Domain and SameSite Strict; authentication/proof cookies are HttpOnly. Serve the frontend and API through the same origin so the CSRF cookie is available to the frontend. Only loopback development should set the secure-cookie flag false. The frontend also supplies HSTS for HTTPS clients. Existing unbound tokens are rejected: users must sign in again after deploying this update. Rebuild/restart the backend and frontend to activate these changes; the schema update must include the new session table. Rebuild the WeasyPrint service as well to enable the new report pages and cover designer.
+
+See the [OWASP session guidance](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html) and [browser storage guidance](https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html).
+
 These code changes do not delete existing users, folders, events, dashboards, or database volumes. Removing startup seeds cannot erase old seeded records. Back up your data, create/verify an intended admin, deactivate unwanted accounts, and remove unwanted content through the relevant administration tools. Review old Superset authoring users too.
 
 Set environment secrets to match the credentials already used by existing databases. Changing a Compose variable alone does not change a stored database password. Rotate old known passwords deliberately with the corresponding service's administrative tools and update dependent connections together. Preserve the current wrapping key and JWT secrets unless intentionally rotating them. Never delete volumes just to apply this update.

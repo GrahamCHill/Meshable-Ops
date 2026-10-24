@@ -17,6 +17,8 @@ class BrandingPreferencesService(private val repository: BrandingPreferencesRepo
     fun save(request: BrandingPreferences): BrandingPreferences {
         val name = request.applicationName.trim()
         if (name.isEmpty() || name.length > 80 || name.any { it.isISOControl() }) throw BadRequestException("Use an application name between 1 and 80 characters")
+        val company=request.companyName.trim()
+        if(company.length>120 || company.any {it.isISOControl()})throw BadRequestException("Use a company name of up to 120 characters")
         val background = color(request.sidebarBackgroundColor); val text = color(request.sidebarTextColor); val link = color(request.linkColor)
         if (request.slideshowSeconds !in 5..60 || request.loginBackgroundSlot?.let { it !in 0..4 } == true) throw BadRequestException("Use image slots 1–5 and a slide interval between 5 and 60 seconds")
         if (request.loginBackgroundMode != LoginBackgroundMode.NONE && (images.count() == 0L ||
@@ -25,6 +27,7 @@ class BrandingPreferencesService(private val repository: BrandingPreferencesRepo
         val row = repository.findById(1).orElseGet { BrandingPreferencesRecord() }
         if (row.revision != request.revision) throw ConflictException("Branding changed. Reload the saved settings before editing.")
         row.applicationName = name; row.sidebarBackgroundColor = background; row.sidebarTextColor = text; row.linkColor = link
+        row.companyName=company
         row.loginBackgroundMode = request.loginBackgroundMode; row.loginBackgroundSlot = request.loginBackgroundSlot; row.slideshowSeconds = request.slideshowSeconds
         row.themesJson = mapper.writeValueAsString(request.themes.copy(light = palette(request.themes.light), dark = palette(request.themes.dark), custom = palette(request.themes.custom)))
         return view(repository.saveAndFlush(row))
@@ -39,5 +42,5 @@ class BrandingPreferencesService(private val repository: BrandingPreferencesRepo
         color(p.tableHeaderText), color(p.headerBackground), color(p.headerText))
     private fun view(row: BrandingPreferencesRecord) = BrandingPreferences(if (row.applicationName == "WeaveOps") "Meshable Ops" else row.applicationName, row.sidebarBackgroundColor, row.sidebarTextColor,
         row.linkColor, row.loginBackgroundMode, row.loginBackgroundSlot, row.slideshowSeconds, row.revision,
-        mapper.readValue(row.themesJson, WorkspaceThemes::class.java))
+        mapper.readValue(row.themesJson, WorkspaceThemes::class.java), row.companyName)
 }

@@ -18,6 +18,7 @@ export function PluginConfigurationForm({plugin}: {plugin: PluginView}) {
   const save = useMutation({mutationFn: () => pluginsApi.saveConfiguration(id, values, clearSecrets, configuration.data?.revision ?? 0), onSuccess: data => {
     client.setQueryData(['plugin-configuration', id], data)
     setValues(data.values); setClearSecrets([]); setDirty(false)
+    void client.invalidateQueries({queryKey:['operations','cloud']})
   }})
   if (!plugin.manifest.settingsFields.length) return <p>This plugin has no additional configuration. Use General for access and search settings.</p>
   if (configuration.isLoading) return <p role="status">Loading configuration…</p>
@@ -25,7 +26,7 @@ export function PluginConfigurationForm({plugin}: {plugin: PluginView}) {
   const current = configuration.data!
   return <form className="page-stack" onSubmit={event => {event.preventDefault(); save.mutate()}}>
     <h2>{plugin.manifest.name} configuration</h2>
-    <p className="field-help">Credentials are encrypted on the server and never returned to the browser. Blank credential fields keep existing values. Saving does not contact the provider. You can save an incomplete draft before enabling the plugin.</p>
+    <p className="field-help">Credentials are encrypted on the server and never returned to the browser. Blank credential fields keep existing values. Saving does not contact the provider. Incomplete drafts can be saved; provider actions require the configured fields.</p>
     {!current.encryptionConfigured && <p role="alert">Configure the server encryption key before saving plugin configuration.</p>}
     {current.missingRequired.length > 0 && <p className="field-help">Required before use: {current.missingRequired.join(', ')}.</p>}
     <fieldset className="page-stack" disabled={save.isPending || !current.encryptionConfigured}>
@@ -33,7 +34,7 @@ export function PluginConfigurationForm({plugin}: {plugin: PluginView}) {
         const secret = field.type === 'SECRET'
         const stored = current.configuredSecrets.includes(field.key)
         const cleared = clearSecrets.includes(field.key)
-        if (field.type === 'BOOLEAN') return <label key={field.key} className="checkbox-label"><input type="checkbox" checked={(values[field.key] ?? field.defaultValue) === 'true'} onChange={event => {setValues(previous => ({...previous,[field.key]:String(event.target.checked)}));setDirty(true);save.reset()}}/><span>{field.label}{field.help && <small className="field-help">{field.help}</small>}</span></label>
+        if (field.type === 'BOOLEAN') return <label key={field.key} className="checkbox-label"><input type="checkbox" checked={(values[field.key] ?? field.defaultValue) === 'true'} onChange={event => {setValues(previous => ({...previous,[field.key]:String(event.target.checked)}));setDirty(true);save.reset()}}/><span>{field.label}{field.help && <small className="field-help" style={{display:'block'}}>{field.help}</small>}</span></label>
         if (field.key === 'timeZone') return <TimeZoneSelect key={field.key} value={values[field.key]??field.defaultValue??'UTC'} onChange={value=>{setValues(previous=>({...previous,[field.key]:value}));setDirty(true);save.reset()}}/>
         return <div key={field.key} className="page-stack">
           <label className="form-field">{field.label}{field.required ? ' (required for use)' : ''}

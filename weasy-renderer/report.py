@@ -47,11 +47,9 @@ class LeadTime(BaseModel):
     slowestDays: int | None = Field(default=None, ge=0, le=4000000)
     sampleSize: int = Field(default=0, ge=0, le=2000)
     completedTickets: int = Field(default=0, ge=0, le=2000)
-    missingCreation: int = Field(default=0, ge=0, le=2000)
+    missingStart: int = Field(default=0, ge=0, le=2000)
     missingCompletion: int = Field(default=0, ge=0, le=2000)
     invalidDates: int = Field(default=0, ge=0, le=2000)
-    cycleAverageDays: float | None = Field(default=None, ge=0, le=4000000, allow_inf_nan=False)
-    cycleSampleSize: int = Field(default=0, ge=0, le=2000)
     distribution: list[Breakdown] = Field(default_factory=list, max_length=5)
     boards: list[BoardLeadTime] = Field(default_factory=list, max_length=8)
 
@@ -81,6 +79,10 @@ class ReportDocument(BaseModel):
     insights: Insights = Field(default_factory=Insights)
     leadTime: LeadTime = Field(default_factory=LeadTime)
     coverHtml: str | None = Field(default=None, max_length=30000)
+    coverAssets: dict[str, str] = Field(default_factory=dict, max_length=8)
+    siteName: str = Field(default='', max_length=80)
+    companyName: str = Field(default='', max_length=120)
+    siteLogo: str = Field(default='', max_length=350000)
 
     @model_validator(mode="after")
     def bounded_report(self):
@@ -89,6 +91,8 @@ class ReportDocument(BaseModel):
         if self.coverHtml:
             from report_cover import validate_cover_html
             validate_cover_html(self.coverHtml)
+        if any(len(name) > 120 or len(image) > 350000 for name, image in self.coverAssets.items()) or sum(len(image) for image in self.coverAssets.values()) > 1400000:
+            raise ValueError('Report cover images exceed their limits')
         return self
 
 
@@ -114,8 +118,8 @@ def compact(values, count=6):
 COLORS = ["#2367c9", "#6d55b8", "#159b72", "#dc9618", "#1497a7", "#d45b91", "#77879a"]
 
 
-def bars(title, values):
-    values = compact(values)
+def bars(title, values, ordered=False):
+    values = values if ordered else compact(values)
     maximum = max([item.count for item in values] + [1])
     rows = "".join(f'<tr><td><div class="bar-label">{escape(short(item.label))}<b>{item.count}</b></div><div class="bar-bg"><div style="width:{item.count / maximum * 100:.2f}%;background:{COLORS[i % len(COLORS)]}"></div></div></td></tr>' for i, item in enumerate(values))
     return f'<div class="chart"><h3>{escape(title)}</h3><table class="bars">{rows}</table>{"<p class=muted>No tickets in this group.</p>" if not values else ""}</div>'
@@ -173,7 +177,7 @@ def report_html(value):
     lead = report.leadTime
     lead_metrics = ''.join(metric(label, number(count)) for label, count in [("Average lead time (days)", lead.averageDays), ("Median (days)", lead.medianDays), ("Fastest (days)", lead.fastestDays), ("Slowest (days)", lead.slowestDays)])
     by_board = ''.join(f'<tr><td>{escape(short(item.board, 60))}</td><td>{item.count}</td><td>{item.averageDays:.1f} days</td></tr>' for item in lead.boards)
-    lead_page = f'<section class="report-page" id="report-leadtime">{heading}<h1>Average ticket lead time</h1>{period}<div class="metrics lead-metrics">{lead_metrics}</div><p><b>{lead.sampleSize} measured tickets</b> out of {lead.completedTickets} completed tickets in scope.</p><p class="muted">Lead time is calendar days from the server-recorded creation date (UTC) to the recorded completion date. Same-day completion is zero days. Reopened tickets are excluded until completed again.</p><div class="chart-grid">{bars("Lead-time distribution", lead.distribution)}<div class="chart"><h3>Data coverage</h3><p>{lead.missingCreation} completed tickets have no creation timestamp.</p><p>{lead.missingCompletion} have no completion date.</p><p>{lead.invalidDates} have inconsistent date order.</p><p class="muted">These counts can overlap. Missing historical dates are never invented.</p><h3>Recorded cycle time</h3><p><b>{number(lead.cycleAverageDays)} days</b> across {lead.cycleSampleSize} tickets</p><p class="muted">Start date to completion date; separate from creation-to-completion lead time.</p></div></div><h2>Lead time by board</h2><table class="lead-table"><thead><tr><th>Board</th><th>Measured tickets</th><th>Average</th></tr></thead><tbody>{by_board or "<tr><td colspan=3>No eligible completed tickets in this scope.</td></tr>"}</tbody></table><p class="muted">Up to eight boards with the largest measured samples. New tickets record creation timestamps automatically; historical tickets without one remain excluded from lead time.</p></section>'
+    lead_page = f'<section class="report-page" id="report-leadtime">{heading}<h1>Average ticket lead time</h1>{period}<div class="metrics lead-metrics">{lead_metrics}</div><p><b>{lead.sampleSize} measured tickets</b> out of {lead.completedTickets} completed tickets in scope.</p><p class="muted">Lead time is calendar days from the ticket start date to its recorded completion date. Same-day completion is zero days. Reopened tickets are excluded until completed again.</p><div class="chart-grid">{bars("Lead-time distribution", lead.distribution, ordered=True)}<div class="chart"><h3>Data coverage</h3><p>{lead.missingStart} completed tickets have no start date.</p><p>{lead.missingCompletion} have no completion date.</p><p>{lead.invalidDates} have inconsistent date order.</p><p class="muted">These counts can overlap. Missing historical dates are never invented.</p><h3>Recording start dates</h3><p>Entering a Work started column fills an empty start date with that day in UTC. Existing dates are retained.</p></div></div><h2>Lead time by board</h2><table class="lead-table"><thead><tr><th>Board</th><th>Measured tickets</th><th>Average</th></tr></thead><tbody>{by_board or "<tr><td colspan=3>No eligible completed tickets in this scope.</td></tr>"}</tbody></table><p class="muted">Up to eight boards with the largest measured samples. Completed tickets without a start or completion date remain excluded from lead time.</p></section>'
     sections = []
     limits = [160, 140, 90, 110, 240]
     for section in report.sections:
@@ -189,7 +193,7 @@ def report_html(value):
 def index_html(report, pages):
     rows = ''.join(f'<tr><td>{title}</td><td>{page}</td></tr>' for title, page in [("Kanban summary", 1), ("Additional insights", 2), ("Average ticket lead time", 3), ("Ticket export", 4)])
     scope = ''.join(f'<li>{escape(short(line, 160))}</li>' for line in report.summary[:6])
-    return f'<!doctype html><html><head><meta charset="utf-8"><style>@page{{size:A4;margin:22mm}}body{{font:11pt "Liberation Sans",sans-serif;color:#132842;line-height:1.6}}h1{{font-size:30pt;margin-top:20mm}}table{{width:100%;border-collapse:collapse;margin-top:12mm}}td{{padding:5mm 0;border-bottom:1px solid #dce4ed}}td:last-child{{text-align:right}}.muted{{font-size:9pt;color:#617186}}ul{{padding-left:5mm}}</style></head><body><p>{escape(report.organization)}</p><h1>Report index</h1><p>{escape(report.subtitle)}</p><p>{escape(report.period)}</p><table>{rows}</table><p class="muted">Page numbers start at the Kanban summary. This cover and index precede numbered page 1. The report contains {pages} numbered pages.</p><h2>Scope</h2><ul>{scope}</ul></body></html>'
+    return f'<!doctype html><html><head><meta charset="utf-8"><style>@page{{size:A4;margin:22mm}}body{{font:11pt "Liberation Sans",sans-serif;color:#132842;line-height:1.6}}h1{{font-size:30pt;margin-top:20mm}}table{{width:100%;border-collapse:collapse;margin-top:12mm}}td,th{{padding:5mm 0;border-bottom:1px solid #dce4ed}}th{{text-align:left;font-size:10pt;background:#f0f5fc}}td:last-child,th:last-child{{text-align:right}}.muted{{font-size:9pt;color:#617186}}ul{{padding-left:5mm}}</style></head><body><p>{escape(report.organization)}</p><h1>Report index</h1><p>{escape(report.subtitle)}</p><p>{escape(report.period)}</p><table><thead><tr><th scope="col">Content</th><th scope="col">Page</th></tr></thead><tbody>{rows}</tbody></table><p class="muted">Page numbers start at the Kanban summary. This cover and index precede numbered page 1. The report contains {pages} numbered pages.</p><h2>Scope</h2><ul>{scope}</ul></body></html>'
 
 
 def render_report(value):
@@ -202,7 +206,7 @@ def render_report(value):
     for index, anchor in enumerate(expected):
         if index >= len(body.pages) or anchor not in body.pages[index].anchors:
             raise ValueError("Analytical report pages exceed their fixed layout")
-    cover = render_cover_document({"html": report.coverHtml, "title": report.title, "organization": report.organization, "project": report.subtitle, "period": report.period, "ticketCount": (report.kanban.total if report.kanban else sum(len(section.rows) for section in report.sections))})
+    cover = render_cover_document({"html": report.coverHtml, "title": report.title, "organization": report.organization, "project": report.subtitle, "period": report.period, "ticketCount": (report.kanban.total if report.kanban else sum(len(section.rows) for section in report.sections)), 'assets': report.coverAssets, 'siteName': report.siteName, 'companyName': report.companyName, 'siteLogo': report.siteLogo})
     index = HTML(string=index_html(report, len(body.pages)), url_fetcher=inline_only).render()
     if len(index.pages) != 1 or not 4 <= len(body.pages) <= 198:
         raise ValueError("Report must have a cover, index and 4-198 numbered pages")

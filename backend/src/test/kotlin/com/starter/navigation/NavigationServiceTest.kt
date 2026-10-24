@@ -39,4 +39,14 @@ class NavigationServiceTest {
         val member=service.member(actor)
         assertThat(member.preferences.order).containsExactly("home");assertThat(member.preferences.submenus).isEmpty()
     }
+    @Test fun `admin responses hide disabled items while preserving saved positions through edits`() {
+        val home=NavigationItem("home","Home","/")
+        `when`(catalogue.configurable()).thenReturn(listOf(home))
+        `when`(rows.findById(1)).thenReturn(Optional.of(NavigationSettings(orderJson="[\"plugin:calendar\",\"home\"]",revision=4)))
+        assertThat(service.admin().items).containsExactly(home)
+        assertThat(service.admin().preferences.order).containsExactly(calendar.id,"home")
+        val saved=service.save(NavigationPreferences(listOf(calendar.id,"home"),revision=4))
+        assertThat(saved.items).containsExactly(home)
+        assertThat(saved.preferences.order).containsExactly(calendar.id,"home")
+    }
 }

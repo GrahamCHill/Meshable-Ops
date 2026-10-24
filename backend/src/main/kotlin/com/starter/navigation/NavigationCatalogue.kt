@@ -31,6 +31,11 @@ class NavigationCatalogue(private val modules: List<WorkspacePlugin>, private va
         return core + pages + links
     }
 
+    /** Order only active plugins; all() remains the validation catalogue for retained positions. */
+    fun configurable(): List<NavigationItem> {
+        val active = registry.available("ADMIN").map {it.manifest.id}.toSet()
+        return all().filter {it.pluginId == null || it.pluginId in active}
+    }
     /** Member responses omit unavailable plugins and forbidden sections, even when their order is retained. */
     fun visible(actor: User): List<NavigationItem> {
         val features = access.features(actor)

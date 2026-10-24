@@ -31,7 +31,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       login: (_token, user) => {
         localStorage.removeItem('token')
-        set({ token: 'cookie-session', user })
+        set({ token: user.id+':cookie-session', user })
       },
       logout: () => {
         localStorage.removeItem('token')
@@ -43,6 +43,6 @@ export const useAuthStore = create<AuthState>()(
       refreshUser: user => set({ user }),
       isAuthenticated: () => !!get().token,
     }),
-    { name: 'auth-storage', version: 2, migrate: () => ({token:null,user:null}), partialize: state => ({ token: state.user ? 'cookie-session' : null, user: state.user }) }
+    { name: 'auth-storage', version: 2, migrate: () => ({token:null,user:null}), partialize: state => ({ token: state.user ? state.user.id+':cookie-session' : null, user: state.user }) }
   )
 )
