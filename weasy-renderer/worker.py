@@ -13,6 +13,9 @@ if __name__ == "__main__":
         if "report" in request:
             from report import render_report
             sys.stdout.buffer.write(render_report(request["report"]))
+        elif "cover" in request:
+            from report_cover import render_cover
+            sys.stdout.buffer.write(render_cover(request["cover"]))
         else:
             from plugins.registry import render_plugin
             sys.stdout.buffer.write(render_plugin(request.get("operation", "documents.render"), request))

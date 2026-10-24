@@ -8,7 +8,12 @@ import java.util.UUID
 enum class ChargeRecurrence { MONTHLY, ONCE }
 data class CatalogItem(val name:String,val amount:BigDecimal,val currency:String="USD",val quantity:BigDecimal=BigDecimal.ONE,
     val pricesIncludeTax:Boolean=false,val recurrence:ChargeRecurrence=ChargeRecurrence.MONTHLY,val activeFrom:LocalDate,val activeTo:LocalDate?=null,val enabled:Boolean=true)
-data class CatalogInput(val projectId:UUID,val item:CatalogItem,val revision:Long = -1)
+data class CatalogInput(val item:CatalogItem,val projectId:UUID?=null,val revision:Long = -1)
+data class BillingItemLink(val itemId:UUID,val projectId:UUID?=null,val clientId:UUID?=null,val baseItem:CatalogItem,val baseRevision:Long,
+    val proposedItem:CatalogItem?=null,val proposalVersion:Long=0,val approvedOverrides:Map<UUID,CatalogItem> = emptyMap(),val approvals:Map<UUID,Long> = emptyMap())
+data class BillingLinkInput(val itemId:UUID,val projectId:UUID?=null,val clientId:UUID?=null)
+data class BillingOverrideInput(val item:CatalogItem,val revision:Long)
+data class BillingOverrideApproval(val projectId:UUID,val revision:Long,val proposalVersion:Long)
 data class BillingProfile(val clientId:UUID,val billingEmail:String,val billingAddress:String,val businessManagerId:UUID,val currency:String="USD",val taxNumber:String="",val paymentTermsDays:Int=30)
 data class BillingProfileInput(val profile:BillingProfile,val revision:Long = -1)
 enum class BillingKind { INVOICE, QUOTE, PROVISIONAL }

@@ -48,6 +48,28 @@ async def render_report(request: Request):
     return await render_payload(value)
 
 
+@app.post("/reports/cover/validate")
+async def validate_report_cover(request: Request):
+    value = await payload(request, "cover")
+    from report_cover import validate_cover_html
+    try:
+        validate_cover_html(value["cover"].get("html"))
+    except (ValueError, TypeError):
+        raise HTTPException(400, "Invalid HTML cover design") from None
+    return {"valid": True}
+
+
+@app.post("/reports/cover/preview")
+async def preview_report_cover(request: Request):
+    value = await payload(request, "cover")
+    from report_cover import validate_cover_html
+    try:
+        validate_cover_html(value["cover"].get("html"))
+    except (ValueError, TypeError):
+        raise HTTPException(400, "Invalid HTML cover design") from None
+    return await render_payload(value)
+
+
 async def render_payload(value):
     if not workers.acquire(blocking=False):
         raise HTTPException(503, "Document rendering is busy")

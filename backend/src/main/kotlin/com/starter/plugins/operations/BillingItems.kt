@@ -8,27 +8,21 @@ import java.math.BigDecimal
 import java.util.UUID
 
 @Service
-class BillingItems(private val store:OperationsStore,private val access:OperationsAccess) {
-    fun list(email:String,project:UUID):List<Map<String,Any>> {access.project(email,"billing-items",project,true,false);return store.list("billing-items","kind='ITEM' AND project_id=?",project).map {mapOf("id" to it.id,"item" to store.decode(it,CatalogItem::class.java),"revision" to it.revision)}}
-    @Transactional fun save(email:String,id:UUID?,input:CatalogInput):OpsRow {
-        val (actor,_)=access.project(email,"billing-items",input.projectId,true,true);val item=input.item
-        OperationsValidation.text(item.name,"item name",200);OperationsValidation.currency(item.currency)
-        if(item.amount.signum()<0||item.amount>BigDecimal("1000000000")||item.amount.scale()>6||item.quantity.signum()<=0||item.quantity>BigDecimal("100000000")||item.quantity.scale()>6||item.activeTo?.isBefore(item.activeFrom)==true)throw BadRequestException("Choose valid item prices, quantities and effective dates")
-        val row=id?.let {store.get("billing-items",it).also {r->if(r.kind!="ITEM"||r.projectId!=input.projectId)throw NotFoundException("Billing item unavailable")}}
-        return store.save("billing-items",row?.ownerId ?: actor.id,input.projectId,"ITEM",item,id ?: UUID.randomUUID(),if(id==null)-1 else input.revision)
-    }
+class BillingItems(private val store:OperationsStore,private val access:OperationsAccess,private val catalog:BillingCatalog) {
+    fun list(email:String,project:UUID)=catalog.links(email,project,null)
+    fun save(email:String,id:UUID?,input:CatalogInput)=catalog.save(email,id,input)
     fun sources(email:String,input:BillingGenerate):List<BillingLine> {
         val result=mutableListOf<BillingLine>()
         if(input.includeItems && access.enabled("billing-items")) {
-            access.project(email,"billing-items",input.projectId,false,false)
-            store.list("billing-items","kind='ITEM' AND project_id=?",input.projectId).forEach {row->val item=store.decode(row,CatalogItem::class.java)
+            val (_,project)=access.project(email,"billing-items",input.projectId,false,false)
+            catalog.effective(project).forEach {source->val item=source.item
                 if(!item.enabled||!BillingRates.overlaps(item.activeFrom,item.activeTo,input.from,input.to))return@forEach
                 if(item.currency!=input.currency)throw BadRequestException("Billing item currencies differ from this invoice; currency conversion is never automatic")
-                if(item.recurrence==ChargeRecurrence.ONCE) {if(item.activeFrom in input.from..input.to)result+=BillingLine("item:${row.id}:once",item.name,item.quantity,item.amount,item.pricesIncludeTax,"ITEM",row.id)}
+                if(item.recurrence==ChargeRecurrence.ONCE) {if(item.activeFrom in input.from..input.to)result+=BillingLine("item:${source.keyId}:once",item.name,item.quantity,item.amount,item.pricesIncludeTax,"ITEM",source.itemId)}
                 else {
                     var month=YearMonth.from(input.from)
                     while(month<=YearMonth.from(input.to)) {
-                        if(BillingRates.overlaps(item.activeFrom,item.activeTo,month.atDay(1),month.atEndOfMonth()))result+=BillingLine("item:${row.id}:$month","${item.name} ($month)",item.quantity,item.amount,item.pricesIncludeTax,"ITEM",row.id)
+                        if(BillingRates.overlaps(item.activeFrom,item.activeTo,month.atDay(1),month.atEndOfMonth()))result+=BillingLine("item:${source.keyId}:$month","${item.name} ($month)",item.quantity,item.amount,item.pricesIncludeTax,"ITEM",source.itemId)
                         month=month.plusMonths(1)
                     }
                 }

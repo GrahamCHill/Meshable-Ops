@@ -8,7 +8,7 @@ COPY requirements.lock .
 RUN pip install --require-hashes --only-binary=:all: --no-cache-dir -r requirements.lock && useradd --create-home renderer
 COPY backend ./backend
 COPY plugins ./plugins
-COPY app.py worker.py report.py resources.py ./
+COPY app.py worker.py report.py report_cover.py resources.py ./
 USER renderer
 EXPOSE 8000
 CMD ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]

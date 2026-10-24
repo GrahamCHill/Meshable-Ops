@@ -33,3 +33,4 @@
 .project-development-settings{padding:12px;border:1px solid var(--color-border);border-radius:8px}.project-development-settings>div{margin-top:16px}
 .project-development-list{display:grid;gap:12px}.project-development-link{display:flex;justify-content:space-between;gap:16px;padding:16px;border:1px solid var(--color-border);border-radius:8px}.project-development-link h3{margin:8px 0}.project-development-link p{margin:6px 0}.project-development-state{padding:2px 8px;background:var(--color-surface-2);border-radius:12px}.project-development-form{margin-top:16px;max-width:640px}
 @media(max-width:640px){.project-development-link{flex-direction:column}.project-board-shortcuts .page-heading{align-items:flex-start;flex-direction:column}}
+.project-report-cover-editor{border:1px solid var(--color-border);border-radius:8px;padding:20px}.project-report-cover-source{font-family:monospace;font-size:12px;line-height:1.5;tab-size:2}

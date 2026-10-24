@@ -44,7 +44,12 @@ class CloudCostController(private val service:CloudCosts) {
     @PostMapping("/connections/{id}/refresh") fun refresh(@AuthenticationPrincipal u:UserDetails,@PathVariable id:UUID,@RequestBody i:CloudRefresh)=service.refresh(u.username,id,i)
 }
 @RestController @RequestMapping("/api/plugins/billing-items")
-class BillingItemsController(private val items:BillingItems,private val rates:BillingRates) {
+class BillingItemsController(private val items:BillingItems,private val rates:BillingRates,private val catalog:BillingCatalog) {
+    @GetMapping("/catalog") fun catalog(@AuthenticationPrincipal u:UserDetails)=catalog.catalog(u.username)
+    @GetMapping("/links") fun links(@AuthenticationPrincipal u:UserDetails,@RequestParam(required=false) projectId:UUID?,@RequestParam(required=false) clientId:UUID?)=catalog.links(u.username,projectId,clientId)
+    @PostMapping("/links") fun link(@AuthenticationPrincipal u:UserDetails,@RequestBody i:BillingLinkInput)=catalog.link(u.username,i)
+    @PostMapping("/links/{id}/propose") fun propose(@AuthenticationPrincipal u:UserDetails,@PathVariable id:UUID,@RequestBody i:BillingOverrideInput)=catalog.propose(u.username,id,i)
+    @PostMapping("/links/{id}/approve") fun approve(@AuthenticationPrincipal u:UserDetails,@PathVariable id:UUID,@RequestBody i:BillingOverrideApproval)=catalog.approve(u.username,id,i)
     @GetMapping fun list(@AuthenticationPrincipal u:UserDetails,@RequestParam projectId:UUID)=items.list(u.username,projectId)
     @PostMapping fun create(@AuthenticationPrincipal u:UserDetails,@RequestBody i:CatalogInput)=items.save(u.username,null,i)
     @PutMapping("/{id}") fun save(@AuthenticationPrincipal u:UserDetails,@PathVariable id:UUID,@RequestBody i:CatalogInput)=items.save(u.username,id,i)

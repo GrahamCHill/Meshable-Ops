@@ -19,7 +19,7 @@ import java.util.UUID
 class ProjectReportCoverRecord(@Id val projectId: UUID = UUID.randomUUID(), @Column(columnDefinition="TEXT") var html: String = "", @Version var revision: Long = 0)
 interface ProjectReportCoverRepository: JpaRepository<ProjectReportCoverRecord,UUID>
 data class ReportCoverInput(val html: String,val revision: Long = -1)
-data class ReportCoverView(val html: String,val revision: Long,val canManage: Boolean)
+data class ReportCoverView(val html: String,val revision: Long,val canManage: Boolean,val defaultHtml: String = ProjectReportCoverService.DEFAULT_HTML)
 data class ReportCoverPreviewInput(val html: String,val title: String = "Project work report",val period: String = "Reporting period")
 
 @Service
