@@ -1,12 +1,13 @@
 import os
+from urllib.parse import quote_plus
 from flask_caching.backends.rediscache import RedisCache
 
 # ─── Core ─────────────────────────────────────────────────────────────────────
-SECRET_KEY = os.environ.get("SUPERSET_SECRET_KEY", "change_me_in_production")
+SECRET_KEY = os.environ["SUPERSET_SECRET_KEY"]
 SQLALCHEMY_DATABASE_URI = (
     f"postgresql+psycopg2://"
-    f"{os.environ.get('DATABASE_USER', 'superset_user')}:"
-    f"{os.environ.get('DATABASE_PASSWORD', 'superset_pass')}@"
+    f"{quote_plus(os.environ.get('DATABASE_USER', 'superset_user'))}:"
+    f"{quote_plus(os.environ['DATABASE_PASSWORD'])}@"
     f"{os.environ.get('DATABASE_HOST', 'postgres')}:"
     f"{os.environ.get('DATABASE_PORT', '5432')}/"
     f"{os.environ.get('DATABASE_DB', 'superset')}"
@@ -87,7 +88,7 @@ HTTP_HEADERS = {
 }
 
 # ─── Guest token (for embedded dashboards) ────────────────────────────────────
-GUEST_TOKEN_JWT_SECRET = os.environ.get("GUEST_TOKEN_JWT_SECRET", "guest_secret_change_me")
+GUEST_TOKEN_JWT_SECRET = os.environ["GUEST_TOKEN_JWT_SECRET"]
 GUEST_TOKEN_JWT_ALGO = "HS256"
 GUEST_TOKEN_JWT_EXP_SECONDS = 300  # 5 minutes; refresh before expiry
 
@@ -103,8 +104,31 @@ CORS_OPTIONS = {
 ENABLE_PROXY_FIX = True
 PROXY_FIX_CONFIG = {"x_for": 1, "x_proto": 1, "x_host": 1, "x_prefix": 1}
 
-# ─── Public role for embedded guests ──────────────────────────────────────────
-PUBLIC_ROLE_LIKE = "Gamma"
+# Guest JWTs restrict a read-only role to the dashboards in their resource claims.
+# Anonymous browsers must never inherit Gamma's editing permissions.
+PUBLIC_ROLE_LIKE = None
+GUEST_ROLE_NAME = "EmbeddedGuest"
+SESSION_COOKIE_NAME = "superset_session"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+
+
+def configure_workspace(app):
+    from flask import redirect, request
+    from flask_login import current_user
+    from urllib.parse import urlencode
+
+    @app.before_request
+    def require_authoring_session():
+        # API requests authenticate through Superset itself (including guest JWTs).
+        # Page requests need a real user before any create/owner operation runs.
+        public = ("/login/", "/static/", "/api/", "/embedded/", "/health")
+        if not request.path.startswith(public) and current_user.is_anonymous:
+            return redirect("/login/?" + urlencode({"next": request.full_path.rstrip("?")}))
+        return None
+
+
+FLASK_APP_MUTATOR = configure_workspace
 
 # ─── Misc ─────────────────────────────────────────────────────────────────────
 ROW_LIMIT = 5000

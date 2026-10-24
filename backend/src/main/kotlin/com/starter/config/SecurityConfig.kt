@@ -20,6 +20,7 @@ import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.core.context.SecurityContextHolder
 import com.starter.security.SaltedPasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.header.writers.StaticHeadersWriter
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource
 import org.springframework.stereotype.Component
@@ -43,9 +44,14 @@ class SecurityConfig(
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain = http
         .csrf { it.disable() }
         .cors { it.configurationSource(corsConfigurationSource()) }
+        .headers { it.addHeaderWriter(StaticHeadersWriter("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet, noimageindex")) }
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
         .authorizeHttpRequests { auth ->
             auth.requestMatchers("/api/health", "/api/auth/**").permitAll()
+            auth.requestMatchers(HttpMethod.GET, "/api/branding", "/api/branding/assets/*/*").permitAll()
+            auth.requestMatchers(HttpMethod.GET, "/api/branding/login-images/*/*").permitAll()
+            auth.requestMatchers(HttpMethod.POST, "/api/webhooks/incoming/*").permitAll()
+            auth.requestMatchers("/api/shared/**").permitAll()
             auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
             auth.anyRequest().authenticated()
         }
@@ -79,6 +85,7 @@ class JwtAuthFilter(
 ) : OncePerRequestFilter() {
 
     override fun doFilterInternal(req: HttpServletRequest, res: HttpServletResponse, chain: FilterChain) {
+        if (req.requestURI.startsWith("/api/webhooks/incoming/")) { chain.doFilter(req, res); return }
         val token = resolveToken(req)
         if (token == null) {
             chain.doFilter(req, res); return

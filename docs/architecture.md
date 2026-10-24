@@ -2,11 +2,16 @@
 
 This document describes the current runtime architecture of the application as it exists in this repository.
 
+Trusted, compiled-in plugins register pages, submenus, APIs, database tables, and optional search providers with the host. An admin controls activation and roles; a shared interceptor gates plugin APIs, with record ownership enforced inside each module. Frontend modules are discovered at build time and lazy loaded behind the server catalogue. Per-table read/write roles apply through service guards. The Kanban example stores private boards with local vectors in PostgreSQL. Workspace search includes only explicitly enabled providers and authorized records; folder searches and AI document retrieval stay scoped to storage. See [Workspace plugins](plugins.md) for extension contracts and current limits.
+
 ## Overview
 
 - End users access the React frontend.
 - The frontend proxies backend API calls, embedded Superset dashboards, and admin-only Superset authoring routes.
 - The backend owns application auth, storage boundaries, search/indexing jobs, optional AI calls, guest-token minting, and embed configuration management.
+- Optional MFA gates session issuance. PostgreSQL stores encrypted factors, one-use challenges/recovery hashes, and shared rate counters. The notification boundary keeps core email and accepts optional channel adapters from Telegram, Teams, and WhatsApp plugins; SMS remains reserved.
+- Admin webhook sends/receipts use authenticated JSON with encrypted bounded delivery history. Protected sharing generates password-encrypted, watermarked PDF attachments and separately controlled online links; originals stay in object storage.
+- The integrated WeasyCanvas designer uses a private Python/WeasyPrint renderer. Kotlin owns template publication, typed data/calculations, document/workflow access, PDF persistence, and explicit email sends. Workflow graphs are saved/validated definitions; automatic execution is outside this first version.
 - Superset remains internal to the stack and is not intended to be exposed directly to users.
 
 In practice, the architecture can be run in two main ways:
@@ -31,6 +36,7 @@ flowchart LR
     frontend["Frontend\nReact + nginx proxy"]
     backend["Backend\nSpring Boot API"]
     ml["ML Backend\noptional bounded text extraction"]
+    weasy["WeasyCanvas renderer\nprivate validated PDF generation"]
     objects["S3 / Azure Blob\noriginal documents"]
     ai["Optional chat / embedding provider"]
 
@@ -56,6 +62,7 @@ flowchart LR
     backend -->|event/activity docs| mongo
     backend -->|selected folder boundaries| objects
     backend -.->|content extraction when enabled| ml
+    backend -->|saved templates and validated field values| weasy
     backend -.->|server-side calls when configured| ai
     backend -->|Superset admin API + guest tokens| superset
 
@@ -244,7 +251,7 @@ Folder metadata remains relational and searchable; object storage is the durable
 
 ## Credential boundary
 
-Admin-entered AI keys and both storage credential fields are encrypted with AES-256-GCM before database writes. The wrapping key is configured separately as `APP_SECRETS_ENCRYPTION_KEY`; responses expose configured flags, never saved keys. A startup migration encrypts legacy plaintext/rewraps old ciphertext before seed runners and scheduled jobs. A database with stored credentials needs the matching server wrapping key to start.
+Admin-entered AI keys and both storage credential fields are encrypted with AES-256-GCM before database writes. The wrapping key is configured separately as `APP_SECRETS_ENCRYPTION_KEY`; responses expose configured flags, never saved keys. A startup migration encrypts legacy plaintext/rewraps old ciphertext before explicit account/storage bootstrap and scheduled jobs. A database with stored credentials needs the matching server wrapping key to start.
 
 Application access passwords use bcrypt at cost 12 with a per-password random salt; hashes do not appear in entity JSON or application exports. Production cookies use Secure, HttpOnly, and SameSite=Lax. See [credential setup and rotation](ai-search-and-secrets.md) and [database backup boundaries](database-layout.md#backups-and-recovery).
 
@@ -274,3 +281,17 @@ If data services are offloaded:
 ### Optional email delivery
 
 `EmailSettingsService` selects an independent environment/admin source. Admin credentials are encrypted by the shared entity converter and participate in wrapping-key rotation. `EmailDeliveryService` validates a single plain-text message and returns optional delivery status; `EmailProviderClient` handles SMTP (including app passwords and externally managed OAuth2 tokens) or Resend/SendGrid/Mailgun HTTP APIs. SMTP enforces TLS for authentication and API requests reject redirects. Provider errors are sanitized. The `ADMIN`-only `/api/admin/email` routes provide settings, test messages, and explicit sends; disabled delivery hides the sending controls and rejects direct sends. This module does not add automatic email to existing workflows. See [email delivery](email-delivery.md).
+
+## Service map
+
+| Service | Default access | Purpose |
+|---|---|---|
+| Frontend | `http://localhost:3000` | Main application UI |
+| Backend API | internal only | Application APIs, reached through the frontend proxy |
+| Superset | internal only | Embedded dashboards and admin authoring |
+| WeasyCanvas renderer | internal only | Template validation and bounded PDF generation |
+| ML backend | internal only | Optional text/PDF/DOCX extraction; legacy vectorization endpoint |
+| PostgreSQL + pgvector | internal only | Application relational data, Superset metadata, and vector search storage |
+| MongoDB | internal only | Events and audit-style documents |
+| Redis | internal only | Superset cache and task coordination |
+| Caddy | `https://your-domain` | Production HTTPS entrypoint |

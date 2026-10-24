@@ -1,0 +1,21 @@
+# Protected PDF email sharing
+
+An administrator can choose **Email PDF** beside a `.pdf` object in the storage browser. The email **includes the PDF as an attachment**. The backend creates a separate copy with a mandatory `SHARED COPY` watermark, recipient email, share identifier, and UTC creation time on every page, then encrypts it with AES-256 PDF password protection. Originals in S3/Azure Blob remain unchanged.
+
+Enter the recipient, a password of at least 12 characters (maximum 72 UTF-8 bytes), and the online link lifetime. Communicate the password separately; it is never placed in the email. The attached PDF requires this password when opened. Copy/modification permission flags are restricted, but PDF viewers vary in honoring these flags; possession of a password and decrypted content permits copying or screenshots. The watermark and encryption are not a remote revocation mechanism.
+
+SMTP, Resend, SendGrid, and Mailgun send the attachment using their respective MIME/base64/multipart APIs. The protected attachment must be no larger than 10 MiB; a provider/account can impose a smaller limit or reject encrypted attachments. The original must meet the PDF processing limits: unencrypted, at most 25 MiB and 200 pages, with supported page dimensions and watermark permissions. Other formats are not converted or shared. Provider acceptance is reported separately from inbox receipt. The sender is synchronous and does not retry automatically.
+
+## Admin controls and online access
+
+**Admin → File sharing** provides enable/disable, public app origin, maximum online lifetime (1–720 hours, default 168), recent shares, and online link revocation. Configure working [email delivery](email-delivery.md) and a public HTTPS app origin first. `APP_PUBLIC_BASE_URL` supplies the origin when the admin value is blank. Loopback HTTP is permitted for development; paths, URL credentials, query strings, and fragments are rejected.
+
+The Email PDF action is hidden when sharing/email delivery is disabled or downloads are disabled. The backend enforces the same rules for new shares. PDF previews and online downloads follow [document access policy](document-access.md); all shared previews/downloads remain watermarked, including normal-download mode. Online downloaded PDFs are password protected too.
+
+The email also contains an optional-use protected online link. Recipients need no application account but must enter the same password to obtain a 15-minute in-memory access grant, bounded by the link expiry. The token and grant are stored as hashes; the password is stored only as a salted bcrypt hash. Raw link tokens are shown on creation and cannot be recovered from the list. The browser keeps the grant/password in component memory, adds a no-referrer policy, and uses no-store responses. Password checks and previews are rate limited.
+
+Each online request checks expiry, revocation, global sharing state, the sender's active administrator status, and current folder/connection visibility. A SHA-256 fingerprint pins the source bytes: replacing the object invalidates old links. Removing a folder, disabling a connection, or revoking a link prevents future online access. Failed email acceptance marks the new link revoked; create a new share after restoring delivery. A provider timeout can still mean the attachment was accepted, so check provider status before retrying.
+
+**Expiry and revocation affect only the online link. An emailed/downloaded attachment cannot be recalled, expired, or remotely disabled.** Existing decrypted previews likewise cannot be recalled. Turning off downloads prevents new sharing/download requests, not copies already sent. These limits are also stated in the admin and sharing screens.
+
+The latest 100 share metadata records appear in admin. No PDF bytes or reversible share passwords are saved in share tables. PostgreSQL stores share metadata, source fingerprint, password hash, token hash, short-lived grant hashes, and the singleton sharing settings; expired grants are cleaned hourly. Application JSON exports omit these tables. Back up the database and original objects separately. Share metadata and webhook/notification payloads are excluded from document search; MongoDB is unchanged. See [API contracts](api.md#protected-pdf-sharing).

@@ -2,7 +2,7 @@
 
 html { font-family: var(--font); background: var(--color-bg); color: var(--color-text); }
 body { min-height: 100vh; line-height: 1.5; }
-a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+a { color: var(--brand-link-colour, inherit); text-decoration: underline; text-underline-offset: 3px; }
 button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; border: 0; background: none; }
 button:disabled { opacity: 0.5; cursor: not-allowed; }

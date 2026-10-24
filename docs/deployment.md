@@ -1,10 +1,14 @@
-# Deployment Guide
+# WeaveOps deployment guide
+
+For independent template copies deploying automatically to an existing Linux VM, follow [GitHub Actions deployment](github-deployment.md). It includes fresh-instance credentials, an initializer without development users, verified SSH, and persisted release/data directories.
 
 Runnable single-VM Terraform examples for AWS and Azure are available under [`infra/`](../infra/README.md).
 They provision cloud object storage and use EC2 instance roles or Azure managed identity rather
 than long-lived storage keys.
 
 This guide explains the practical deployment shapes supported by this repository and how the built-in reverse-proxy setup is intended to be used.
+
+Compose containers and volumes use project-scoped names. For a clean installation alongside stopped older resources, choose a new project name and fresh private settings; preserve the old volumes. Keep the same project name and keys when upgrading. Concurrent installations require distinct published ports and separate deployment directories. See [development setup](getting-started.md#operations).
 
 ## Deployment Shapes
 
@@ -23,6 +27,7 @@ One Linux VM runs:
 - pgvector inside PostgreSQL
 - Redis for Superset
 - ML helper
+- WeasyCanvas PDF renderer
 
 This is the simplest operational model because everything ships as one Compose-managed stack. It is also the heaviest single-host shape.
 
@@ -41,6 +46,7 @@ The VM mainly runs:
 - backend
 - Superset
 - optionally the ML helper
+- the WeasyCanvas renderer when generating documents
 
 Stateful dependencies can be moved out to managed services:
 
@@ -55,7 +61,7 @@ Use this when:
 
 - you want a smaller app VM
 - backups, storage, and service durability should be handled elsewhere
-- the app is mostly behaving like a CRUD-style internal system with analytics features layered on top
+- documents, workflows, and analytics should share an app host while data services have separate operational ownership
 
 ### Existing Host-Level Reverse Proxy
 
@@ -83,6 +89,7 @@ That keeps the browser path simple:
 - frontend -> backend internally
 - frontend -> superset internally
 - backend -> postgres/mongo/ml internally
+- backend -> private WeasyCanvas renderer for document generation
 - backend -> selected object-storage prefixes; optional configured chat/embedding APIs
 - frontend/superset runtime -> superset/redis internally
 
@@ -129,6 +136,8 @@ Use this when Nginx is already the platform standard.
 
 ## Caddy Prerequisites
 
+The app and supplied proxies send crawler exclusion headers, and the frontend serves a wildcard-disallow robots file. Retain these settings when using another reverse proxy. After deploying, run the [crawler policy smoke check](crawler-exclusion.md#deploy-and-verify) against the public origin.
+
 Before bringing up the in-stack Caddy path:
 
 - set `APP_DOMAIN` to the hostname only
@@ -165,21 +174,15 @@ If you offload services, also override any relevant connection settings for:
 
 For the current stack, Redis usually stays grouped with Superset unless you are deliberately externalizing Superset's own runtime dependencies too.
 
-Copy [.env.production.example](../.env.production.example) and retain each generated secret across restarts. `APP_SECRETS_ENCRYPTION_KEY` is a base64-encoded 32-byte wrapping key, separate from JWT/Superset secrets. Generate it once with `openssl rand -base64 32` (or the [PowerShell alternative](ai-search-and-secrets.md#start-with-search-only)); protect a separate recovery copy. Do not replace it during an ordinary rebuild. Workload-identity-only storage with no stored keys does not need it for local search, but adding admin-saved credentials later does.
+Generate private settings with `python deploy/github/setup-instance.py --domain app.example.com --admin-email owner@example.com --acme-email ops@example.com --output .env.production`, or fill the blank [.env.production.example](../.env.production.example) manually. Retain each secret across restarts. `APP_SECRETS_ENCRYPTION_KEY` is a base64-encoded 32-byte wrapping key, separate from JWT/Superset secrets. Generate it once with `openssl rand -base64 32` (or the [PowerShell alternative](ai-search-and-secrets.md#start-with-search-only)); protect a separate recovery copy. Do not replace it during an ordinary rebuild. Workload-identity-only storage with no stored keys does not need it for local search, but adding admin-saved credentials later does.
 
 AI is optional. Defaults are `APP_SEARCH_ENABLED=true`, `APP_SEARCH_LAUNCHER_ENABLED=true`, `AI_ENABLED=false`, `AI_INDEX_CONTENT=false`, and `AI_EMBEDDING_PROVIDER=LOCAL`. The matcher runs inside Kotlin; the ML helper is required only for the implemented document text-extraction flow. When the AI configuration source is Admin settings, changing environment AI variables does not override that saved source. See [AI and credential setup](ai-search-and-secrets.md).
 
-The base Compose file still contains development database credentials. A production deployment must change the actual database/service configuration and matching backend/Superset connections, or use appropriately configured external services. Adding a variable to `.env.production` does not override a literal Compose value unless the service references it. Keep private database/network boundaries intact.
+The base Compose file requires explicit database, JWT, and Superset secrets. Generate a private environment with the [setup helper](initialization-and-security.md); blank example files cannot start the stack. Existing database passwords and wrapping keys must be retained or rotated deliberately. Keep private database/network boundaries intact.
 
 ## User Bootstrap Behavior
 
-Production bootstrap behavior is intentionally stricter than local development.
-
-- local development can fall back to convenience seed users
-- production should rely on `APP_BOOTSTRAP_USERS_JSON`
-- if the `prod` profile is active and that value is empty, the Spring user runner skips convenience user creation
-
-The first-volume [PostgreSQL initialization script](../docker/postgres/init.sql) independently seeds `admin@app.local` and sample folder metadata. The `prod` application profile does not remove SQL-seeded or existing accounts. Review the actual roster, replace/deactivate development identities, and verify intended access before exposing a production install. The admin deactivation flow preserves records.
+All profiles start without implicit accounts or sample content. `APP_BOOTSTRAP_USERS_JSON` creates only explicitly configured missing accounts; existing passwords, roles, and deactivation state are preserved. The [PostgreSQL initializer](../docker/postgres/init.sql) creates only the database/extensions. Existing seeded records are not deleted automatically; review/deactivate unwanted identities through Administration. See [initialization and security](initialization-and-security.md).
 
 ## Recommended Rollout Steps
 
@@ -214,7 +217,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 2. Preserve the current wrapping key. For an older installation with plaintext storage credentials and no key yet, configure a newly generated key before the first upgraded startup. For encrypted rows, use the matching current key or follow the explicit [rotation procedure](ai-search-and-secrets.md#stored-credentials-and-passwords).
 3. Review the selected environment/admin AI source and the current search/launcher/answer switches. No AI provider is required to upgrade or use the local matcher.
 4. Rebuild with the same Compose files and env file used by the deployment. Do not delete its volumes to apply these changes.
-5. Inspect backend startup. Hibernate currently updates JPA tables, supplemental SQL creates/updates pgvector objects, then stored credentials are migrated before seed runners and jobs. Missing/mismatched wrapping keys cause startup to fail closed.
+5. Inspect backend startup. Hibernate currently updates JPA tables, supplemental SQL creates/updates pgvector objects, then stored credentials are migrated before account/storage bootstrap and jobs. Missing/mismatched wrapping keys cause startup to fail closed.
 6. Run **Reindex now** once for `local-feature-hash-v2`, or after any embedding/content setting change. Queries exclude incompatible vector identities; metadata/content keyword fallback keeps ordinary search available while the index awaits rebuilding.
 7. Verify folder visibility/revocation, source links, dashboard selection, admin controls, and the job's saved next run. A persisted overdue job runs once after startup; repeated file detections do not move an already queued deadline.
 
@@ -251,7 +254,7 @@ Sizing depends on whether the VM is carrying only app logic or the full supporti
 
 Because Redis is currently only there for Superset, it normally makes sense to keep it on the VM beside Superset rather than treating it as a separate externalization requirement by default.
 
-These are planning ranges, not benchmark guarantees. Real usage depends on dashboard concurrency, Superset query mix, vector-search frequency, and background task load.
+These are planning ranges, not benchmark guarantees. Real usage depends on dashboard concurrency, Superset query mix, vector-search frequency, PDF rendering, and background task load. The Compose renderer has a 1536 MiB memory limit and up to two bounded render workers; allow room for it when sizing a host that generates documents.
 
 ## Verification Checklist
 
@@ -273,7 +276,25 @@ After deployment, verify:
 - a test scheduled run completes against the deployment's actual storage/provider services
 - seeded/development accounts have been reviewed and database secrets match the production configuration
 
+## MFA, webhook, and PDF sharing rollout
+
+Rebuild the backend/frontend after upgrading. Hibernate creates the MFA, webhook, sharing, and rate-limit tables plus user security-version fields. Preserve the wrapping key: authenticator setup secrets, webhook secrets, and retained webhook payloads join the existing startup key rotation. The JSON export omits these tables; retain proper PostgreSQL backups. MongoDB needs no changes.
+
+Set `APP_MFA_PRIMARY_ADMIN_EMAIL` to the primary administrator's saved email (when unset, the oldest active admin is selected). Its first password login prompts optional MFA setup; deploy synchronized server time for authenticator codes. Configure and test email before email enrollment or sharing; enrollment requires receipt of an actual code. Preserve recovery codes before relying on email MFA. Admin delivery changes cannot disable a configuration used as an account's sole factor, but external environment changes/provider outages still need recovery or restored delivery.
+
+Set `APP_PUBLIC_BASE_URL=https://your-app-host` for share links and complete webhook receiver URLs. Sharing can override its origin in Admin → File sharing. Keep the default `APP_WEBHOOK_ALLOW_PRIVATE_TARGETS=false`; only opt in for deliberately trusted internal receivers. Outgoing public webhooks require HTTPS and have DNS/network restrictions. Allow backend egress only to configured services. Incoming HTTPS uses the existing `/api` proxy route. Share links use the SPA `/shared/:token` route.
+
+Email sharing sends a mandatory watermarked, password-encrypted PDF attachment, up to 10 MiB after protection, plus a protected online link. Communicate its password separately. Confirm the configured provider accepts encrypted PDF attachments. Online expiry, revocation, and policy changes cannot recall attachments already sent. Verify the complete flow in staging with a recipient you control; local test transports do not establish inbox delivery. See [MFA](mfa.md), [webhook protocol](webhooks.md), and [protected sharing](file-sharing.md).
+
 ## Troubleshooting
+
+### WeasyCanvas documents and workflow diagrams
+
+Rebuild the frontend/backend and build the new `weasy-renderer` service with the normal Compose deployment. The repository contains its source snapshot and Python dependencies; a neighbouring WeasyCanvas checkout is not required. Its container installs Pango/fonts, runs as non-root, and has no published host port. Backend `APP_DOCUMENT_RENDER_URL` defaults to the internal service URL; native development may use `http://127.0.0.1:8720`. Set a shared `APP_DOCUMENT_RENDER_TOKEN` on backend/renderer and keep the renderer on a trusted private network. The Compose stack forwards both settings.
+
+Templates, generated PDF bytes/snapshots, and workflow definitions use new PostgreSQL tables. Back up the database; JSON export does not include these records. No MongoDB changes, AI provider, or ML extractor are required. An absent renderer affects template validation/generation with a safe 503, while ordinary app features remain available. After deploying, save a quote starter, publish it, generate a sample PDF, and verify plain/protected attachments with a recipient you control. Health alone does not confirm native rendering/font behavior.
+
+The workflow builder saves drafts/validated diagrams and attachment links. Ready diagrams do not run automatically; email sends are explicit. [The feature guide](documents-and-workflows.md) describes its current limits, security, and expansion points. Native renderer setup/tests are in [its README](../weasy-renderer/README.md).
 
 ### Certificates do not issue
 

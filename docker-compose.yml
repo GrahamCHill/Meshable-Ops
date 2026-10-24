@@ -1,20 +1,20 @@
 x-superset-env: &superset-env
   DATABASE_DB: superset
   DATABASE_HOST: postgres
-  DATABASE_PASSWORD: superset_pass
+  DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Generate private environment settings first}
   DATABASE_USER: superset_user
   DATABASE_PORT: "5432"
   DATABASE_DIALECT: postgresql
   POSTGRES_DB: superset
   POSTGRES_USER: superset_user
-  POSTGRES_PASSWORD: superset_pass
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Generate private environment settings first}
   REDIS_HOST: redis
   REDIS_PORT: "6379"
   SUPERSET_ENV: production
   SUPERSET_LOAD_EXAMPLES: "no"
-  SUPERSET_SECRET_KEY: "thisISaSECRET_1234_change_in_prod"
+  SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:?Set SUPERSET_SECRET_KEY}
   SUPERSET_ADMIN_USER: ${SUPERSET_ADMIN_USER:-admin}
-  SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:-admin}
+  SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:?Set SUPERSET_ADMIN_PASSWORD}
   SUPERSET_ADMIN_EMAIL: ${SUPERSET_ADMIN_EMAIL:-admin@superset.local}
   SUPERSET_ADMIN_FIRSTNAME: ${SUPERSET_ADMIN_FIRSTNAME:-Admin}
   SUPERSET_ADMIN_LASTNAME: ${SUPERSET_ADMIN_LASTNAME:-User}
@@ -23,7 +23,7 @@ x-superset-env: &superset-env
   FLASK_ENV: production
   SUPERSET_PORT: "8088"
   ENABLE_PROXY_FIX: "true"
-  GUEST_TOKEN_JWT_SECRET: "guest_token_secret_change_in_prod"
+  GUEST_TOKEN_JWT_SECRET: ${GUEST_TOKEN_JWT_SECRET:?Set GUEST_TOKEN_JWT_SECRET}
   GUEST_TOKEN_JWT_ALGO: "HS256"
   GUEST_TOKEN_JWT_HEADER_NAME: "X-GuestToken"
   GUEST_TOKEN_JWT_EXP_SECONDS: "300"
@@ -34,18 +34,17 @@ services:
 
   postgres:
     image: pgvector/pgvector:0.8.6-pg18-trixie
-    container_name: superset_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: superset_user
-      POSTGRES_PASSWORD: superset_pass
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       POSTGRES_DB: superset
       PGDATA: /var/lib/postgresql/18/docker
     expose:
       - "5432"
     volumes:
       - postgres18_data:/var/lib/postgresql
-      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U superset_user -d superset"]
       interval: 10s
@@ -54,17 +53,16 @@ services:
 
   mongodb:
     image: mongo:7.0
-    container_name: superset_mongo
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: app_user
-      MONGO_INITDB_ROOT_PASSWORD: app_pass
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?Set MONGO_PASSWORD}
       MONGO_INITDB_DATABASE: app_db
     expose:
       - "27017"
     volumes:
       - mongo_data:/data/db
-      - ./docker/mongo/init.js:/docker-entrypoint-initdb.d/init.js
+      - ./docker/mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -73,7 +71,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: superset_redis
     restart: unless-stopped
     expose:
       - "6379"
@@ -89,7 +86,6 @@ services:
 
   superset-init:
     image: apache/superset:4.0.2
-    container_name: superset_init
     command: ["/app/docker/docker-init.sh"]
     environment:
       <<: *superset-env
@@ -99,13 +95,13 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./superset/docker-init.sh:/app/docker/docker-init.sh
+      - ./superset/docker-init.sh:/app/docker/docker-init.sh:ro
+      - ./superset/bootstrap_admin.py:/app/bootstrap_admin.py:ro
       - ./superset/superset_config.py:/app/pythonpath/superset_config.py
     restart: "no"
 
   superset:
     image: apache/superset:4.0.2
-    container_name: superset_app
     command: ["/usr/bin/run-server.sh"]
     restart: unless-stopped
     environment:
@@ -125,28 +121,8 @@ services:
       retries: 10
       start_period: 30s
 
-  superset-embed-init:
-    image: apache/superset:4.0.2
-    container_name: superset_embed_init
-    command: ["python", "/app/setup_embed_dashboard.py"]
-    restart: "no"
-    environment:
-      <<: *superset-env
-      APP_POSTGRES_DB: app_db
-      APP_POSTGRES_USER: superset_user
-      APP_POSTGRES_PASSWORD: superset_pass
-    depends_on:
-      superset:
-        condition: service_healthy
-      backend:
-        condition: service_healthy
-    volumes:
-      - ./superset/superset_config.py:/app/pythonpath/superset_config.py
-      - ./superset/setup_embed_dashboard.py:/app/setup_embed_dashboard.py
-
   superset-worker:
     image: apache/superset:4.0.2
-    container_name: superset_worker
     command: ["celery", "--app=superset.tasks.celery_app:app", "worker",
               "--pool=prefork", "--max-tasks-per-child=128"]
     restart: unless-stopped
@@ -166,7 +142,6 @@ services:
 
   superset-beat:
     image: apache/superset:4.0.2
-    container_name: superset_beat
     command: ["celery", "--app=superset.tasks.celery_app:app", "beat",
               "--pidfile=/tmp/celerybeat.pid", "--schedule=/tmp/celerybeat-schedule"]
     restart: unless-stopped
@@ -191,7 +166,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: superset_backend
     restart: unless-stopped
     depends_on:
       postgres:
@@ -204,8 +178,8 @@ services:
       POSTGRES_PORT: 5432
       POSTGRES_DB: app_db
       POSTGRES_USER: superset_user
-      POSTGRES_PASSWORD: superset_pass
-      MONGO_URI: mongodb://app_user:app_pass@mongodb:27017/app_db?authSource=admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      MONGO_URI: mongodb://app_user:${MONGO_PASSWORD:?Set MONGO_PASSWORD}@mongodb:27017/app_db?authSource=admin
       DB_POOL_MAX_SIZE: 10
       DB_POOL_MIN_IDLE: 2
       APP_SEED_STORAGE_PROVIDER: ${APP_SEED_STORAGE_PROVIDER:-NONE}
@@ -234,6 +208,12 @@ services:
       APP_EMAIL_API_BASE_URL: ${APP_EMAIL_API_BASE_URL:-}
       APP_EMAIL_API_KEY: ${APP_EMAIL_API_KEY:-}
       APP_EMAIL_MAILGUN_DOMAIN: ${APP_EMAIL_MAILGUN_DOMAIN:-}
+      APP_PUBLIC_BASE_URL: ${APP_PUBLIC_BASE_URL:-}
+      APP_MFA_PRIMARY_ADMIN_EMAIL: ${APP_MFA_PRIMARY_ADMIN_EMAIL:-}
+      APP_BOOTSTRAP_USERS_JSON: ${APP_BOOTSTRAP_USERS_JSON:-}
+      APP_WEBHOOK_ALLOW_PRIVATE_TARGETS: ${APP_WEBHOOK_ALLOW_PRIVATE_TARGETS:-false}
+      APP_DOCUMENT_RENDER_URL: ${APP_DOCUMENT_RENDER_URL:-http://weasy-renderer:8000}
+      APP_DOCUMENT_RENDER_TOKEN: ${APP_DOCUMENT_RENDER_TOKEN:-}
       APP_SEARCH_ENABLED: ${APP_SEARCH_ENABLED:-true}
       APP_SEARCH_LAUNCHER_ENABLED: ${APP_SEARCH_LAUNCHER_ENABLED:-true}
       AI_INDEX_CONTENT: ${AI_INDEX_CONTENT:-false}
@@ -246,11 +226,11 @@ services:
       AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL:-local-feature-hash-v2}
       AI_EMBEDDING_API_KEY: ${AI_EMBEDDING_API_KEY:-}
       AI_EMBEDDING_SEND_DIMENSIONS: ${AI_EMBEDDING_SEND_DIMENSIONS:-true}
-      JWT_SECRET: change-me-in-production-use-a-256-bit-key
-      JWT_EXPIRY_MS: 86400000
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      JWT_EXPIRY_MS: ${JWT_EXPIRY_MS:-86400000}
       SUPERSET_BASE_URL: http://superset:8088
       SUPERSET_ADMIN_USER: ${SUPERSET_ADMIN_USER:-admin}
-      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:-admin}
+      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:?Set SUPERSET_ADMIN_PASSWORD}
     expose:
       - "8080"
     healthcheck:
@@ -260,13 +240,32 @@ services:
       retries: 5
       start_period: 60s
 
+  weasy-renderer:
+    build: ./weasy-renderer
+    restart: unless-stopped
+    environment:
+      APP_DOCUMENT_RENDER_TOKEN: ${APP_DOCUMENT_RENDER_TOKEN:-}
+    expose:
+      - "8000"
+    mem_limit: 1536m
+    pids_limit: 64
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   ml-backend:
     build:
       context: ./ml-backend
       dockerfile: Dockerfile
       args:
         EXTRA_PIP_PACKAGES: ${ML_EXTRA_PIP_PACKAGES:-}
-    container_name: superset_ml_backend
     restart: unless-stopped
     environment:
       PYTHONUNBUFFERED: "1"
@@ -285,7 +284,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: superset_frontend
     restart: unless-stopped
     depends_on:
       backend:
@@ -294,8 +292,6 @@ services:
         condition: service_healthy
       superset:
         condition: service_healthy
-      superset-embed-init:
-        condition: service_completed_successfully
     ports:
       - "3000:8080"
 

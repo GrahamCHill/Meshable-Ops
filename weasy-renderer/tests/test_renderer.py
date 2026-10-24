@@ -1,0 +1,69 @@
+import copy
+import json
+import os
+from pathlib import Path
+import unittest
+from unittest.mock import patch
+
+from fastapi.testclient import TestClient
+from app import app
+from backend.generator import DocumentTemplate, render_document_html
+from worker import make_draft, inline_only, render
+
+SOURCE = json.loads((Path(__file__).parent / "fixtures/quote.json").read_text())
+VALUES = {"company.name": "Sample Company", "document.number": "Q-2026-001", "document.date": "2026-10-24",
+    "customer.name": "Sample Customer", "line_items": "Consulting services - 2 hours at 100.00",
+    "subtotal": "200.00", "tax_rate": "15", "tax": "30.00", "total": "230.00"}
+
+
+class RendererTests(unittest.TestCase):
+    def test_quote_template_and_values_resolve_to_escaped_html(self):
+        template = SOURCE["template"]
+        DocumentTemplate.model_validate(template)
+        draft = make_draft(template, {**VALUES, "customer.name": "<script>alert('sample')</script>"})
+        html = render_document_html(draft)
+        self.assertIn("&lt;script&gt;", html)
+        self.assertNotIn("<script>", html)
+        self.assertIn("230.00", html)
+        self.assertNotIn("{{api:", html)
+
+    def test_required_fields_unknown_fields_and_external_assets_fail_closed(self):
+        missing = {**VALUES}; del missing["customer.name"]
+        with self.assertRaises(ValueError): make_draft(SOURCE["template"], missing)
+        with self.assertRaises(ValueError): make_draft(SOURCE["template"], {**VALUES, "private.extra": "forbidden"})
+        for url in ["file:///etc/passwd", "https://example.com/logo.png", "http://169.254.169.254/", "data:image/svg+xml;base64,PHN2Zy8+"]:
+            with self.assertRaises(ValueError): inline_only(url)
+
+    def test_document_factory_honors_section_paragraph_minimums(self):
+        template = copy.deepcopy(SOURCE["template"])
+        section = next(section for section in template["sections"] if section["kind"] == "text")
+        section["rules"]["minParagraphs"] = 2
+        draft = make_draft(template, VALUES)
+        self.assertEqual(len(draft.paragraphs), 2)
+        self.assertEqual(draft.paragraphSectionIds, ["items", "items"])
+
+    def test_renderer_endpoints_require_configured_internal_token_and_bound_bodies(self):
+        with patch.dict(os.environ, {"APP_DOCUMENT_RENDER_TOKEN": "sample-internal-render-token"}):
+            client = TestClient(app)
+            self.assertEqual(client.post("/validate", json={"template": SOURCE["template"]}).status_code, 401)
+            headers = {"Authorization": "Bearer sample-internal-render-token"}
+            self.assertEqual(client.post("/validate", json={"template": SOURCE["template"]}, headers=headers).status_code, 200)
+            self.assertEqual(client.post("/validate", content=b"x" * (2 * 1024 * 1024 + 1), headers=headers).status_code, 413)
+            self.assertEqual(client.post("/validate", json={"template": {}}, headers=headers).status_code, 400)
+
+    def test_real_pdf_is_nonempty_and_uses_the_same_template_contract(self):
+        pdf = render(SOURCE["template"], VALUES)
+        self.assertTrue(pdf.startswith(b"%PDF-"))
+        self.assertGreater(len(pdf), 1000)
+        target = Path("target"); target.mkdir(exist_ok=True)
+        (target / "sample-quote.pdf").write_bytes(pdf)
+
+    def test_worker_process_endpoint_returns_a_real_pdf_and_no_source(self):
+        with patch.dict(os.environ, {"APP_DOCUMENT_RENDER_TOKEN": "sample-internal-render-token"}):
+            response = TestClient(app).post("/render", json={"template": SOURCE["template"], "values": VALUES}, headers={"Authorization": "Bearer sample-internal-render-token"})
+            self.assertEqual(response.status_code, 200, response.text[:100] if response.status_code != 200 else "")
+            self.assertTrue(response.content.startswith(b"%PDF-"))
+            self.assertEqual(response.headers["cache-control"], "no-store")
+
+
+if __name__ == "__main__": unittest.main()

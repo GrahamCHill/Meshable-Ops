@@ -23,7 +23,8 @@ class AuthService(
     private val passwordEncoder: PasswordEncoder,
     private val jwtService: JwtService,
     private val authManager: AuthenticationManager,
-    private val userDetailsService: UserDetailsServiceImpl
+    private val userDetailsService: UserDetailsServiceImpl,
+    private val mfa: com.starter.mfa.MfaService,
 ) {
     @Value("\${jwt.expiry-ms}") private var expiryMs: Long = 86_400_000L
     @Value("\${app.auth-cookie-secure:false}") private var secureCookie: Boolean = false
@@ -43,25 +44,29 @@ class AuthService(
         return user.toAuthResponse(token)
     }
 
-    fun login(req: AuthRequest, response: HttpServletResponse): AuthResponse {
-        authManager.authenticate(UsernamePasswordAuthenticationToken(req.email, req.password))
-        val user = userRepository.findByEmail(req.email)
+    fun login(req: AuthRequest, response: HttpServletResponse): com.starter.dto.LoginResponse {
+        val email = req.email.trim().lowercase()
+        authManager.authenticate(UsernamePasswordAuthenticationToken(email, req.password))
+        val user = userRepository.findByEmail(email)
             .orElseThrow { UsernameNotFoundException("User not found") }
         if (passwordEncoder.upgradeEncoding(user.password)) {
             user.password = passwordEncoder.encode(req.password)
             userRepository.save(user)
         }
-        val ud = userDetailsService.loadUserByUsername(user.email)
-        val token = jwtService.generateToken(ud, mapOf("role" to user.role, "id" to user.id.toString()))
-        writeAuthCookie(response, token, expiryMs)
-        return user.toAuthResponse(token)
+        if (mfa.enabled(user.id)) { clearAuthCookie(response); return mfa.login(user) }
+        return issueSession(user, false, response)
     }
 
     fun refreshAuthCookie(email: String, response: HttpServletResponse): AuthResponse {
         val user = userRepository.findByEmail(email)
             .orElseThrow { UsernameNotFoundException("User not found") }
+        return issueSession(user, mfa.enabled(user.id), response)
+    }
+
+    fun issueSession(user: User, verifiedMfa: Boolean, response: HttpServletResponse): AuthResponse {
         val ud = userDetailsService.loadUserByUsername(user.email)
-        val token = jwtService.generateToken(ud, mapOf("role" to user.role, "id" to user.id.toString()))
+        if (!ud.isEnabled) throw org.springframework.security.authentication.DisabledException("Account is disabled")
+        val token = jwtService.generateToken(ud, mapOf("role" to user.role, "id" to user.id.toString(), "sv" to user.sessionVersion, "mfa" to verifiedMfa))
         writeAuthCookie(response, token, expiryMs)
         return user.toAuthResponse(token)
     }
@@ -90,5 +95,6 @@ class AuthService(
         contactNumber = contactNumber,
         role = role,
         canUploadDocuments = canUploadDocuments,
+        suggestMfaSetup = mfa.recommended(this),
     )
 }

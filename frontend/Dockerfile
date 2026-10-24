@@ -1,9 +1,9 @@
 # ─── Build stage ─────────────────────────────────────────────────────────────
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install --silent
+COPY package.json package-lock.json ./
+RUN npm ci --silent
 
 COPY . .
 RUN npm run build
@@ -12,6 +12,7 @@ RUN npm run build
 FROM nginxinc/nginx-unprivileged:1.27-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.workspace-headers.conf /etc/nginx/snippets/workspace-headers.conf
 
 EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]

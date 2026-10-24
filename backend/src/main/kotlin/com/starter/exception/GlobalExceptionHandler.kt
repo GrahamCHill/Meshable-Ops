@@ -19,6 +19,17 @@ data class ErrorResponse(val message: String, val status: Int, val timestamp: In
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
+    @ExceptionHandler(com.starter.plugins.integrations.IntegrationUnavailable::class)
+    fun integrationUnavailable(ex: com.starter.plugins.integrations.IntegrationUnavailable) = ResponseEntity.status(503).body(ErrorResponse(ex.message ?: "Integration unavailable", 503))
+    @ExceptionHandler(com.starter.documents.DocumentRendererUnavailable::class)
+    fun rendererUnavailable(ex: com.starter.documents.DocumentRendererUnavailable) = ResponseEntity.status(503).body(ErrorResponse(ex.message ?: "Document renderer unavailable", 503))
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException::class)
+    fun concurrentEdit(ex: org.springframework.dao.OptimisticLockingFailureException) = ResponseEntity.status(409).body(ErrorResponse("This record changed. Reload before saving.", 409))
+    @ExceptionHandler(com.starter.mfa.MfaVerificationException::class)
+    fun mfaFailed(ex: com.starter.mfa.MfaVerificationException) = ResponseEntity.status(401).body(ErrorResponse(ex.message ?: "Verification failed", 401))
+    @ExceptionHandler(com.starter.security.TooManyRequestsException::class)
+    fun rateLimited(ex: com.starter.security.TooManyRequestsException) = ResponseEntity.status(429)
+        .header("Retry-After", "300").body(ErrorResponse(ex.message ?: "Too many attempts", 429))
     @ExceptionHandler(com.starter.email.EmailDeliveryException::class)
     fun handleEmailUnavailable(ex: com.starter.email.EmailDeliveryException) =
         ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(ErrorResponse(ex.message ?: "Email delivery unavailable", 503))

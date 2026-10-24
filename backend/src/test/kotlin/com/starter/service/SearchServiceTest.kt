@@ -20,6 +20,29 @@ class SearchServiceTest {
     private val point = VectorSearchPoint("document", 0.7f, mapOf("title" to "Contract", "entityType" to "document"))
     private val service = SearchService(vectors, keywords, settings, SearchScopeResolver(mock(ItemRepository::class.java)))
 
+    @Test fun `global search merges plugin results using the authenticated identity`() {
+        val plugins = mock(com.starter.plugins.PluginSearchService::class.java)
+        val combined = SearchService(vectors, keywords, settings, SearchScopeResolver(mock(ItemRepository::class.java)), plugins)
+        `when`(settings.current()).thenReturn(config)
+        `when`(vectors.searchText("contract", 10, null, null)).thenReturn(listOf(point))
+        `when`(plugins.search("member@example.test", "contract", 10)).thenReturn(listOf(VectorSearchPoint("plugin:kanban:1", 0.9f, mapOf("entityType" to "plugin"))))
+        val result = combined.search(VectorSearchRequest("contract"), "member@example.test")
+        assertThat(result.mode).isEqualTo("MIXED")
+        assertThat(result.results.map { it.pointId }).containsExactly("plugin:kanban:1", "document")
+    }
+
+    @Test fun `folder scoped storage search never invokes plugin providers`() {
+        val plugins = mock(com.starter.plugins.PluginSearchService::class.java)
+        val items = mock(ItemRepository::class.java)
+        val folder = com.starter.model.postgres.Item()
+        `when`(items.findById(folder.id)).thenReturn(java.util.Optional.of(folder))
+        `when`(settings.current()).thenReturn(config)
+        `when`(vectors.searchTextScoped("contract", 10, SearchScope(folder.id))).thenReturn(listOf(point))
+        val scoped = SearchService(vectors, keywords, settings, SearchScopeResolver(items), plugins)
+        assertThat(scoped.search(VectorSearchRequest("contract", folderId = folder.id), "member@example.test").results).hasSize(1)
+        verifyNoInteractions(plugins)
+    }
+
     @Test fun `search works when AI answers are disabled`() {
         `when`(settings.current()).thenReturn(config)
         `when`(vectors.searchText("contract", 10, null, null)).thenReturn(listOf(point))

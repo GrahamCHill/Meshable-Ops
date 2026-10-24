@@ -6,7 +6,7 @@ export interface VectorSearchResult {
   payload: Record<string, string>
 }
 
-export interface SearchResponse { results: VectorSearchResult[]; mode: 'VECTOR' | 'KEYWORD'; notice?: string }
+export interface SearchResponse { results: VectorSearchResult[]; mode: 'VECTOR' | 'KEYWORD' | 'MIXED'; notice?: string }
 
 export const searchApi = {
   search: (query: string, limit = 10, folderId?: string, path = '') =>

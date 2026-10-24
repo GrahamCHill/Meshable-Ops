@@ -1,0 +1,237 @@
+{
+  "name": "Quote",
+  "category": "QUOTE",
+  "published": false,
+  "revision": 0,
+  "template": {
+    "version": 1,
+    "id": "5ce7d86c-eaf5-457d-a6b7-23b77eaa2992",
+    "name": "Quote",
+    "description": "Data-driven document with subtotal, tax and total. Edit the wording, fields and layout for your organisation.",
+    "sections": [
+      {
+        "kind": "header",
+        "label": "Header",
+        "required": true,
+        "locked": false,
+        "maxLength": 160
+      },
+      {
+        "kind": "title",
+        "label": "Document title",
+        "required": true,
+        "locked": false,
+        "maxLength": 4000
+      },
+      {
+        "kind": "details",
+        "label": "Document details",
+        "required": true,
+        "locked": false,
+        "maxLength": 4000,
+        "bindings": {
+          "reference": "document.number",
+          "recipient": "customer.name"
+        }
+      },
+      {
+        "kind": "text",
+        "label": "Items",
+        "required": true,
+        "locked": false,
+        "maxLength": 4000,
+        "numbered": false,
+        "rules": {
+          "minParagraphs": 1,
+          "maxParagraphs": 10,
+          "allowSubparagraphs": false,
+          "allowSubsubparagraphs": false
+        },
+        "id": "items"
+      },
+      {
+        "kind": "closing",
+        "label": "Closing",
+        "required": true,
+        "locked": false,
+        "maxLength": 4000
+      },
+      {
+        "kind": "footer",
+        "label": "Footer",
+        "required": true,
+        "locked": false,
+        "maxLength": 4000
+      }
+    ],
+    "rules": {
+      "minParagraphs": 1,
+      "maxParagraphs": 10,
+      "allowSubparagraphs": false,
+      "allowSubsubparagraphs": false
+    },
+    "layout": {
+      "size": "A4",
+      "orientation": "portrait",
+      "marginTop": 30,
+      "marginRight": 20,
+      "marginBottom": 25,
+      "marginLeft": 20,
+      "paragraphGap": 18
+    },
+    "formatting": {
+      "body": {
+        "fontFamily": "Arial",
+        "fontSize": 11,
+        "lineHeight": 1.5,
+        "align": "left",
+        "color": "#17252f"
+      },
+      "title": {
+        "fontSize": 20,
+        "bold": true,
+        "lineHeight": 1.2
+      },
+      "closing": {}
+    },
+    "defaults": {
+      "organization": "{{api:company.name}}",
+      "title": "Quote",
+      "reference": "",
+      "recipient": "",
+      "paragraphs": [
+        "Date: {{api:document.date}}\n\n{{api:line_items}}\n\nSubtotal: {{api:subtotal}}\nTax ({{api:tax_rate}}%): {{api:tax}}\nTotal: {{api:total}}"
+      ],
+      "paragraphSectionIds": [
+        "items"
+      ],
+      "subparagraphs": [
+        []
+      ],
+      "subsubparagraphs": [
+        []
+      ],
+      "closing_text": "Please contact us to accept this quotation."
+    },
+    "apiFields": [
+      {
+        "key": "company.name",
+        "label": "Organisation",
+        "required": true,
+        "maxLength": 160,
+        "fallback": ""
+      },
+      {
+        "key": "document.number",
+        "label": "Document number",
+        "required": true,
+        "maxLength": 100,
+        "fallback": ""
+      },
+      {
+        "key": "document.date",
+        "label": "Date",
+        "required": true,
+        "maxLength": 160,
+        "fallback": ""
+      },
+      {
+        "key": "customer.name",
+        "label": "Customer",
+        "required": true,
+        "maxLength": 160,
+        "fallback": ""
+      },
+      {
+        "key": "line_items",
+        "label": "Items and descriptions",
+        "required": true,
+        "maxLength": 3000,
+        "fallback": ""
+      },
+      {
+        "key": "subtotal",
+        "label": "Subtotal",
+        "required": true,
+        "maxLength": 160,
+        "fallback": ""
+      },
+      {
+        "key": "tax_rate",
+        "label": "Tax rate (%)",
+        "required": true,
+        "maxLength": 160,
+        "fallback": "0"
+      },
+      {
+        "key": "tax",
+        "label": "Tax",
+        "required": false,
+        "maxLength": 160,
+        "fallback": ""
+      },
+      {
+        "key": "total",
+        "label": "Total",
+        "required": false,
+        "maxLength": 160,
+        "fallback": ""
+      }
+    ]
+  },
+  "fieldRules": [
+    {
+      "key": "company.name",
+      "type": "TEXT",
+      "inputs": []
+    },
+    {
+      "key": "document.number",
+      "type": "TEXT",
+      "inputs": []
+    },
+    {
+      "key": "document.date",
+      "type": "DATE",
+      "inputs": []
+    },
+    {
+      "key": "customer.name",
+      "type": "TEXT",
+      "inputs": []
+    },
+    {
+      "key": "line_items",
+      "type": "MULTILINE",
+      "inputs": []
+    },
+    {
+      "key": "subtotal",
+      "type": "MONEY",
+      "inputs": []
+    },
+    {
+      "key": "tax_rate",
+      "type": "NUMBER",
+      "inputs": []
+    },
+    {
+      "key": "tax",
+      "type": "DERIVED",
+      "inputs": [
+        "subtotal",
+        "tax_rate"
+      ],
+      "operation": "PERCENT"
+    },
+    {
+      "key": "total",
+      "type": "DERIVED",
+      "inputs": [
+        "subtotal",
+        "tax"
+      ],
+      "operation": "ADD"
+    }
+  ]
+}

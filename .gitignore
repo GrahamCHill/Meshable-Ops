@@ -3,6 +3,8 @@
 /frontend/dist
 .vscode
 /backend/target/
+/weasy-renderer/target/
+/weasy-renderer/.venv/
 .env
 .env.*
 !.env.example

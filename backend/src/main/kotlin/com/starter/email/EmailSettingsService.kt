@@ -14,6 +14,7 @@ class EmailSettingsService(
     private val environment: EmailEnvironmentProperties,
     private val encryption: SecretEncryption,
     private val audit: AuditLogService,
+    private val mfaGuard: com.starter.mfa.EmailMfaGuard,
 ) {
     @Transactional(readOnly = true)
     fun current(): EmailConfiguration = repository.findById(1).orElse(null)?.takeIf { it.source == EmailConfigurationSource.ADMIN }?.active() ?: environment.active()
@@ -39,6 +40,7 @@ class EmailSettingsService(
                 username.takeIf { smtp }, password.takeIf { smtp }, url,
                 key.takeIf { request.provider != EmailProvider.SMTP && !request.clearApiKey }, request.mailgunDomain.trim())
             validateEmailConfiguration(config)
+            mfaGuard.check(config)
             if (listOf(config.smtpUsername, config.smtpPassword, config.apiKey).any { !it.isNullOrBlank() }) encryption.requireConfigured()
             saved.enabled = config.enabled; saved.provider = config.provider
             saved.fromAddress = config.fromAddress; saved.fromName = config.fromName; saved.replyTo = config.replyTo
@@ -46,6 +48,7 @@ class EmailSettingsService(
             saved.smtpUsername = config.smtpUsername; saved.smtpPassword = config.smtpPassword
             saved.apiBaseUrl = config.apiBaseUrl; saved.apiKey = config.apiKey; saved.mailgunDomain = config.mailgunDomain
         }
+        if (request.source == EmailConfigurationSource.ENVIRONMENT) mfaGuard.check(environment.active())
         saved.source = request.source
         repository.saveAndFlush(saved)
         audit.record(actingEmail = actor, action = "EMAIL_SETTINGS_UPDATED", resourceType = "EMAIL_SETTINGS", resourceId = "1")

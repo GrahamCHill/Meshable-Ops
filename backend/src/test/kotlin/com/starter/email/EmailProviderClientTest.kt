@@ -31,7 +31,7 @@ class EmailProviderClientTest {
         server.start()
         try {
             listOf(EmailProvider.RESEND, EmailProvider.SENDGRID, EmailProvider.MAILGUN).forEach {
-                client.send(config(it).copy(apiBaseUrl = "http://127.0.0.1:${server.address.port}" + if (it == EmailProvider.MAILGUN) "/v3" else ""), message)
+                client.send(config(it).copy(apiBaseUrl = "http://127.0.0.1:${server.address.port}" + if (it == EmailProvider.MAILGUN) "/v3" else ""), message, listOf(EmailAttachment("contract.pdf", "%PDF-protected-sample".toByteArray())))
             }
         } finally { server.stop(0) }
         assertThat(captured.map { it.path }).containsExactly("/emails", "/v3/mail/send", "/v3/mg.example.test/messages")
@@ -45,6 +45,14 @@ class EmailProviderClientTest {
         assertThat(sendgrid.path("content")[0].path("type").asText()).isEqualTo("text/plain")
         assertThat(captured[2].contentType).startsWith("multipart/form-data; boundary=")
         assertThat(captured[2].body).contains("name=\"h:Reply-To\"", message.text, "Sample app")
+        val resendAttachment = mapper.readTree(captured[0].body).path("attachments")[0]
+        assertThat(resendAttachment.path("filename").asText()).isEqualTo("contract.pdf")
+        assertThat(String(java.util.Base64.getDecoder().decode(resendAttachment.path("content").asText()))).isEqualTo("%PDF-protected-sample")
+        val sendgridAttachment = sendgrid.path("attachments")[0]
+        assertThat(sendgridAttachment.path("disposition").asText()).isEqualTo("attachment")
+        assertThat(sendgridAttachment.path("type").asText()).isEqualTo("application/pdf")
+        assertThat(String(java.util.Base64.getDecoder().decode(sendgridAttachment.path("content").asText()))).isEqualTo("%PDF-protected-sample")
+        assertThat(captured[2].body).contains("name=\"attachment\"; filename=\"contract.pdf\"", "Content-Type: application/pdf", "%PDF-protected-sample")
     }
 
     @Test fun `provider rejection bodies are discarded and redirects never receive credentials`() {
@@ -104,10 +112,17 @@ class EmailProviderClientTest {
                     mime.toString()
                 }
             }
-            client.send(config(EmailProvider.SMTP).copy(smtpHost = "127.0.0.1", smtpPort = server.localPort, smtpSecurity = SmtpSecurity.NONE, smtpAuth = SmtpAuth.NONE), message.copy(subject = "Agreement résumé", text = "A café example"))
+            client.send(config(EmailProvider.SMTP).copy(smtpHost = "127.0.0.1", smtpPort = server.localPort, smtpSecurity = SmtpSecurity.NONE, smtpAuth = SmtpAuth.NONE), message.copy(subject = "Agreement résumé", text = "A café example"), listOf(EmailAttachment("contract.pdf", "%PDF-protected-sample".toByteArray())))
             val mime = MimeMessage(Session.getInstance(Properties()), ByteArrayInputStream(received.get(10, TimeUnit.SECONDS).toByteArray()))
             assertThat(mime.subject).isEqualTo("Agreement résumé")
-            assertThat(mime.content.toString()).contains("A café example")
+            fun leaves(part: jakarta.mail.Part): List<jakarta.mail.Part> = if (part.isMimeType("multipart/*")) {
+                val content = part.content as jakarta.mail.Multipart; (0 until content.count).flatMap { leaves(content.getBodyPart(it)) }
+            } else listOf(part)
+            val parts = leaves(mime)
+            assertThat(parts.first { it.isMimeType("text/plain") }.content.toString()).contains("A café example")
+            val attachment = parts.single { it.disposition == jakarta.mail.Part.ATTACHMENT }
+            assertThat(attachment.fileName).isEqualTo("contract.pdf")
+            assertThat(attachment.inputStream.readBytes()).isEqualTo("%PDF-protected-sample".toByteArray())
             assertThat(mime.allRecipients.single().toString()).isEqualTo(message.recipient)
             assertThat(mime.replyTo.single().toString()).isEqualTo("reply@example.test")
         }

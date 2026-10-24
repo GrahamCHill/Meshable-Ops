@@ -1,0 +1,38 @@
+name: Release template version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Template version, for example 1.0.0 (creates template-v1.0.0 and template/v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+  release:
+    needs: checks
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Publish a versioned starting point
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Use a version such as 1.0.0'; exit 1; }
+          # The API refuses existing refs: a published version is never moved.
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/template-v$VERSION" -f sha="$GITHUB_SHA" >/dev/null
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/heads/template/v$VERSION" -f sha="$GITHUB_SHA" >/dev/null
+          gh release create "template-v$VERSION" --verify-tag --title "WeaveOps template $VERSION" --generate-notes

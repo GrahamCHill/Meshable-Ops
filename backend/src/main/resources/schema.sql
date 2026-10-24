@@ -1,5 +1,13 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
+ALTER TABLE IF EXISTS plugin_settings ADD COLUMN IF NOT EXISTS search_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE IF EXISTS plugin_settings ADD COLUMN IF NOT EXISTS table_access_json TEXT NOT NULL DEFAULT '{}';
+
+-- Compiled Kanban plugin owns this table; vectors are local and need no AI key.
+ALTER TABLE IF EXISTS plugin_kanban_boards ADD COLUMN IF NOT EXISTS search_text TEXT NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS plugin_kanban_boards ADD COLUMN IF NOT EXISTS search_embedding vector(384);
+CREATE INDEX IF NOT EXISTS idx_plugin_kanban_search ON plugin_kanban_boards USING hnsw (search_embedding vector_cosine_ops);
+
 ALTER TABLE IF EXISTS users
     ADD COLUMN IF NOT EXISTS active BOOLEAN;
 

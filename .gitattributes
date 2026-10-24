@@ -1,0 +1,4 @@
+# Linux containers and deployment scripts must also work from Windows checkouts.
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf

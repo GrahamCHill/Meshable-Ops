@@ -17,6 +17,7 @@ export function SupersetAdminPage() {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const view = views.find(option => option.id === params.get('view')) ?? views[0]
+  const [activeSection, setActiveSection] = useState(view.id)
   const [preparing, setPreparing] = useState(true)
   const [loading, setLoading] = useState(true)
   const [slow, setSlow] = useState(false)
@@ -30,7 +31,14 @@ export function SupersetAdminPage() {
   const modeRef = useRef(mode)
   modeRef.current = mode
   const syncIframeTheme = useCallback(() => {
-    try { const doc = iframeRef.current?.contentDocument; if (doc) applySupersetTheme(doc, modeRef.current) } catch { /* The frame may be navigating. */ }
+    try {
+      const doc = iframeRef.current?.contentDocument
+      if (doc) applySupersetTheme(doc, modeRef.current)
+      const path = iframeRef.current?.contentWindow?.location.pathname ?? ''
+      if (/^\/(?:superset\/)?dashboard(?:\/|$)/.test(path)) setActiveSection('dashboards')
+      else if (/^\/(?:superset\/)?(?:chart|explore)(?:\/|$)/.test(path)) setActiveSection('charts')
+      else if (/^\/(?:tablemodelview|datasetmodelview)(?:\/|$)/.test(path)) setActiveSection('datasets')
+    } catch { /* The frame may be navigating. */ }
   }, [])
 
   useEffect(() => {
@@ -55,6 +63,7 @@ export function SupersetAdminPage() {
     return () => window.removeEventListener('keydown', close)
   }, [focused])
   const openList = (id: string) => {
+    setActiveSection(id)
     setLoading(true); setSlow(false); setRevision(value => value + 1)
     setParams(previous => { const next = new URLSearchParams(previous); next.set('view', id); return next })
   }
@@ -68,10 +77,10 @@ export function SupersetAdminPage() {
       <AdminPageHeader title="Superset workspace" description="Build your analytics here, then use Dashboard links to share them with your team."  actions={<Link className="button button-secondary button-sm" to="/admin/dashboard-links"> Dashboard links</Link>} />
       <section className={`analytics-workspace builder-workspace${focused ? ' is-focused' : ''}`} aria-label="Superset authoring workspace">
         <div className="workspace-toolbar">
-          <nav className="workspace-tabs" aria-label="Superset sections">{views.map(({ id, label }) => <button key={id} className={view.id === id ? 'is-active' : ''} aria-current={view.id === id ? 'page' : undefined} onClick={() => openList(id)}>{label}</button>)}</nav>
-          <div className="inline-actions"><Button variant="ghost" size="sm" disabled={preparing} onClick={() => openList(view.id)}> Return to list</Button><button className="utility-button" aria-label="Reload Superset workspace" title="Reload current page" disabled={preparing} onClick={reload}>Reload</button><button className="utility-button" aria-label={focused ? 'Exit expanded view' : 'Expand Superset workspace'} title={focused ? 'Exit expanded view (Esc)' : 'Expand workspace'} onClick={() => setFocused(!focused)}>{focused ? 'Exit expanded view' : 'Expand'}</button></div>
+          <nav className="workspace-tabs" aria-label="Superset sections">{views.map(({ id, label }) => <button key={id} className={activeSection === id ? 'is-active' : ''} aria-current={activeSection === id ? 'page' : undefined} onClick={() => openList(id)}>{label}</button>)}</nav>
+          <div className="inline-actions"><Button variant="ghost" size="sm" disabled={preparing} onClick={() => openList(activeSection)}> Return to list</Button><button className="utility-button" aria-label="Reload Superset workspace" title="Reload current page" disabled={preparing} onClick={reload}>Reload</button><button className="utility-button" aria-label={focused ? 'Exit expanded view' : 'Expand Superset workspace'} title={focused ? 'Exit expanded view (Esc)' : 'Expand workspace'} onClick={() => setFocused(!focused)}>{focused ? 'Exit expanded view' : 'Expand'}</button></div>
         </div>
-        <p className="workspace-description">Superset may ask you to sign in with your analytics account. Use the tabs above to switch workspaces.</p>
+        <p className="workspace-description">Sign in with your separate Superset analytics account to create and edit reports. Use the tabs above to switch workspaces.</p>
         {slow && <div role="status" className="feedback warning workspace-description">Superset is taking longer than expected. <button className="text-button" onClick={reload}>Reload workspace</button></div>}
         <div className="workspace-content builder-frame">
           {(preparing || loading) && <div className="frame-loading" role="status"><Spinner />{preparing ? 'Preparing your session…' : `Opening ${view.label.toLowerCase()}…`}</div>}

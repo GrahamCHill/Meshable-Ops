@@ -19,7 +19,7 @@ class EmailSettingsServiceTest {
     private val saved = EmailSettings(source = EmailConfigurationSource.ADMIN, fromAddress = "sender@example.test", smtpHost = "smtp.example.test", smtpUsername = "saved-user", smtpPassword = "saved-password")
     private fun service(encryption: SecretEncryption = testEncryption()): EmailSettingsService {
         `when`(repository.findById(1)).thenReturn(Optional.of(saved))
-        return EmailSettingsService(repository, environment, encryption, audit)
+        return EmailSettingsService(repository, environment, encryption, audit, mock(com.starter.mfa.EmailMfaGuard::class.java))
     }
     private fun smtp() = EmailSettingsRequest(EmailConfigurationSource.ADMIN, true, fromAddress = saved.fromAddress, smtpHost = saved.smtpHost)
 

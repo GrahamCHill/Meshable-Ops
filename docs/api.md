@@ -1,5 +1,7 @@
 # Application API reference
 
+Optional modules use the authenticated `/api/plugins` catalogue, administrator-only `/api/admin/plugins` settings, and guarded `/api/plugins/{id}/…` routes. See [Workspace plugins](plugins.md#api) for contracts and Kanban endpoints, [plugin settings](plugins/settings.md) for redacted configuration APIs, and [integration plugins](plugins/integrations.md) for messaging/file-listing endpoints.
+
 
 
 Browser requests use the application origin's `/api` prefix through the frontend proxy. Authenticate through the app; the backend accepts its bearer token or app auth cookie. The cookie is also used by guarded Superset authoring routes. Search and storage endpoints require authentication; admin endpoints additionally require `ADMIN`. Login/logout and public health checks are separate existing flows.
@@ -317,3 +319,112 @@ Responses replace credentials with `smtpUsernameConfigured`, `smtpPasswordConfig
 
 Test/send return `{ "status": "ACCEPTED", "message": "..." }` after provider acceptance, which is not confirmed inbox delivery. Delivery disabled returns 403; unavailable/rejected provider or saturated workers return safe 503 errors. Validation/header injection errors return 400. Each send accepts one mailbox, a 1–200 character single-line subject, and 1–20000 characters of plain text. No attachments or message history are stored by this API. Sending is synchronous, without automatic retries.
 
+## Authentication and MFA
+
+`POST /api/auth/login` still accepts `{ email, password }`. Without MFA it returns the session response, now including `suggestMfaSetup`. With MFA it returns `{ mfaRequired: true, challengeToken, methods, expiresAt }`, clears the auth cookie, and returns no session token. Methods are `TOTP`, `EMAIL`, or `RECOVERY`; email is listed only when enrolled and configured. An outage never changes this into a password-only success.
+
+| Method and path | Request / response |
+| --- | --- |
+| `POST /api/auth/mfa/email` | Public `{ challengeToken }`, sends a code for a valid login challenge to the saved account email |
+| `POST /api/auth/mfa/verify` | Public `{ challengeToken, method, code }`, returns a session only after successful factor verification |
+| `GET /api/account/mfa` | Authenticated `{ totpEnabled, emailEnabled, emailAvailable, encryptionReady, recoveryCodesRemaining, setupRecommended }` |
+| `POST /api/account/mfa/dismiss` | Dismiss optional primary-admin setup recommendation |
+| `POST /api/account/mfa/setup/{kind}` | `kind`: `totp`, `email`, or `manage-email`; `{ password, method?, code?, challengeToken? }` |
+| `POST /api/account/mfa/confirm` | `{ challengeToken, method, code }`; returns `{ auth, recoveryCodes }` |
+| `POST /api/account/mfa/disable` | `{ password, method, code, challengeToken?, target }`; target `TOTP`, `EMAIL`, or `ALL`; returns `{ auth, recoveryCodes: [] }` |
+| `POST /api/account/mfa/recovery-codes` | Same proof fields (target ignored); returns fresh `{ auth, recoveryCodes }` |
+
+Setup returns `{ challengeToken, expiresAt, secret?, otpauthUri? }`; the secret/URI occur only for TOTP enrollment. When adding another factor, proof of an existing factor is required. `manage-email` sends a password-authorized email challenge usable as existing-factor proof. It cannot itself enable email MFA. New factors remain inactive until confirmation. Enrollment and recovery regeneration return new recovery codes once; replace the current JWT with `auth.token` after any security change. Old sessions are invalidated. Invalid/expired/replayed codes return 401; validation/unavailable setup returns 400, rate limits 429 with `Retry-After`, and delivery failures 503. See [MFA behavior and recovery](mfa.md).
+
+## Webhooks
+
+Admin endpoints require `ADMIN`; incoming endpoint authentication is independent of application login.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/admin/webhooks` | Redacted endpoint list |
+| `POST /api/admin/webhooks` | Create `{ name, direction, enabled, url?, authentication, secret?, rotateSecret? }` |
+| `PUT /api/admin/webhooks/{id}` | Update the same fields; direction is immutable |
+| `GET /api/admin/webhooks/{id}/deliveries` | Latest 50 `{ id, createdAt, deliveryKey, status, httpStatus?, payload? }` records |
+| `POST /api/admin/webhooks/{id}/send` | Manual outgoing send of `{ event, data }`; returns delivery metadata and the sent envelope |
+| `POST /api/webhooks/incoming/{id}` | Public JSON receipt with endpoint HMAC/Bearer authentication; `{ message: "Webhook accepted" }` |
+
+Direction is `INCOMING` or `OUTGOING`; authentication is `HMAC` or `BEARER`. Save returns `{ endpoint, secret? }`; new/rotated secrets are shown once and omitted from subsequent list responses. Blank inputs retain an unchanged destination's secret. The endpoint view contains `id`, `name`, `direction`, `enabled`, `url`, `authentication`, and `secretConfigured`.
+
+HMAC requires unique `X-Webhook-Id`, Unix-seconds `X-Webhook-Timestamp`, and `X-Webhook-Signature: sha256=<hex HMAC-SHA256(secret, timestamp + "." + deliveryId + "." + rawBody)>`. Timestamp tolerance is five minutes. Bearer uses `Authorization: Bearer <secret>` and an optional deduplication ID. Bodies are UTF-8 JSON, max 64 KiB. Outgoing envelopes contain `{ id, event, createdAt, data }`; event names match `[A-Za-z0-9._-]{1,80}`. No automatic actions/retries occur. Invalid authentication returns 401; disabled/missing incoming endpoints 404; malformed input/oversize 400; rate limits 429. Public HTTPS/DNS restrictions and encrypted retention limits are in [the webhook guide](webhooks.md).
+
+## Protected PDF sharing
+
+Admin endpoints require `ADMIN`. Email includes the watermarked, password-encrypted PDF attachment **and** a protected online link; it never includes the password.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/admin/shares/settings` | `{ enabled, publicBaseUrl, maxLifetimeHours, emailAvailable }` |
+| `PUT /api/admin/shares/settings` | Save `{ enabled, publicBaseUrl, maxLifetimeHours }` |
+| `GET /api/admin/shares` | Latest 100 redacted share metadata records |
+| `POST /api/admin/shares` | `{ folderId, path, recipient, password, lifetimeHours }`; emails the protected attachment and returns `{ share, url }` |
+| `POST /api/admin/shares/{id}/revoke` | Revoke future online access; cannot recall attachments |
+| `POST /api/shared/{token}/unlock` | Public `{ password }`; returns `{ accessToken, expiresAt }`, a grant valid for at most 15 minutes |
+| `GET /api/shared/{token}` | With `X-Share-Access`, returns `{ filename, pageCount, recipient, expiresAt, canPreview, canDownload }` |
+| `GET /api/shared/{token}/pages/{page}` | With `X-Share-Access`, one-based watermarked raster PNG |
+| `POST /api/shared/{token}/download` | With `X-Share-Access` and `{ password }`, watermarked password-encrypted PDF attachment |
+
+Share passwords require 12–72 characters and at most 72 UTF-8 bytes. Lifetime defaults to 72 hours, is at least one hour, and must not exceed the admin maximum (default 168, configurable up to 720). The generated attachment must fit 10 MiB; original PDF limits also apply. Tokens/grants/passwords are excluded from list responses, and share passwords are write-only. Shared file responses use no-store caching. A link requires a valid grant and remains subject to live expiry/revocation/source checks and document policy; downloaded/emailed attachments remain usable with their password after expiry/revocation. Bad passwords/grants return 401, inaccessible/changed/revoked links 404, policy blocks 403, invalid setup/PDF input 400, rate limits 429, failed email acceptance 503. See [sharing limits](file-sharing.md).
+
+## Document templates and generated documents
+
+Templates use the structured WeasyCanvas v0.8.0 schema. JSON supplied by regular users cannot replace the saved layout used for generation. These routes require authentication; template mutations additionally require `ADMIN`.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/admin/document-templates` | Latest 100 templates, including unpublished drafts |
+| `POST /api/admin/document-templates` | Create `{ name, category, published, template, fieldRules, revision }` |
+| `PUT /api/admin/document-templates/{id}` | Update the same fields with the current optimistic revision |
+| `GET /api/documents/templates` | Latest 100 published templates for document generation |
+| `GET /api/documents` | Latest 100 generated-document metadata records owned by the user; admins can see all |
+| `POST /api/documents` | Generate from `{ templateId, name, values: { "customer.name": "Example", ... } }` |
+| `GET /api/documents/{id}/pages/{page}` | Authenticated one-based raster PNG preview under current document policy |
+| `GET /api/documents/{id}/download` | Original or policy-watermarked PDF download |
+| `POST /api/documents/{id}/email` | Explicit send of `{ recipient, subject, text, protection, password? }` as a real PDF attachment |
+
+Category is `QUOTE`, `INVOICE`, or `OTHER`. A template view contains `id`, `name`, `category`, `published`, `revision`, `updatedAt`, `template`, and `fieldRules`. Templates are limited to 1.9 MB including embedded images. Each field rule has `key`, `type`, optional `operation`, and `inputs`. Types are `TEXT`, `MULTILINE`, `NUMBER`, `MONEY`, `DATE`, `EMAIL`, or `DERIVED`. Derived rules use two numeric/derived input keys and `ADD`, `SUBTRACT`, `MULTIPLY`, `DIVIDE`, or `PERCENT`; cycles are invalid. The backend recomputes derived values even if a caller supplies them. Dates use ISO format; required/fallback/length constraints also come from `template.apiFields`. Values are literal flat keys, not executable expressions or remote API fetch definitions.
+
+Generation returns `{ id, ownerId, templateId, templateRevision, templateName, name, filename, pageCount, byteSize, createdAt }`. Generated PDFs, source snapshots, and resolved field values are not returned in library metadata. PDFs are bounded to 10 MiB/200 pages. A generated record remains tied to its original template revision after later template changes. Regular accounts cannot access another user's document through metadata, download, preview, email, or workflow references.
+
+Email protection is `PLAIN` (default) or `PASSWORD`. Protected sends require a 12-character minimum password within 72 UTF-8 bytes; passwords are write-only, not persisted, and not automatically included in message content. Both modes honor disabled downloads and mandatory policy watermarks. Sends return the existing `{ status, message }` provider-acceptance response; there is no automatic retry. This endpoint sends one generated PDF per message. Rate limits: generation 20/account/hour, previews 120/account/five minutes, email 10/account/five minutes. Renderer unavailable returns safe 503; invalid templates/values 400; permission policy 403; missing/inaccessible records 404; concurrent edits 409; rate limits 429. [Document setup and limits](documents-and-workflows.md).
+
+## Workflow definitions
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/workflows` | Latest 100 workflows owned by the user; admins can manage all |
+| `POST /api/workflows` | Create `{ name, state, graph: { nodes, edges }, documentIds, revision }` |
+| `PUT /api/workflows/{id}` | Update the same contract using its current revision |
+
+Views add `id`, `ownerId`, and `updatedAt`. State is `DRAFT`, `READY`, or `ARCHIVED`. A node contains `id`, `kind`, `label`, `x`, `y`, optional `documentId`, and optional configuration: `note`, `recipient`, `subject`, `protection`, `field`, `operator`, `expected`. Kinds are `START`, `DOCUMENT`, `REVIEW`, `CONDITION`, `EMAIL`, and `END`. Email protection uses `PLAIN`/`PASSWORD`; no password is a stored block property. Condition operators are `EQUALS`, `NOT_EQUALS`, `CONTAINS`, `GREATER_THAN`, and `IS_SET`.
+
+Each edge is `{ id, source, target, branch }`, with branch `NEXT`, `TRUE`, or `FALSE`. Drafts may be incomplete but still require valid IDs/references/positions and acyclic connections. Ready validation requires one start, an end, reachability, complete outgoing paths, both outputs on conditions, document selections for document/email blocks, and email recipient/subject. Limits are 50 nodes, 100 edges, and 50 unique attached document IDs. Coordinates are finite and within ±10000. Loops, duplicate outputs, unknown nodes, and inaccessible document references return 400/404. Optimistic revision conflicts return 409.
+
+These endpoints save design definitions only. There is no execute/schedule/approval runtime endpoint in this version. The UI's Prepare email action uses the explicit generated-document email endpoint after the sender completes its form. See [workflow behavior](documents-and-workflows.md#building-workflows).
+
+
+## Branding
+
+Branding metadata/images are public GET endpoints so the business name, colours, logos, and sign-in backgrounds work before authentication. Admin writes require `ADMIN`.
+
+| Endpoint | Contract |
+| --- | --- |
+| `GET /api/branding` | `{ logoVersion, faviconVersion, settings, loginImages: [{slot, version}] }`; metadata requires cache revalidation |
+| `PUT /api/admin/branding` | Save the complete `settings` object, including its current `revision`; return updated branding metadata |
+| `GET /api/branding/assets/{kind}/{version}` | Normalized `image/png`, `nosniff`, public caching; 404 for removed/replaced versions |
+| `POST /api/admin/branding/{kind}` | Multipart form field `file`; returns updated branding metadata |
+| `DELETE /api/admin/branding/{kind}` | Reset that custom asset and return updated metadata |
+| `GET /api/branding/login-images/{slot}/{version}` | Normalized public `image/jpeg`, `nosniff`, versioned caching; 404 for removed/replaced versions |
+| `POST /api/admin/branding/login-images/{slot}` | Multipart `file`; save or replace a sign-in image and return updated metadata |
+| `DELETE /api/admin/branding/login-images/{slot}` | Remove that sign-in image and return updated metadata |
+
+`kind` is `LOGO` or `FAVICON`; `version` is the returned SHA-256 content version. Empty, unsupported, oversized, corrupt, or excessive-dimension uploads return 400. Inputs are PNG/JPEG/WebP up to 1 MiB and 2048 by 2048 pixels. The server ignores uploaded filenames/content-type claims and stores a re-encoded PNG. Logo dimensions fit within 512 pixels; favicon dimensions are 64 square with transparent padding. No external image URLs are accepted.
+
+`settings` contains `applicationName` (trimmed, 1–80 characters), nullable six-digit hex `sidebarBackgroundColor`, `sidebarTextColor`, and `linkColor`, `loginBackgroundMode` (`NONE`, `SINGLE`, `SLIDESHOW`), nullable `loginBackgroundSlot`, `slideshowSeconds` (5–60), and `revision`. Missing preferences use WeaveOps/theme defaults without seeding a row. Background modes need an uploaded image; a selected single-image slot must exist. Stale preference updates return 409. API slots are 0–4, displayed as images 1–5 in the UI. Background inputs are PNG/JPEG/WebP up to 5 MiB and 4096 × 4096 pixels, re-encoded as JPEG at a longest side of 1920 pixels.
+
+A missing favicon falls back to the custom logo; a missing logo falls back to the bundled placeholder. No external image URLs or arbitrary CSS values are accepted. The frontend refreshes branding after saves and applies the name/title, sidebar/text/link colours, and image preferences. See [branding behavior and persistence](branding.md).

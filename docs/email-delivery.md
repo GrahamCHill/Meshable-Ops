@@ -54,7 +54,7 @@ These fields are documented in [`.env.example`](../.env.example) and forwarded t
 APP_EMAIL_ENABLED=true
 APP_EMAIL_PROVIDER=SMTP
 APP_EMAIL_FROM_ADDRESS=notifications@example.com
-APP_EMAIL_FROM_NAME=Contract workspace
+APP_EMAIL_FROM_NAME=WeaveOps
 APP_EMAIL_REPLY_TO=support@example.com
 APP_EMAIL_SMTP_HOST=smtp.example.com
 APP_EMAIL_SMTP_PORT=587
@@ -78,8 +78,12 @@ The `email_settings` PostgreSQL row (singleton ID `1`) stores the source, transp
 
 ## Using email in application code
 
-Inject `EmailDeliveryService` and call `send(SendEmailRequest(recipient, subject, text))`. It returns `ACCEPTED`, `DISABLED`, or `UNAVAILABLE`. Provider/configuration failures become an optional result so a workflow can decide how to report them. Invalid message input is rejected. Existing account creation and storage/indexing workflows do not automatically send email; add explicit calls where required by the product.
+Application workflows use `NotificationService` as the delivery boundary. `EMAIL` delegates to `EmailDeliveryService`; `SMS` remains reserved. WhatsApp is now an optional plugin channel alongside Telegram and Teams, each with its own settings. See [integration plugins](plugins/integrations.md). Existing email/MFA/document flows continue to use email and do not switch channels automatically. Direct email callers can still use `send(SendEmailRequest(recipient, subject, text))`; it returns `ACCEPTED`, `DISABLED`, or `UNAVAILABLE`. Provider/configuration failures become an optional result for callers to handle. Invalid message input is rejected. MFA and explicit PDF sharing use this sender; account creation and indexing do not send automatically.
 
-Delivery is synchronous, with at most two concurrent sends per backend instance. Messages are limited to one recipient, a 200-character single-line subject, and 20,000 characters of plain text. Attachments, bulk campaigns, HTML templates, a persistent queue, bounce webhooks, and automatic retries are outside this sender. After a timeout, verify provider status before manually retrying because the provider may already have accepted the message.
+Delivery is synchronous, with at most two concurrent sends per backend instance. Messages are limited to one recipient, a 200-character single-line subject, and 20,000 characters of plain text. Internal callers can include one PDF attachment up to 10 MiB via `EmailAttachment`; public manual email requests cannot supply attachments. [Protected sharing](file-sharing.md) generates an encrypted, watermarked copy before attaching it; passwords are kept out of the email. SMTP sends multipart MIME, Resend/SendGrid send base64 attachment fields, and Mailgun sends a binary multipart attachment. Bulk campaigns, HTML templates, a persistent queue, bounce processing, and automatic retries remain outside this sender. After a timeout, verify provider status before manually retrying because the provider may already have accepted the message.
+
+Email MFA enrollment requires a successfully received code. The admin settings service prevents disabling/invalidating delivery while any account relies on email as its sole enrolled factor; first add an authenticator or remove that email factor. External configuration changes and provider outages still require recovery codes, another factor, or restoring delivery. See [MFA setup and recovery](mfa.md). Generic [webhook management](webhooks.md) receives authenticated JSON but does not implement provider-specific bounce/signature processing.
 
 The admin APIs are described in [API reference](api.md#email-delivery). Local SMTP and HTTP fixtures verify transports, TLS refusal, redaction, credential binding, and authorization. Real provider credentials, DNS authentication, network access, and inbox delivery need verification in the target deployment.
+
+[Generated documents](documents-and-workflows.md) use the same internal PDF attachment support, with a plain or password-protected choice per send. Existing watermark/download policy still applies; passwords are never saved in workflow blocks. This is distinct from external storage-file sharing, which always sends a watermarked protected copy. Workflow email blocks prepare an explicit send form and do not send automatically.

@@ -1,5 +1,9 @@
 # Database layout
 
+Optional extensions use `plugin_settings` (enabled state, roles, search visibility, table policies) and `plugin_kanban_boards` (owner, name, revision, timestamp, validated JSON, local search text/vector). Include these in PostgreSQL backups; metadata JSON export omits them. Disabling retains data. Plugin search is opt-in, with live role and ownership checks. Admins can empty only declared plugin tables with an explicit confirmation; schema and settings remain. The host-managed `workspace_plugin_configuration` stores encrypted configuration JSON and optimistic revisions; it is retained when clearing owned plugin tables. Include it in backups and wrapping-key rotation. See [Workspace plugins](plugins.md).
+
+Workspace branding uses PostgreSQL: `branding_assets` stores logo/favicon PNGs; `branding_preferences` stores the business name, hex colour overrides, background mode/selection/timing, and optimistic revision; `branding_login_images` stores up to five numbered JPEG images with content versions. Image listing queries project metadata without fetching the image bytes. Include all three tables in database backups; the metadata JSON export omits them. See [branding](branding.md).
+
 PostgreSQL stores application identity, storage metadata, feature/provider configuration, indexing jobs, and derived search content. S3/Azure Blob stores original files. MongoDB retains events and audit history; it is not a search source. Redis supports Superset.
 
 ## Stores and ownership
@@ -208,7 +212,7 @@ Both vector and keyword queries join live folder visibility and connection enabl
 
 Storage access/secret fields and AI API-key fields are encrypted TEXT using AES-256-GCM with a fresh nonce per write. JPA converts ciphertext to server-side values; API responses expose configured flags. Password hashes and credentials are excluded from entity JSON/debug output. Wrapping keys stay outside PostgreSQL in the server environment.
 
-Hibernate currently uses `ddl-auto=update`; supplemental [schema.sql](../backend/src/main/resources/schema.sql) runs after JPA initialization to create pgvector objects, indexes, and compatibility changes. `StoredSecretMigration` then encrypts legacy plaintext/rewraps credentials before seed runners; scheduled work waits until application startup completes. This is the current startup mechanism, not a versioned Flyway/Liquibase migration system. Existing encrypted rows require the matching wrapping key. See [upgrade and key rotation](deployment.md#upgrading-an-existing-installation).
+Hibernate currently uses `ddl-auto=update`; supplemental [schema.sql](../backend/src/main/resources/schema.sql) runs after JPA initialization to create pgvector objects, indexes, and compatibility changes. `StoredSecretMigration` then encrypts legacy plaintext/rewraps credentials before explicit account/storage bootstrap; scheduled work waits until application startup completes. This is the current startup mechanism, not a versioned Flyway/Liquibase migration system. Existing encrypted rows require the matching wrapping key. See [upgrade and key rotation](deployment.md#upgrading-an-existing-installation).
 
 ## MongoDB and Redis
 
@@ -245,3 +249,33 @@ The export identifies itself as `superset-docker-app-backup-v2` and `credentials
 ### Email settings
 
 `email_settings` uses singleton ID `1`. It stores `source` (`ENVIRONMENT` or `ADMIN`), `enabled` (initially false), `provider`, sender/reply-to fields, SMTP host/port/security/authentication, API base URL, and Mailgun domain. `smtp_username`, `smtp_password` (also app password/OAuth2 token), and `api_key` are encrypted TEXT columns, never returned by settings APIs. Startup secret rotation includes all three columns. Environment credentials remain outside the row. Hibernate creates the table; an absent row selects the disabled environment defaults. Message bodies, delivery queues, and sent history are not persisted. The existing JSON export excludes this table; use PostgreSQL backups and preserve wrapping keys. See [email delivery](email-delivery.md).
+
+### MFA, webhooks, and protected sharing
+
+Hibernate also creates the following domain tables. They are excluded from JSON export and from search/AI retrieval. Preserve PostgreSQL backups and wrapping keys; MongoDB is unchanged.
+
+| Table / columns | Purpose and protection |
+| --- | --- |
+| `users.session_version`, `mfa_prompt_dismissed` | Security version defaults `0`, optional primary-admin prompt dismissal defaults false. JWT validation checks the live version and MFA claim. |
+| `mfa_credentials` | User ID primary key (`id`), encrypted `totp_secret`, `email_enabled`, last accepted TOTP step, JSON recovery-code hashes. |
+| `mfa_challenges` | SHA-256 token hash as primary key, user/purpose/security version/expiry, attempts/consumed, encrypted `pending_secret`, HMAC email-code proof, last send time. Five-minute challenges; expired rows cleaned hourly after a grace hour. |
+| `security_rate_limits` | Hashed scope/identity/time bucket, attempts and expiry. Atomic PostgreSQL upsert counters, hourly expiry cleanup. |
+| `webhook_endpoints` | Name/direction/URL/enabled/authentication plus encrypted `secret`. |
+| `webhook_deliveries` | Endpoint, unique delivery key per endpoint, timestamp/status/HTTP status and encrypted JSON `payload`. Maximum 100 per endpoint; seven-day hourly cleanup. |
+| `file_share_settings` | Singleton ID `1`: enabled (default true), public origin override, maximum link lifetime (default 168 hours). |
+| `file_shares` | SHA-256 link token, sender/folder/path/recipient, salted bcrypt password hash, source-byte fingerprint, filename/pages/created/expiry/revoked/delivery state. No raw PDF or recoverable password is stored. |
+| `share_access_grants` | SHA-256 grant as primary key, share ID, expiry of at most 15 minutes. Expired grants cleaned hourly. |
+
+The new MFA/webhook/share repository packages are explicitly included in PostgreSQL repository scanning. Startup wrapping-key migration includes authenticator secrets, pending enrollment secrets, webhook secrets, and webhook delivery payloads. Retention cleanup runs after startup. Email attachments are generated in memory; general email bodies are not retained. The share registry retains metadata, not the attachment bytes. See [MFA](mfa.md), [webhooks](webhooks.md), and [PDF sharing](file-sharing.md).
+
+### Document generation and workflow tables
+
+| Table | Contents |
+| --- | --- |
+| `document_templates` | Name/category/published flag, structured WeasyCanvas template JSON, typed field/calculation rules, creator/timestamps, optimistic revision. |
+| `generated_documents` | Owner, template ID/revision/name, document name/filename, created time/pages/size, resolved values, template snapshot, immutable PDF bytes (`bytea`). Owner/created-time index. |
+| `workflow_definitions` | Owner, name, state (`DRAFT`, `READY`, `ARCHIVED`), typed graph JSON, attached document UUIDs, created/updated times, optimistic revision. Owner/updated-time index. |
+
+Hibernate creates these tables through the existing upgrade mechanism; there is no Flyway migration system. Regular users access their own generated documents/workflows; admins can manage all. Attachment IDs are validated against available documents on every workflow save, not accepted as proof of access. PDF bytes/snapshots/resolved values are excluded from metadata serialization; library queries fetch metadata only. Template revisions are optimistic concurrency tokens beginning at zero. Editing a template does not rewrite an existing PDF.
+
+Generated PDFs live in PostgreSQL in this first version. They are not automatically mirrored into S3/Azure Blob or added to document search. Template/field data and workflow metadata are access-controlled application records, not credentials encrypted by the secret converter; protect database backups appropriately. PDF passwords are supplied per send and never persisted. The current admin JSON export omits these tables. Preserve PostgreSQL backups for document history and templates; MongoDB and existing object storage remain unchanged. See [documents and workflows](documents-and-workflows.md).

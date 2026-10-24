@@ -54,3 +54,29 @@ Save the job with **Save settings**; changing controls alone does not change the
 `POST /api/search` returns `{ results, mode, notice }`, where `mode` is `VECTOR` or `KEYWORD`. Storage and content results obey the same live visibility checks in both paths.
 
 `GET /api/search/status` reports configured feature state, not a live provider-health probe. `POST /api/search/ask` returns `grounded: false` guidance if chat is absent/unavailable or no relevant excerpts exist. An explicit search disable returns 403, and access revoked during generation also returns 403. PostgreSQL remains a required application dependency; keyword fallback is not a replacement database. See [API contracts](api.md#search-and-answers).
+
+## Command-line reindex helpers
+
+Run these from the repository root against the intended installation.
+
+Reindex stored vectors:
+
+```bash
+./scripts/reindex-items.sh
+```
+
+On Windows PowerShell:
+
+```powershell
+./scripts/reindex-items.ps1
+```
+
+Both reindex helpers:
+
+- log in as an app admin
+- call the existing `/api/items/reindex` endpoint
+- support `APP_URL`, `APP_ADMIN_EMAIL`, and `APP_ADMIN_PASSWORD`
+
+## Plugin records
+
+Global workspace search can include records from installed plugins. Administrators must enable each plugin and select **Include in workspace search**. Providers enforce table roles and record ownership; changing those controls excludes results immediately. Kanban uses local PostgreSQL vectors and full-text matching without AI credentials. Folder-scoped storage searches and AI document answers remain storage-only. See [Plugin search](plugins/search.md).

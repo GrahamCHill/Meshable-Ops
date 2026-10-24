@@ -78,7 +78,7 @@ secret delivery with AWS Secrets Manager/SSM or Azure Key Vault before productio
 
 ## Application configuration after bootstrap
 
-The cloud-init templates seed the default connection with the VM's storage identity and no stored storage keys. They do not currently provision `APP_SECRETS_ENCRYPTION_KEY`, AI credentials, named folder selections, or an indexing schedule.
+The cloud-init templates configure the default connection with the VM's storage identity and no stored storage keys. A host helper generates missing database credentials, `APP_SECRETS_ENCRYPTION_KEY`, and a renderer token without replacing existing values. AI credentials, named folder selections, and indexing schedules remain admin configuration. Preserve the resulting private `.env.production` for recovery.
 
 After bootstrap:
 
@@ -90,4 +90,8 @@ After bootstrap:
 The examples do not replace production database credential review or recovery backups. See the [deployment and upgrade guide](../docs/deployment.md), [credential setup](../docs/ai-search-and-secrets.md), and [indexing jobs](../docs/search-and-indexing.md). No Terraform resources or MongoDB schema changes are required for these UI/job controls.
 
 Optional outbound email is configured after bootstrap through **Administration > Email delivery** or the `APP_EMAIL_*` environment values forwarded by Compose. The templates do not provision an SMTP account, email API key, or verified sender/domain. Use the persistent wrapping key for admin-saved credentials and allow backend egress to the chosen SMTP/HTTPS endpoint. See [SMTP and transactional email setup](../docs/email-delivery.md).
+
+Optional [MFA](../docs/mfa.md), [webhook management](../docs/webhooks.md), and [protected PDF sharing](../docs/file-sharing.md) use PostgreSQL; no Terraform or MongoDB changes are required. Set the reachable HTTPS origin in `APP_PUBLIC_BASE_URL`, the primary admin email in `APP_MFA_PRIMARY_ADMIN_EMAIL`, and retain `APP_WEBHOOK_ALLOW_PRIVATE_TARGETS=false` unless an internal destination is deliberately trusted. PDF emails include the encrypted, watermarked attachment; online revocation/expiry cannot recall it. SMS/WhatsApp remain future channel adapters, with only email implemented today.
+
+[WeasyCanvas document generation and workflow design](../docs/documents-and-workflows.md) add a private `weasy-renderer` Compose service and PostgreSQL template/document/workflow tables. It needs native Pango/fonts (installed by its image), with no extra public port or Terraform resource. Set the shared server-only `APP_DOCUMENT_RENDER_TOKEN`; override `APP_DOCUMENT_RENDER_URL` only for an intentionally separate renderer. Preserve PostgreSQL backups for generated PDF bytes and source snapshots. Workflow diagrams are not an automatic execution engine in this version.
 

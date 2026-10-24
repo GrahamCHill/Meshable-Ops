@@ -14,17 +14,12 @@ class SeedPropertiesTest {
         .withUserConfiguration(PropertyConfiguration::class.java)
 
     @Test
-    fun `existing seed defaults are preserved`() {
+    fun `account bootstrap is empty and storage defaults are preserved`() {
         contextRunner.run { context ->
             assertThat(context.startupFailure).isNull()
-            val admin = context.getBean(AdminSeedProperties::class.java)
+            val admin = context.getBean(BootstrapProperties::class.java)
             val storage = context.getBean(StorageSeedProperties::class.java)
 
-            assertThat(admin.seedAdmin.email).isEqualTo("admin@app.local")
-            assertThat(admin.seedAdmin.role).isEqualTo("ADMIN")
-            assertThat(admin.seedUser.email).isEqualTo("user@app.local")
-            assertThat(admin.seedUser.role).isEqualTo("USER")
-            assertThat(admin.seedDashboard.allowedRoles).isEqualTo("ADMIN,USER")
             assertThat(admin.bootstrapUsersJson).isEmpty()
             assertThat(storage.provider).isEqualTo("NONE")
             assertThat(storage.region).isEqualTo("us-east-1")
@@ -37,11 +32,7 @@ class SeedPropertiesTest {
     fun `deployment environment variable names still bind to grouped settings`() {
         contextRunner.withInitializer { context ->
             context.environment.propertySources.addFirst(SystemEnvironmentPropertySource("seed-test", mapOf(
-                "APP_SEED_ADMIN_EMAIL" to "owner@example.com",
-                "APP_SEED_USER_USERNAME" to "viewer",
                 "APP_BOOTSTRAP_USERS_JSON" to "[]",
-                "APP_SEED_DASHBOARD_GUEST_TOKEN_RESOURCE_ID" to "42",
-                "APP_SEED_DASHBOARD_ALLOWED_ROLES" to "ADMIN",
                 "APP_SEED_STORAGE_PROVIDER" to "AZURE_BLOB",
                 "APP_SEED_STORAGE_BUCKET" to "documents",
                 "APP_SEED_STORAGE_REGION" to "southafricanorth",
@@ -53,14 +44,10 @@ class SeedPropertiesTest {
             )))
         }.run { context ->
             assertThat(context.startupFailure).isNull()
-            val admin = context.getBean(AdminSeedProperties::class.java)
+            val admin = context.getBean(BootstrapProperties::class.java)
             val storage = context.getBean(StorageSeedProperties::class.java)
 
-            assertThat(admin.seedAdmin.email).isEqualTo("owner@example.com")
-            assertThat(admin.seedUser.username).isEqualTo("viewer")
             assertThat(admin.bootstrapUsersJson).isEqualTo("[]")
-            assertThat(admin.seedDashboard.guestTokenResourceId).isEqualTo("42")
-            assertThat(admin.seedDashboard.allowedRoles).isEqualTo("ADMIN")
             assertThat(storage.provider).isEqualTo("AZURE_BLOB")
             assertThat(storage.bucket).isEqualTo("documents")
             assertThat(storage.region).isEqualTo("southafricanorth")
@@ -73,6 +60,6 @@ class SeedPropertiesTest {
     }
 
     @Configuration(proxyBeanMethods = false)
-    @EnableConfigurationProperties(AdminSeedProperties::class, StorageSeedProperties::class)
+    @EnableConfigurationProperties(BootstrapProperties::class, StorageSeedProperties::class)
     class PropertyConfiguration
 }

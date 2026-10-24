@@ -11,6 +11,13 @@ interface UserRepository : JpaRepository<User, UUID> {
     fun findByUsername(username: String): Optional<User>
     fun existsByEmail(email: String): Boolean
     fun existsByUsername(username: String): Boolean
+    fun findFirstByRoleAndActiveTrueOrderByCreatedAtAsc(role: String): Optional<User>
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM User u WHERE u.email = :email")
+    fun lockedByEmail(email: String): Optional<User>
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM User u WHERE u.id = :id")
+    fun lockedById(id: UUID): Optional<User>
     fun findAllByOrderByRoleAscCreatedAtAsc(): List<User>
 
     @Query("SELECT DISTINCT UPPER(u.role) FROM User u ORDER BY UPPER(u.role)")

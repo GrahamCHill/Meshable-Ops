@@ -1,0 +1,14 @@
+.workflow-workspace { display: grid; grid-template-columns: 180px minmax(350px, 1fr) 240px; gap: 24px; align-items: start; }
+.workflow-workspace aside { max-height: 720px; overflow-y: auto; padding: 8px 0; }
+.workflow-canvas { height: 700px; min-width: 0; display: flex; flex-direction: column; background: var(--color-surface-2); }
+.workflow-canvas > .react-flow { flex: 1; min-height: 0; }
+.workflow-step { width: 190px; padding: 16px; background: var(--color-surface); color: var(--color-text); display: grid; gap: 6px; }
+.workflow-step small, .workflow-step span { font-size: 11px; color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.workflow-step strong { font-size: 14px; overflow-wrap: anywhere; }
+.workflow-step.is-selected { outline: 2px solid var(--color-text-secondary); }
+.workflow-step .react-flow__handle { background: var(--color-text-secondary); border: 0; width: 10px; height: 10px; }
+.workflow-canvas .react-flow__edge-path { stroke: var(--color-text-secondary); }
+.workflow-canvas .react-flow__edge-textbg { fill: var(--color-surface); }
+.workflow-canvas .react-flow__edge-text { fill: var(--color-text); }
+@media (max-width: 1050px) { .workflow-workspace { grid-template-columns: 155px minmax(300px,1fr); }.workflow-workspace > aside:last-child { grid-column: 1 / -1; max-height: none; } }
+@media (max-width: 650px) { .workflow-workspace { grid-template-columns: minmax(0,1fr); }.workflow-canvas { height: 560px; }.workflow-workspace > aside { max-height: none; } }

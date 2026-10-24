@@ -1,0 +1,19 @@
+.weasy-host { height: min(900px, 85vh); min-height: 650px; min-width: 0; isolation: isolate; font-family: inherit; color: var(--color-text); background: var(--color-surface); --accent: var(--color-text); --line: transparent; }
+.weasy-host .designer { height: 100%; }
+.weasy-host .designer-toolbar { padding: 16px 0; background: var(--color-surface); border: 0; gap: 12px; }
+.weasy-host .designer-toolbar h2 { font-size: 1rem; margin: 0 0 6px; letter-spacing: normal; }
+.weasy-host .designer-toolbar .eyebrow, .weasy-host .section-icon, .weasy-host .palette-plus, .weasy-host .designer-ruler { display: none; }
+.weasy-host .designer-layout { grid-template-columns: 190px minmax(260px,1fr) 255px; }
+.weasy-host .designer-palette, .weasy-host .designer-inspector, .weasy-host .panel { border: 0; padding: 12px; background: var(--color-surface); color: var(--color-text); }
+.weasy-host .designer-stage { padding: 16px; background: var(--color-surface-2); }
+.weasy-host .designer-page { border: 0; border-radius: 0; box-shadow: none; }
+.weasy-host button, .weasy-host input, .weasy-host select, .weasy-host textarea { border: 0; border-radius: 0; box-shadow: none; font-family: inherit; }
+.weasy-host input, .weasy-host select, .weasy-host textarea { background: var(--color-surface-2); color: var(--color-text); }
+.weasy-host .palette-item, .weasy-host .api-palette-item { border: 0; background: transparent; padding: 12px 0; color: var(--color-text); }
+.weasy-host .designer-section, .weasy-host .designer-drop-zone { border: 0; border-radius: 0; }
+.weasy-host .designer-section.selected { outline: 1px solid #777; border: 0; box-shadow: none; }
+.weasy-host .designer-section-select:hover { background: #f6f6f6 !important; }
+.weasy-host .panel-divider { background: transparent; }
+.weasy-host .designer-toolbar button { color: var(--color-text); background: var(--color-surface-2); }
+@media (max-width: 1150px) { .weasy-host .designer-layout { grid-template-columns: 165px minmax(240px,1fr); }.weasy-host .designer-inspector { grid-column: 1 / -1; }.weasy-host { height: auto; }.weasy-host .designer { overflow: visible; }.weasy-host .designer-layout { overflow: visible; } }
+@media (max-width: 650px) { .weasy-host .designer-layout { display: flex; flex-direction: column; }.weasy-host .designer-stage, .weasy-host .designer-palette, .weasy-host .designer-inspector { width: 100%; }.weasy-host .designer-toolbar { flex-direction: column; align-items: start; } }

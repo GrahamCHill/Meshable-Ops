@@ -1,0 +1,34 @@
+package com.starter.plugins
+
+import com.starter.exception.BadRequestException
+
+internal object PluginManifests {
+    private val roles = setOf("ADMIN", "USER")
+    fun validate(manifest: PluginManifest) {
+        require("ADMIN" in manifest.supportedRoles && roles.containsAll(manifest.supportedRoles)) { "Invalid supported plugin roles" }
+        require(manifest.settingsFields.size <= 30 && manifest.settingsFields.map { it.key }.distinct().size == manifest.settingsFields.size)
+        manifest.settingsFields.forEach {
+            require(it.key.matches(Regex("[a-z][A-Za-z0-9]{0,39}")) && it.label.isNotBlank() && it.label.length <= 100 && it.help.length <= 600 && it.maxLength in 1..4096) { "Invalid plugin settings field" }
+        }
+        require(manifest.settingsFields.isEmpty() || PluginExtension.SETTINGS in manifest.extensions)
+        require(manifest.menuItems.size <= 20 && manifest.menuItems.map { it.path }.distinct().size == manifest.menuItems.size)
+        manifest.menuItems.forEach {
+            require(it.path.matches(Regex("[a-z][a-z0-9-]{0,39}")) && it.label.isNotBlank() && it.label.length <= 60 && it.roles.isNotEmpty() && roles.containsAll(it.roles)) { "Invalid plugin submenu" }
+        }
+        require(manifest.tables.size <= 20 && manifest.tables.map { it.name }.distinct().size == manifest.tables.size)
+        val prefix = "plugin_${manifest.id.replace('-', '_')}_"
+        manifest.tables.forEach {
+            require(it.name.startsWith(prefix) && it.name.length <= 63 && it.name.matches(Regex("[a-z][a-z0-9_]+"))) { "Plugin tables must use their own namespace" }
+            require(it.label.isNotBlank() && it.label.length <= 100 && valid(it.readRoles, it.writeRoles)) { "Invalid plugin table policy" }
+        }
+        require(manifest.tables.isEmpty() || PluginExtension.DATABASE in manifest.extensions)
+        require(PluginExtension.SEARCH !in manifest.extensions || manifest.tables.isNotEmpty())
+    }
+    fun validateSettings(manifest: PluginManifest, request: PluginSettingsRequest) {
+        if (!manifest.supportedRoles.containsAll(request.allowedRoles)) throw BadRequestException("This plugin supports administrator access only")
+        if (request.searchEnabled && PluginExtension.SEARCH !in manifest.extensions) throw BadRequestException("This plugin has no search provider")
+        if (request.tableAccess.keys.any { key -> manifest.tables.none { it.name == key } } || request.tableAccess.values.any { !valid(it.readRoles, it.writeRoles) })
+            throw BadRequestException("Choose valid read/write roles for declared plugin tables; administrators must retain access and writers must be readers")
+    }
+    private fun valid(read: Set<String>, write: Set<String>) = "ADMIN" in read && "ADMIN" in write && roles.containsAll(read) && read.containsAll(write)
+}

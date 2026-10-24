@@ -1,9 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const crawlerHeaders = { 'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet, noimageindex' }
+
 export default defineConfig({
   plugins: [react()],
   server: {
+    headers: crawlerHeaders,
     port: 5173,
     proxy: {
       '/api': {
@@ -12,4 +15,5 @@ export default defineConfig({
       },
     },
   },
+  preview: { headers: crawlerHeaders },
 })

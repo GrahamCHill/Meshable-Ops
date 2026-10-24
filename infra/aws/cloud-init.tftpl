@@ -3,7 +3,7 @@
 bootcmd:
   - [sh, -c, "for attempt in $(seq 1 60); do timeout 5 bash -c 'exec 3<>/dev/tcp/archive.ubuntu.com/80' && exit 0; sleep 5; done; exit 1"]
 package_update: true
-packages: [git, docker.io, docker-compose-v2]
+packages: [git, docker.io, docker-compose-v2, python3]
 write_files:
   - path: /opt/contract-app.env
     permissions: "0600"
@@ -15,7 +15,8 @@ write_files:
       GUEST_TOKEN_JWT_SECRET=${guest_token_jwt_secret}
       SUPERSET_ADMIN_USER=admin
       SUPERSET_ADMIN_PASSWORD=${superset_admin_password}
-      APP_BOOTSTRAP_USERS_JSON=${bootstrap_users_json}
+      APP_BOOTSTRAP_USERS_JSON='${bootstrap_users_json}'
+      APP_PUBLIC_BASE_URL=https://${app_domain}
       APP_SEED_STORAGE_PROVIDER=S3
       APP_SEED_STORAGE_BUCKET=${storage_bucket}
       APP_SEED_STORAGE_REGION=${storage_region}
@@ -25,4 +26,5 @@ runcmd:
   - systemctl enable --now docker
   - [sh, -c, "git clone --branch '${repository_ref}' '${repository_url}' /opt/contract-app"]
   - [sh, -c, "cp /opt/contract-app.env /opt/contract-app/.env.production"]
+  - [sh, -c, "python3 /opt/contract-app/deploy/github/provision-secrets.py /opt/contract-app/.env.production"]
   - [sh, -c, "cd /opt/contract-app && docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up --build -d"]

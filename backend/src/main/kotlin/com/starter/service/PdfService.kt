@@ -42,6 +42,28 @@ class PdfService {
         ByteArrayOutputStream().use { output -> document.save(output); output.toByteArray() }
     }
 
+    fun watermarkAndProtect(bytes: ByteArray, text: String, actor: String, password: String): ByteArray = process(bytes) { document ->
+        if (!document.currentAccessPermission.canModify()) throw BadRequestException("This PDF does not allow watermarking")
+        stamp(document, text, actor)
+        protect(document, password)
+        ByteArrayOutputStream().use { output -> document.save(output); output.toByteArray() }
+    }
+
+    fun protect(bytes: ByteArray, password: String): ByteArray = process(bytes) { document ->
+        if (!document.currentAccessPermission.canModify()) throw BadRequestException("This PDF does not allow protection changes")
+        protect(document, password)
+        ByteArrayOutputStream().use { output -> document.save(output); output.toByteArray() }
+    }
+
+    private fun protect(document: PDDocument, password: String) {
+        val permissions = org.apache.pdfbox.pdmodel.encryption.AccessPermission().apply {
+            setCanModify(false); setCanModifyAnnotations(false); setCanExtractContent(false); setCanAssembleDocument(false)
+        }
+        document.protect(org.apache.pdfbox.pdmodel.encryption.StandardProtectionPolicy(java.util.UUID.randomUUID().toString() + java.util.UUID.randomUUID(), password, permissions).apply {
+            encryptionKeyLength = 256; isPreferAES = true
+        })
+    }
+
     private fun <T> process(bytes: ByteArray, action: (PDDocument) -> T): T {
         if (bytes.size > MAX_BYTES) throw BadRequestException("PDFs must be 25 MB or smaller")
         if (!workers.tryAcquire()) throw BadRequestException("PDF processing is busy. Try again shortly.")

@@ -7,6 +7,8 @@ import { StorageEntries } from './StorageEntries'
 import { PdfViewer } from './PdfViewer'
 import { StorageSearch } from '../search/StorageSearch'
 import { useDocumentAccess } from '../../api/documentAccess'
+import { sharesApi } from '../../api/shares'
+import { SharePdfDialog } from './SharePdfDialog'
 
 export function StorageBrowser({ folder, onClose, initialPath = '' }: Readonly<{ folder: Item; onClose: () => void; initialPath?: string }>) {
   const qc = useQueryClient()
@@ -14,7 +16,10 @@ export function StorageBrowser({ folder, onClose, initialPath = '' }: Readonly<{
   const [path, setPath] = useState(initialPath)
   const [transferError, setTransferError] = useState('')
   const [pdfPath, setPdfPath] = useState<string>()
+  const [sharePath, setSharePath] = useState<string>()
   const access = useDocumentAccess()
+  const sharing = useQuery({ queryKey: ['share-settings'], queryFn: sharesApi.settings, enabled: user?.role === 'ADMIN' })
+  const canShare = user?.role === 'ADMIN' && sharing.data?.enabled && sharing.data.emailAvailable && access.data && access.data.downloadMode !== 'DISABLED'
   const fileInput = useRef<HTMLInputElement | null>(null)
   const folderInput = useRef<HTMLInputElement | null>(null)
   const contents = useQuery({
@@ -101,7 +106,7 @@ export function StorageBrowser({ folder, onClose, initialPath = '' }: Readonly<{
             Could not load this storage path. Check the provider settings and credentials.
           </div>
         )}
-        {current && <StorageEntries contents={current} parentPath={parentPath} onNavigate={setPath} onDownload={(objectPath, archive, filename) => download.mutate({ objectPath, archive, filename })} downloading={download.isPending} policy={access.data} onOpenPdf={setPdfPath} />}
+        {current && <StorageEntries contents={current} parentPath={parentPath} onNavigate={setPath} onDownload={(objectPath, archive, filename) => download.mutate({ objectPath, archive, filename })} downloading={download.isPending} policy={access.data} onOpenPdf={setPdfPath} onSharePdf={canShare ? setSharePath : undefined} />}
       </Card>
 
       <Card style={{ marginTop: '1rem', background: 'var(--color-surface-2)' }}>
@@ -110,6 +115,7 @@ export function StorageBrowser({ folder, onClose, initialPath = '' }: Readonly<{
         </div>
       </Card>
       {pdfPath && access.data?.pdfPreviewEnabled && <PdfViewer key={pdfPath} folderId={folder.id} path={pdfPath} policy={access.data} onClose={() => setPdfPath(undefined)} onDownload={(objectPath, archive, filename) => download.mutate({ objectPath, archive, filename })} downloading={download.isPending} />}
+      {sharePath && canShare && <SharePdfDialog folderId={folder.id} path={sharePath} maxLifetimeHours={sharing.data!.maxLifetimeHours} onClose={() => setSharePath(undefined)} />}
     </div>
   )
 }

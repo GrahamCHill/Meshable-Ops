@@ -7,21 +7,22 @@ services:
       APP_SEED_STORAGE_PROVIDER: AZURE_BLOB
       APP_SEED_STORAGE_BUCKET: ${AZURITE_CONTAINER:-starter-dev}
       APP_SEED_STORAGE_REGION: ""
-      APP_SEED_STORAGE_ENDPOINT: http://azurite:10000/devstoreaccount1
-      APP_SEED_STORAGE_ACCESS_KEY: devstoreaccount1
-      APP_SEED_STORAGE_SECRET_KEY: ${AZURITE_ACCOUNT_KEY:-Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==}
+      APP_SEED_STORAGE_ENDPOINT: http://azurite:10000/weaveopsdev
+      APP_SEED_STORAGE_ACCESS_KEY: weaveopsdev
+      APP_SEED_STORAGE_SECRET_KEY: ${AZURITE_ACCOUNT_KEY:?Generate local environment settings first}
       APP_SEED_STORAGE_ROOT_PATH: ${APP_STORAGE_ROOT_PATH:-folders}
       APP_SEED_STORAGE_FORCE: ${APP_SEED_STORAGE_FORCE:-false}
 
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite:3.37.0
-    container_name: starter_azurite_dev
     restart: unless-stopped
+    environment:
+      AZURITE_ACCOUNTS: weaveopsdev:${AZURITE_ACCOUNT_KEY:?Generate local environment settings first}
     command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data --debug /data/debug.log
     ports:
-      - "10000:10000"
-      - "10001:10001"
-      - "10002:10002"
+      - "127.0.0.1:10000:10000"
+      - "127.0.0.1:10001:10001"
+      - "127.0.0.1:10002:10002"
     volumes:
       - azurite_dev_data:/data
 

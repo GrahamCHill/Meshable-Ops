@@ -17,6 +17,7 @@ export function StorageEntries({
   downloading,
   policy,
   onOpenPdf,
+  onSharePdf,
 }: Readonly<{
   contents: StorageContents
   parentPath: string
@@ -25,6 +26,7 @@ export function StorageEntries({
   downloading: boolean
   policy?: DocumentAccessPolicy
   onOpenPdf: (path: string) => void
+  onSharePdf?: (path: string) => void
 }>) {
   return (
     <div>
@@ -44,6 +46,7 @@ export function StorageEntries({
             <span style={{ width: 90, textAlign: 'right', color: 'var(--color-text-tertiary)', fontSize: '0.75rem' }}>
               {detail}
             </span>
+            {entry.type === 'OBJECT' && entry.name.toLowerCase().endsWith('.pdf') && onSharePdf && <Button variant="ghost" size="sm" onClick={() => onSharePdf(entry.path)}>Email PDF</Button>}
             {entry.type === 'FOLDER' && <Button variant="ghost" size="sm" onClick={() => onNavigate(entry.path)}>Open </Button>}
             {entry.type === 'OBJECT' && (entry.name.toLowerCase().endsWith('.pdf') || entry.contentType?.split(';')[0] === 'application/pdf') && policy?.pdfPreviewEnabled && <Button variant="ghost" size="sm" onClick={() => onOpenPdf(entry.path)}>Open PDF</Button>}
             {canDownload(policy) && <Button variant="ghost" size="sm" disabled={downloading} onClick={() => onDownload(entry.path, entry.type === 'FOLDER', entry.type === 'FOLDER' ? `${entry.name}.zip` : entry.name)} title={`Download ${entry.name}`}>{policy?.downloadMode === 'WATERMARKED' && (entry.type === 'FOLDER' || entry.name.toLowerCase().endsWith('.pdf') || entry.contentType?.split(';')[0] === 'application/pdf') ? 'Download with watermark' : 'Download'}</Button>}

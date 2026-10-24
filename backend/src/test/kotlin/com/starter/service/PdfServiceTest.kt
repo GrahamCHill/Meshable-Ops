@@ -67,6 +67,26 @@ class PdfServiceTest {
         assertThatThrownBy { service.page(bytes, 3) }.isInstanceOf(BadRequestException::class.java)
     }
 
+    @Test fun `shared attachment is AES256 encrypted requires its password and watermarks every page`() {
+        val original = sample()
+        val protected = service.watermarkAndProtect(original, "SHARED COPY", "reader@example.test | share-123", "Sample-Share-Password-123")
+        assertThatThrownBy { Loader.loadPDF(protected) }.isInstanceOf(org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException::class.java)
+        assertThatThrownBy { Loader.loadPDF(protected, "wrong-password") }.isInstanceOf(org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException::class.java)
+        Loader.loadPDF(protected, "Sample-Share-Password-123").use { document ->
+            assertThat(document.isEncrypted).isTrue()
+            assertThat(document.encryption.length).isEqualTo(256)
+            assertThat(document.currentAccessPermission.canModify()).isFalse()
+            assertThat(document.currentAccessPermission.canExtractContent()).isFalse()
+            for (page in 1..2) {
+                val text = PDFTextStripper().apply { startPage = page; endPage = page }.getText(document).replace(Regex("\\s+"), "")
+                assertThat(text).contains("SHAREDCOPY", "reader@example.test", "share-123", "UTC")
+            }
+        }
+        Loader.loadPDF(original).use { assertThat(it.isEncrypted).isFalse() }
+        val output = Path.of("target", "pdf-qa"); Files.createDirectories(output)
+        Files.write(output.resolve("shared-protected.pdf"), protected)
+    }
+
     @Test fun `encrypted damaged oversized and excessive page documents fail closed`() {
         listOf("damaged".toByteArray(), sample(encrypted = true), ByteArray(PdfService.MAX_BYTES + 1), sample(201)).forEach { bytes ->
             assertThatThrownBy { service.watermark(bytes, "CONFIDENTIAL", "reader@example.test") }.isInstanceOf(BadRequestException::class.java)

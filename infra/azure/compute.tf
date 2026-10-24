@@ -39,7 +39,7 @@ resource "azurerm_linux_virtual_machine" "app" {
     superset_secret_key     = var.superset_secret_key
     guest_token_jwt_secret  = var.guest_token_jwt_secret
     superset_admin_password = var.superset_admin_password
-    bootstrap_users_json    = var.bootstrap_users_json
+    bootstrap_users_json    = replace(jsonencode(jsondecode(var.bootstrap_users_json)), "'", "\\'")
     storage_account         = azurerm_storage_account.documents.name
     storage_container       = azurerm_storage_container.documents.name
     storage_root_path       = var.storage_root_path

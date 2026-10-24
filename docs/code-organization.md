@@ -1,5 +1,13 @@
 # Code organization
 
+Extension contracts, discovery, access gates, and Kanban live in `backend/src/main/kotlin/com/starter/plugins/` and `frontend/src/plugins/`. Plugin pages/APIs use module discovery. See [Workspace plugins](plugins.md) for contracts, layout, checks, and trust boundaries.
+
+Branding uses `BrandingAsset`, `BrandingPreferencesRecord`, and `BrandingLoginImage` with PostgreSQL repositories. `service/branding/` separates bounded raster processing, preferences/validation, background persistence, and the `WorkspaceBrandingService` facade; `BrandingService` keeps existing logo/favicon persistence. Public/admin controllers share the resulting metadata. The frontend separates the branding API, `Brand`/`BrandingHead`, `LoginBackground` (motion/timers/fallbacks), and `admin/branding/` controls composed by `AdminBrandingPage`. Scoped layouts live in `styles/branding.css`. The default logo/favicon is `frontend/public/brand-mark.svg`.
+
+GitHub workflows live in `.github/workflows/`; `checks.yml` is reused by deployment and template releases. Host setup, effective Compose validation, SSH transfer, and release activation are split under `deploy/github/`. Run its Python tests, `check-config.py`, `bash -n` on the scripts, and actionlint when changing deployment. See [template deployment](github-deployment.md).
+
+WeaveOps is the product name. Existing `com.starter` package paths, Docker storage names, development buckets, and the versioned backup format remain stable so the rebrand does not change persisted data or integration contracts.
+
 Files are grouped by feature and responsibility. Page components compose the screen; API modules own requests and response types; hooks own stateful workflows. Related components sit together so a change to one feature does not require editing a general application file.
 
 ## Frontend
@@ -26,6 +34,8 @@ Add feature-specific API calls and types beside their existing domain. Keep reus
 
 ## Backend
 
+`config/AccountBootstrapConfig.kt` creates only explicitly configured initial accounts and preserves existing accounts. `BootstrapProperties` contains no demo identities. The single PostgreSQL initializer handles database/extensions; application DDL belongs to JPA and `schema.sql`. See [initialization and security](initialization-and-security.md).
+
 | Location | Responsibility |
 | --- | --- |
 | `backend/src/main/kotlin/com/starter/controller/` | One controller per HTTP resource. Request mappings and security annotations live with the controller. |
@@ -40,7 +50,7 @@ Add feature-specific API calls and types beside their existing domain. Keep reus
 | `backend/src/main/kotlin/com/starter/security/` | Credential encryption/conversion/migration and password encoding/validation. |
 | `ml-backend/app/document_text.py` | Isolated, bounded text/PDF/DOCX extraction. |
 
-Provider implementations handle cloud operations. Keep application visibility and folder-access decisions in the services that call them. Controller, DTO, entity, and repository package names remain unchanged; storage internals are grouped under `com.starter.service.storage`.
+Provider implementations handle cloud operations. Keep application visibility and folder-access decisions in the services that call them. Storage internals are grouped under `com.starter.service.storage`. New MFA, webhook, and sharing domain controllers/DTOs/entities/repositories are grouped in their own packages; the JPA repository scan explicitly includes these packages and the existing PostgreSQL repositories. MongoDB repository scanning is unchanged.
 
 ## Checks after a refactor
 
@@ -53,3 +63,15 @@ For documentation-only changes, validate relative links, headings/fences, API pa
 PDF delivery policy lives in `DocumentAccessService`/`DocumentDeliveryService`; bounded raster rendering and watermarking live in `PdfService`. The frontend separates `AdminDocumentAccessPage`, `PdfViewer`, and the document-access API/hook. Tests cover direct-route restrictions, policy/access changes during processing, ZIP transforms, multiple/rotated PDF pages, and unsupported input.
 
 Optional mail lives in `backend/src/main/kotlin/com/starter/email/`: configuration/validation, encrypted settings selection, a reusable optional delivery service, and SMTP/API adapters. `AdminEmailController` owns the admin endpoints. Frontend files are `api/email.ts`, `AdminEmailPage.tsx`, `admin/email/EmailTransportForm.tsx`, and `EmailSendPanel.tsx`. Email tests use loopback SMTP/HTTP fixtures and check STARTTLS refusal, provider payloads/redirects, credential redaction/binding, disabled behavior, and admin authorization. [Email setup](email-delivery.md) describes integration and operational limits.
+
+MFA lives in `mfa/`: credentials/challenges, TOTP/email/recovery enrollment and verification, the email configuration guard, and HTTP contracts. Shared security helpers provide TOTP, secure random values, rate limits, and JWT security-version enforcement. The frontend separates `api/mfa.ts`, the login challenge form, and `AccountSecurityPage` with locally generated QR codes.
+
+Webhooks live in `webhook/`: encrypted endpoints/deliveries, signature verification, a DNS-validating HTTP client, and admin/public controllers. UI work is split between `AdminWebhooksPage`, `WebhookHistory`, and `api/webhooks.ts`. Protected PDF sharing lives in `share/`: settings, live storage checks, metadata/access grants, service orchestration, and admin/public controllers. The frontend has `SharePdfDialog`, `AdminSharesPage`, `SharedFilePage`, and `api/shares.ts`. `PdfService` generates watermarked encrypted copies; `EmailAttachment` is internal to mail delivery and not a public upload contract. `notification/NotificationService` is the future channel boundary; only EMAIL is implemented.
+
+Security tests cover RFC TOTP vectors/replay, session invalidation, no session before MFA, verified email enrollment, one-use recovery, email disable guards, webhook signing/timestamp/redirect/network boundaries, protected PDF passwords/watermarks, sharing access/revocation/source fingerprints, SMTP/API attachments, and admin authorization. Local mocks do not replace PostgreSQL/cloud/provider integration verification.
+
+Document generation is a separate `documents/` domain: typed contracts/entities/repositories, field validation/decimal calculations, template publishing, access checks, a renderer client, and generated PDF/email delivery. `workflow/` holds typed graph contracts, ownership, persistence, and draft/ready validation. Both packages are included in PostgreSQL repository scanning; MongoDB is unchanged. Library queries project metadata without fetching PDF blobs; document references are checked with ownership counts.
+
+The frontend keeps vendor source in `vendor/weasycanvas/{editor,src}` and scoped designer CSS. Host screens are `AdminTemplatesPage`, `DocumentsPage`, and `WorkflowsPage`, lazy loaded so the designer/React Flow are separate bundles. `components/documents/` contains starters, typed field rules/forms, preview, and email dialogs; `components/workflows/` contains block rendering and the inspector. APIs live in `api/documents.ts` and `api/workflows.ts`. Template editor and workflow CSS remain scoped.
+
+`weasy-renderer/backend/` contains the matching WeasyCanvas schema, HTML template, and helpers. `app.py` exposes internal bounded validation/rendering; `worker.py` normalizes template content, blocks external resources, and renders in a limited subprocess. Run its Python tests separately with Pango installed. See [renderer setup](../weasy-renderer/README.md) and [feature scope](documents-and-workflows.md). No source `.env`, local state, demo persistence, node_modules, or Python environment is copied from the source project.

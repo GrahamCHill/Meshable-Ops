@@ -39,6 +39,11 @@ data class User(
     @Column(nullable = false)
     var active: Boolean = true,
 
+    @Column(nullable = false) @org.hibernate.annotations.ColumnDefault("0")
+    var sessionVersion: Long = 0,
+    @Column(nullable = false) @org.hibernate.annotations.ColumnDefault("false")
+    var mfaPromptDismissed: Boolean = false,
+
     @CreatedDate @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: Instant = Instant.now(),
 

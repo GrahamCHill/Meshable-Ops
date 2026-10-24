@@ -38,7 +38,7 @@ resource "aws_instance" "app" {
     superset_secret_key     = var.superset_secret_key
     guest_token_jwt_secret  = var.guest_token_jwt_secret
     superset_admin_password = var.superset_admin_password
-    bootstrap_users_json    = var.bootstrap_users_json
+    bootstrap_users_json    = replace(jsonencode(jsondecode(var.bootstrap_users_json)), "'", "\\'")
     storage_bucket          = aws_s3_bucket.documents.id
     storage_region          = var.aws_region
     storage_root_path       = var.storage_root_path

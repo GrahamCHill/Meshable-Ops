@@ -10,11 +10,12 @@ import com.starter.exception.ForbiddenException
 import org.springframework.stereotype.Service
 
 @Service
-class SearchService(private val vectors: VectorService, private val keywords: KeywordSearchService, private val settings: AiSettingsService, private val scopes: SearchScopeResolver) {
-    fun search(request: VectorSearchRequest): SearchResponse {
+class SearchService(private val vectors: VectorService, private val keywords: KeywordSearchService, private val settings: AiSettingsService, private val scopes: SearchScopeResolver,
+    private val plugins: com.starter.plugins.PluginSearchService? = null) {
+    fun search(request: VectorSearchRequest, email: String? = null): SearchResponse {
         if (!settings.current().searchEnabled) throw ForbiddenException("Search is disabled by an administrator")
         val scope = scopes.resolve(request)
-        return try {
+        val storage = try {
             val results = if (scope.folderId == null) vectors.searchText(request.query, request.limit)
                 else vectors.searchTextScoped(request.query, request.limit, scope)
             if (results.isEmpty()) {
@@ -23,6 +24,12 @@ class SearchService(private val vectors: VectorService, private val keywords: Ke
             } else response(results, "VECTOR")
         } catch (_: AiUnavailableException) { fallback(request, scope) }
           catch (_: BadRequestException) { fallback(request, scope) }
+        // A folder-scoped storage search must never include unrelated plugin rows.
+        if (scope.folderId != null || email == null || plugins == null) return storage
+        val matches = plugins.search(email, request.query, request.limit).map { VectorSearchResult(it.id, it.score, it.payload) }
+        if (matches.isEmpty()) return storage
+        val storageMatches = if (storage.mode == "KEYWORD") storage.results.map { it.copy(payload = it.payload + ("matchMode" to "Keyword match")) } else storage.results
+        return storage.copy(results = (storageMatches + matches).sortedByDescending { it.score }.take(request.limit), mode = "MIXED")
     }
 
     private fun fallback(request: VectorSearchRequest, scope: SearchScope): SearchResponse = response(

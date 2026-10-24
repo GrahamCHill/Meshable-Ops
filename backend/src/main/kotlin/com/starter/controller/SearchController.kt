@@ -25,5 +25,5 @@ class SearchController(
     fun search(
         @AuthenticationPrincipal user: UserDetails,
         @Valid @RequestBody req: VectorSearchRequest
-    ): SearchResponse = searchService.search(req)
+    ): SearchResponse = searchService.search(req, user.username)
 }

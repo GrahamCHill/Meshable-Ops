@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>$title</title>
+  <style>
+    @page { size: $page_size; margin: ${margin_top}mm ${margin_right}mm ${margin_bottom}mm ${margin_left}mm;
+      @top-left { content: element(header); vertical-align: bottom; padding-bottom: 5mm; }
+      @bottom-center { content: element(footer); vertical-align: top; padding-top: 5mm; }
+    }
+    body { margin: 0; font: 14.2px/1.34 Arial, "Liberation Sans", Helvetica, sans-serif; color: #17252f; }
+    header { position: running(header); width: 100%; border-bottom: 1px solid #b7c7c9; padding-bottom: 3mm; font: 12px/1.4 Arial, sans-serif; color: #5e787c; letter-spacing: .3px; }
+    footer { position: running(footer); font: 10px/1.4 Arial, sans-serif; color: #7e9298; }
+    h1 { margin: 0 0 18px; min-height: 1lh; font-size: 20px; line-height: 1.2; overflow-wrap: anywhere; }
+    p { margin: 0; }
+    .details { padding-bottom: 24px; font-size: 12px !important; line-height: 1.8 !important; color: #708489 !important; }
+    .details strong { font-weight: 600; color: #49636b; }
+    .detail-row { display: grid; grid-template-columns: 105px minmax(0, 1fr); gap: 8px; overflow-wrap: anywhere; }
+    ol { margin: 0; padding-left: 44px; }
+    li { margin-bottom: ${paragraph_gap}px; overflow-wrap: anywhere; }
+    ol ol { margin-top: ${paragraph_gap}px; }
+    .body-list ol > li:last-child { margin-bottom: 0; }
+    @counter-style clause-roman { system: extends lower-roman; prefix: "("; suffix: ") "; }
+    .subsubclauses { list-style-type: clause-roman; }
+    .paragraph-text { white-space: pre-wrap; }
+    .general-paragraph { margin: 0 0 ${paragraph_gap}px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .paragraph-section-heading { margin: 18px 0 10px; min-height: 1lh; font: bold 14pt/1.3 Arial, sans-serif; color: #28464a; break-after: avoid; overflow-wrap: anywhere; }
+    .closing { padding-top: 18px; padding-bottom: 10px; break-inside: avoid; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .document-image-row { padding-bottom: 3mm; break-inside: avoid; line-height: 0; text-align: left; }
+    .document-image-row img { display: block; object-fit: contain; }
+    .signature-field { position: relative; max-width: 100%; padding: 6mm 0 8mm; break-inside: avoid; color: #384d55; font: 11px/1.5 Arial, sans-serif; text-align: left; text-decoration: none; white-space: normal; }
+    .signature-group { width: 100%; white-space: normal; }
+    .signature-row { display: flex; justify-content: space-between; align-items: flex-start; break-inside: avoid; }
+    .signature-cell { width: 100%; min-width: 0; }
+    .signature-pair .signature-cell { width: 47%; flex: 0 0 47%; }
+    .signature-ink-area { height: 22mm; position: relative; }
+    .signature-ink { position: absolute; bottom: 0; left: 4mm; display: block; width: auto; height: auto; max-width: calc(100% - 8mm); max-height: 20mm; object-fit: contain; }
+    .signature-line { border-top: 1px solid #536b70; height: 1px; width: 100%; }
+    .signature-caption { display: flex; align-items: baseline; gap: 10px; justify-content: space-between; padding-top: 2mm; font-size: 10px; line-height: 1.5; }
+    .signature-caption strong { font-weight: 500; overflow-wrap: anywhere; white-space: pre-wrap; }.signature-caption span { color: #8a9ca1; font-size: 8px; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  $running
+  $content
+</body>
+</html>
