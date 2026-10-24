@@ -26,7 +26,7 @@ export function CreateUserDialog({ superAdmin, close }: { superAdmin: boolean; c
         <label>Email<input required autoFocus type="email" autoComplete="off" value={form.email} onChange={e => setForm({...form, email: e.target.value})} /></label>
         <label>Username<input required minLength={3} maxLength={50} autoComplete="off" value={form.username} onChange={e => setForm({...form, username: e.target.value})} /></label>
         <label>Name<input maxLength={120} value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></label>
-        <label>Contact number<input type="tel" maxLength={32} value={form.contactNumber} onChange={e => setForm({...form, contactNumber: e.target.value})} /></label>
+        <label>Contact number (with calling code)<input type="tel" placeholder="+27 82 123 4567" autoComplete="tel" maxLength={32} value={form.contactNumber} onChange={e => setForm({...form, contactNumber: e.target.value})} /></label>
       </div>
       <label>Initial password<input required type="password" autoComplete="new-password" minLength={8} maxLength={72} value={form.password} onChange={e => setForm({...form, password: e.target.value})} /></label>
       <label>Role<select value={form.role} onChange={e => { const role = e.target.value as AccountRole; setForm({...form, role, canUploadDocuments: role === 'EXTERNAL' ? false : form.canUploadDocuments}) }}><option value="USER">Member</option><option value="EXTERNAL">External member (read only)</option>{superAdmin && <><option value="ADMIN">Admin</option><option value="SUPER_ADMIN">Super admin</option></>}</select></label>

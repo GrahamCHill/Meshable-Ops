@@ -1,7 +1,9 @@
 import { createPluginApi } from '../../sdk'
 import type {PluginSettingField} from '../../../api/plugins'
-export interface CalendarEvent {id: string; title: string; description: string; start: string; end: string; allDay: boolean; source: string; href?: string; revision: number; syncEnabled: boolean}
-export interface EventInput {title: string; description: string; start: string; end: string; allDay: boolean; revision: number; syncEnabled: boolean}
+export interface CalendarDocumentLink {label:string;url:string}
+export interface CalendarParticipant {name:string;email:string;response:string}
+export interface CalendarEvent {id: string; title: string; description: string; start: string; end: string; allDay: boolean; source: string; href?: string; revision: number; syncEnabled: boolean;documents:CalendarDocumentLink[];participants:CalendarParticipant[];calendarName?:string}
+export interface EventInput {title: string; description: string; start: string; end: string; allDay: boolean; revision: number; syncEnabled: boolean;documents:CalendarDocumentLink[];participants:CalendarParticipant[];calendarName?:string}
 export interface CalendarWindow {events: CalendarEvent[]; truncated: boolean; notice?: string}
 export interface PersonalConnection {providerId: string; enabled: boolean; revision: number; values: Record<string,string>; configuredSecrets: string[]; missingRequired: string[]; lastSyncAt?: string; status: string}
 export interface PersonalSchema {id: string; name: string; fields: PluginSettingField[]}

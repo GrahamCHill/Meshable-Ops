@@ -30,6 +30,7 @@ class CalendarService(private val events: CalendarEventRepository, private val a
         if (id != null && row.revision != request.revision) throw ConflictException("This event changed. Reload before saving.")
         row.title = request.title.trim(); row.description = request.description; row.startsAt = request.start; row.endsAt = request.end; row.allDay = request.allDay
         row.syncExcluded = !request.syncEnabled
+        row.detailsJson = CalendarEventDetails.write(CalendarEventDetails.read(row).copy(documents = request.documents, participants = request.participants))
         return view(events.saveAndFlush(row))
     }
     @Transactional
@@ -54,18 +55,20 @@ class CalendarService(private val events: CalendarEventRepository, private val a
     """.trimIndent(), { rs, _ ->
         val date = LocalDate.parse(rs.getString("due")); val boardId = rs.getString("board_id")
         CalendarEventView("kanban:$boardId:${rs.getString("card_id")}", rs.getString("title"), rs.getString("name") + " · " + rs.getString("description").orEmpty(),
-            date.toString(), date.plusDays(1).toString(), true, "kanban", "/plugins/kanban/boards?board=$boardId")
+            date.toString(), date.plusDays(1).toString(), true, "kanban", "/plugins/kanban/boards?board=$boardId", calendarName = "Board: " + rs.getString("name"))
     }, *scope, from.toString(),until.toString())
     }
     companion object {
         fun validateWindow(from: Instant, until: Instant) { if (from < Instant.parse("1900-01-01T00:00:00Z") || until > Instant.parse("9999-12-31T23:59:59Z") || until <= from || Duration.between(from,until) > Duration.ofDays(93)) throw BadRequestException("Choose a calendar window of at most 93 days, between 1900 and 9999") }
         fun validateEvent(request: CalendarEventRequest) {
+            CalendarEventDetails.validate(request.documents, request.participants)
             if (request.start < Instant.parse("1900-01-01T00:00:00Z") || request.end > Instant.parse("9999-12-31T23:59:59Z")) throw BadRequestException("Choose event dates between 1900 and 9999")
             if (request.title.isBlank() || request.title.length > 160 || request.description.length > 4000 || request.end <= request.start || Duration.between(request.start,request.end) > Duration.ofDays(366)) throw BadRequestException("Use a title, up to 4000 description characters, and a valid event duration")
             if (request.allDay && (request.start.atOffset(ZoneOffset.UTC).toLocalTime() != LocalTime.MIDNIGHT || request.end.atOffset(ZoneOffset.UTC).toLocalTime() != LocalTime.MIDNIGHT)) throw BadRequestException("All-day events use UTC date boundaries")
         }
-        fun view(row: CalendarEvent) = CalendarEventView(row.id.toString(),row.title,row.description,
+        fun view(row: CalendarEvent): CalendarEventView { val details = CalendarEventDetails.read(row); return CalendarEventView(row.id.toString(),row.title,row.description,
             if (row.allDay) row.startsAt.atOffset(ZoneOffset.UTC).toLocalDate().toString() else row.startsAt.toString(),
-            if (row.allDay) row.endsAt.atOffset(ZoneOffset.UTC).toLocalDate().toString() else row.endsAt.toString(),row.allDay,revision=row.revision,syncEnabled=!row.syncExcluded)
+            if (row.allDay) row.endsAt.atOffset(ZoneOffset.UTC).toLocalDate().toString() else row.endsAt.toString(),row.allDay,revision=row.revision,syncEnabled=!row.syncExcluded,
+            documents=details.documents, participants=details.participants, calendarName=details.calendarName) }
     }
 }

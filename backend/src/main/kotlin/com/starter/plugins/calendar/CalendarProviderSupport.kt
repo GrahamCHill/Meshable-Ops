@@ -34,6 +34,20 @@ internal fun remoteCalendarEvent(node: JsonNode, source: String, microsoft: Bool
     }
     val id = node.path("id").asText().take(1000)
     if (id.isBlank()) throw IntegrationUnavailable("Calendar provider returned an event without an ID")
+    val participants = node.path("attendees").take(100).mapNotNull { item ->
+        val person = if (microsoft) item.path("emailAddress") else item
+        val email = person.path(if (microsoft) "address" else "email").asText().take(254)
+        val name = person.path(if (microsoft) "name" else "displayName").asText().take(160).filterNot(Char::isISOControl)
+        val response = (if (microsoft) item.path("status").path("response").asText() else item.path("responseStatus").asText()).let { if (it == "tentativelyAccepted") "tentative" else it }
+        CalendarParticipant(name,email,response.takeIf { it in setOf("accepted","declined","tentative","needsAction","none","notResponded","organizer") }.orEmpty())
+            .takeIf { runCatching { CalendarEventDetails.validate(emptyList(),listOf(it)) }.isSuccess }
+    }
+    val documents = node.path("attachments").take(20).mapNotNull { item ->
+        val url = item.path("fileUrl").asText(); val label = item.path("title").asText("Document").take(160).filterNot(Char::isISOControl)
+        CalendarDocumentLink(label.ifBlank { "Document" },url).takeIf { CalendarEventDetails.safeLink(url) }
+    }
+    val href = node.path(if (microsoft) "webLink" else "htmlLink").asText().takeIf(CalendarEventDetails::safeLink)
     return CalendarEventView("$source:$id", node.path(if (microsoft) "subject" else "summary").asText("Untitled event").take(300),
-        node.path(if (microsoft) "bodyPreview" else "description").asText().take(4000), time("start"), time("end"), allDay, source)
+        node.path(if (microsoft) "bodyPreview" else "description").asText().take(4000), time("start"), time("end"), allDay, source, href,
+        documents=documents, participants=participants,calendarName=CalendarEventDetails.sourceName(source))
 }

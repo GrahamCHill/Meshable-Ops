@@ -9,7 +9,7 @@ const RuntimePanel=lazy(()=>import('./runtime/RuntimePluginPage'))
 class ExtensionBoundary extends Component<{children:ReactNode},{failed:boolean}> {state={failed:false};static getDerivedStateFromError(){return{failed:true}};render(){return this.state.failed?<p role="alert">An extension could not load.</p>:this.props.children}}
 function ExtensionPanel({plugin,slot,section,context}: {plugin:PluginView;slot:string;section:string;context:Record<string,unknown>}) {
   const loader=extensionModule(plugin,slot);const View=useMemo(()=>loader?lazy(loader):undefined,[loader])
-  return <ExtensionBoundary><Suspense fallback={<p role="status">Loading extension…</p>}>{View?<View plugin={plugin} slot={slot} context={context}/>:plugin.source==='ZIP'?<RuntimePanel plugin={plugin} sectionOverride={section} embedded/>:<p>Extension component unavailable in this build.</p>}</Suspense></ExtensionBoundary>
+  return <ExtensionBoundary><Suspense fallback={<p role="status">Loading extension…</p>}>{View?<View plugin={plugin} slot={slot} context={context}/>:plugin.source==='ZIP'?<RuntimePanel plugin={plugin} sectionOverride={section} embedded placement={slot} hostContext={context}/>:<p>Extension component unavailable in this build.</p>}</Suspense></ExtensionBoundary>
 }
 
 /** Declared actions, not arbitrary DOM access. Destination APIs still enforce plugin and row permissions. */

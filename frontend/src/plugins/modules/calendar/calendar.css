@@ -24,3 +24,15 @@
 .calendar-dialog::backdrop { background:#0006; }
 .calendar-event-fields { display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px; }
 @media(max-width:650px) { .calendar-month-day,.calendar-month-empty {min-height:90px;padding:4px}.calendar-month-grid {font-size:.75rem}.calendar-weekday {padding:6px 0}.calendar-month-event {flex-direction:column;gap:0}.calendar-date {min-width:28px;min-height:32px} }
+
+.calendar-month-day.is-adjacent-month {background:var(--color-surface-2);}
+.calendar-month-day.is-adjacent-month .calendar-date {color:var(--color-text-secondary);}
+.calendar-month-picker {display:flex;align-items:center;gap:12px;max-width:330px;}
+.calendar-month-picker input {width:auto;min-width:160px;}
+
+.calendar-agenda {max-height:520px;overflow-y:auto;overscroll-behavior:contain;padding:4px 12px 4px 0;}
+.calendar-agenda-event {padding:18px 0;}
+.calendar-event-information {display:grid;gap:12px;overflow-wrap:anywhere;}
+.calendar-event-information p {margin:0;}
+.calendar-event-information ul {padding-left:20px;margin:6px 0 0;}
+.calendar-detail-row {display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end;}

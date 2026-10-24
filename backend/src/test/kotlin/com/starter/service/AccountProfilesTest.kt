@@ -19,9 +19,10 @@ class AccountProfilesTest {
     private val service=AccountProfiles(actors,users,rows)
     init {`when`(actors.fresh(user.email)).thenReturn(user);`when`(rows.findById(user.id)).thenAnswer{Optional.ofNullable(row)};`when`(rows.saveAndFlush(any(UserProfile::class.java))).thenAnswer{row=it.getArgument(0);row};`when`(users.saveAndFlush(any(User::class.java))).thenAnswer{it.arguments[0]}}
     @Test fun `profile edits preserve identity role and access permissions`() {
-        val result=service.save(user.email,ProfileInput("New name","+27821234567","Africa/Johannesburg"))
+        val result=service.save(user.email,ProfileInput("New name","+27 82 123 4567","Africa/Johannesburg"))
         assertThat(result.name).isEqualTo("New name");assertThat(result.email).isEqualTo(user.email);assertThat(result.role).isEqualTo("USER")
         assertThat(result.timeZone).isEqualTo("Africa/Johannesburg")
+        assertThat(result.contactNumber).isEqualTo("+27821234567")
     }
     @Test fun `stale edits invalid timezone and malformed images do not persist`() {
         row=UserProfile(user.id,revision=2)

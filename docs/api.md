@@ -503,3 +503,9 @@ Method descriptors include plugin ID, recipient kind (`EMAIL`, `PHONE`, `FIXED`)
 ## Role, view, and directory policies
 
 See [Access controls](access-controls.md#persistence-and-apis) for policy JSON and endpoints. `GET /api/access/me` supplies effective features; super admins manage policies at `/api/admin/access-controls` and assign roles with `PATCH /api/admin/users/{id}/role`. Role changes invalidate sessions. Existing admin endpoints also accept `SUPER_ADMIN`; delegated admin access must satisfy the feature policy. Storage permissions apply to all object reads, archives, previews, and search.
+
+## Personal profile and plugin presentation
+
+Authenticated members can `GET /api/account/profile` and `PUT /api/account/profile` with `{name, contactNumber, timeZone, revision}`. A stale revision returns `409`; login identity and role are read-only. `POST /api/account/profile/avatar` accepts multipart `file` (PNG/JPEG/WebP, at most 1 MiB); `GET` reads the current member’s normalized PNG and `DELETE` removes it. There is no arbitrary member ID selector.
+
+Plugin manifests expose categories, icon/banner references, requires/extends/incompatibility metadata, optional admin menu/settings, SMS capability, and named screen placements. Catalogue results include compatibility and removal state. Member artwork is `GET /api/plugins/{id}/assets/{icon|banner}` for active permitted plugins; administrators can inspect disabled artwork at `/api/admin/plugins/{id}/assets/{icon|banner}`. Removal/restoration and runtime installation are documented in [ZIP packages](plugins/zip-packages.md#http-endpoints); [presentation and lifecycle](plugins/presentation-and-lifecycle.md) defines metadata and extension boundaries.

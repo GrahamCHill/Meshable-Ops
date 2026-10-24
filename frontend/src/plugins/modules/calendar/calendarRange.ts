@@ -6,11 +6,15 @@ export function calendarRange(cursor: Date,view: CalendarView) {
   if (view==='month') start.setDate(1)
   if (view==='week') start.setDate(start.getDate()-(start.getDay()+6)%7)
   const end=new Date(start)
-  if (view==='month') end.setMonth(end.getMonth()+1)
+  if (view==='month') {
+    end.setMonth(end.getMonth()+1)
+    start.setDate(start.getDate()-(start.getDay()+6)%7)
+    end.setDate(end.getDate()+(7-(end.getDay()+6)%7)%7)
+  }
   else end.setDate(end.getDate()+(view==='week' ? 7 : 1))
   const days: Date[]=[]
   for (const date=new Date(start);date<end;date.setDate(date.getDate()+1)) days.push(new Date(date))
-  const label=view==='month' ? start.toLocaleDateString(undefined,{month:'long',year:'numeric'}) : view==='day' ? start.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : `${start.toLocaleDateString()} – ${days[days.length-1].toLocaleDateString()}`
+  const label=view==='month' ? cursor.toLocaleDateString(undefined,{month:'long',year:'numeric'}) : view==='day' ? start.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : `${start.toLocaleDateString()} – ${days[days.length-1].toLocaleDateString()}`
   return {start,end,days,label}
 }
 export function shiftDate(cursor: Date,view: CalendarView,offset: number) {

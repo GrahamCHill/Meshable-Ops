@@ -9,7 +9,7 @@ import { useAuthStore } from '../../hooks/useAuthStore'
 import { pluginRole } from '../../api/access'
 import { projectsApi } from '../../api/projects'
 
-export default function RuntimePluginPage({ plugin, sectionOverride, embedded = false }: { plugin: PluginView; sectionOverride?: string; embedded?: boolean }) {
+export default function RuntimePluginPage({ plugin, sectionOverride, embedded = false, placement, hostContext }: { plugin: PluginView; sectionOverride?: string; embedded?: boolean; placement?: string; hostContext?: Record<string, unknown> }) {
   const { '*': routeSection = '' } = useParams(); const section = sectionOverride ?? routeSection; const navigate = useNavigate(); const location = useLocation()
   const frame = useRef<HTMLIFrameElement>(null)
   const role = useAuthStore(state => pluginRole(state.user?.role ?? ''))
@@ -22,8 +22,9 @@ export default function RuntimePluginPage({ plugin, sectionOverride, embedded = 
   const document = useMemo(() => runtime.data ? runtimeDocument(runtime.data.html, channel) : '', [runtime.data, channel])
   const context = useMemo(() => ({plugin: {id: plugin.manifest.id, name: plugin.manifest.name}, section, role,
     configuration: runtime.data?.configuration ?? {}, tables: plugin.manifest.tables, tableAccess: plugin.tableAccess, project: projectContext.data ?? null, client: clientContext.data ?? null,
-    placement: new URLSearchParams(location.search).get('placement'), returnTo: new URLSearchParams(location.search).get('returnTo'),
-    record: new URLSearchParams(location.search).get('record'), table: new URLSearchParams(location.search).get('table')}), [plugin, section, role, runtime.data, location.search, projectContext.data, clientContext.data])
+    placement: placement ?? new URLSearchParams(location.search).get('placement'), hostContext: hostContext ?? null,
+    returnTo: new URLSearchParams(location.search).get('returnTo'),
+    record: new URLSearchParams(location.search).get('record'), table: new URLSearchParams(location.search).get('table')}), [plugin, section, role, runtime.data, location.search, projectContext.data, clientContext.data, placement, hostContext])
   // Keep the port alive across harmless query refreshes; each request reads the current context.
   const current = useRef({plugin, context}); current.current = {plugin, context}
   useLayoutEffect(() => {

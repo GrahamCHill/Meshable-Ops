@@ -30,7 +30,7 @@ class MicrosoftCalendarProvider(private val registry: PluginRegistry, private va
     }
     override fun events(from: Instant, until: Instant): CalendarWindow {
         val (base,headers) = connection()
-        val body = http.request("GET","${base}calendarView?startDateTime=${encodeCalendar(from.toString())}&endDateTime=${encodeCalendar(until.toString())}&\$top=100&\$select=id,subject,bodyPreview,start,end,isAllDay,isCancelled",headers).body
+        val body = http.request("GET","${base}calendarView?startDateTime=${encodeCalendar(from.toString())}&endDateTime=${encodeCalendar(until.toString())}&\$top=100&\$select=id,subject,bodyPreview,start,end,isAllDay,isCancelled,attendees,webLink",headers).body
             ?: throw IntegrationUnavailable("Microsoft returned no calendar events")
         if (!body.path("value").isArray) throw IntegrationUnavailable("Microsoft returned an unsupported calendar response")
         return CalendarWindow(body.path("value").take(100).mapNotNull { remoteCalendarEvent(it,pluginId,true) },body.has("@odata.nextLink"))

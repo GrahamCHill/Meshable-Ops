@@ -30,7 +30,7 @@ class AdminUserService(
         val email = req.email.trim().lowercase()
         val username = req.username.trim()
         val name = req.name?.trim()?.ifBlank { null }
-        val contactNumber = req.contactNumber?.trim()?.ifBlank { null }
+        val contactNumber = ContactNumbers.normalize(req.contactNumber)
         val role = req.role.trim().uppercase()
         val actor = actingAdmin(actingEmail)
         if (role !in com.starter.access.Roles.all || actor.role != "SUPER_ADMIN" && com.starter.access.Roles.admin(role)) {

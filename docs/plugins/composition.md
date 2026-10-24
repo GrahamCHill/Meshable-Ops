@@ -1,6 +1,6 @@
 # Connecting supporting plugins
 
-Plugins declare capabilities they provide, required capabilities, and optional features. **Administration → Plugins → Settings → Connections** shows what each plugin provides, which features are available, and missing support. The status is calculated from activation and role access; it does not prove that provider credentials work.
+Plugins declare capabilities they provide, required capabilities, required plugin IDs (`requires`), optional relationships (`extends`), and author-defined incompatibility reasons (`incompatibleWith`). See [relationship and presentation metadata](presentation-and-lifecycle.md). `extends` documents integration and does not activate a provider or implement an adapter. **Administration → Plugins → Settings → Connections** shows what each plugin provides, which features are available, and missing support. The status is calculated from activation and role access; it does not prove that provider credentials work.
 
 ```kotlin
 override val manifest = PluginManifest(
@@ -14,7 +14,7 @@ Required capabilities prevent activation until an enabled plugin supplies them f
 
 Call `registry.requireFeature("planning", "development", actor.role)` and `registry.requireCapability("planning", "source.repositories", providerId, actor.role)` at the operation boundary. These checks confirm that the named provider is active for this role. Then call a reviewed service/interface, applying its table policies, ownership rules, provider allowlist, configuration validation, and rate limits. Recheck access after slow remote reads before returning sensitive results or saving metadata. Do not resolve arbitrary class names or execute scripts from a manifest.
 
-`GET /api/plugins` returns only active plugins for the current user. The admin catalogue also returns `enabled`, effective admin `active`, `missingDependencies`, and optional `features` (`available`, provider display names, missing capability labels). `PluginView.manifest` includes `capabilities` and `requiresCapabilities`. A provider restricted to administrators cannot satisfy a member's dependencies.
+`GET /api/plugins` returns only active plugins for the current user. The admin catalogue also returns `enabled`, effective admin `active`, `missingDependencies`, and optional `features` (`available`, provider display names, missing capability labels). `PluginView.manifest` includes these relationships, `capabilities`, and `requiresCapabilities`; `compatibilityIssues` explains author-declared conflicts or an unsupported host API version. A provider restricted to administrators cannot satisfy a member's dependencies.
 
 ## Included connections
 

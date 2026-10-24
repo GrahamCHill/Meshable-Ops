@@ -13,7 +13,7 @@ For a source module, start from `backend/src/main/kotlin/com/starter/plugins/kan
 5. Add the frontend module descriptor and lazy page. See [Pages and submenus](pages-and-menus.md).
 6. Declare configuration fields and validators for the shared [Settings menu](settings.md). Add [notification methods and types](notifications.md) when the plugin delivers messages. Optionally implement a `PluginSearchProvider`; see [Search](search.md).
 7. Test disabled/restricted states, direct API requests, ownership, read-only roles, search exclusion, stale writes, and clear-data rollback. Run `mvn test` using Java 21 in `backend/` and `npm run build` in `frontend/`.
-8. Rebuild and deploy backend/frontend, then open its **Settings** in **Administration → Plugins** and enable it under **General**. New modules do not seed business records.
+8. Rebuild and deploy backend/frontend, then open its **Manage** view in **Administration → Plugins** and enable it under **General**. Expose editable configuration through an admin category when appropriate; modules without editable options can omit Settings. New modules do not seed business records.
 
 ```kotlin
 @Component
@@ -32,7 +32,7 @@ Kanban has saved-board and guide submenus. Boards support up to 20 lists and 200
 
 Separate [integration plugins](integrations.md) provide Discord, Telegram, Teams, WhatsApp Business, SharePoint, and OneDrive connections. See [Settings](settings.md) for encrypted configuration and [client/project contexts](project-contexts.md) for extending business records.
 
-[Source-control plugins](source-control.md) add GitHub, GitLab, and Gitea repository/PR links to boards and individual cards. [Calendar](calendar.md) adds local events, Kanban deadlines, and separate Microsoft, Google, and CalDAV connections. Use [plugin composition](composition.md) to declare capabilities, dependencies, and optional cross-plugin features. Every settings menu includes a Connections tab; disabled dependencies retain data and block dependent operations.
+[Source-control plugins](source-control.md) add GitHub, GitLab, and Gitea repository/PR links to boards and individual cards. [Calendar](calendar.md) adds local events, Kanban deadlines, and separate Microsoft, Google, and CalDAV connections. Use [plugin composition](composition.md) to declare capabilities, dependencies, and optional cross-plugin features. Plugins with relationships have a Connections tab; disabled dependencies retain data and block dependent operations.
 
 ## Licensing modules
 

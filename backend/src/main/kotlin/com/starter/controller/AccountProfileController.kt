@@ -22,10 +22,11 @@ class AccountProfiles(private val actors: PluginActor, private val users: UserRe
     fun view(email: String): ProfileView { val user = actors.fresh(email); val row = profiles.findById(user.id).orElse(null)
         return ProfileView(user.id,user.name.orEmpty(),user.username,user.email,user.contactNumber.orEmpty(),user.role,row?.timeZone ?: "UTC",row?.avatarVersion,row?.revision ?: -1) }
     @Transactional fun save(email: String, input: ProfileInput): ProfileView {
-        if (input.name.length > 120 || input.name.any(Char::isISOControl) || input.contactNumber.length > 32 || input.contactNumber.isNotBlank() && !input.contactNumber.matches(Regex("\\+?[1-9][0-9]{6,14}")) || runCatching { java.time.ZoneId.of(input.timeZone) }.isFailure) throw BadRequestException("Use a valid name, international phone number, and timezone")
+        val contactNumber = com.starter.service.ContactNumbers.normalize(input.contactNumber)
+        if (input.name.length > 120 || input.name.any(Char::isISOControl) || runCatching { java.time.ZoneId.of(input.timeZone) }.isFailure) throw BadRequestException("Use a valid name and timezone")
         val user = actors.fresh(email); val row = profiles.findById(user.id).orElse(null)
         if ((row?.revision ?: -1) != input.revision) throw ConflictException("Your profile changed. Reload before saving.")
-        val updated = users.saveAndFlush(user.copy(name = input.name.trim().ifBlank { null }, contactNumber = input.contactNumber.trim().ifBlank { null }))
+        val updated = users.saveAndFlush(user.copy(name = input.name.trim().ifBlank { null }, contactNumber = contactNumber))
         val saved = row ?: UserProfile(user.id); saved.timeZone = input.timeZone; profiles.saveAndFlush(saved)
         return ProfileView(updated.id,updated.name.orEmpty(),updated.username,updated.email,updated.contactNumber.orEmpty(),updated.role,saved.timeZone,saved.avatarVersion,saved.revision)
     }

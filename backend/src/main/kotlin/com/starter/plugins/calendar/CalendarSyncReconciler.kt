@@ -28,12 +28,15 @@ class CalendarSyncReconciler(private val events: CalendarEventRepository,private
         val input=CalendarEventRequest(view.title.take(160),view.description.take(4000),instant(view.start,view.allDay),instant(view.end,view.allDay),view.allDay)
         CalendarService.validateEvent(input)
         event.title=input.title;event.description=input.description;event.startsAt=input.start;event.endsAt=input.end;event.allDay=input.allDay;event.deletedAt=null
+        val details = CalendarEventDetails.read(event)
+        event.detailsJson = CalendarEventDetails.write(details.copy(calendarName=view.calendarName,
+            documents=(details.documents+view.documents).distinctBy { it.url }.take(20), participants=view.participants.ifEmpty { details.participants }))
         events.saveAndFlush(event)
     }
     fun preserve(event: CalendarEvent) {
         conflicts++
         events.saveAndFlush(CalendarEvent(ownerId=event.ownerId,title=event.title.take(140)+" (conflict copy)",description=event.description,
-            startsAt=event.startsAt,endsAt=event.endsAt,allDay=event.allDay,syncExcluded=true,personal=event.personal))
+            startsAt=event.startsAt,endsAt=event.endsAt,allDay=event.allDay,syncExcluded=true,personal=event.personal,detailsJson=event.detailsJson))
     }
     private fun instant(value: String,allDay: Boolean) = if (allDay) LocalDate.parse(value).atStartOfDay(ZoneOffset.UTC).toInstant() else Instant.parse(value)
 }

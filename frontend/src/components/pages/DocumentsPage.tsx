@@ -1,5 +1,5 @@
 import { useAccess } from '../../api/access'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { documentsApi, saveBlob, type GeneratedDocument } from '../../api/documents'
@@ -21,6 +21,8 @@ export default function DocumentsPage() {
   const policy = useDocumentAccess(); const notifications = useNotificationAvailability()
   const selected = templates.data?.find(template => template.id === params.get('template'))
   const [preview, setPreview] = useState<GeneratedDocument>(); const [email, setEmail] = useState<GeneratedDocument>()
+  const linkedId=params.get('document');const linkedDocument=documents.data?.find(document=>document.id===linkedId)
+  useEffect(()=>{if(linkedDocument&&policy.data?.pdfPreviewEnabled)setPreview(linkedDocument)},[linkedDocument,policy.data?.pdfPreviewEnabled])
   const [error, setError] = useState(''); const [busy, setBusy] = useState('')
   const download = async (document: GeneratedDocument) => { setBusy(document.id); setError(''); try { saveBlob(await documentsApi.download(document.id), document.filename) } catch (failure) { setError(getErrorMessage(failure, 'Unable to download the PDF.')) } finally { setBusy('') } }
   return <div className="page-stack" style={{ maxWidth: 1100 }}>
@@ -32,6 +34,7 @@ export default function DocumentsPage() {
     {error && <p role="alert" className="feedback error">{error}</p>}
     <h2>Generated documents</h2><p className="field-help">Latest 100 PDFs available to your account. Use these PDFs in a workflow when you reach a document or email step. Each PDF keeps the template revision and values used to generate it.</p>
     {documents.isLoading && <Spinner />}{documents.isError && <p role="alert">Unable to load generated documents.</p>}{documents.data?.length === 0 && <p>No generated documents yet.</p>}
+    {linkedId&&documents.data&&!linkedDocument&&<p role="status">This linked document is unavailable in your accessible document library.</p>}
     {documents.data?.map(document => <Card key={document.id}><div className="inline-actions"><div style={{ flex: 1 }}><h3>{document.name}</h3><small>{document.templateName} · revision {document.templateRevision} · {document.pageCount} {document.pageCount === 1 ? 'page' : 'pages'} · {new Date(document.createdAt).toLocaleString()}</small></div>{policy.data?.pdfPreviewEnabled && <Button variant="ghost" onClick={() => setPreview(document)}>Open PDF</Button>}{policy.data && policy.data.downloadMode !== 'DISABLED' && <><Button variant="ghost" disabled={!!busy} onClick={() => void download(document)}>Download PDF</Button>{notifications.data?.documentsEmail && <Button variant="secondary" onClick={() => setEmail(document)}>Email PDF</Button>}</>}{(builder || access.can('workflows')) && <Link to={`${builder ? '/admin/workflows' : '/workflows'}?attach=${document.id}`} className="button button-ghost button-sm">{builder ? 'Attach to workflow design' : 'Use in workflow'}</Link>}</div></Card>)}
     {preview && policy.data?.pdfPreviewEnabled && <GeneratedPdfViewer document={preview} onClose={() => setPreview(undefined)} />}
     {email && notifications.data?.documentsEmail && policy.data && policy.data.downloadMode !== 'DISABLED' && <EmailDocumentDialog document={email} onClose={() => setEmail(undefined)} />}

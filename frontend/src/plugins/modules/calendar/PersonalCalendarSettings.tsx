@@ -7,7 +7,7 @@ import { getErrorMessage } from '../../../components/admin/adminUtils'
 import { Button } from '../../../components/ui'
 import {calendarApi,type PersonalSchema,type PersonalConnection} from './api'
 
-export function PersonalCalendarSettings() {
+export function PersonalCalendarSettings({expanded=false}: {expanded?:boolean}) {
   const user=useAuthStore(state => state.user)
   const plugins=useAvailablePlugins()
   const policy=plugins.data?.find(plugin => plugin.manifest.id==='calendar')?.tableAccess
@@ -22,7 +22,7 @@ export function PersonalCalendarSettings() {
   if (!readable) return null
   const connection=query.data?.connection
   const schemas=query.data?.providers ?? []
-  return <details className="page-stack"><summary>Your calendar sync{connection?.enabled ? ' · Two-way sync enabled' : ''}</summary>
+  return <details className="page-stack" open={expanded||undefined}><summary>Your calendar sync{connection?.enabled ? ' · Two-way sync enabled' : ''}</summary>
     <div className="page-stack">
       <p>Connect your own calendar for {user?.email}. Sync imports and updates your events, and sends your included local events and deletions back. No other member’s calendar is selected.</p>
       <p className="field-help">One personal connection per account. Automatic sync runs about every five minutes over the last 30 and next 60 days. Board deadlines stay internal. Recurring and invited meetings remain provider-managed; this first sync version handles personal appointments.</p>

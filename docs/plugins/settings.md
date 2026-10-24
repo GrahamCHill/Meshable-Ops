@@ -1,6 +1,6 @@
 # Plugin settings
 
-Every installed plugin has a **Settings** entry in **Administration → Plugins**, including plugins without pages or connection credentials. Its menu contains **General** (activation, allowed roles, search, table policies), **Configuration** (plugin-specific fields), **Connections** (provided capabilities, required support, optional features), and **Data** when it owns tables. URLs retain the selected plugin/tab, for example `/admin/plugins?plugin=telegram&tab=configuration`.
+Every installed plugin has a **Manage** entry in **Administration → Plugins** for activation, allowed roles, search, and table policies. **Settings** appears only when `hasAdminSettings` is true and editable configuration fields exist. **Connections** appears for declared relationships/features, and **Data** when the plugin owns tables. A plugin can add a direct settings card to an existing or custom admin category using `adminMenu`; see [presentation](presentation-and-lifecycle.md#admin-categories-and-optional-settings). URLs retain the selected plugin/tab, for example `/admin/plugins?plugin=telegram&tab=configuration`.
 
 Declare configuration fields in the backend manifest:
 

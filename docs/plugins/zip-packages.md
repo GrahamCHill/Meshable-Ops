@@ -6,11 +6,11 @@ ZIP plugins install at runtime: no image rebuild or application restart is neede
 
 1. As a `SUPER_ADMIN`, open **Administration → People & security → Security** and enable **Allow third-party extensions**. It defaults off. The switch is not delegable to an `ADMIN`.
 2. Open **Administration → Workspace → Plugins**, select a ZIP, and choose **Install ZIP**. Only a super admin can upload packages. Treat every package as reviewed application functionality: author information is self-declared, not a signature or identity verification.
-3. Open the installed plugin's **Settings**. New packages start disabled and excluded from search. Choose roles, table policies, configuration, and search inclusion, then enable the plugin.
+3. Open the installed plugin's **Manage** view. New packages start disabled and excluded from search. Choose roles, table policies, configuration, and search inclusion, then enable the plugin.
 
 Turning the security switch off immediately rejects uploaded plugin APIs and search, and removes their pages and menus when the catalogue refreshes (within 30 seconds in an already open browser). An open frame rechecks its page within 15 seconds. Saved activation choices, records, package files, and encrypted configuration remain; bundled plugins are unaffected. **Clear plugin data** still lets an authorized plugin administrator empty declared tables after typing the plugin ID; it does not remove the package, schema, or settings.
 
-Packages are stored in `workspace_plugin_packages`, so replicas and restarts see the same installation. Back up this table, `workspace_extension_security`, plugin settings/configuration, and owned data tables. A package cannot overwrite an existing bundled or uploaded ID; upgrades/replacement and uninstall are not part of this installation API.
+Packages are stored in `workspace_plugin_packages`, so replicas and restarts see the same installation. Back up this table, `workspace_extension_security`, plugin settings/configuration, and owned data tables. A package cannot overwrite an installed ID. A super admin can remove a package after typing its ID; this deletes installed page/artwork code and disables access, while retaining business tables and encrypted configuration. Reinstalling the same ID reuses its managed tables and starts disabled. Clear data separately before removal if records should be emptied. See [presentation and lifecycle](presentation-and-lifecycle.md).
 
 ## Package layout
 
@@ -21,6 +21,8 @@ plugin.json
 author.json
 index.html
 guide.html
+icon.webp       # optional
+banner.jpg      # optional
 ```
 
 `author.json` is required and must contain exactly these four string fields. Every value may be empty:
@@ -51,7 +53,7 @@ guide.html
 
 The manifest uses the same ID/version, role, setting, submenu, and table-namespace validation as bundled modules. `ADMIN` represents administrators including super admins; `USER` represents internal members. External accounts are excluded. Every declared submenu must map to a page. ZIP pages support exact single-segment submenu paths, not arbitrary nested routes. The package must declare `PAGE`; optional extensions are `DATABASE`, `SEARCH`, and `SETTINGS`. `SEARCH` requires tables. Server `API`, notification adapters, capability declarations, and raw SQL are not supported by ZIP packages; implement those as reviewed [source modules](README.md).
 
-Limits: 5 MB compressed, 10 MB expanded, 2 MB per file, 50 ZIP entries, 30 installed ZIP packages, and 8 managed tables per package. Only UTF-8 `.html` pages plus the two root JSON metadata files are accepted. Scripts and styles must be bundled inline in the HTML; images/fonts must use data URLs. Absolute/traversing paths, duplicate filenames, unsupported API versions, JARs, SQL, and other executables are rejected. Nothing is extracted to the server filesystem.
+Limits: 5 MB compressed, 10 MB expanded, 2 MB per file, 50 ZIP entries, 30 installed ZIP packages, and 8 managed tables per package. Only UTF-8 `.html` pages, the two root JSON metadata files, and PNG/JPEG/WebP artwork are accepted. Declare relative `icon` and `banner` paths in the manifest; the host validates and normalizes them. Scripts and styles must be bundled inline in the HTML; page images/fonts must use data URLs. Categories, relationships, admin placement, optional settings, and screen contributions use the [presentation contract](presentation-and-lifecycle.md). Absolute/traversing paths, duplicate filenames, unsupported API versions, JARs, SQL, and other executables are rejected. Nothing is extracted to the server filesystem.
 
 ## Page API
 
@@ -85,6 +87,8 @@ The [Notes example](../../examples/plugins/notes/) includes settings, owner-scop
 
 ```bash
 python -m zipfile -c notes.zip plugin.json author.json index.html guide.html
+icon.webp       # optional
+banner.jpg      # optional
 ```
 
 Upload `notes.zip`, configure its heading, and enable it. No example data is seeded. The [project licensing](../../LICENSING.md) still applies to combined works and dependencies; ZIP packaging does not automatically create a licensing exception.
@@ -95,6 +99,8 @@ Upload `notes.zip`, configure its heading, and enable it. No example data is see
 | --- | --- |
 | `GET /api/admin/security/extensions` | Super admin; global policy and optimistic revision |
 | `PUT /api/admin/security/extensions` | Super admin; `{allowThirdPartyExtensions, revision}` |
+| `DELETE /api/admin/plugins/{id}` | Super admin; `{confirmation: "plugin-id"}`, removes installed code, retains business data |
+| `POST /api/admin/plugins/{id}/restore` | Super admin; restore a bundled plugin, still disabled |
 | `POST /api/admin/plugins/install` | Super admin; multipart `file`, global policy must allow installation |
 | `GET /api/plugins/{id}/runtime?section=guide` | Active permitted member; sandbox page and redacted configuration |
 | `GET /api/plugins/{id}/data/{table}?offset=0` | Table reader; owner scope for members |

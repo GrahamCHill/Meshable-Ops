@@ -71,7 +71,16 @@ object IcalendarCodec {
         val end = raw("DTEND")?.let(::time) ?: if (allDay) LocalDate.parse(start).plusDays(1).toString() else return null
         if (end <= start || value("UID").isBlank()) return null
         val recurrence = value("RECURRENCE-ID")
-        return CalendarEventView("$source:${value("UID").take(800)}:$recurrence",value("SUMMARY").ifBlank { "Untitled event" }.take(300),value("DESCRIPTION").take(4000),start,end,allDay,source)
+        val participants = values["ATTENDEE"].orEmpty().take(100).mapNotNull { line ->
+            val email = line.substringAfter(':').removePrefix("mailto:").removePrefix("MAILTO:").take(254)
+            val name = Regex("(?:^|;)CN=(\"[^\"]*\"|[^;:]*)",RegexOption.IGNORE_CASE).find(line.substringBefore(':'))?.groupValues?.get(1)?.trim('"')?.let(::unescape).orEmpty().take(160)
+            CalendarParticipant(name,email).takeIf { runCatching { CalendarEventDetails.validate(emptyList(),listOf(it)) }.isSuccess }
+        }
+        val documents = values["ATTACH"].orEmpty().take(20).mapNotNull { line ->
+            val url = line.substringAfter(':'); CalendarDocumentLink("Calendar document",url).takeIf { CalendarEventDetails.safeLink(url) }
+        }
+        return CalendarEventView("$source:${value("UID").take(800)}:$recurrence",value("SUMMARY").ifBlank { "Untitled event" }.take(300),value("DESCRIPTION").take(4000),start,end,allDay,source,
+            documents=documents,participants=participants,calendarName=CalendarEventDetails.sourceName(source))
     }
     private fun escape(value: String) = value.replace("\\","\\\\").replace("\r\n","\n").replace("\r","\n").replace("\n","\\n").replace(";","\\;").replace(",","\\,")
     private fun unescape(value: String): String {
