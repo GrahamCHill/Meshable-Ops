@@ -13,6 +13,8 @@ import java.util.UUID
 @Service
 class ProjectBoardAccess(private val projects: ProjectAccess, private val users: UserRepository, private val jdbc: JdbcTemplate,
     private val mapper: com.fasterxml.jackson.databind.ObjectMapper, private val groups: WorkGroupRepository) {
+    fun canCreate(actor: User, projectId: UUID?): Boolean = if (projectId == null) ProjectCreationRules.allowed(actor, jdbc)
+        else runCatching { projects.require(projectId, actor, true) }.isSuccess
     fun teams(row: KanbanBoard): Set<UUID> = mapper.readValue(row.teamIdsJson, object : com.fasterxml.jackson.core.type.TypeReference<Set<UUID>>() {})
     fun readable(actor: User, row: KanbanBoard): Boolean = projects.hasFeature(actor, "plugin.kanban") &&
         (row.projectId?.let { runCatching {

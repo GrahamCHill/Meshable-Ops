@@ -4,6 +4,7 @@ import { pluginsApi, type PluginView } from '../../../api/plugins'
 import { getErrorMessage } from '../adminUtils'
 import { Button } from '../../ui'
 import {RepositoryScopeSettings} from './RepositoryScopeSettings'
+import {TimeZoneSelect} from '../../ui/TimeZoneSelect'
 
 export function PluginConfigurationForm({plugin}: {plugin: PluginView}) {
   const id = plugin.manifest.id
@@ -33,9 +34,10 @@ export function PluginConfigurationForm({plugin}: {plugin: PluginView}) {
         const stored = current.configuredSecrets.includes(field.key)
         const cleared = clearSecrets.includes(field.key)
         if (field.type === 'BOOLEAN') return <label key={field.key} className="checkbox-label"><input type="checkbox" checked={(values[field.key] ?? field.defaultValue) === 'true'} onChange={event => {setValues(previous => ({...previous,[field.key]:String(event.target.checked)}));setDirty(true);save.reset()}}/><span>{field.label}{field.help && <small className="field-help">{field.help}</small>}</span></label>
+        if (field.key === 'timeZone') return <TimeZoneSelect key={field.key} value={values[field.key]??field.defaultValue??'UTC'} onChange={value=>{setValues(previous=>({...previous,[field.key]:value}));setDirty(true);save.reset()}}/>
         return <div key={field.key} className="page-stack">
           <label className="form-field">{field.label}{field.required ? ' (required for use)' : ''}
-            <input type={secret ? 'password' : 'text'} autoComplete={secret ? 'new-password' : 'off'} spellCheck={false} maxLength={field.maxLength} value={values[field.key] ?? ''} disabled={cleared}
+            <input type={secret ? 'password' : field.key==='dailyTime'?'time':'text'} autoComplete={secret ? 'new-password' : 'off'} spellCheck={false} maxLength={field.maxLength} value={values[field.key] ?? field.defaultValue ?? ''} disabled={cleared}
               placeholder={secret && stored ? 'Stored securely' : undefined} onChange={event => {setValues(previous => ({...previous,[field.key]:event.target.value})); setDirty(true); save.reset()}} />
             {field.help && <span className="field-help">{field.help}</span>}
             {secret && stored && <span className="field-help"> A credential is stored. Leave blank to keep it, or enter a replacement.</span>}

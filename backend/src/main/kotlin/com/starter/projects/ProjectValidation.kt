@@ -10,7 +10,7 @@ object ProjectValidation {
         values.forEach { contact ->
             name(contact.name)
             if (contact.email.length > 254 || contact.email.isNotBlank() && !contact.email.matches(Regex("[^\\s@]+@[^\\s@]+\\.[^\\s@]+")) ||
-                contact.phone.length > 80 || contact.position.length > 160 || listOf(contact.phone, contact.position).any { it.any(Char::isISOControl) }) invalid("Use valid contact details")
+                contact.phone.length > 80 || contact.position.length > 160 || contact.role.length > 160 || listOf(contact.phone, contact.position, contact.role).any { it.any(Char::isISOControl) }) invalid("Use valid contact details")
         }
     }
     fun links(values: List<WebLink>) {

@@ -16,3 +16,8 @@ class KanbanController(private val service: KanbanService) {
     @PostMapping("/{id}/sprints/{sprintId}/start") fun startSprint(@AuthenticationPrincipal user: UserDetails, @PathVariable id: UUID, @PathVariable sprintId: UUID, @RequestBody request: SprintActionRequest) = service.startSprint(user.username, id, sprintId, request)
     @PostMapping("/{id}/sprints/{sprintId}/complete") fun completeSprint(@AuthenticationPrincipal user: UserDetails, @PathVariable id: UUID, @PathVariable sprintId: UUID, @RequestBody request: SprintActionRequest) = service.completeSprint(user.username, id, sprintId, request)
 }
+
+@RestController @RequestMapping("/api/plugins/kanban/permissions")
+class KanbanPermissionsController(private val service: KanbanService) {
+    @GetMapping fun permissions(@AuthenticationPrincipal user: UserDetails, @RequestParam(required = false) projectId: UUID?) = service.creationPermissions(user.username, projectId)
+}

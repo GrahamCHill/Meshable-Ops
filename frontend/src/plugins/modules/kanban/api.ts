@@ -7,7 +7,7 @@ export interface BoardColumn { id: string; title: string; status?: CardStatus | 
 export interface BoardEpic {id: string; name: string; description: string; color: string}
 export type SprintStatus = 'PLANNED' | 'ACTIVE' | 'COMPLETED'
 export interface BoardSprint {id: string; name: string; startDate: string; endDate: string; status?: SprintStatus; goal?: string}
-export interface BoardCard { id: string; columnId: string; title: string; description: string; dueDate?: string | null; startDate?: string | null; completionDate?: string | null; assigneeId?: string | null; reviewerIds?: string[]; sprintId?: string | null; storyPoints?: number | null; status?: CardStatus; reference?: string; blocked?: boolean; tags?: string[]; epicId?: string | null; parentId?: string | null; tshirtSize?: TshirtSize | null; links?: TicketLink[]; type?: 'TASK' | 'STORY' | 'BUG' | 'SUBTASK'; priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' }
+export interface BoardCard { id: string; createdAt?:string|null; columnId: string; title: string; description: string; dueDate?: string | null; startDate?: string | null; completionDate?: string | null; assigneeId?: string | null; reviewerIds?: string[]; sprintId?: string | null; storyPoints?: number | null; status?: CardStatus; reference?: string; blocked?: boolean; tags?: string[]; epicId?: string | null; parentId?: string | null; tshirtSize?: TshirtSize | null; links?: TicketLink[]; type?: 'TASK' | 'STORY' | 'BUG' | 'SUBTASK'; priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' }
 export type TshirtSize = 'XS'|'S'|'M'|'L'|'XL'|'XXL'
 export type TicketLinkType = 'RELATED'|'BLOCKS'|'BLOCKED_BY'
 export interface TicketLink {targetId: string; type: TicketLinkType}
@@ -20,6 +20,7 @@ export interface BoardSummary { id: string; ownerId: string; name: string; updat
 export interface Board extends Omit<BoardInput, 'projectId'>, BoardSummary {canManage: boolean; moves: Record<string,string[]>; estimation?: Estimation}
 const api = createPluginApi('kanban')
 export const boardsApi = {
+  permissions: (project?:string) => api.get<{canCreate:boolean}>('/permissions',project?{projectId:project}:undefined),
   list: (project?: string) => api.get<BoardSummary[]>('/boards', project ? {projectId: project} : undefined),
   get: (id: string) => api.get<Board>(`/boards/${id}`),
   save: (id: string | undefined, board: BoardInput) => id ? api.put<Board>(`/boards/${id}`, board) : api.post<Board>('/boards', board),

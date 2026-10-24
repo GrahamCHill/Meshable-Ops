@@ -21,7 +21,8 @@ import java.util.concurrent.Semaphore
 class WebhookService(private val endpoints: WebhookEndpointRepository, private val deliveries: WebhookDeliveryRepository,
     private val crypto: SecretEncryption, private val tokens: SecureValues, private val mapper: ObjectMapper,
     private val http: WebhookHttpClient, private val rates: RateLimits,
-    @Value("\${app.public-base-url:}") private val publicBaseUrl: String) {
+    @Value("\${app.public-base-url:}") private val publicBaseUrl: String,
+    private val receivers: List<IncomingWebhookExtension> = emptyList()) {
     private val workers = Semaphore(2)
     fun list() = endpoints.findAll().map(::view)
     fun save(id: UUID?, request: WebhookRequest): WebhookSaved {
@@ -71,7 +72,9 @@ class WebhookService(private val endpoints: WebhookEndpointRepository, private v
         }
         if (!valid) throw BadCredentialsException("Webhook authentication failed")
         rates.check("webhook-incoming-endpoint", id.toString(), 120, 300)
-        try { mapper.readTree(body) ?: throw IllegalArgumentException() } catch (_: Exception) { throw BadRequestException("Send a valid JSON payload") }
+        val payload=try { mapper.readTree(body) ?: throw IllegalArgumentException() } catch (_: Exception) { throw BadRequestException("Send a valid JSON payload") }
+        // Receiver operations must be idempotent. Dispatch before the receipt so a failed receiver can be retried.
+        receivers.forEach {it.receive(id,deliveryId,payload)}
         try { deliveries.saveAndFlush(WebhookDelivery(endpointId = id, deliveryKey = deliveryId, payload = body)) }
         catch (_: DataIntegrityViolationException) { return MessageResponse("Webhook accepted") }
         deliveries.trim(id)

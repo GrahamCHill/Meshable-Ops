@@ -18,7 +18,7 @@ export function CardEditor({boardId, card, columns, epics = [], cards, allowedCo
   const key = 'ticket:' + (boardId ?? 'new') + ':' + card.id
   const [draft, setDraft] = usePageDraft(key, card)
   const [tags, setTags] = usePageDraft(key + ':tags', (card.tags ?? []).join(', '))
-  const [params]=useSearchParams(),[tab,setTab]=useState(params.has('comment')?'discussion':'details')
+  const [params]=useSearchParams(),[tab,setTab]=useState(params.get('card')===card.id&&params.has('comment')?'discussion':'details')
   const change = (fields: Partial<BoardCard>) => setDraft(value => ({...value, ...fields}))
   const tagValues = [...new Set(tags.split(',').map(value => value.trim()).filter(Boolean))]
   const tagError = tagValues.length > 20 || tagValues.some(value => value.length > 40)

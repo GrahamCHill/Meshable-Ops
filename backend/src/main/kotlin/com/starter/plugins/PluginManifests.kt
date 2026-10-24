@@ -33,6 +33,7 @@ internal object PluginManifests {
         require(manifest.settingsFields.size <= 30 && manifest.settingsFields.map { it.key }.distinct().size == manifest.settingsFields.size)
         manifest.settingsFields.forEach {
             require(it.key.matches(Regex("[a-z][A-Za-z0-9]{0,39}")) && it.label.isNotBlank() && it.label.length <= 100 && it.help.length <= 600 && it.maxLength in 1..4096) { "Invalid plugin settings field" }
+            require(it.defaultValue.length <= it.maxLength && (it.type != PluginFieldType.BOOLEAN || it.defaultValue in setOf("","true","false")) && (it.type != PluginFieldType.SECRET || it.defaultValue.isBlank())) { "Use bounded non-secret defaults and true/false for Boolean fields" }
         }
         require(manifest.settingsFields.isEmpty() || PluginExtension.SETTINGS in manifest.extensions)
         require(manifest.menuItems.size <= 20 && manifest.menuItems.map { it.path }.distinct().size == manifest.menuItems.size)

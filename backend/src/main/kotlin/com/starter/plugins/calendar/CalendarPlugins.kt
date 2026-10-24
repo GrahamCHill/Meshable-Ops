@@ -14,7 +14,7 @@ class CalendarPlugin : WorkspacePlugin {
         menuItems = listOf(PluginMenuItem("events", "Events")),
         tables = listOf(PluginTable("plugin_calendar_sync_links", "Personal sync relationships"), PluginTable("plugin_calendar_events", "Calendar events"),
             PluginTable("plugin_calendar_connections", "Personal connections and encrypted credentials")),
-        features = listOf(PluginFeature("board-deadlines", "Kanban card deadlines", setOf("kanban.boards")),
+        features = listOf(PluginFeature("board-deadlines", "Kanban deadlines and sprints", setOf("kanban.boards")),
             PluginFeature("connected-calendars", "External calendar connections", setOf("calendar.provider"))))
 }
 @Component

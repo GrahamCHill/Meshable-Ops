@@ -24,3 +24,12 @@
 .project-card-category {font-size:.85rem;}
 .project-dialog { border: 0; padding: 1.5rem; width: min(760px, calc(100vw - 2rem)); max-height: 92vh; overflow: auto; color: var(--color-text); background: var(--color-bg); margin: auto; }
 .project-dialog::backdrop { background: rgba(0,0,0,.4); }
+
+.client-identity {display:inline-flex;align-items:center;gap:12px;}
+.project-board-link-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px}
+.project-board-shortcut{display:flex;flex-direction:column;gap:8px;padding:16px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface-2);text-decoration:none}
+.project-board-shortcuts h2,.project-development h2,.project-development-settings summary{display:flex;align-items:center;gap:8px}
+.project-repository-shortcuts{flex-wrap:wrap}.project-repository-shortcuts a{display:inline-flex;align-items:center;gap:6px}
+.project-development-settings{padding:12px;border:1px solid var(--color-border);border-radius:8px}.project-development-settings>div{margin-top:16px}
+.project-development-list{display:grid;gap:12px}.project-development-link{display:flex;justify-content:space-between;gap:16px;padding:16px;border:1px solid var(--color-border);border-radius:8px}.project-development-link h3{margin:8px 0}.project-development-link p{margin:6px 0}.project-development-state{padding:2px 8px;background:var(--color-surface-2);border-radius:12px}.project-development-form{margin-top:16px;max-width:640px}
+@media(max-width:640px){.project-development-link{flex-direction:column}.project-board-shortcuts .page-heading{align-items:flex-start;flex-direction:column}}

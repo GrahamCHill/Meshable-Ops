@@ -136,6 +136,12 @@ class AccessControlTest {
         assertThat(details.authorities.map { it.authority }).contains("ROLE_SUPER_ADMIN", "ROLE_ADMIN")
         assertThat(Roles.plugin("SUPER_ADMIN")).isEqualTo("ADMIN")
     }
+    @Test fun `Business Managers inherit existing member feature restrictions until configured separately`() {
+        val manager = User(email = "business@example.test", password = "encoded", role = Roles.BUSINESS_MANAGER)
+        assertThat(access.features(manager, AccessPolicy(roleFeatures = mapOf("USER" to setOf("projects"))))).containsExactly("projects")
+        assertThat(access.features(manager, AccessPolicy(roleFeatures = mapOf("USER" to emptySet(), Roles.BUSINESS_MANAGER to setOf("projects"))))).containsExactly("projects")
+        assertThat(com.starter.security.SessionUserDetails(manager, false).authorities.map { it.authority }).containsExactly("ROLE_BUSINESS_MANAGER")
+    }
     @Test fun `event log is an admin feature and existing member event grants cannot expose it`() {
         val legacy=AccessPolicy(roleFeatures=mapOf("USER" to setOf("events")))
         assertThat(access.features(User(role="USER"),legacy)).doesNotContain("events")

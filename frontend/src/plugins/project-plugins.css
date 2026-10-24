@@ -1,0 +1,13 @@
+.project-plugin-panel { min-width:0; }
+.project-plugin-card { background:var(--color-surface-2);padding:20px;border-radius:8px;border:1px solid color-mix(in srgb,var(--color-text) 10%,transparent); }
+.project-plugin-card h3 { margin:0;font-size:1rem; }.project-plugin-card h3 small { color:var(--color-text-secondary);margin-left:8px; }
+.project-plugin-card a { display:inline-flex;align-items:center;gap:6px; }
+.project-plugin-cards { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:16px; }
+.project-plugin-add { display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;padding:18px 0;border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent); }
+.project-plugin-add .form-field { flex:1;min-width:180px; }.project-plugin-add>p { flex-basis:100%; }
+.project-plugin-metrics { display:flex;flex-wrap:wrap;gap:24px; }.project-plugin-metrics>div { display:flex;flex-direction:column;gap:5px;min-width:80px; }.project-plugin-metrics strong { font-size:1.6rem; }.project-plugin-metrics span { font-size:.75rem;color:var(--color-text-secondary); }
+.project-plugin-breakdowns { display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:24px; }.project-plugin-breakdown { display:flex;justify-content:space-between;padding:5px 0;font-size:.85rem; }
+.project-mermaid-editor { display:grid;grid-template-columns:minmax(250px,1fr) minmax(250px,1fr);gap:20px; }.project-mermaid-editor textarea { font-family:monospace;tab-size:2; }
+.project-mermaid-preview { min-width:0; }.project-mermaid-preview iframe { width:100%;height:360px;border:0;border-radius:6px;background:white;resize:vertical; }.project-mermaid-preview [role=alert] { white-space:pre-wrap;overflow-wrap:anywhere;max-height:200px;overflow:auto; }
+.project-diagram-content { margin-top:18px; }.project-plugin-card>summary { cursor:pointer;font-weight:600; }
+@media(max-width:760px) { .project-mermaid-editor { grid-template-columns:1fr; }.project-plugin-metrics { gap:16px; }.project-plugin-card { padding:14px; } }

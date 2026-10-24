@@ -20,31 +20,42 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
     fun list(email: String, projectId: UUID? = null): List<KanbanSummary> { val actor = actor(email); return projects?.list(actor, projectId) ?: boards.visible(actor.id, com.starter.access.Roles.admin(actor.role), PageRequest.of(0, 100)) }
     fun get(email: String, id: UUID) = actor(email).let { view(owned(it, id), it) }
     fun members(email: String, id: UUID) = actor(email).let { actor -> projects?.members(actor, owned(actor, id)) ?: emptyList() }
+    fun creationPermissions(email: String, projectId: UUID?): Map<String, Boolean> {
+        val actor = actor(email)
+        val writable = runCatching { plugins.requireTable("kanban", "plugin_kanban_boards", actor.role, write = true) }.isSuccess
+        return mapOf("canCreate" to (writable && mayCreate(actor, projectId)))
+    }
+    private fun mayCreate(actor: User, projectId: UUID?) = projects?.canCreate(actor, projectId)
+        ?: (projectId == null && (com.starter.access.Roles.admin(actor.role) || actor.role == com.starter.access.Roles.BUSINESS_MANAGER))
     @Transactional
     fun save(email: String, id: UUID?, request: KanbanRequest): KanbanView {
         val actor = actor(email)
         plugins.requireTable("kanban", "plugin_kanban_boards", actor.role, write = true)
-        validate(request)
+        if (id == null && !mayCreate(actor, request.projectId)) throw ForbiddenException("A board must be created by an administrator, Business Manager, project manager or team lead")
+        val requested=KanbanCompletion.read(request.content)
+        validate(request.copy(content=requested))
         val row = id?.let { owned(actor, it) } ?: KanbanBoard(ownerId = actor.id)
         if (id != null && row.revision != request.revision) throw ConflictException("This board changed. Reload before editing.")
         projects?.attach(actor, row, request.projectId)
         projects?.validateTeams(actor, row, request.projectId, request.teamIds)
-        val previous = if (id == null) KanbanContent() else mapper.readValue(row.contentJson, KanbanContent::class.java)
+        val previous = if (id == null) KanbanContent() else KanbanCompletion.read(mapper.readValue(row.contentJson, KanbanContent::class.java))
         val manager = canManage(actor, row)
         if (id != null && !manager && row.name != request.name.trim()) throw ForbiddenException("Only a board manager can rename this board")
         row.projectId = request.projectId
         row.teamIdsJson = mapper.writeValueAsString(request.teamIds)
-        projects?.validatePeople(actor, row, request.content.cards.flatMap { it.reviewerIds + listOfNotNull(it.assigneeId) }.toSet())
-        val permissionMembers = (request.content.columns.flatMap { it.enter.userIds + it.leave.userIds } + request.content.workflow.transitions.flatMap { it.permission.userIds }).toSet()
+        projects?.validatePeople(actor, row, requested.cards.flatMap { it.reviewerIds + listOfNotNull(it.assigneeId) }.toSet())
+        val permissionMembers = (requested.columns.flatMap { it.enter.userIds + it.leave.userIds } + requested.workflow.transitions.flatMap { it.permission.userIds }).toSet()
         val previousPermissionMembers = (previous.columns.flatMap { it.enter.userIds + it.leave.userIds } + previous.workflow.transitions.flatMap { it.permission.userIds }).toSet()
         projects?.validatePeople(actor, row, permissionMembers - previousPermissionMembers)
         val old = previous.cards.associateBy { it.id }
-        val normalized = request.content.copy(cards = request.content.cards.map { card ->
-            val status = request.content.columns.first { it.id == card.columnId }.status ?: card.status
+        val now=Instant.now()
+        val normalized = requested.copy(cards = requested.cards.map { card ->
+            val status = requested.columns.first { it.id == card.columnId }.status ?: card.status
             card.copy(status = status, tags = card.tags.map(String::trim),
+            createdAt = old[card.id]?.createdAt ?: now.takeIf {card.id !in old},
             reference = old[card.id]?.reference?.takeIf { it.isNotBlank() } ?: "B-${row.id.toString().take(6).uppercase()}-${row.nextCardNumber++}",
             startDate = if (status == CardStatus.IN_PROGRESS) card.startDate ?: java.time.LocalDate.now(java.time.ZoneOffset.UTC) else card.startDate,
-            completionDate = if (status == CardStatus.DONE) card.completionDate ?: java.time.LocalDate.now(java.time.ZoneOffset.UTC) else null) })
+            completionDate = if (status == CardStatus.DONE) card.completionDate ?: old[card.id]?.completionDate ?: java.time.LocalDate.now(java.time.ZoneOffset.UTC).takeIf {old[card.id]?.status != CardStatus.DONE} else null) })
         val completedSprints = previous.sprints.filter { it.status == SprintStatus.COMPLETED }.map { it.id }.toSet()
         val parents = normalized.cards.filter { it.parentId == null }.associate { card ->
             card.id to if (card.status != CardStatus.DONE && card.sprintId in completedSprints && old[card.id]?.sprintId == card.sprintId) card.copy(sprintId = null) else card
@@ -56,7 +67,7 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
         validate(request.copy(content = content))
         row.name = request.name.trim(); row.contentJson = mapper.writeValueAsString(content); row.updatedAt = Instant.now()
         val saved = boards.saveAndFlush(row)
-        val cards = request.content.cards.map { it.id }.toSet()
+        val cards = requested.cards.map { it.id }.toSet()
         development?.let { repository -> repository.deleteAll(repository.findByBoard_Id(saved.id).filter { it.cardId != null && it.cardId !in cards }) }
         val removed = previous.cards.map { it.id }.filter { it !in cards }
         if (removed.isNotEmpty()) comments?.deleteByBoardIdAndCardIdIn(saved.id, removed)
@@ -70,7 +81,7 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
         val row = boards.locked(id).orElse(null)?.takeIf { projects?.readable(actor, it) ?: (it.ownerId == actor.id || com.starter.access.Roles.admin(actor.role)) }
             ?: throw NotFoundException("Board unavailable")
         if (row.revision != request.revision) throw ConflictException("This board changed. Reload before moving this ticket.")
-        val content = mapper.readValue(row.contentJson, KanbanContent::class.java)
+        val content = KanbanCompletion.read(mapper.readValue(row.contentJson, KanbanContent::class.java))
         val card = content.cards.find { it.id == cardId } ?: throw NotFoundException("Ticket unavailable")
         val destination = content.columns.find { it.id == request.columnId } ?: throw BadRequestException("Destination column unavailable")
         val source = content.columns.find { it.id == card.columnId } ?: throw BadRequestException("Saved column unavailable")
@@ -85,12 +96,12 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
     @Transactional
     fun startSprint(email: String, id: UUID, sprintId: UUID, request: SprintActionRequest): KanbanView {
         val row = sprintBoard(email, id, request.revision)
-        return saveSprint(email, row, KanbanSprintRules.start(mapper.readValue(row.contentJson, KanbanContent::class.java), sprintId))
+        return saveSprint(email, row, KanbanSprintRules.start(KanbanCompletion.read(mapper.readValue(row.contentJson, KanbanContent::class.java)), sprintId))
     }
     @Transactional
     fun completeSprint(email: String, id: UUID, sprintId: UUID, request: SprintActionRequest): KanbanView {
         val row = sprintBoard(email, id, request.revision)
-        return saveSprint(email, row, KanbanSprintRules.complete(mapper.readValue(row.contentJson, KanbanContent::class.java), sprintId, request.destinationSprintId))
+        return saveSprint(email, row, KanbanSprintRules.complete(KanbanCompletion.read(mapper.readValue(row.contentJson, KanbanContent::class.java)), sprintId, request.destinationSprintId))
     }
     private fun sprintBoard(email: String, id: UUID, revision: Long): KanbanBoard {
         val actor = actor(email)
@@ -109,7 +120,7 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
         ?: throw NotFoundException("Board unavailable")
     private fun canManage(actor: User, row: KanbanBoard) = projects?.canManage(actor, row) ?: (row.ownerId == actor.id || com.starter.access.Roles.admin(actor.role))
     private fun view(row: KanbanBoard, actor: User): KanbanView {
-        val content = mapper.readValue(row.contentJson, KanbanContent::class.java)
+        val content = KanbanCompletion.read(mapper.readValue(row.contentJson, KanbanContent::class.java))
         val manager = canManage(actor, row)
         val writable = runCatching { plugins.requireTable("kanban", "plugin_kanban_boards", actor.role, write = true) }.isSuccess
         val moves = content.cards.associate { card -> card.id to if (!writable) emptySet() else content.columns.filter { column ->

@@ -30,7 +30,7 @@ interface KanbanCommentRepository : JpaRepository<KanbanComment, UUID> {
 }
 data class KanbanCommentInput(val text: String, val mentionIds: Set<UUID> = emptySet(), val parentId: UUID? = null)
 data class KanbanCommentView(val id: UUID, val authorId: UUID, val authorName: String, val text: String, val mentionIds: Set<UUID>, val createdAt: Instant, val parentId: UUID? = null)
-data class KanbanMentionEvent(val commentId: UUID, val boardId: UUID, val cardId: UUID, val authorId: UUID, val recipients: Set<UUID>, val text: String = "")
+data class KanbanMentionEvent(val commentId: UUID, val boardId: UUID, val cardId: UUID, val authorId: UUID, val recipients: Set<UUID>, val text: String = "", val replyRecipient: UUID? = null)
 
 @Service
 class KanbanCommentService(private val comments: KanbanCommentRepository, private val boards: KanbanRepository,
@@ -52,7 +52,7 @@ class KanbanCommentService(private val comments: KanbanCommentRepository, privat
         if (existing.size >= 200) throw BadRequestException("A card supports up to 200 comments")
         if (input.parentId != null && existing.none { it.id == input.parentId }) throw BadRequestException("Reply to an existing comment on this ticket")
         val saved = comments.saveAndFlush(KanbanComment(boardId = boardId, cardId = cardId, authorId = actor.id, text = input.text.trim(), mentionsJson = mapper.writeValueAsString(mentions), parentId = input.parentId))
-        events.publishEvent(KanbanMentionEvent(saved.id, boardId, cardId, actor.id, mentions - actor.id, saved.text))
+        events.publishEvent(KanbanMentionEvent(saved.id, boardId, cardId, actor.id, mentions - actor.id, saved.text, existing.find { it.id == input.parentId }?.authorId?.takeIf { it != actor.id }))
         return view(saved)
     }
     private fun board(actor: com.starter.model.postgres.User, boardId: UUID, cardId: UUID, lock: Boolean = false): KanbanBoard {
@@ -67,19 +67,21 @@ class KanbanCommentService(private val comments: KanbanCommentRepository, privat
 @Service
 class KanbanMentions(private val publisher: NotificationPublisher, private val users: UserRepository, private val boards: KanbanRepository,
     private val access: ProjectBoardAccess, private val registry: PluginRegistry, private val mapper: ObjectMapper,
-    @org.springframework.beans.factory.annotation.Value("\${app.public-base-url:}") private val publicBaseUrl: String = "") {
+    @org.springframework.beans.factory.annotation.Value("\${app.public-base-url:}") private val publicBaseUrl: String = "", private val configuration: com.starter.plugins.PluginConfigurationService? = null) {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun notify(event: KanbanMentionEvent) {
         val board = boards.findById(event.boardId).orElse(null) ?: return
         val card = mapper.readValue(board.contentJson, KanbanContent::class.java).cards.find { it.id == event.cardId } ?: return
-        event.recipients.forEach { id -> runCatching {
+        (event.recipients + listOfNotNull(event.replyRecipient) - event.authorId).forEach { id -> runCatching {
             val recipient = users.findById(id).orElse(null) ?: return@runCatching
             if (!access.readable(recipient, board)) return@runCatching
             registry.requireTable("kanban", "plugin_kanban_comments", recipient.role)
             val author = users.findById(event.authorId).orElse(null)?.let { it.name ?: it.username } ?: "A former member"
-            publisher.publish("kanban.mention", id, mapOf("subject" to "You were mentioned: ${card.title}".take(200), "message" to "$author mentioned you on ${card.reference.ifBlank { card.title }} in ${board.name}:\n\n${KanbanMentionText.plain(event.text)}",
+            val mentioned = id in event.recipients
+            val base = configuration?.current("kanban")?.get("applicationUrl") ?: publicBaseUrl
+            publisher.publish(if (mentioned) "kanban.mention" else "kanban.reply", id, mapOf("subject" to "${if (mentioned) "You were mentioned" else "Reply to your comment"}: ${card.title}".take(200), "message" to "$author ${if (mentioned) "mentioned you" else "replied to you"} on ${card.reference.ifBlank { card.title }} in ${board.name}:\n\n${KanbanMentionText.plain(event.text)}",
                 "cardTitle" to card.title, "boardName" to board.name, "commentText" to KanbanMentionText.plain(event.text), "authorName" to author,
-                "link" to "${publicBaseUrl.trimEnd('/')}/plugins/kanban/boards?board=${board.id}&card=${card.id}&comment=${event.commentId}#comment-${event.commentId}"), "kanban-mention:${event.commentId}:$id", splitLongText = true)
+                "link" to "${base.trimEnd('/')}/plugins/kanban/boards?board=${board.id}&card=${card.id}&comment=${event.commentId}#comment-${event.commentId}"), "kanban-comment:${event.commentId}:$id", splitLongText = true)
         } }
     }
 }
@@ -87,8 +89,11 @@ class KanbanMentions(private val publisher: NotificationPublisher, private val u
 @org.springframework.stereotype.Component
 class KanbanNotificationDefinitions : NotificationDefinitionProvider {
     override val pluginId = "kanban"
-    override fun definitions() = listOf(NotificationDefinition("kanban.mention", "Card mentions", "Notify an internal board member when tagged in a comment.", NotificationCategory.GENERAL,
-        setOf("applicationName", "recipientName", "subject", "message", "cardTitle", "boardName", "commentText", "authorName", "link"), "{{subject}}", "{{message}}\n\nReply: {{link}}", privateToRecipient = true))
+    override fun definitions(): List<NotificationDefinition> {
+        val mention = NotificationDefinition("kanban.mention", "Card mentions", "Notify an internal board member when tagged in a comment.", NotificationCategory.GENERAL,
+            setOf("applicationName", "recipientName", "subject", "message", "cardTitle", "boardName", "commentText", "authorName", "link"), "{{subject}}", "{{message}}\n\nReply: {{link}}", privateToRecipient = true)
+        return listOf(mention,mention.copy(id="kanban.reply",label="Ticket discussion replies",description="Notify a comment author when someone replies to their comment."))
+    }
 }
 
 @RestController @RequestMapping("/api/plugins/kanban/boards/{boardId}/cards/{cardId}/comments")

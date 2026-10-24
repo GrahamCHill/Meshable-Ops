@@ -1,8 +1,10 @@
 # Creating a plugin
 
+For the optional billing, cloud-cost, timekeeping and on-call suite, see [Operations plugins](operations.md). These modules demonstrate project/client contexts, source reconciliation, private imports, PDF rendering, scheduled work and authenticated webhook dispatch.
+
 For a minimal uploadable frontend + backend example, use [custom-page](../../examples/plugins/custom-page/README.md): run its `package.py`, then install the resulting ZIP. It includes a custom page, guide submenu, settings, author file, and Python route. For React plus Python/Kotlin, use the [full-stack example](../../examples/plugins/full-stack/README.md).
 
-See [Kanban 1.3.0](kanban.md) for columns, transition permissions, draggable tickets, sprint planning/completion, swimlanes, subtasks, project charts and bulk plugin activation.
+See [Kanban 1.6.0](kanban.md) for the workflow graph, ticket relationships/discussions, estimation settings, sprint editing/calendar ranges, movement permissions and bulk plugin activation. See [Jira, Figma and Mermaid](project-integrations.md) for optional project extensions.
 
 See [presentation, admin categories, screen contributions, and removal](presentation-and-lifecycle.md) for icons/banners, categories, required/optional plugin relationships, author-defined incompatibility, optional settings, and extension slots.
 

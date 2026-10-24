@@ -1,5 +1,23 @@
 # Application API reference
 
+## Operations plugin APIs
+
+All paths below require authentication, an active permitted plugin, plugin-table access and applicable project membership. `EXTERNAL` accounts are excluded. Mutations use optimistic `revision`; stale writes return `409`. New plugins start disabled. [Operations guide](plugins/operations.md) documents dependencies, safeguards and provider setup.
+
+| Plugin base | Endpoints |
+| --- | --- |
+| `/api/plugins/timesheets` | `GET ?from&to&projectId&team` (own entries by default; team detail requires senior access); `POST` / `PUT /{id}` completed work; `POST /{id}/action` with SUBMIT/APPROVE/REJECT; `POST /{id}/reconcile` imported corrections; `DELETE /{id}?revision` internal draft only; `GET /timer`, `POST /timer`, `POST /timer/stop`; `GET /totals?projectId&from&to` member-visible aggregate hours |
+| `/api/plugins/activitywatch` | `GET` own suggestions; `POST /import` ActivityWatch JSON export; `POST /{id}/allocate` with projectId, description, revision, billable; `DELETE /{id}?revision` own suggestion only (allocated ledger work retained) |
+| `/api/plugins/timecamp` | Admin `GET/POST /mappings`, `DELETE /mappings/{id}?revision`; `POST /sync` with inclusive from/to dates |
+| `/api/plugins/cloud-costs` | `GET ?projectId` connections; `GET /spend?projectId&from&to`; admin `POST /connections`, `PUT /connections/{id}`, `POST /connections/{id}/refresh` with from/to |
+| `/api/plugins/billing-items` | Leader `GET ?projectId`, `POST`, `PUT /{id}` project catalog; admin `GET/POST /rates`, `PUT /rates/{id}`, `POST /assignments`, `PUT /assignments/{id}` effective-dated role pricing |
+| `/api/plugins/billing` | `GET /defaults`; `GET/PUT /clients/{id}` profile; `GET ?projectId` documents; `POST /preview`; `POST` generate; `GET /{id}/pdf`; `POST /{id}/send`; `POST /{id}/state` MARK_PAID/VOID; `GET/POST /schedules`, `PUT /schedules/{id}`; `GET /replies?projectId`; admin `POST /inbox/poll` |
+| `/api/plugins/on-call` | `GET ?projectId` rotations/incidents; `GET /calling`; leader `POST /rotations`, `PUT /rotations/{id}`; member `POST /alerts`; `POST /alerts/{id}/action` CONFIRM/SEVERITY/ACKNOWLEDGE/RESOLVE with revision; admin `POST /sources` associates or toggles a dedicated authenticated incoming webhook |
+
+`BillingGenerate` includes projectId, inclusive from/to, kind (`INVOICE`, `QUOTE`, `PROVISIONAL`), currency, chargeTax, taxPercent, source toggles, optional manualLines/templateId, and a stable requestId UUID. Repeated request IDs return the same generated document. Duplicate invoice sources require duplicateConfirmation=`BILL AGAIN` plus a duplicateReason of at least ten characters; quotes/provisional statements do not reserve sources. `BillingSend` accepts revision, optional in-memory pdfPassword and, after an uncertain attempt, retryConfirmation=`RETRY DELIVERY`.
+
+Cloud credential maps are write-only; response records never contain the encrypted secret column. Billing reply bodies are decrypted only after project billing authorization. Timesheet totals contain aggregate seconds/counts by source/status, while individual entries require ownership or senior project access. Monitor payloads go through `/api/webhooks/incoming/{endpointId}` with its existing HMAC/bearer authentication, not an unauthenticated plugin API.
+
 See [navigation and artwork APIs](navigation-and-icons.md#api), [repository discovery/project links](plugins/source-control.md#api), and the [Google Drive endpoint](plugins/google-drive.md). The [custom-page example](../examples/plugins/custom-page/README.md) demonstrates an installed ZIP's scoped frontend/backend call.
 
 ## Projects and delivery
@@ -10,7 +28,7 @@ All routes require an active internal account and the Projects feature. Record-l
 | --- | --- | --- |
 | GET / POST | `/projects` | Filtered directory / create; GET accepts `query`, `category`, repeated `tags` UUIDs |
 | GET / PUT | `/projects/{id}` | Authorized project / leadership edit |
-| GET | `/projects/options`, `/projects/people` | Tags, described groups, business identity / active internal member directory |
+| GET | `/projects/options`, `/projects/people` | Sections/tags, described groups, creation capabilities, business identity / active internal member directory |
 | GET / POST | `/projects/clients` | Visible clients / create client |
 | GET / PUT | `/projects/clients/{id}` | Inherited details / owner or admin edit |
 | GET | `/projects/{id}/members`, `/work`, `/sprints`, `/risks` | Membership, visible tickets, sprints, leadership-only indicators |
@@ -27,19 +45,23 @@ All routes require an active internal account and the Projects feature. Record-l
 | PUT | `/admin/projects/groups/{id}` | Revision-checked group edit |
 | GET | `/admin/projects/people` | Internal member options within delegated admin permission |
 
-Client requests store contacts in `details.contacts`. Project requests use `details.contactSource`: `CLIENT` reads the linked client’s current contacts; `PROJECT` uses only `details.contacts`, including an explicitly empty override. No-client projects are normalized to `PROJECT`. Responses include `effectiveContacts` for display and `inheritedContacts` for the linked client’s list only. Missing `contactSource` on legacy input defaults to `PROJECT` when contacts are nonempty, otherwise `CLIENT`. `/admin/projects` settings contain `tags`, ordered `sections: [{id, name}]`, and `defaultSectionId`; legacy `identityContacts` is ignored and omitted from responses. There is no global contact fallback.
+Client requests store contacts in `details.contacts`; each contact has `name`, `email`, `phone`, `position` (job title), and optional `role` (client relationship, up to 160 characters). Legacy contacts default to an empty relationship role. Client responses include `logo` artwork metadata. `/projects/options` returns `canCreateProjects` and `canCreateClients`; POST authorization is enforced independently. Client reads are available to members of any linked project; write access remains client-owner/admin only.
+
+Client logos use `GET/PUT /projects/clients/{id}/logo`, multipart `POST /projects/clients/{id}/logo/image` (`file`, `revision`), and authenticated `GET /projects/clients/{id}/logo/image/{version}`. Image responses are private/no-store PNG with `nosniff`; unauthorized clients return `404`, read-only writes `403`, stale artwork writes `409`. `GET /plugins/kanban/permissions?projectId=<optional UUID>` returns `{canCreate}` for the current account/context. Board POSTs also require creation authority and plugin-table write access.
+
+Project requests use `details.contactSource`: `CLIENT` reads the linked client’s current contacts; `PROJECT` uses only `details.contacts`, including an explicitly empty override. No-client projects are normalized to `PROJECT`. Responses include `effectiveContacts` for display and `inheritedContacts` for the linked client’s list only. Missing `contactSource` on legacy input defaults to `PROJECT` when contacts are nonempty, otherwise `CLIENT`. `/admin/projects` settings contain `tags`, ordered `sections: [{id, name}]`, and `defaultSectionId`; legacy `identityContacts` is ignored and omitted from responses. There is no global contact fallback.
 
 Project `category` is now a stable configurable section ID, retaining the original `PROPOSAL`, `ACTIVE`, and `ARCHIVED` IDs. Omit it on create to use `defaultSectionId`. `/projects/options` includes ordered `sections` and `defaultSectionId`; project and summary responses include `categoryName` for the current display name. The list `category` filter accepts an existing section ID. Admin section names must be unique after trimming/case folding, 1–80 characters, with 1–20 sections; IDs use 1–40 letters, digits, underscores or hyphens. Removing an assigned section returns `400`; stale settings writes return `409`. Send the full settings object to preserve tags and sections. Project changes retain leadership/RBAC checks.
 
 Reports accept `kind` (`SPRINT`, `MONTHLY`, `PERIOD`), ISO `from`/`to`, optional `boardId`/`sprintId`, `sendEmail`, and `recipientIds`. Digests accept `from`, `to`, `timeZone`, `includeAi`, and team `recipientIds`. Full behavior/limits: [Projects and delivery](projects-and-delivery.md).
 
-Kanban retains `/plugins/kanban/boards`; its list accepts optional `projectId`. Board requests additionally accept `projectId` and `teamIds`. `/boards/{id}/members` lists eligible assignees/reviewers. `GET/POST /plugins/kanban/boards/{boardId}/cards/{cardId}/comments` reads/adds comments (`text`, `mentionIds`). Members must have board and comment-table access.
+Kanban retains `/plugins/kanban/boards`; its list accepts optional `projectId`. Board requests additionally accept `projectId` and `teamIds`. `/boards/{id}/members` lists eligible assignees/reviewers. `GET/POST /plugins/kanban/boards/{boardId}/cards/{cardId}/comments` reads/adds threaded comments (`text`, optional `parentId` and legacy `mentionIds`). Typed mentions use `@[Display name](user:UUID)` tokens. Members must have board and comment-table access.
 
 `GET /admin/notifications/members` supplies the internal picker for mapped-member sends without requiring delegated plugin administration. See [messaging identities and post APIs](plugins/integrations.md#member-links-and-shared-posts).
 
 Optional modules use the authenticated `/api/plugins` catalogue, administrator-only `/api/admin/plugins` settings, and guarded `/api/plugins/{id}/…` routes. See [Workspace plugins](plugins.md#api) for contracts and Kanban endpoints, [plugin settings](plugins/settings.md) for redacted configuration APIs, and [integration plugins](plugins/integrations.md) for messaging/file-listing endpoints.
 
-Kanban 1.2.0 adds `POST /api/plugins/kanban/boards/{id}/cards/{cardId}/move` with `{columnId, revision, beforeId?}`, server-enforced column entry/exit rules, epics/tags and per-ticket permitted destinations in board views. `PUT /api/admin/plugins/activation` atomically patches enabled flags with expected settings revisions. See [Kanban and bulk activation contracts](plugins/kanban.md).
+Kanban 1.6.0 retains `POST /api/plugins/kanban/boards/{id}/cards/{cardId}/move` with `{columnId, revision, beforeId?}` and enforces saved workflow graph transitions plus column entry/exit rules. Board JSON includes ticket relationships, T-shirt sizes and editable sprint dates. `GET/PUT /api/plugins/kanban/projects/{projectId}/estimation` reads/overrides organisation estimation defaults. `PUT /api/admin/plugins/activation` atomically patches enabled flags with expected settings revisions. See [Kanban contracts](plugins/kanban.md) and the [Jira, Figma and Mermaid project APIs](plugins/project-integrations.md).
 
 Super-admin ZIP installation, global extension security, runtime pages, and owner-scoped managed record endpoints are documented in [Runtime ZIP packages](plugins/zip-packages.md#http-endpoints). Packages load frontend and/or backend code dynamically without rebuilding the host. Declared routes run under `/api/plugins/{id}/backend/{path}` with per-method/role/grant checks; backend-only ZIPs need no HTML. `GET /api/admin/plugins/{id}/code` exposes module declarations and grants to plugin administrators. See [worker request/response and SDK contracts](plugins/backend-runtime.md).
 

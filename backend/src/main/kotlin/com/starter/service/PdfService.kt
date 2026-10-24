@@ -27,6 +27,16 @@ class PdfService {
 
     fun inspect(bytes: ByteArray, filename: String): PdfPreviewResponse = process(bytes) { PdfPreviewResponse(filename, it.numberOfPages) }
 
+    /** Reviewed templates may provide a cover; immutable financial itemization remains attached. */
+    fun append(cover:ByteArray,details:ByteArray):ByteArray=process(cover) {document->
+        if(details.size>MAX_BYTES)throw BadRequestException("PDF exceeds its size limit")
+        Loader.loadPDF(details).use {source->
+            if(document.numberOfPages+source.numberOfPages>MAX_PAGES)throw BadRequestException("Combined PDF exceeds its page limit")
+            org.apache.pdfbox.multipdf.PDFMergerUtility().appendDocument(document,source)
+        }
+        ByteArrayOutputStream().use {output->document.save(output);output.toByteArray()}
+    }
+
     fun page(bytes: ByteArray, page: Int, watermark: String? = null, actor: String = ""): ByteArray = process(bytes) { document ->
         if (page !in 1..document.numberOfPages) throw BadRequestException("Invalid PDF page")
         if (watermark != null) stamp(document, watermark, actor)

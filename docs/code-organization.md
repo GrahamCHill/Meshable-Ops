@@ -1,5 +1,9 @@
 # Code organization
 
+`plugins/operations/` contains the optional finance/time/on-call suite. `OperationsPlugins` declares manifests; `OperationsStore` owns the fixed-table persistence/lock boundary; `OperationsAccess` and `TimeVisibility` enforce project, ownership and senior-member rules. Services are split into time imports/ledger, rates/items, cloud providers, billing profiles/generation/documents/delivery/inbox, schedules and on-call/webhook handling. `OperationsControllers` exposes typed routes. The generic webhook receiver supports reviewed `IncomingWebhookExtension` consumers only after normal endpoint authentication. Source claims, timers and jobs use PostgreSQL locks and optimistic revisions rather than browser-only guards.
+
+The lazy React modules live under `plugins/modules/{timesheets,activitywatch,timecamp,cloud-costs,billing-items,billing,on-call}`; shared screens are split under `plugins/operations/` with separate billing profile, schedule and document/reply components. Python `weasy-renderer/plugins/billing` renders structured, escaped multi-page PDFs under the existing bounded child-process runtime. See [Operations plugins](plugins/operations.md) for the data flow and current provider limits.
+
 The admin event viewer is `components/pages/AdminEventsPage.tsx`, with `api/events.ts` and scoped `styles/events.css`. `EventController` gates both the cursor and legacy page APIs; `EventHistoryService` performs read-only, timestamp/ID keyset queries over the existing event collection. The stable `events` feature is now admin-only at `/admin/events`, and `NavigationCatalogue` omits it from workspace links. See [event history and access](event-log.md).
 
 `navigation/` owns the declared menu catalogue, filtered member response, optimistic global ordering and registered category artwork controllers. `WorkspaceArtworkService` shares bounded raster normalization while project/admin controllers enforce their own permissions. The frontend separates `WorkspaceNavigation`, `NavigationToggle`, `AdminNavigationPage`, reusable `ArtworkPicker` and project cards/artwork. `projects/ProjectRepositoryLinks` enforces membership/manage rights independently of Kanban. Git provider discovery lives in `sourcecontrol/`; Google Drive has its own `googledrive/` service/controller and lazy frontend folder browser.
@@ -19,6 +23,8 @@ GitHub workflows live in `.github/workflows/`; `checks.yml` is reused by deploym
 Meshable Ops is the product name. Existing `com.starter` package paths, Docker storage names, development buckets, and the versioned backup format remain stable so the rebrand does not change persisted data or integration contracts.
 
 Files are grouped by feature and responsibility. Page components compose the screen; API modules own requests and response types; hooks own stateful workflows. Related components sit together so a change to one feature does not require editing a general application file.
+
+`ClientLogoController` applies client read/manage checks before delegating bounded image handling to `WorkspaceArtworkService`. `ClientEditor`, `ClientLogo` and `ClientDetailPage` share client editing, private artwork and readable contact details. `ProjectCreationRules` checks global creation roles and existing explicit project/team leadership; both project/client creation and board creation enforce it.
 
 `ProjectSections` groups card grids by configured order. `ProjectSectionsSettings` edits section names/order/default; `ProjectSectionRules` validates IDs/names and resolves display names. Existing project category strings retain section assignments across upgrades.
 

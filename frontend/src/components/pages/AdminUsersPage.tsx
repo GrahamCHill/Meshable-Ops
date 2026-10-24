@@ -10,7 +10,7 @@ import { formatDate, getErrorMessage } from '../admin/adminUtils'
 import { useAuthStore } from '../../hooks/useAuthStore'
 import '../../styles/access.css'
 
-const labels: Record<string,string> = {SUPER_ADMIN: 'Super admin', ADMIN: 'Admin', USER: 'Member', EXTERNAL: 'External member'}
+const labels: Record<string,string> = {SUPER_ADMIN: 'Super admin', ADMIN: 'Admin', BUSINESS_MANAGER: 'Business Manager', USER: 'Member', EXTERNAL: 'External member'}
 export function AdminUsersPage() {
   const qc = useQueryClient()
   const [adding, setAdding] = useState(false)

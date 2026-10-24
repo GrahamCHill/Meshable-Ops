@@ -4,9 +4,9 @@ import { useAuthStore } from '../hooks/useAuthStore'
 import {bundledRoutes} from '../plugins/registry'
 import { adminGroups } from '../components/admin/adminNavigation'
 
-export type AccountRole = 'SUPER_ADMIN' | 'ADMIN' | 'USER' | 'EXTERNAL'
+export type AccountRole = 'SUPER_ADMIN' | 'ADMIN' | 'BUSINESS_MANAGER' | 'USER' | 'EXTERNAL'
 export const isAdminRole = (role?: string) => role === 'SUPER_ADMIN' || role === 'ADMIN'
-export const pluginRole = (role: string) => role === 'SUPER_ADMIN' ? 'ADMIN' : role
+export const pluginRole = (role: string) => role === 'SUPER_ADMIN' ? 'ADMIN' : role === 'BUSINESS_MANAGER' ? 'USER' : role
 export interface AccessFeature { id: string; label: string; path: string; admin: boolean }
 export interface StorageRule { folderId: string; path: string; type: 'FOLDER' | 'FILE' }
 export interface MemberAccess { features: string[] | null; restrictStorage: boolean; grants: StorageRule[]; blocks: StorageRule[] }

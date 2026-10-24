@@ -54,6 +54,49 @@ class SourceControlService(private val registry: PluginRegistry, private val con
         if(configuration.current(id)!=config)throw ConflictException("Repository settings changed. Load the resource again.")
         return resource(id, repo, node, number != null, config)
     }
+    fun trackedResource(id: String, repository: String, kind: String, reference: String, role: String,
+        manualUrl: String? = null, environment: String = "", manualState: String = "unknown"): TrackedDevelopmentResource {
+        if(kind !in setOf("BRANCH","PULL_REQUEST","DEPLOYMENT"))throw BadRequestException("Choose a branch, pull request or deployment")
+        if(reference.isBlank() || reference.length>200 || reference.any(Char::isISOControl))throw BadRequestException("Enter a resource reference of up to 200 characters")
+        if(kind=="BRANCH" && (reference.startsWith('-') || reference.contains("..") || reference.contains("@{") || reference.any {it.isWhitespace() || it in "~^:?*[\\"} || reference.split('/').any {it.isEmpty() || it.startsWith('.') || it.endsWith('.') || it.endsWith(".lock")}))
+            throw BadRequestException("Enter a valid Git branch name")
+        val config=configured(id,role);val repo=approved(id,repository,config)
+        if(kind=="PULL_REQUEST") {
+            val number=reference.toIntOrNull()?.takeIf {it>0} ?: throw BadRequestException("Use a positive request number")
+            val pull=resource(id,repo,number,role)
+            return TrackedDevelopmentResource(pull.title,pull.url,pull.state)
+        }
+        val repositoryResource=resource(id,repo,null,role)
+        val prefix=if(id=="gitlab") "api/v4/projects/${encode(repo)}" else (if(id=="gitea") "api/v1/" else "")+"repos/"+repo.split('/').joinToString("/") {encode(it)}
+        fun fetch(path: String)=http.scoped("GET",base(id,config),path,headers(id,config)).body ?: throw IntegrationUnavailable("Provider returned no development metadata")
+        val result=if(kind=="BRANCH") {
+            val node=fetch(prefix+(if(id=="gitlab") "/repository/branches/" else "/branches/")+encode(reference))
+            if(node.path("name").asText()!=reference)throw IntegrationUnavailable("Provider returned an unexpected branch")
+            val path=when(id) {"gitlab"->"/-/tree/";"gitea"->"/src/branch/";else->"/tree/"}
+            TrackedDevelopmentResource(reference,repositoryResource.url.trimEnd('/')+path+encode(reference),if(node.path("protected").asBoolean()) "protected" else "active",ref=reference)
+        } else if(id=="gitea") {
+            if(environment.length>120 || environment.any(Char::isISOControl) || manualState !in setOf("unknown","pending","running","success","failed","cancelled"))throw BadRequestException("Use a short deployment environment and supported status")
+            val url=manualUrl?.let {runCatching {URI(it)}.getOrNull()} ?: throw BadRequestException("Link the deployment run URL for this Gitea repository")
+            val root=URI(repositoryResource.url)
+            if(url.scheme!="https" || url.userInfo!=null || url.host!=root.host || url.port!=root.port || url.query!=null || url.fragment!=null || !url.path.startsWith(root.path.trimEnd('/')+"/") || url.normalize()!=url || url.rawPath.contains('%') || url.toString().length>2000)
+                throw BadRequestException("Use a deployment run URL inside this repository, without query parameters")
+            TrackedDevelopmentResource("Deployment $reference",url.toString(),manualState,environment,manual=true)
+        } else {
+            val number=reference.toLongOrNull()?.takeIf {it>0} ?: throw BadRequestException("Use a positive deployment ID")
+            val node=fetch("$prefix/deployments/$number")
+            if(node.path("id").asLong()!=number)throw IntegrationUnavailable("Provider returned an unexpected deployment")
+            val status=if(id=="github")fetch("$prefix/deployments/$number/statuses?per_page=1").firstOrNull() else null
+            val env=if(id=="github")node.path("environment").asText() else node.path("environment").path("name").asText()
+            val candidate=if(id=="github")status?.path("log_url")?.asText() else node.path("deployable").path("web_url").asText()
+            val root=URI(repositoryResource.url);val candidateUri=candidate?.takeIf {it.length<=2000}?.let {runCatching {URI(it)}.getOrNull()}
+            val runUrl=candidateUri?.takeIf {it.scheme=="https" && it.userInfo==null && it.host==root.host && it.port==root.port && it.path?.startsWith(root.path.trimEnd('/')+"/")==true && it.normalize()==it && !it.rawPath.contains('%') && it.query==null && it.fragment==null}?.toString()
+            TrackedDevelopmentResource("Deployment #$number",runUrl ?: repositoryResource.url.trimEnd('/')+(if(id=="github") "/deployments" else "/-/environments"),
+                (status?.path("state")?.asText() ?: node.path("status").asText("pending")).take(30),env.take(120),node.path("ref").asText().take(200))
+        }
+        registry.requireAvailable(id,role)
+        if(configuration.current(id)!=config)throw ConflictException("Repository settings changed. Refresh the resource again.")
+        return result
+    }
     private fun configured(id: String, role: String): Map<String, String> {
         if (id !in ids) throw NotFoundException("Source control plugin unavailable")
         registry.requireAvailable(id, role)
@@ -92,3 +135,5 @@ class SourceControlService(private val registry: PluginRegistry, private val con
 }
 data class DevelopmentResource(val providerId: String, val repository: String, val number: Int?, val title: String, val url: String, val state: String)
 data class RepositoryOptions(val repositories:List<String>,val page:Int,val hasMore:Boolean)
+
+data class TrackedDevelopmentResource(val title: String, val url: String, val state: String, val environment: String = "", val ref: String = "", val manual: Boolean = false)

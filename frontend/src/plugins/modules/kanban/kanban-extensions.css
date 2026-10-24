@@ -1,0 +1,31 @@
+.project-dialog.kanban-config-dialog { width:min(1180px,96vw);max-width:1180px; }
+.kanban-workflow-layout { display:grid;grid-template-columns:minmax(0,1fr) 245px;gap:18px; }
+.kanban-workflow-canvas { height:440px;min-width:0;border:1px solid color-mix(in srgb,var(--color-text) 15%,transparent);border-radius:8px;background:var(--color-bg); }
+.kanban-workflow-canvas .kanban-workflow-node { background:var(--color-surface-2);color:var(--color-text);border:1px solid #579dff;border-top:4px solid #579dff;border-radius:6px;padding:16px;width:190px; }
+.kanban-workflow-canvas .state-done { border-color:#36b37e; }.kanban-workflow-canvas .state-todo { border-color:#8993a4; }
+.kanban-workflow-canvas .react-flow__controls button { background:var(--color-surface-2);color:var(--color-text);fill:currentColor; }
+.kanban-workflow-inspector { background:var(--color-surface-2);padding:16px;border-radius:7px; }
+.kanban-transition-list { display:flex;gap:7px;flex-wrap:wrap; }.kanban-transition-list button { border:1px solid color-mix(in srgb,var(--color-text) 15%,transparent);background:var(--color-surface);color:var(--color-text);font-size:.75rem;padding:7px 10px;border-radius:4px;cursor:pointer; }.kanban-transition-list [aria-pressed=true] { border-color:#579dff; }
+.project-dialog.kanban-ticket-dialog { width:min(1000px,95vw);max-width:1000px; }
+.kanban-ticket-dialog .kanban-ticket-form[hidden] { display:none; }
+.kanban-ticket-dialog .kanban-ticket-context { display:flex;align-items:center;gap:8px;color:var(--color-text-secondary);font-size:.78rem;margin-bottom:14px; }
+.kanban-ticket-dialog .kanban-view-tabs { margin-bottom:22px; }.kanban-ticket-dialog .kanban-view-tabs button { display:inline-flex;align-items:center;gap:6px; }
+.kanban-ticket-dialog .kanban-ticket-form>.page-stack>label:first-child input { font-size:1.25rem;font-weight:600; }
+.kanban-ticket-dialog .project-fields { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.kanban-ticket-dialog .kanban-ticket-actions { position:sticky;bottom:-25px;background:var(--color-surface);border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);padding:14px 0;margin-top:14px;z-index:3; }
+.kanban-ticket-dialog .kanban-editor-subtasks { margin-top:16px; }
+.kanban-linked-tickets { border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);padding-top:16px; }
+.kanban-linked-tickets h3,.kanban-discussion h3 { display:flex;align-items:center;gap:8px;font-size:1rem;margin:0; }
+.kanban-linked-ticket { display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid color-mix(in srgb,var(--color-text) 10%,transparent);border-radius:5px;padding:10px; }
+.kanban-linked-ticket>span,.kanban-linked-ticket>small { font-size:.73rem;color:var(--color-text-secondary); }.kanban-linked-ticket>button { display:flex;align-items:center;gap:8px;background:transparent;border:0;color:var(--color-text);text-align:left;cursor:pointer; }.kanban-linked-ticket>button:first-of-type { flex:1;font-size:.85rem; }.kanban-linked-ticket strong { color:var(--color-accent);font-weight:500;white-space:nowrap; }
+.kanban-link-picker { background:var(--color-surface-2);padding:16px;border-radius:6px; }
+.kanban-comment-thread { display:flex;flex-direction:column;gap:18px; }.kanban-comment { scroll-margin-top:30px;padding:10px 0 0 12px;border-left:2px solid color-mix(in srgb,var(--color-text) 12%,transparent); }.kanban-comment.is-targeted { border-left-color:#579dff;background:color-mix(in srgb,#579dff 7%,transparent); }
+.kanban-comment-heading { display:flex;gap:9px;align-items:center;font-size:.8rem;flex-wrap:wrap; }.kanban-comment-heading time { color:var(--color-text-secondary);font-size:.7rem; }.kanban-comment-heading a { margin-left:auto;color:var(--color-text-secondary); }.kanban-comment .project-note { padding:6px 12px 0 0;line-height:1.6;font-size:.88rem;overflow-wrap:anywhere; }
+.kanban-comment-reply { display:inline-flex;align-items:center;gap:5px;background:none;border:0;color:var(--color-accent);font-size:.75rem;padding:4px 0 10px;cursor:pointer; }.kanban-comment>.kanban-comment { margin-bottom:10px; }
+.kanban-mention { background:color-mix(in srgb,#579dff 15%,transparent);color:var(--color-accent);padding:1px 3px;border-radius:3px; }
+.kanban-comment-composer { position:relative;border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);padding-top:18px; }.kanban-mention-options { display:flex;flex-direction:column;background:var(--color-surface-2);border:1px solid color-mix(in srgb,var(--color-text) 18%,transparent);border-radius:6px;max-height:245px;overflow:auto;box-shadow:0 5px 20px #0002; }
+.kanban-mention-options button { display:flex;align-items:center;gap:16px;justify-content:space-between;background:none;border:0;color:var(--color-text);padding:12px;text-align:left;cursor:pointer; }.kanban-mention-options small { color:var(--color-text-secondary); }.kanban-mention-options [aria-selected=true] { background:color-mix(in srgb,#579dff 15%,transparent); }
+@media(max-width:760px) { .kanban-workflow-layout { grid-template-columns:1fr; }.kanban-workflow-canvas { height:350px; }.kanban-ticket-dialog .project-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }.kanban-mention-options button { flex-wrap:wrap;gap:3px; } }
+@media(max-width:440px) { .kanban-ticket-dialog .project-fields { grid-template-columns:1fr; } }
+
+.kanban-completed-column{display:block;color:#36b37e;font-size:10px;font-weight:500;margin-top:3px}

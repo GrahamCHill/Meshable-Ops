@@ -18,6 +18,22 @@ class KanbanServiceTest {
     private val column = KanbanColumn(UUID.randomUUID(), "To do")
     private val content = KanbanContent(listOf(column))
 
+    @Test fun `ordinary members cannot create boards even when the plugin table is writable`() {
+        `when`(actors.current(user.email)).thenReturn(user)
+        assertThat(service.creationPermissions(user.email, null)["canCreate"]).isFalse()
+        assertThatThrownBy { service.save(user.email, null, KanbanRequest("Board", content)) }.isInstanceOf(ForbiddenException::class.java)
+        verifyNoInteractions(boards)
+    }
+    @Test fun `Business Managers can create private boards and retain ownership checks`() {
+        val manager = user.copy(role = com.starter.access.Roles.BUSINESS_MANAGER)
+        `when`(actors.current(user.email)).thenReturn(manager)
+        `when`(boards.saveAndFlush(any(KanbanBoard::class.java))).thenAnswer { it.arguments[0] }
+        assertThat(service.creationPermissions(user.email, null)["canCreate"]).isTrue()
+        val created = service.save(user.email, null, KanbanRequest("Business board", content))
+        assertThat(created.ownerId).isEqualTo(manager.id)
+        assertThat(created.canManage).isTrue()
+    }
+
     @Test fun `other owners cannot read or edit a board while admins can`() {
         val row = KanbanBoard(ownerId = UUID.randomUUID(), contentJson = "{\"columns\":[],\"cards\":[]}")
         `when`(actors.current(user.email)).thenReturn(user)

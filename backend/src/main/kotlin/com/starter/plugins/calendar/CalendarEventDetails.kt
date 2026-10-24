@@ -25,5 +25,5 @@ object CalendarEventDetails {
             participants.any { it.name.length > 160 || it.name.any(Char::isISOControl) || it.email.length > 254 || it.name.isBlank() && it.email.isBlank() || it.email.isNotBlank() && !it.email.matches(Regex("[^\\s@]+@[^\\s@]+\\.[^\\s@]+")) || it.response !in setOf("", "accepted", "declined", "tentative", "needsAction", "none", "notResponded", "organizer") })
             throw BadRequestException("Use up to 20 labelled HTTPS/workspace document links and 100 participants with valid names or email addresses")
     }
-    fun sourceName(source: String) = when(source) { "calendar-google" -> "Google calendar"; "calendar-microsoft" -> "Microsoft calendar"; "calendar-caldav" -> "CalDAV calendar"; "kanban" -> "Board deadlines"; else -> "Local calendar" }
+    fun sourceName(source: String) = when(source) { "calendar-google" -> "Google calendar"; "calendar-microsoft" -> "Microsoft calendar"; "calendar-caldav" -> "CalDAV calendar"; "kanban" -> "Board deadlines & sprints"; else -> "Local calendar" }
 }

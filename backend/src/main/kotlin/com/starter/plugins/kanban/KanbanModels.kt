@@ -25,7 +25,7 @@ data class KanbanCard(val id: UUID, val columnId: UUID, val title: String, val d
     val sprintId: UUID? = null, val storyPoints: Double? = null, val reviewerIds: Set<UUID> = emptySet(), val status: CardStatus = CardStatus.TODO,
     val reference: String = "", val blocked: Boolean = false, val tags: List<String> = emptyList(), val epicId: UUID? = null,
     val type: TicketType = TicketType.TASK, val priority: TicketPriority = TicketPriority.MEDIUM, val parentId: UUID? = null,
-    val tshirtSize: TshirtSize? = null, val links: List<TicketLink> = emptyList())
+    val tshirtSize: TshirtSize? = null, val links: List<TicketLink> = emptyList(), val createdAt: Instant? = null)
 
 enum class TshirtSize { XS, S, M, L, XL, XXL }
 enum class TicketLinkType { RELATED, BLOCKS, BLOCKED_BY }

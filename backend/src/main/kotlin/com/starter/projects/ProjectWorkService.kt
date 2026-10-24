@@ -36,7 +36,7 @@ class ProjectWorkService(private val boards: KanbanRepository, private val mappe
         val rows = boards.findByProjectId(projectId)
         if (rows.size > 200) throw BadRequestException("A project supports reporting on up to 200 boards")
         return rows.filter { boardAccess.readable(actor, it) }.flatMap { board ->
-            val content = mapper.readValue(board.contentJson, KanbanContent::class.java)
+            val content = KanbanCompletion.read(mapper.readValue(board.contentJson, KanbanContent::class.java))
             content.cards.map { ProjectWorkItem(board.id, board.name, it, content.columns.find { column -> column.id == it.columnId }?.title ?: it.status.name,
                 content.epics.find { epic -> epic.id == it.epicId }?.name) }
         }

@@ -32,7 +32,7 @@ export function BacklogView({board, cards, people, busy, readOnly, onOpen, onPla
         <header className="kanban-backlog-heading">
           <button type="button" className="kanban-backlog-toggle" aria-expanded={!collapsed.includes(section.id)} onClick={() => setCollapsed(value => value.includes(section.id) ? value.filter(id => id !== section.id) : [...value, section.id])}>{collapsed.includes(section.id) ? <ChevronRight size={16}/> : <ChevronDown size={16}/>}<strong>{section.name}</strong><span>{tickets.length} tickets</span></button>
           {section.sprint && <><span className={'kanban-sprint-state state-' + (section.sprint.status ?? 'PLANNED').toLowerCase()}>{(section.sprint.status ?? 'PLANNED').toLowerCase()}</span><span className="kanban-sprint-dates">{section.sprint.startDate} – {section.sprint.endDate}</span></>}
-          <span className="kanban-points" title="Story points">{tickets.reduce((sum, card) => sum + (card.storyPoints ?? 0), 0)} points</span>
+          {(board.estimation?.storyPoints??true)&&<span className="kanban-points" title="Story points">{tickets.reduce((sum, card) => sum + (card.storyPoints ?? 0), 0)} points</span>}
           {board.canManage && !readOnly && section.sprint && section.sprint.status !== 'COMPLETED' && <Button size="sm" variant="secondary" disabled={busy || section.sprint.status !== 'ACTIVE' && (!!active || !all.length)} onClick={() => onSprint({kind: section.sprint!.status === 'ACTIVE' ? 'complete' : 'start', sprint: section.sprint!})}>{section.sprint.status === 'ACTIVE' ? 'Complete sprint' : 'Start sprint'}</Button>}
           {board.canManage&&!readOnly&&section.sprint&&<Button type="button" size="sm" variant="ghost" disabled={busy} onClick={()=>onSprint({kind:'edit',sprint:section.sprint!})}>Edit sprint</Button>}
         </header>
@@ -47,7 +47,8 @@ export function BacklogView({board, cards, people, busy, readOnly, onOpen, onPla
             <button type="button" className="kanban-backlog-ticket" disabled={busy} onClick={() => onOpen(card)}><span className="kanban-reference">{card.reference}</span><span>{card.title}</span></button>
             <span className="kanban-backlog-status">{board.content.columns.find(column => column.id === card.columnId)?.title}</span>
             <select aria-label={`Plan ${card.reference} in sprint`} disabled={!canPlan} value={card.sprintId || ''} onChange={event => onPlan(card.id, event.target.value || null)}><option value="">Backlog</option>{displayed.map(sprint => <option key={sprint.id} value={sprint.id} disabled={sprint.status === 'COMPLETED'}>{sprint.name}</option>)}</select>
-            {card.storyPoints != null && <span className="kanban-points">{card.storyPoints}</span>}
+            {board.estimation?.tshirtSizes&&card.tshirtSize&&<span className="kanban-points">{card.tshirtSize}</span>}
+            {(board.estimation?.storyPoints??true)&&card.storyPoints != null && <span className="kanban-points">{card.storyPoints}</span>}
             <span className="kanban-avatar" title={people.find(person => person.id === card.assigneeId)?.name ?? 'Unassigned'}>{personInitials(people.find(person => person.id === card.assigneeId)?.name ?? '–')}</span>
           </div>)}</div>
           {!tickets.length && <p className="kanban-backlog-empty">{section.sprint ? 'Drag tickets here to plan this sprint.' : 'No tickets in the backlog.'}</p>}

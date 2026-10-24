@@ -9,7 +9,7 @@ data class AdminCreateUserRequest(
     @field:Size(max = 120) val name: String? = null,
     @field:Size(max = 32) val contactNumber: String? = null,
     @field:NotBlank @field:Size(min = 8, max = 72) @field:PasswordBytes val password: String,
-    @field:NotBlank @field:Pattern(regexp = "SUPER_ADMIN|ADMIN|USER|EXTERNAL") val role: String = "USER",
+    @field:NotBlank @field:Pattern(regexp = "SUPER_ADMIN|ADMIN|BUSINESS_MANAGER|USER|EXTERNAL") val role: String = "USER",
     val canUploadDocuments: Boolean = false,
 ) { override fun toString() = "AdminCreateUserRequest(email=$email, role=$role)" }
 
@@ -28,4 +28,4 @@ data class UserSummaryResponse(
     val updatedAt: String?
 )
 
-data class UpdateUserRoleRequest(@field:Pattern(regexp = "SUPER_ADMIN|ADMIN|USER|EXTERNAL") val role: String)
+data class UpdateUserRoleRequest(@field:Pattern(regexp = "SUPER_ADMIN|ADMIN|BUSINESS_MANAGER|USER|EXTERNAL") val role: String)

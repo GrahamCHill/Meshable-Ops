@@ -13,18 +13,20 @@ import java.util.UUID
 @Service
 class KanbanDevelopmentService(private val boards: KanbanRepository, private val links: KanbanDevelopmentLinkRepository,
     private val actors: PluginActor, private val registry: PluginRegistry, private val source: SourceControlService, private val mapper: ObjectMapper,
-    private val projects: com.starter.projects.ProjectBoardAccess? = null) {
+    private val projects: com.starter.projects.ProjectBoardAccess? = null,
+    private val development: com.starter.projects.ProjectDevelopmentSettingsService? = null) {
     @Transactional(readOnly = true)
     fun list(email: String, boardId: UUID): List<BoardLinkView> {
-        val actor = actor(email); board(actor, boardId)
+        val actor = actor(email); val board=board(actor, boardId)
         val providers = registry.available(actor.role).filter { "source.repositories" in it.manifest.capabilities }.map { it.manifest.id }.toSet()
-        return links.findByBoard_Id(boardId).map { row -> view(row, row.providerId in providers) }
+        return links.findByBoard_Id(boardId).filter { enabled(board,it.requestNumber) }.map { row -> view(row, row.providerId in providers) }
     }
     @Transactional
     fun add(email: String, boardId: UUID, request: BoardLinkRequest): BoardLinkView {
         val actor = actor(email, true); registry.requireFeature("kanban", "development-links", actor.role)
         registry.requireCapability("kanban", "source.repositories", request.providerId, actor.role)
         val board = board(actor, boardId, true)
+        if(!enabled(board,request.number))throw ForbiddenException("Enable repository or pull request links in the project development settings first")
         if (request.repository.length > 200 || request.providerId !in setOf("github","gitlab","gitea")) throw BadRequestException("Choose a repository provider")
         val saved = links.findByBoard_Id(boardId)
         if (saved.size >= 100) throw BadRequestException("A board can have at most 100 development links")
@@ -37,8 +39,9 @@ class KanbanDevelopmentService(private val boards: KanbanRepository, private val
     }
     @Transactional
     fun refresh(email: String, boardId: UUID, linkId: UUID): BoardLinkView {
-        val actor = actor(email, true); board(actor, boardId)
+        val actor = actor(email, true); val board=board(actor, boardId)
         val row = links.findById(linkId).orElse(null)?.takeIf { it.board.id == boardId } ?: throw NotFoundException("Link unavailable")
+        if(!enabled(board,row.requestNumber))throw ForbiddenException("Enable this development feature in the project settings first")
         registry.requireCapability("kanban", "source.repositories", row.providerId, actor.role)
         val remote = source.resource(row.providerId, row.repository, row.requestNumber, actor.role)
         recheck(email, actor, row.providerId)
@@ -55,6 +58,7 @@ class KanbanDevelopmentService(private val boards: KanbanRepository, private val
         registry.requireTable("kanban", "plugin_kanban_boards", it.role, write)
         registry.requireTable("kanban", "plugin_kanban_development_links", it.role, write)
     }
+    private fun enabled(board:KanbanBoard,number:Int?)=board.projectId?.let {development?.effective(it)?.allows(if(number==null) "REPOSITORY" else "PULL_REQUEST")} ?: true
     private fun board(actor: User, id: UUID, lock: Boolean = false) = (if (lock) boards.locked(id) else boards.findById(id)).orElse(null)?.takeIf { projects?.readable(actor, it) ?: (it.ownerId == actor.id || com.starter.access.Roles.admin(actor.role)) } ?: throw NotFoundException("Board unavailable")
     private fun recheck(email: String, original: User, provider: String) {
         val current = actor(email, true)

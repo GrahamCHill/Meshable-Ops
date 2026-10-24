@@ -8,24 +8,28 @@ import { getErrorMessage } from '../../../components/admin/adminUtils'
 import { createPluginApi } from '../../sdk'
 import type { BoardCard } from './api'
 import {RepositorySelect} from '../../../components/projects/RepositorySelect'
+import {developmentApi,type DevelopmentFeatures} from '../../../api/projectDevelopment'
 
 interface DevelopmentLink {id: string; providerId: string; repository: string | null; number: number | null; cardId: string | null; title: string; url: string | null; state: string | null; checkedAt: string | null; available: boolean}
 interface Pull {number: number; title: string}
 const api = createPluginApi('kanban')
-export function DevelopmentLinks({boardId,cards,locked}: {boardId: string; cards: BoardCard[]; locked: boolean}) {
+export function DevelopmentLinks({boardId,cards,locked,projectId}: {boardId: string; cards: BoardCard[]; locked: boolean;projectId?:string|null}) {
   const plugins = useAvailablePlugins()
   const role = useAuthStore(state => pluginRole(state.user?.role ?? '')) ?? ''
   const policy = plugins.data?.find(plugin => plugin.manifest.id === 'kanban')?.tableAccess.plugin_kanban_development_links
   const providers = plugins.data?.filter(plugin => ['github','gitlab','gitea'].includes(plugin.manifest.id)) ?? []
+  const settings=useQuery({queryKey:['project-development-settings',useAuthStore(state=>state.user?.id),projectId],queryFn:()=>developmentApi.settings(projectId!),enabled:!!projectId})
   if (!policy?.readRoles.includes(role)) return null
-  return <DevelopmentLinkEditor key={boardId} boardId={boardId} cards={cards} locked={locked || !policy.writeRoles.includes(role)} providers={providers.map(plugin => ({id:plugin.manifest.id,name:plugin.manifest.name}))} />
+  if(projectId&&!settings.data?.features.repositories)return null
+  return <DevelopmentLinkEditor key={boardId} boardId={boardId} cards={cards} locked={locked || !policy.writeRoles.includes(role)} features={settings.data?.features} providers={providers.map(plugin => ({id:plugin.manifest.id,name:plugin.manifest.name}))} />
 }
-function DevelopmentLinkEditor({boardId,cards,locked,providers}: {boardId: string; cards: BoardCard[]; locked: boolean; providers: {id: string; name: string}[]}) {
+function DevelopmentLinkEditor({boardId,cards,locked,providers,features}: {boardId: string; cards: BoardCard[]; locked: boolean; providers: {id: string; name: string}[];features?:DevelopmentFeatures}) {
   const client = useQueryClient()
   const scope = useAuthStore(state => `${state.user?.id}:${state.user?.role}`)
   const [provider, setProvider] = useState('')
   const [repository, setRepository] = useState('')
-  const [kind, setKind] = useState('repository')
+  const [requestedKind, setKind] = useState('repository')
+  const kind=features?.pullRequests===false?'repository':requestedKind
   const [number, setNumber] = useState('')
   const [cardId, setCardId] = useState('')
   const selected = providers.find(item => item.id === provider)
@@ -53,7 +57,7 @@ function DevelopmentLinkEditor({boardId,cards,locked,providers}: {boardId: strin
     {providers.length > 0 ? <fieldset disabled={locked || action.isPending} className="page-stack">
       <label className="form-field">Source control provider<select value={selected?.id ?? ''} onChange={event => {setProvider(event.target.value);setRepository('');setNumber('')}}><option value="">Choose provider</option>{providers.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       {selected && <><RepositorySelect provider={selected.id} value={repository} onChange={value=>{setRepository(value);setNumber('')}} disabled={locked||action.isPending}/>
-      <label className="form-field">Resource<select value={kind} onChange={event => setKind(event.target.value)}><option value="repository">Repository</option><option value="pull">Pull / merge request</option></select></label>
+      <label className="form-field">Resource<select value={kind} onChange={event => setKind(event.target.value)}><option value="repository">Repository</option>{features?.pullRequests!==false&&<option value="pull">Pull / merge request</option>}</select></label>
       {kind === 'pull' && <label className="form-field">Request<select value={number} onChange={event => setNumber(event.target.value)}><option value="">Choose an open request</option>{pulls.data?.map(pull => <option key={pull.number} value={pull.number}>#{pull.number} {pull.title}</option>)}</select><span className="field-help">Or enter an existing request number, including closed requests.</span><input aria-label="Request number" type="number" min="1" value={number} onChange={event => setNumber(event.target.value)} /></label>}
       <label className="form-field">Attach to<select value={cardId} onChange={event => setCardId(event.target.value)}><option value="">This board</option>{cards.map(card => <option key={card.id} value={card.id}>{card.title}</option>)}</select></label>
       <Button disabled={!repository || (kind === 'pull' && !(Number(number) > 0))} onClick={() => action.mutate({type:'add'})}>Add link</Button></>}

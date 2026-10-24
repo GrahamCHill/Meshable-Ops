@@ -38,7 +38,7 @@ class AccessCatalogue(private val plugins: List<WorkspacePlugin>, private val pa
         when (role) {
             Roles.SUPER_ADMIN -> true
             "ADMIN" -> it.id !in setOf(ACCESS_CONTROLS, EXTENSION_SECURITY)
-            "USER" -> !it.admin
+            "USER", Roles.BUSINESS_MANAGER -> !it.admin
             "EXTERNAL" -> it.id == "storage"
             else -> false
         }

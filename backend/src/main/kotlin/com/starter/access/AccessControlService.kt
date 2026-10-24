@@ -28,7 +28,8 @@ class AccessControlService(private val policies: AccessPolicyRepository, private
         if (!actor.active) return emptySet()
         if (actor.role == Roles.SUPER_ADMIN) return catalogue.defaults(actor.role)
         val cap = catalogue.maximum(actor.role)
-        val role = policy.roleFeatures[actor.role]?.intersect(cap) ?: catalogue.defaults(actor.role)
+        val configured = policy.roleFeatures[actor.role] ?: if (actor.role == Roles.BUSINESS_MANAGER) policy.roleFeatures["USER"] else null
+        val role = configured?.intersect(cap) ?: catalogue.defaults(actor.role)
         return policy.members[actor.id]?.features?.intersect(role) ?: role
     }
     fun allows(feature: String): Boolean = actor()?.let { feature in features(it) } ?: true
@@ -71,8 +72,8 @@ class AccessControlService(private val policies: AccessPolicyRepository, private
         requireSuper()
         val row = policies.findById(1).orElse(null)
         val current = row?.let { mapper.readValue(it.policyJson, AccessPolicy::class.java) } ?: AccessPolicy()
-        return AccessPolicyView(row?.revision ?: -1, current.copy(roleFeatures = listOf("ADMIN", "USER", "EXTERNAL").associateWith {
-            current.roleFeatures[it]?.intersect(catalogue.maximum(it)) ?: catalogue.defaults(it)
+        return AccessPolicyView(row?.revision ?: -1, current.copy(roleFeatures = listOf("ADMIN", Roles.BUSINESS_MANAGER, "USER", "EXTERNAL").associateWith {
+            (current.roleFeatures[it] ?: if (it == Roles.BUSINESS_MANAGER) current.roleFeatures["USER"] else null)?.intersect(catalogue.maximum(it)) ?: catalogue.defaults(it)
         }), catalogue.features)
     }
     @Transactional
@@ -83,7 +84,7 @@ class AccessControlService(private val policies: AccessPolicyRepository, private
         val row = existing ?: AccessPolicyRow()
         val value = request.policy
         val known = catalogue.features.map { it.id }.toSet()
-        if (value.roleFeatures.keys.any { it !in setOf("ADMIN", "USER", "EXTERNAL") } || value.roleFeatures.any { (role, values) ->
+        if (value.roleFeatures.keys.any { it !in setOf("ADMIN", Roles.BUSINESS_MANAGER, "USER", "EXTERNAL") } || value.roleFeatures.any { (role, values) ->
             !catalogue.maximum(role).containsAll(values) }) throw BadRequestException("Invalid role features")
         if (value.members.size > 1000 || value.protectedPaths.size > 500) throw BadRequestException("Too many access rules")
         val allUsers = users.findAll().associateBy { it.id }

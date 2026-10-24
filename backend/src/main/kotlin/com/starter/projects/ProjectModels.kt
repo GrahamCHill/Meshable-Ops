@@ -11,7 +11,7 @@ object ProjectCategory { const val ACTIVE = "ACTIVE"; const val ARCHIVED = "ARCH
 enum class ProjectRole { MEMBER, TEAM_LEAD, MANAGER }
 enum class GroupKind { TEAM, DEPARTMENT }
 enum class ProjectContactSource { CLIENT, PROJECT }
-data class Contact(val id: UUID = UUID.randomUUID(), val name: String = "", val email: String = "", val phone: String = "", val position: String = "")
+data class Contact(val id: UUID = UUID.randomUUID(), val name: String = "", val email: String = "", val phone: String = "", val position: String = "", val role: String = "")
 data class WebLink(val label: String, val url: String)
 data class ProjectMember(val userId: UUID, val role: ProjectRole = ProjectRole.MEMBER)
 data class ProjectStorageLink(val id: UUID = UUID.randomUUID(), val folderId: UUID, val path: String = "", val directory: Boolean = true, val label: String = "")
@@ -50,7 +50,8 @@ class ProjectSettingsRecord(@Id val id: Int = 1, @get:JsonIgnore @Column(columnD
 interface ProjectSettingsRepository : JpaRepository<ProjectSettingsRecord, Int>
 
 data class ClientInput(val name: String, val details: ClientDetails = ClientDetails(), val revision: Long = -1)
-data class ClientView(val id: UUID, val name: String, val details: ClientDetails, val revision: Long, val canManage: Boolean)
+data class ClientView(val id: UUID, val name: String, val details: ClientDetails, val revision: Long, val canManage: Boolean,
+    val logo: com.starter.service.ArtworkView = com.starter.service.ArtworkView("building"))
 data class ProjectInput(val name: String, val leadId: UUID, val clientId: UUID? = null, val category: String? = null,
     val details: ProjectDetails = ProjectDetails(), val revision: Long = -1)
 data class ProjectView(val id: UUID, val name: String, val clientId: UUID?, val clientName: String, val leadId: UUID, val category: String,

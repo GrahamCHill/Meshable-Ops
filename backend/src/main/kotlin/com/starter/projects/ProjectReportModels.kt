@@ -12,7 +12,8 @@ data class ProjectReportInput(val kind: ProjectReportKind = ProjectReportKind.PE
     val sprintId: UUID? = null, val boardId: UUID? = null, val sendEmail: Boolean = false, val recipientIds: Set<UUID> = emptySet())
 data class ProjectReportSection(val title: String, val columns: List<String>, val rows: List<List<String>>)
 data class ProjectReportDocument(val title: String, val organization: String, val subtitle: String, val period: String,
-    val summary: List<String>, val sections: List<ProjectReportSection>)
+    val summary: List<String>, val sections: List<ProjectReportSection>, val kanban: ProjectWorkSummary? = null,
+    val insights: ReportInsights = ReportInsights(),val leadTime: ReportLeadTime = ReportLeadTime(),val coverHtml: String? = null)
 @Entity @Table(name = "workspace_project_reports", indexes = [Index(columnList = "project_id,created_at")])
 class ProjectReportRecord(@Id val id: UUID = UUID.randomUUID(), val projectId: UUID = UUID.randomUUID(), val createdBy: UUID = UUID.randomUUID(),
     @Enumerated(EnumType.STRING) val kind: ProjectReportKind = ProjectReportKind.PERIOD, val fromDate: LocalDate = LocalDate.now(), val toDate: LocalDate = LocalDate.now(),

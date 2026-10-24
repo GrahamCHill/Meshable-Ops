@@ -10,6 +10,7 @@ import {boardsApi, type Board, type BoardCard, type BoardInput} from './api'
 import {CardEditor} from './CardEditor'
 import {BoardConfiguration} from './BoardConfiguration'
 import {DevelopmentLinks} from './DevelopmentLinks'
+import {ProjectDevelopment,ProjectRepositoryShortcuts} from '../../../components/projects/ProjectDevelopment'
 import {BoardToolbar} from './BoardToolbar'
 import {BoardSurface} from './BoardSurface'
 import {BacklogView} from './BacklogView'
@@ -18,9 +19,10 @@ import {WorkCharts} from '../../../components/projects/WorkCharts'
 import {boardSummary} from './boardSummary'
 import {emptyFilters, filterTickets, parentTickets, planTicket, type BoardFilters, type BoardGroup} from './boardView'
 import '../../../styles/projects.css'
+import './kanban-extensions.css'
 
 export function BoardEditor({initial, onSaved, readOnly = false}: Readonly<{initial: Board; onSaved: (board: Board) => void; readOnly?: boolean}>) {
-  const [params,setParams]=useSearchParams()
+  const [params]=useSearchParams()
   const [draft, setDraft] = useState(initial)
   const [editing, setEditing] = useState<BoardCard>()
   const [configure, setConfigure] = useState(false)
@@ -51,8 +53,8 @@ export function BoardEditor({initial, onSaved, readOnly = false}: Readonly<{init
   const active = draft.content.sprints?.find(sprint => sprint.status === 'ACTIVE')
   const allowed = (card: string, column: string) => !readOnly && !busy && !!draft.moves[card]?.includes(column)
   const doMove = (card: string, column: string, before?: string) => {if (allowed(card, column) && card !== before) {save.reset(); move.mutate({card, column, before})}}
-  const open = (card: BoardCard) => {save.reset(); move.reset(); setEditing(card);if(card.reference){const next=new URLSearchParams(params);next.set('card',card.id);next.delete('comment');setParams(next,{replace:true})}}
-  const closeTicket=()=>{setEditing(undefined);if(params.has('card')||params.has('comment')){const next=new URLSearchParams(params);next.delete('card');next.delete('comment');setParams(next,{replace:true})}}
+  const open = (card: BoardCard) => {save.reset();move.reset();setEditing(card)}
+  const closeTicket=()=>setEditing(undefined)
   const selectedSprint = () => {
     const selected = draft.content.sprints?.find(sprint => sprint.id === filters.sprint && sprint.status !== 'COMPLETED')
     if (filters.sprint) return selected?.id ?? null
@@ -105,22 +107,24 @@ export function BoardEditor({initial, onSaved, readOnly = false}: Readonly<{init
       {canManage && <Button variant="secondary" disabled={busy} onClick={() => {save.reset(); setConfigure(true)}}><Settings2 size={15}/> Configure board</Button>}
       <Button variant={active ? 'secondary' : 'primary'} disabled={!canCreate} onClick={() => add(draft.content.columns[0].id)}><Plus size={15}/> Create ticket</Button>
     </div></div>
+    {draft.projectId&&<ProjectRepositoryShortcuts projectId={draft.projectId}/>}
     <nav className="workspace-tabs kanban-view-tabs" aria-label="Board views">{[['board', 'Board'], ['backlog', 'Backlog'], ['list', 'List'], ['summary', 'Summary']].map(([key, label]) => <button key={key} aria-current={tab === key ? 'page' : undefined} onClick={() => setTab(key)}>{label}</button>)}</nav>
     {readOnly && <p className="field-help">Read-only board. You can inspect tickets and comments.</p>}
     {tab !== 'summary' && <BoardToolbar content={draft.content} people={people} filters={filters} onChange={setFilters} group={group} onGroup={setGroup} count={parents.length} showGrouping={tab === 'board'}/>}
     {busy && <p role="status" className="kanban-save-state">Saving changes…</p>}
     {error && !editing && !configure && !sprintDialog && <p role="alert">{error} Reload the board if it changed elsewhere. Your form draft is retained.</p>}
-    {tab === 'summary' && <WorkCharts value={boardSummary(draft, people)}/>}
+    {tab === 'summary' && <WorkCharts value={boardSummary(draft, people)} showStoryPoints={draft.estimation?.storyPoints??true}/>}
     {tab === 'board' && <BoardSurface board={draft} cards={parents} people={people} group={group} busy={busy} readOnly={readOnly} onOpen={open} onMove={doMove} onColumns={reorderColumns} onCreate={createInline} onSubtask={addSubtask}/>}
     {tab === 'backlog' && <BacklogView board={draft} cards={parents} people={people} busy={busy} readOnly={readOnly} onOpen={open} onPlan={plan} onSprint={openSprint} onCreate={sprint => add(draft.content.columns[0].id, sprint)}/>}
     {tab === 'list' && <div className="project-table-wrap"><table className="project-table"><thead><tr><th>Ticket</th><th>Column</th><th>Assignee</th><th>Epic</th><th>Labels</th><th>Due</th></tr></thead><tbody>{visible.map(card => <tr key={card.id}><td><button className="kanban-ticket-link" onClick={() => open(card)}>{card.reference} {card.title}</button></td><td>{draft.content.columns.find(column => column.id === card.columnId)?.title}</td><td>{people.find(person => person.id === card.assigneeId)?.name ?? 'Unassigned'}</td><td>{draft.content.epics?.find(epic => epic.id === card.epicId)?.name ?? '–'}</td><td>{card.tags?.join(', ')}</td><td>{card.dueDate ?? '–'}</td></tr>)}</tbody></table>{!visible.length && <p>No tickets match this view.</p>}</div>}
-    {configure && canManage && <BoardConfiguration id={draft.id} board={draft} people={people} busy={busy} error={error} onSave={value => save.mutate(value, {onSuccess: () => {discard('board-config:' + draft.id); setConfigure(false)}})} onClose={() => setConfigure(false)}/>}
+    {configure && canManage && <BoardConfiguration id={draft.id} board={draft} people={people} busy={busy} error={error} onSave={value => {void save.mutateAsync(value).then(()=>{discard('board-config:' + draft.id);setConfigure(false)}).catch(()=>undefined)}} onClose={() => setConfigure(false)}/>}
     {sprintDialog && canManage && <SprintDialog key={sprintDialog.kind+('sprint' in sprintDialog?sprintDialog.sprint.id:'')} board={draft} action={sprintDialog} busy={busy} error={error} onClose={() => setSprintDialog(undefined)}
       onCreate={async sprint => {const sprints=draft.content.sprints??[];await save.mutateAsync({...draft, content: {...draft.content, sprints: sprints.some(item=>item.id===sprint.id)?sprints.map(item=>item.id===sprint.id?sprint:item):[...sprints,sprint]}})}}
       onStart={async id => {await sprintAction.mutateAsync({kind: 'start', id}); setFilters(value => ({...value, sprint: ''})); setTab('board')}}
       onComplete={async (id, destination) => {await sprintAction.mutateAsync({kind: 'complete', id, destination}); setFilters(value => ({...value, sprint: ''})); setTab('backlog')}}/>}
     {editing && <CardEditor key={editing.id} boardId={draft.id} card={editing} cards={draft.content.cards} columns={draft.content.columns} epics={draft.content.epics} sprints={draft.content.sprints} people={people} allowedColumns={draft.moves[editing.id]} estimation={draft.estimation} busy={busy} readOnly={readOnly} error={error} onCancel={closeTicket} onSave={card => {void saveCard(card).catch(() => undefined)}} onOpenCard={open} onCreateSubtask={canCreate ? addSubtask : undefined}
-      onRemove={draft.content.cards.some(card => card.id === editing.id) ? () => save.mutate({...draft, content: {...draft.content, cards: draft.content.cards.filter(card => card.id !== editing.id).map(card=>({...card,links:card.links?.filter(link=>link.targetId!==editing.id)}))}}, {onSuccess: () => {discard('ticket:' + draft.id + ':' + editing.id); closeTicket()}}) : undefined}/>}
-    <details className="kanban-development"><summary>Repositories and pull requests</summary><DevelopmentLinks boardId={draft.id} cards={draft.content.cards} locked={readOnly || busy}/></details>
+      onRemove={draft.content.cards.some(card => card.id === editing.id) ? () => {void save.mutateAsync({...draft, content: {...draft.content, cards: draft.content.cards.filter(card => card.id !== editing.id).map(card=>({...card,links:card.links?.filter(link=>link.targetId!==editing.id)}))}}).then(()=>{discard('ticket:' + draft.id + ':' + editing.id);closeTicket()}).catch(()=>undefined)} : undefined}/>}
+    <details className="kanban-development"><summary>Repositories and pull requests</summary><DevelopmentLinks boardId={draft.id} projectId={draft.projectId} cards={draft.content.cards} locked={readOnly || busy}/></details>
+    {draft.projectId&&<details className="kanban-development"><summary>Project branches, pull requests and deployments</summary><ProjectDevelopment projectId={draft.projectId} canManage={canManage} boardId={draft.id} cards={draft.content.cards} locked={readOnly||busy}/></details>}
   </div>
 }

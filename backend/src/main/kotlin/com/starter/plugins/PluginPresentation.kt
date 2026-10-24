@@ -5,7 +5,7 @@ object PluginPresentation {
     fun defaults(value: PluginManifest): PluginManifest {
         val category = when {
             value.id.startsWith("calendar") -> "Calendars"
-            value.id in setOf("github", "gitlab", "gitea") -> "Development"
+            value.id in setOf("github", "gitlab", "gitea", "jira", "figma", "mermaid") -> "Development"
             value.id in setOf("discord", "telegram", "teams", "whatsapp") -> "Communications"
             value.id in setOf("sharepoint", "onedrive", "google-drive") -> "Files"
             else -> "Productivity"

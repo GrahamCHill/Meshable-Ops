@@ -25,12 +25,14 @@ function Boards() {
   const canWrite=!!plugins.data?.find(item=>item.manifest.id==='kanban')?.tableAccess.plugin_kanban_boards?.writeRoles.includes(role)
   const selected=params.get('board')??'',projectId=params.get('project')??undefined
   const select=(id:string)=>setParams({...projectId?{project:projectId}:{},...id?{board:id}:{}})
+  const creationAccess=useQuery({queryKey:['kanban-create-access',user?.id,projectId],queryFn:()=>boardsApi.permissions(projectId),enabled:canWrite,refetchInterval:15000})
   const list=useQuery({queryKey:['plugin-kanban-boards',user?.id,role,projectId],queryFn:()=>boardsApi.list(projectId)})
   const board=useQuery({queryKey:['plugin-kanban-board',user?.id,role,selected],queryFn:()=>boardsApi.get(selected),enabled:!!selected,refetchOnWindowFocus:false})
   const saved=(value:Board)=>{
     client.setQueryData(['plugin-kanban-board',user?.id,role,value.id],value)
     void client.invalidateQueries({queryKey:['plugin-kanban-boards']})
     void client.invalidateQueries({queryKey:['project-work-summary']})
+    void client.invalidateQueries({queryKey:['plugin-calendar-events']})
     if(selected!==value.id)select(value.id)
   }
   const creation=useMutation({mutationFn:(input:Parameters<typeof boardsApi.save>[1])=>boardsApi.save(undefined,input),onSuccess:value=>{setCreate(false);saved(value)}})
@@ -39,7 +41,7 @@ function Boards() {
   </div>
   const items=list.data?.filter(item=>item.name.toLowerCase().includes(query.toLowerCase()))
   return <div className="page-stack">
-    <div className="page-heading"><div><h1>Boards</h1><p>Organize work, plan sprints, and follow delivery.</p></div><Button disabled={!canWrite} onClick={()=>{creation.reset();setCreate(true)}}>New board</Button></div>
+    <div className="page-heading"><div><h1>Boards</h1><p>Organize work, plan sprints, and follow delivery.</p></div>{creationAccess.data?.canCreate&&<Button onClick={()=>{creation.reset();setCreate(true)}}>New board</Button>}</div>
     {projectId&&<Link to={'/projects/'+projectId}>Back to project</Link>}
     <label className="form-field kanban-board-search">Find a board<input type="search" placeholder="Search boards" value={query} onChange={e=>setQuery(e.target.value)}/></label>
     {list.isLoading&&<p role="status">Loading boards…</p>}{list.isError&&<p role="alert">Unable to load boards. <button onClick={()=>void list.refetch()}>Retry</button></p>}
@@ -48,7 +50,7 @@ function Boards() {
       <span className="kanban-board-progress" role="img" aria-label={(item.completedCount??0)+' of '+(item.ticketCount??0)+' tickets completed'}><i style={{width:((item.ticketCount?(item.completedCount??0)/item.ticketCount:0)*100)+'%'}}/></span>
       <small>Updated {new Date(item.updatedAt).toLocaleDateString()}</small><span className="kanban-board-card-open">Open board →</span>
     </button>)}</div>
-    {!list.isLoading&&!list.isError&&!items?.length&&<p>{query?'No boards match your search.':'Create a board to start organizing work.'}</p>}
+    {!list.isLoading&&!list.isError&&!items?.length&&<p>{query?'No boards match your search.':creationAccess.data?.canCreate?'Create a board to start organizing work.':'No boards are available to your account.'}</p>}
     {create&&<BoardConfiguration board={{...fresh,projectId:projectId??null}} people={user?[{id:user.id,name:user.name??user.username,email:user.email}]:[]} busy={creation.isPending} error={creation.isError?getErrorMessage(creation.error):undefined} onSave={input=>creation.mutate(input)} onClose={()=>setCreate(false)}/>}
   </div>
 }

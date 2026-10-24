@@ -32,6 +32,7 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Author reports and manage embedded dashboards | [Dashboards and Superset](dashboards.md) |
 | Understand services, access rules, and data flow | [Architecture](architecture.md) |
 | Manage clients, projects, team boards, reports, and work digests | [Projects and delivery](projects-and-delivery.md) |
+| Track hours, bill client work, review cloud spend and manage service incidents | [Operations plugins](plugins/operations.md) |
 | Add plugin features to clients and projects | [Context extensions](plugins/project-contexts.md) |
 | Configure search, its launcher, or indexing schedules | [Search and indexing jobs](search-and-indexing.md) |
 | Set up optional AI, protect credentials, or rotate wrapping keys | [AI search and credential security](ai-search-and-secrets.md) |

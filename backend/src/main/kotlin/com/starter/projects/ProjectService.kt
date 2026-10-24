@@ -22,7 +22,7 @@ class ProjectService(private val projects: ProjectRepository, private val client
     private val access: AccessControlService, private val settings: ProjectSettingsService, private val branding: BrandingPreferencesService,
     private val mapper: ObjectMapper, private val jdbc: JdbcTemplate, private val artwork: com.starter.service.WorkspaceArtworkService? = null) {
     fun people(email: String): List<ProjectPerson> { policy.actor(email); return users.findAll().filter { it.active && it.role != "EXTERNAL" }.sortedBy { it.name ?: it.username }.map { ProjectPerson(it.id, it.name ?: it.username, it.email) } }
-    fun options(email: String): Map<String, Any> { policy.actor(email); val configuration = settings.current().settings; return mapOf("tags" to configuration.tags, "groups" to groups.findAll().map { mapOf("id" to it.id, "name" to it.name, "description" to it.description, "kind" to it.kind, "projectRole" to it.projectRole) }, "identityName" to branding.current().applicationName, "sections" to configuration.sections, "defaultSectionId" to configuration.defaultSectionId) }
+    fun options(email: String): Map<String, Any> { val actor = policy.actor(email); val configuration = settings.current().settings; val canCreate = ProjectCreationRules.allowed(actor, jdbc); return mapOf("tags" to configuration.tags, "groups" to groups.findAll().map { mapOf("id" to it.id, "name" to it.name, "description" to it.description, "kind" to it.kind, "projectRole" to it.projectRole) }, "identityName" to branding.current().applicationName, "sections" to configuration.sections, "defaultSectionId" to configuration.defaultSectionId, "canCreateProjects" to canCreate, "canCreateClients" to canCreate) }
     fun list(email: String, query: String = "", category: String? = null, tags: Set<UUID> = emptySet()): List<ProjectSummary> {
         val actor = policy.actor(email)
         if (query.length > 200 || tags.size > 20) throw BadRequestException("Use a search up to 200 characters and up to 20 tag filters")
@@ -43,6 +43,7 @@ class ProjectService(private val projects: ProjectRepository, private val client
     @Transactional
     fun save(email: String, id: UUID?, input: ProjectInput): ProjectView {
         val actor = policy.actor(email)
+        if (id == null) ProjectCreationRules.require(actor, jdbc)
         val row = id?.let { policy.require(it, actor, true) } ?: ProjectRecord(ownerId = actor.id, leadId = actor.id)
         if (id != null && row.revision != input.revision) throw ConflictException("This project changed. Reload before saving.")
         ProjectValidation.name(input.name)
@@ -78,12 +79,19 @@ class ProjectService(private val projects: ProjectRepository, private val client
     fun clients(email: String): List<ClientView> {
         val actor = policy.actor(email)
         val visible = jdbc.query("SELECT DISTINCT p.client_id FROM workspace_projects p WHERE p.client_id IS NOT NULL AND ${ProjectAccessSql.predicate()}", { rs, _ -> rs.getObject(1, UUID::class.java) }, *ProjectAccessSql.args(actor)).toSet()
-        return clients.findAll().filter { Roles.admin(actor.role) || it.ownerId == actor.id || it.id in visible }.sortedBy { it.name }.map { clientView(it, actor) }
+        val rows = clients.findAll().filter { Roles.admin(actor.role) || it.ownerId == actor.id || it.id in visible }.sortedBy { it.name }
+        val logos = artwork?.many(rows.map { "client:${it.id}" }).orEmpty()
+        return rows.map { clientView(it, actor, logos["client:${it.id}"] ?: com.starter.service.ArtworkView("building")) }
+    }
+    fun requireClient(email: String, id: UUID, manage: Boolean = false): ClientRecord {
+        val actor = policy.actor(email); val row = client(actor, id)
+        if (manage && row.ownerId != actor.id && !Roles.admin(actor.role)) throw ForbiddenException("Only the client owner or an administrator can change client details and logo")
+        return row
     }
     fun getClient(email: String, id: UUID) = clientView(client(policy.actor(email), id), policy.actor(email))
     @Transactional
     fun saveClient(email: String, id: UUID?, input: ClientInput): ClientView {
-        val actor = policy.actor(email); ProjectValidation.name(input.name)
+        val actor = policy.actor(email); if (id == null) ProjectCreationRules.require(actor, jdbc); ProjectValidation.name(input.name)
         ProjectValidation.contacts(input.details.contacts); ProjectValidation.links(input.details.links)
         if (input.details.description.length > 12000) throw BadRequestException("Client descriptions are limited to 12000 characters")
         val row = id?.let { client(actor, it).also { value -> if (value.ownerId != actor.id && !Roles.admin(actor.role)) throw ForbiddenException("Only the client owner or an administrator can change inherited client details") } } ?: ClientRecord(ownerId = actor.id)
@@ -102,7 +110,7 @@ class ProjectService(private val projects: ProjectRepository, private val client
         if (allowed.isEmpty()) throw NotFoundException("Client unavailable")
         return row
     }
-    private fun clientView(row: ClientRecord, actor: User) = ClientView(row.id, row.name, mapper.readValue(row.detailsJson, ClientDetails::class.java), row.revision, row.ownerId == actor.id || Roles.admin(actor.role))
+    private fun clientView(row: ClientRecord, actor: User, logo: com.starter.service.ArtworkView = artwork?.current("client:${row.id}", "building") ?: com.starter.service.ArtworkView("building")) = ClientView(row.id, row.name, mapper.readValue(row.detailsJson, ClientDetails::class.java), row.revision, row.ownerId == actor.id || Roles.admin(actor.role), logo)
     private fun view(row: ProjectRecord, actor: User): ProjectView {
         val inherited = row.clientId?.let { clients.findById(it).orElse(null) }
         val contacts = inherited?.let { mapper.readValue(it.detailsJson, ClientDetails::class.java).contacts }.orEmpty()

@@ -42,10 +42,10 @@ class FigmaProjectService(private val assets: ProjectAssetStore,private val conf
         val key = FigmaUrls.key(row.remoteId); val config = configuration.current("figma")
         if (config["accessToken"].isNullOrBlank()) throw BadRequestException("Configure a Figma access token before refreshing metadata")
         if (key !in FigmaPlugin.fileKeys(config["fileKeys"].orEmpty())) throw ForbiddenException("An administrator must approve this file for metadata access")
-        val node = http.scoped("GET","https://api.figma.com","v1/files/$key?depth=1",mapOf("X-Figma-Token" to config.getValue("accessToken"))).body
+        val node = http.scoped("GET","https://api.figma.com","v1/files/$key/meta",mapOf("X-Figma-Token" to config.getValue("accessToken"))).body?.path("file")?.takeIf { it.isObject && it.path("name").asText().isNotBlank() }
             ?: throw IntegrationUnavailable("Figma returned no file metadata")
         if (configuration.current("figma") != config) throw ConflictException("Figma settings changed. Retry the refresh.")
-        val metadata = FigmaMetadata(node.path("name").asText().take(300),node.path("lastModified").asText().take(100),node.path("version").asText().take(100),node.path("editorType").asText().take(40))
+        val metadata = FigmaMetadata(node.path("name").asText().take(300),node.path("last_touched_at").asText().take(100),node.path("version").asText().take(100),node.path("editorType").asText().take(40))
         return view(assets.save(email,"figma",project,id,row.label,row.remoteId,mapper.writeValueAsString(metadata),revision))
     }
     fun remove(email: String,project: UUID,id: UUID,revision: Long) = assets.remove(email,"figma",project,id,revision)

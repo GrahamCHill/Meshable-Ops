@@ -24,9 +24,11 @@ data class ProjectRepositoryInput(val providerId:String,val repository:String)
 data class ProjectRepositoryView(val id:UUID,val providerId:String,val repository:String?,val title:String,val url:String?,val available:Boolean,val revision:Long,val checkedAt:Instant?)
 
 @Service
-class ProjectRepositoryLinks(private val links:ProjectRepositoryLinkRepository,private val access:ProjectAccess,private val source:SourceControlService,private val jdbc:JdbcTemplate) {
+class ProjectRepositoryLinks(private val links:ProjectRepositoryLinkRepository,private val access:ProjectAccess,private val source:SourceControlService,private val jdbc:JdbcTemplate,
+    private val development:ProjectDevelopmentSettingsService?=null) {
     fun list(email:String,projectId:UUID):List<ProjectRepositoryView> {
         val actor=access.actor(email);access.require(projectId,actor)
+        if(development?.effective(projectId)?.repositories==false)return emptyList()
         val result=links.findByProjectId(projectId).map {row->
             val available=runCatching {source.approvedFor(row.providerId,row.repository,actor.role);source.fingerprint(row.providerId,actor.role)==row.configurationHash}.getOrDefault(false)
             view(row,available)
@@ -35,9 +37,11 @@ class ProjectRepositoryLinks(private val links:ProjectRepositoryLinkRepository,p
     }
     @Transactional fun add(email:String,projectId:UUID,input:ProjectRepositoryInput):ProjectRepositoryView {
         val actor=access.actor(email);access.require(projectId,actor,true)
+        requireEnabled(projectId)
         val before=source.fingerprint(input.providerId,actor.role)
         val resource=source.resource(input.providerId,input.repository,null,actor.role)
         access.require(projectId,access.actor(email),true)
+        requireEnabled(projectId)
         if(source.fingerprint(input.providerId,actor.role)!=before)throw ConflictException("Provider configuration changed. Try linking the repository again.")
         jdbc.query("SELECT pg_advisory_xact_lock(hashtext(?))",RowCallbackHandler {},"project-repositories:$projectId")
         val name=if(input.providerId=="github")resource.repository.lowercase()else resource.repository
@@ -46,9 +50,11 @@ class ProjectRepositoryLinks(private val links:ProjectRepositoryLinkRepository,p
     }
     @Transactional fun refresh(email:String,projectId:UUID,id:UUID,revision:Long):ProjectRepositoryView {
         val actor=access.actor(email);access.require(projectId,actor,true)
+        requireEnabled(projectId)
         val row=require(projectId,id,revision);val before=source.fingerprint(row.providerId,actor.role)
         val resource=source.resource(row.providerId,row.repository,null,actor.role)
         access.require(projectId,access.actor(email),true)
+        requireEnabled(projectId)
         if(source.fingerprint(row.providerId,actor.role)!=before)throw ConflictException("Provider configuration changed. Refresh again.")
         row.title=resource.title;row.url=resource.url;row.configurationHash=before;row.checkedAt=Instant.now()
         return view(links.saveAndFlush(row),true)
@@ -61,6 +67,7 @@ class ProjectRepositoryLinks(private val links:ProjectRepositoryLinkRepository,p
         if(row.revision!=revision)throw ConflictException("This repository link changed. Reload before editing.")
         return row
     }
+    private fun requireEnabled(projectId:UUID) {if(development?.effective(projectId)?.repositories==false)throw ForbiddenException("Enable repository links in the project development settings first")}
     private fun view(row:ProjectRepositoryLink,available:Boolean)=ProjectRepositoryView(row.id,row.providerId,row.repository.takeIf {available},if(available)row.title else "Unavailable repository",row.url.takeIf {available},available,row.revision,row.checkedAt.takeIf {available})
 }
 

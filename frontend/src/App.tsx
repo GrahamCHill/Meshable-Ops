@@ -40,6 +40,7 @@ const PluginPage = lazy(() => import('./plugins/PluginPage'))
 const AdminNotificationsPage = lazy(() => import('./components/pages/AdminNotificationsPage'))
 const ProjectsPage = lazy(() => import('./components/pages/ProjectsPage'))
 const ProjectDetailPage = lazy(() => import('./components/pages/ProjectDetailPage'))
+const ClientDetailPage = lazy(() => import('./components/pages/ClientDetailPage'))
 const AdminProjectSettingsPage = lazy(() => import('./components/pages/AdminProjectSettingsPage'))
 const UserSettingsPage = lazy(() => import('./components/pages/UserSettingsPage'))
 const AdminNavigationPage = lazy(() => import('./components/pages/AdminNavigationPage'))
@@ -86,6 +87,7 @@ function App() {
                     <Route path="/admin/access-controls" element={<AdminRoute>{loading(<AdminAccessPage />)}</AdminRoute>} />
                     <Route path="/admin/projects" element={<AdminRoute>{loading(<AdminProjectSettingsPage />)}</AdminRoute>} />
                     <Route path="/projects" element={loading(<ProjectsPage />)} />
+                    <Route path="/projects/clients/:clientId" element={loading(<ClientDetailPage />)} />
                     <Route path="/projects/:projectId" element={loading(<ProjectDetailPage />)} />
                     <Route path="/admin/security" element={<AdminRoute><AdminSecurityPage /></AdminRoute>} />
                     <Route path="/admin/sections/:sectionId" element={<AdminRoute><AdminSectionPage /></AdminRoute>} />

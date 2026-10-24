@@ -20,6 +20,8 @@ Meshable Ops is an extensible business workspace for teams that want control ove
 | **Files and documents** | Named S3/Azure Blob locations, file permissions, PDF previews, download policies, protected sharing, and an optional document-generator plugin with WeasyCanvas templates and calculated fields. [Files](docs/storage-connections.md) · [Documents](docs/documents-and-workflows.md) |
 | **Processes and insight** | Optional visual workflow design and guided member runs, multiple Apache Superset dashboards, and permission-aware search with optional AI. [Workflows](docs/plugins/documents-and-workflows.md) · [Search](docs/search-and-indexing.md) |
 | **Connected teams** | SMTP/API email, notification templates and preferences, webhooks, personal calendar sync, and separate Git, Discord, Telegram, Teams, WhatsApp, Microsoft file and Google Drive plugins. [Plugins](docs/plugins/README.md) |
+| **Time, billing and service operations** | Optional project timesheets, ActivityWatch/TimeCamp imports, developer rates, invoices/quotes, billing replies, cloud costs and on-call escalation. [Operations plugins](docs/plugins/operations.md) |
+| **Time, billing and service operations** | Optional project timesheets, ActivityWatch/TimeCamp imports, developer rates, invoices/quotes, billing replies, cloud costs and on-call escalation. [Operations plugins](docs/plugins/operations.md) |
 | **Your workspace** | Business branding, ordered navigation, project/section icons, optional MFA, delegated administration, restricted external file access, encrypted secrets, and sandboxed ZIP extensions. [Access](docs/access-controls.md) · [Branding](docs/branding.md) · [Navigation](docs/navigation-and-icons.md) |
 
 ## Quick start
