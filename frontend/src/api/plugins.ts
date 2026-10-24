@@ -3,8 +3,11 @@ import api from './http'
 import { useAuthStore } from '../hooks/useAuthStore'
 
 export interface PluginView {
-  manifest: { id: string; name: string; navigationLabel: string; version: string; apiVersion: number; description: string; extensions: ('PAGE' | 'API' | 'DATABASE' | 'SEARCH' | 'SETTINGS')[]; menuItems: {path: string; label: string; roles: string[]}[]; tables: {name: string; label: string}[]; settingsFields: PluginSettingField[]; supportedRoles: string[] }
+  manifest: { id: string; name: string; navigationLabel: string; version: string; apiVersion: number; description: string; extensions: ('PAGE' | 'API' | 'DATABASE' | 'SEARCH' | 'SETTINGS')[]; menuItems: {path: string; label: string; roles: string[]}[]; tables: {name: string; label: string}[]; settingsFields: PluginSettingField[]; supportedRoles: string[]; capabilities: Record<string,string>; requiresCapabilities: string[] }
   enabled: boolean
+  active: boolean
+  missingDependencies: string[]
+  features: {id: string; label: string; available: boolean; providers: string[]; missing: string[]}[]
   allowedRoles: string[]
   searchEnabled: boolean
   tableAccess: Record<string, {readRoles: string[]; writeRoles: string[]}>

@@ -21,4 +21,6 @@ In **Administration → Plugins**, open a module's **Settings** to enable it, co
 
 Separate connection plugins support Telegram, Teams Workflows, WhatsApp Business, SharePoint, and OneDrive for Business. See [Integration setup](plugins/integrations.md) and the universal [Settings menu](plugins/settings.md).
 
+Additional [GitHub/GitLab/Gitea plugins](plugins/source-control.md) link repositories and PRs/MRs to Kanban boards/cards. [Calendar](plugins/calendar.md) provides local events, board deadlines, ICS export, and optional Microsoft, Google, and CalDAV providers. [Composition](plugins/composition.md) defines required capabilities and optional connections. The user catalogue returns effective active modules; the admin catalogue includes enabled-but-waiting modules and their missing dependencies.
+
 See [Database and RBAC](plugins/database-and-rbac.md), [Pages and submenus](plugins/pages-and-menus.md), and [Search](plugins/search.md). Plugins are compiled source with application privileges, not an untrusted-code sandbox. No ZIP/JAR uploads or remote JavaScript installation are supported.

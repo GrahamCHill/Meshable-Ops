@@ -31,7 +31,7 @@ class GeneratedDocumentServiceTest {
     private val document = GeneratedDocument(ownerId = actor.id, name = "Quote", filename = "quote.pdf", pdfBytes = bytes)
     private var attachments = emptyList<EmailAttachment>()
     private val service = GeneratedDocumentService(mock(GeneratedDocumentRepository::class.java), mock(DocumentTemplateService::class.java), access,
-        DocumentFields(), mock(WeasyRendererClient::class.java), jacksonObjectMapper(), PdfService(), policy, notifications, mock(RateLimits::class.java))
+        DocumentFields(), mock(WeasyRendererClient::class.java), jacksonObjectMapper(), PdfService(), GeneratedDocumentDelivery(access,PdfService(),policy,notifications,mock(RateLimits::class.java)), mock(RateLimits::class.java))
     @BeforeEach fun setup() {
         `when`(access.actor(actor.email)).thenReturn(actor); `when`(access.document(actor, document.id)).thenReturn(document)
         `when`(policy.current()).thenReturn(DocumentAccessPolicy())

@@ -10,7 +10,7 @@ import java.util.UUID
 
 @Entity @Table(name = "document_templates")
 class DocumentTemplateRecord(@Id val id: UUID = UUID.randomUUID(), var name: String = "",
-    var category: String = "OTHER", var published: Boolean = false,
+    var category: String = "", var published: Boolean = false,
     @get:JsonIgnore @Column(columnDefinition = "TEXT") var templateJson: String = "{}",
     @get:JsonIgnore @Column(columnDefinition = "TEXT") var fieldRulesJson: String = "[]",
     val createdBy: UUID = UUID.randomUUID(), val createdAt: Instant = Instant.now(), var updatedAt: Instant = Instant.now(),
@@ -34,6 +34,8 @@ interface DocumentTemplateRepository : JpaRepository<DocumentTemplateRecord, UUI
     fun findByPublishedTrueOrderByUpdatedAtDesc(pageable: Pageable): List<DocumentTemplateRecord>
 }
 interface GeneratedDocumentRepository : JpaRepository<GeneratedDocument, UUID> {
+    @Query("SELECT new com.starter.documents.GeneratedDocumentView(d.id, d.ownerId, d.templateId, d.templateRevision, d.templateName, d.name, d.filename, d.pageCount, d.byteSize, d.createdAt) FROM GeneratedDocument d WHERE d.id IN :ids")
+    fun workflowMetadata(ids: List<UUID>): List<GeneratedDocumentView>
     @Query("SELECT new com.starter.documents.GeneratedDocumentView(d.id, d.ownerId, d.templateId, d.templateRevision, d.templateName, d.name, d.filename, d.pageCount, d.byteSize, d.createdAt) FROM GeneratedDocument d WHERE (:admin = true OR d.ownerId = :owner) ORDER BY d.createdAt DESC")
     fun visible(owner: UUID, admin: Boolean, pageable: Pageable): List<GeneratedDocumentView>
     @Query("SELECT count(d) FROM GeneratedDocument d WHERE d.id IN :ids AND (:admin = true OR d.ownerId = :owner)")

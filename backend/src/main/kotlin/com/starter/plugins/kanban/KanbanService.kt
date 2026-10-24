@@ -14,7 +14,7 @@ import java.util.UUID
 @Service
 class KanbanService(private val boards: KanbanRepository, private val actors: PluginActor,
     private val plugins: PluginRegistry, private val mapper: ObjectMapper,
-    private val search: KanbanSearchProvider? = null) {
+    private val search: KanbanSearchProvider? = null, private val development: KanbanDevelopmentLinkRepository? = null) {
     fun list(email: String): List<KanbanSummary> { val actor = actor(email); return boards.visible(actor.id, actor.role == "ADMIN", PageRequest.of(0, 100)) }
     fun get(email: String, id: UUID) = view(owned(actor(email), id))
     @Transactional
@@ -26,6 +26,8 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
         if (id != null && row.revision != request.revision) throw ConflictException("This board changed. Reload before editing.")
         row.name = request.name.trim(); row.contentJson = mapper.writeValueAsString(request.content); row.updatedAt = Instant.now()
         val saved = boards.saveAndFlush(row)
+        val cards = request.content.cards.map { it.id }.toSet()
+        development?.let { repository -> repository.deleteAll(repository.findByBoard_Id(saved.id).filter { it.cardId != null && it.cardId !in cards }) }
         search?.index(saved, request.content)
         return view(saved)
     }
@@ -38,6 +40,7 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
         if (request.name.isBlank() || request.name.length > 120 || columns.size !in 1..20 || cards.size > 200) throw BadRequestException("Use a board name, 1–20 lists, and at most 200 cards")
         if (columns.map { it.id }.distinct().size != columns.size || cards.map { it.id }.distinct().size != cards.size) throw BadRequestException("List and card IDs must be unique")
         val ids = columns.map { it.id }.toSet()
+        if (cards.any { it.dueDate?.year?.let { year -> year !in 1900..9999 } == true }) throw BadRequestException("Choose a due date between 1900 and 9999")
         if (columns.any { it.title.isBlank() || it.title.length > 80 } || cards.any { it.columnId !in ids || it.title.isBlank() || it.title.length > 160 || it.description.length > 2000 })
             throw BadRequestException("Use valid lists and cards; card descriptions are limited to 2000 characters")
     }

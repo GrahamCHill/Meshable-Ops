@@ -25,11 +25,11 @@ function Boards() {
   const [dirty, setDirty] = useState(false)
   const [fresh, setFresh] = useState(blankBoard)
   const [generation, setGeneration] = useState(0)
-  const list = useQuery({ queryKey: ['plugin-kanban-boards', userId], queryFn: boardsApi.list })
-  const board = useQuery({ queryKey: ['plugin-kanban-board', userId, selected], queryFn: () => boardsApi.get(selected), enabled: !!selected && selected !== 'new', refetchOnWindowFocus: false })
+  const list = useQuery({ queryKey: ['plugin-kanban-boards', userId, role], queryFn: boardsApi.list })
+  const board = useQuery({ queryKey: ['plugin-kanban-board', userId, role, selected], queryFn: () => boardsApi.get(selected), enabled: !!selected && selected !== 'new', refetchOnWindowFocus: false })
   const saved = (value: Board) => {
-    client.setQueryData(['plugin-kanban-board', userId, value.id], value)
-    void client.invalidateQueries({ queryKey: ['plugin-kanban-boards', userId] })
+    client.setQueryData(['plugin-kanban-board', userId, role, value.id], value)
+    void client.invalidateQueries({ queryKey: ['plugin-kanban-boards', userId, role] })
     setSelected(value.id); setDirty(false)
   }
   return <div className="page-stack">
@@ -41,6 +41,6 @@ function Boards() {
     {!selected && list.data?.length === 0 && <p>Create your first board to get started.</p>}
     {selected && selected !== 'new' && board.isLoading && <p role="status">Loading board…</p>}
     {selected && selected !== 'new' && board.isError && <p role="alert">This board is unavailable. <button onClick={() => void board.refetch()}>Retry</button></p>}
-    <fieldset disabled={!canWrite} className="page-stack">{selected === 'new' ? <BoardEditor key={`new-${generation}`} initial={fresh} onSaved={saved} onDirty={setDirty} readOnly={!canWrite} /> : board.data && selected === board.data.id && <BoardEditor key={`${board.data.id}-${board.data.revision}-${generation}`} id={board.data.id} initial={board.data} onSaved={saved} onDirty={setDirty} readOnly={!canWrite} />}</fieldset>
+    <fieldset disabled={!canWrite} className="page-stack">{selected === 'new' ? <BoardEditor key={`new-${generation}`} initial={fresh} onSaved={saved} onDirty={setDirty} readOnly={!canWrite} /> : !board.isError && board.data && selected === board.data.id && <BoardEditor key={`${board.data.id}-${board.data.revision}-${generation}`} id={board.data.id} initial={board.data} onSaved={saved} onDirty={setDirty} readOnly={!canWrite} />}</fieldset>
   </div>
 }

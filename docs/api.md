@@ -2,6 +2,8 @@
 
 Optional modules use the authenticated `/api/plugins` catalogue, administrator-only `/api/admin/plugins` settings, and guarded `/api/plugins/{id}/…` routes. See [Workspace plugins](plugins.md#api) for contracts and Kanban endpoints, [plugin settings](plugins/settings.md) for redacted configuration APIs, and [integration plugins](plugins/integrations.md) for messaging/file-listing endpoints.
 
+[Source-control APIs](plugins/source-control.md#api) link approved repository/PR metadata to boards/cards. [Calendar APIs](plugins/calendar.md#api-and-extension-points) manage local events, export ICS, read selected providers, and explicitly publish saved events. [Capability dependencies](plugins/composition.md) are enforced per role, including direct API calls.
+
 
 
 Browser requests use the application origin's `/api` prefix through the frontend proxy. Authenticate through the app; the backend accepts its bearer token or app auth cookie. The cookie is also used by guarded Superset authoring routes. Search and storage endpoints require authentication; admin endpoints additionally require `ADMIN`. Login/logout and public health checks are separate existing flows.
@@ -387,26 +389,46 @@ Templates use the structured WeasyCanvas v0.8.0 schema. JSON supplied by regular
 | `GET /api/documents/{id}/download` | Original or policy-watermarked PDF download |
 | `POST /api/documents/{id}/email` | Explicit send of `{ recipient, subject, text, protection, password? }` as a real PDF attachment |
 
-Category is `QUOTE`, `INVOICE`, or `OTHER`. A template view contains `id`, `name`, `category`, `published`, `revision`, `updatedAt`, `template`, and `fieldRules`. Templates are limited to 1.9 MB including embedded images. Each field rule has `key`, `type`, optional `operation`, and `inputs`. Types are `TEXT`, `MULTILINE`, `NUMBER`, `MONEY`, `DATE`, `EMAIL`, or `DERIVED`. Derived rules use two numeric/derived input keys and `ADD`, `SUBTRACT`, `MULTIPLY`, `DIVIDE`, or `PERCENT`; cycles are invalid. The backend recomputes derived values even if a caller supplies them. Dates use ISO format; required/fallback/length constraints also come from `template.apiFields`. Values are literal flat keys, not executable expressions or remote API fetch definitions.
+`category` is optional text metadata (up to 100 characters, default empty), retained for compatibility. It has no fixed values and does not determine document content or fields. A template view contains `id`, `name`, `category`, `published`, `revision`, `updatedAt`, `template`, and `fieldRules`. Templates are limited to 1.9 MB including embedded images. Each field rule has `key`, `type`, optional `operation`, and `inputs`. Types are `TEXT`, `MULTILINE`, `NUMBER`, `MONEY`, `DATE`, `EMAIL`, or `DERIVED`. Derived rules use two numeric/derived input keys and `ADD`, `SUBTRACT`, `MULTIPLY`, `DIVIDE`, or `PERCENT`; cycles are invalid. The backend recomputes derived values even if a caller supplies them. Dates use ISO format; required/fallback/length constraints also come from `template.apiFields`. Values are literal flat keys, not executable expressions or remote API fetch definitions.
 
-Generation returns `{ id, ownerId, templateId, templateRevision, templateName, name, filename, pageCount, byteSize, createdAt }`. Generated PDFs, source snapshots, and resolved field values are not returned in library metadata. PDFs are bounded to 10 MiB/200 pages. A generated record remains tied to its original template revision after later template changes. Regular accounts cannot access another user's document through metadata, download, preview, email, or workflow references.
+Generation returns `{ id, ownerId, templateId, templateRevision, templateName, name, filename, pageCount, byteSize, createdAt }`. Generated PDFs, source snapshots, and resolved field values are not returned in library metadata. PDFs are bounded to 10 MiB/200 pages. A generated record remains tied to its original template revision after later template changes. Regular accounts cannot access another user's document through the ordinary library endpoints. Published workflows can grant scoped access to PDFs at reached document/email steps, as described below.
 
 Email protection is `PLAIN` (default) or `PASSWORD`. Protected sends require a 12-character minimum password within 72 UTF-8 bytes; passwords are write-only, not persisted, and not automatically included in message content. Both modes honor disabled downloads and mandatory policy watermarks. Sends return the existing `{ status, message }` provider-acceptance response; there is no automatic retry. This endpoint sends one generated PDF per message. Rate limits: generation 20/account/hour, previews 120/account/five minutes, email 10/account/five minutes. Renderer unavailable returns safe 503; invalid templates/values 400; permission policy 403; missing/inaccessible records 404; concurrent edits 409; rate limits 429. [Document setup and limits](documents-and-workflows.md).
 
-## Workflow definitions
+## Workflow definitions and guided runs
 
-| Method and path | Purpose |
+Authoring requires an active `ADMIN` account; designs are managed at `/admin/workflows`.
+
+| Endpoint | Contract |
 | --- | --- |
-| `GET /api/workflows` | Latest 100 workflows owned by the user; admins can manage all |
-| `POST /api/workflows` | Create `{ name, state, graph: { nodes, edges }, documentIds, revision }` |
-| `PUT /api/workflows/{id}` | Update the same contract using its current revision |
+| `GET /api/admin/workflows` | Latest 100 designs, including drafts and archives |
+| `POST /api/admin/workflows` | Create `{ name, state, published, graph: { nodes, edges }, documentIds, revision }` |
+| `PUT /api/admin/workflows/{id}` | Update using current revision |
 
-Views add `id`, `ownerId`, and `updatedAt`. State is `DRAFT`, `READY`, or `ARCHIVED`. A node contains `id`, `kind`, `label`, `x`, `y`, optional `documentId`, and optional configuration: `note`, `recipient`, `subject`, `protection`, `field`, `operator`, `expected`. Kinds are `START`, `DOCUMENT`, `REVIEW`, `CONDITION`, `EMAIL`, and `END`. Email protection uses `PLAIN`/`PASSWORD`; no password is a stored block property. Condition operators are `EQUALS`, `NOT_EQUALS`, `CONTAINS`, `GREATER_THAN`, and `IS_SET`.
+Design views add `id`, `ownerId`, and `updatedAt`. State is `DRAFT`, `READY`, or `ARCHIVED`; `published` defaults false and is forced false unless ready. Legacy `POST /api/workflows` and `PUT /api/workflows/{id}` remain admin-only aliases. `GET /api/workflows` now returns the runnable catalogue, not editable graphs.
 
-Each edge is `{ id, source, target, branch }`, with branch `NEXT`, `TRUE`, or `FALSE`. Drafts may be incomplete but still require valid IDs/references/positions and acyclic connections. Ready validation requires one start, an end, reachability, complete outgoing paths, both outputs on conditions, document selections for document/email blocks, and email recipient/subject. Limits are 50 nodes, 100 edges, and 50 unique attached document IDs. Coordinates are finite and within ±10000. Loops, duplicate outputs, unknown nodes, and inaccessible document references return 400/404. Optimistic revision conflicts return 409.
+Nodes contain `id`, `kind`, `label`, `x`, `y`, optional `documentId`, and configuration `note`, `recipient`, `subject`, `protection`, `field`, `operator`, `expected`. Kinds are `START`, `DOCUMENT`, `REVIEW`, `CONDITION`, `EMAIL`, `END`. Protection is `PLAIN`/`PASSWORD`; no block stores a password. Operators are `EQUALS`, `NOT_EQUALS`, `CONTAINS`, `GREATER_THAN`, `IS_SET`. Each edge is `{ id, source, target, branch }` with `NEXT`, `TRUE`, or `FALSE`. Drafts still require valid references, coordinates, and acyclic connections. Ready designs require one start, an end, reachable complete paths, both condition outputs, document selections, and email recipient/subject. Numeric comparison values must be decimals. Limits: 50 nodes, 100 edges, 50 unique attached documents, finite coordinates within +/-10000. Optimistic conflicts return 409.
 
-These endpoints save design definitions only. There is no execute/schedule/approval runtime endpoint in this version. The UI's Prepare email action uses the explicit generated-document email endpoint after the sender completes its form. See [workflow behavior](documents-and-workflows.md#building-workflows).
+Runtime endpoints require authentication and an active account. Runs are private to their owner, including against other administrators.
 
+| Endpoint | Contract |
+| --- | --- |
+| `GET /api/workflows` | Latest 100 published ready designs; admins also see private ready previews. Metadata `{ id, name, revision, published, stepCount }` |
+| `GET /api/workflows/runs` | Latest 100 own run summaries `{ id, name, workflowId, status, updatedAt }` |
+| `POST /api/workflows/runs` | Start `{ workflowId }`, snapshots design; limited to 20/account/hour |
+| `GET /api/workflows/runs/{id}` | Own run view |
+| `POST /api/workflows/runs/{id}/advance` | `{ revision, nodeId, action, value?, note? }` |
+| `PUT /api/workflows/runs/{id}/document` | `{ revision, nodeId, documentId }`; choose a PDF from the caller's library on current document/email step |
+| `POST /api/workflows/runs/{id}/email` | `{ revision, nodeId, password? }`; explicit send using fixed design defaults, actual PDF attachment |
+| `POST /api/workflows/runs/{id}/cancel` | `{ revision }`; retain history, cannot resume |
+| `GET /api/workflows/runs/{id}/documents/{documentId}/pages/{page}` | PNG preview of a reached PDF, no-store, preview policy enforced |
+| `GET /api/workflows/runs/{id}/documents/{documentId}/download` | PDF attachment, no-store, download/watermark policy enforced |
+
+A run view contains `id`, `name`, `workflowId`, `workflowRevision`, `status` (`IN_PROGRESS`, `COMPLETED`, `CANCELLED`), optimistic `revision`, `current` step (or null), `history`, condition `values`, reached `documents` metadata, `blockedReason`, `emailState` (`NONE`, `SENDING`, `UNCERTAIN`), and `emailAttemptAt`. It does not expose future graph nodes or PDF bytes. History entries contain node ID, label/kind, outcome, note, completion time. Unpublishing/archive pauses continuation and scoped PDF access; owner history remains readable.
+
+Actions: `CONTINUE` for start/document/end; `REVIEWED` for a manual review; `EVALUATE` for a condition; `CONFIRM_EMAIL` with a nonblank note for externally handled/checked delivery. Values have a 500-character limit and notes 1000. Conditions are server evaluated using literal strings or bounded decimals; no expression interpreter. Replacements apply to later references to the same original PDF in that run. Neither action nor replacement can jump nodes or alter graph/recipient defaults.
+
+Email uses the ordinary generated-PDF protection, attachment size, rate, active-account, and policy checks. Passwords are write-only, never persisted. Missing mail configuration returns 400 before claiming a send. A committed attempt prevents automatic resends on timeout; uncertain results require manual checking and confirmation. In-flight attempts prevent confirmation/cancellation for two minutes. Email returns the updated run after provider acceptance; that is not inbox delivery. There is no background scheduler or multi-person approval/assignment engine. [Workflow behavior](documents-and-workflows.md#building-workflows).
 
 ## Branding
 

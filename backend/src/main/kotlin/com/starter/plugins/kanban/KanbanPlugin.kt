@@ -9,5 +9,8 @@ class KanbanPlugin : WorkspacePlugin {
         "Private task boards with lists, cards, and card movement.", navigationLabel = "Boards",
         extensions = PluginExtension.entries.toSet(),
         menuItems = listOf(PluginMenuItem("boards", "Saved boards"), PluginMenuItem("guide", "Board guide")),
-        tables = listOf(PluginTable("plugin_kanban_boards", "Boards and cards")))
+        tables = listOf(PluginTable("plugin_kanban_development_links", "Repository and PR links"), PluginTable("plugin_kanban_boards", "Boards and cards")),
+        capabilities = mapOf("kanban.boards" to "Kanban boards"),
+        features = listOf(PluginFeature("development-links", "Repository and pull request links", setOf("source.repositories")),
+            PluginFeature("calendar-deadlines", "Card deadlines in Calendar", setOf("calendar.events"))))
 }

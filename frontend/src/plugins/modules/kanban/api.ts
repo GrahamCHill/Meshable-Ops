@@ -1,7 +1,7 @@
 import { createPluginApi } from '../../sdk'
 
 export interface BoardColumn { id: string; title: string }
-export interface BoardCard { id: string; columnId: string; title: string; description: string }
+export interface BoardCard { id: string; columnId: string; title: string; description: string; dueDate?: string | null }
 export interface BoardInput { name: string; revision: number; content: { columns: BoardColumn[]; cards: BoardCard[] } }
 export interface BoardSummary { id: string; ownerId: string; name: string; updatedAt: string }
 export interface Board extends BoardInput, BoardSummary {}

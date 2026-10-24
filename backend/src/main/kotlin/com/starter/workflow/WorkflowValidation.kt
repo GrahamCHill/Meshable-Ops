@@ -14,6 +14,7 @@ class WorkflowValidation {
         if (graph.nodes.any { !it.x.isFinite() || !it.y.isFinite() || it.x !in -10000.0..10000.0 || it.y !in -10000.0..10000.0 }) bad("Block positions are outside the supported canvas")
         if (graph.nodes.any { it.documentId != null && it.documentId !in documents }) bad("Select block documents from the workflow attachments")
         if (graph.nodes.any { it.field.isNotBlank() && !Regex("[A-Za-z][A-Za-z0-9_.-]{0,119}").matches(it.field) }) bad("Use a named data field in conditions")
+        if (graph.nodes.any { it.field.split('.').any { part -> part in setOf("__proto__","prototype","constructor") } }) bad("Use a business data-field name")
         if (graph.edges.any { it.source !in nodes || it.target !in nodes || it.source == it.target }) bad("Connect two different existing blocks")
         if (graph.edges.map { it.source to it.branch }.distinct().size != graph.edges.size) bad("Each output can connect to one next block")
         val outgoing = graph.edges.groupBy { it.source }
@@ -36,6 +37,7 @@ class WorkflowValidation {
                 BlockKind.CONDITION -> if (paths.map { it.branch }.toSet() != setOf(Branch.TRUE, Branch.FALSE) || node.field.isBlank()) bad("Conditions need a data field and both true and false paths")
                 else -> if (paths.size != 1) bad("Connect every non-end block to its next step")
             }
+            if (node.kind == BlockKind.CONDITION && node.operator == ConditionOperator.GREATER_THAN && !node.expected.trim().matches(Regex("[+-]?[0-9]{1,30}(\\.[0-9]{1,12})?"))) bad("Numeric conditions need a decimal comparison value")
             if (node.kind in setOf(BlockKind.DOCUMENT, BlockKind.EMAIL) && node.documentId == null) bad("Document and email blocks need an attached document")
             if (node.kind == BlockKind.EMAIL && (node.recipient.isBlank() || node.subject.isBlank())) bad("Email blocks need a recipient and subject")
         }

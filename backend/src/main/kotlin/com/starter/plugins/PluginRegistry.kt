@@ -28,13 +28,23 @@ class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: P
     @Transactional(readOnly = true)
     fun installed(): List<PluginView> {
         val saved = settings.findAll().associateBy { it.pluginId }
-        return manifests.values.sortedBy { it.name }.map { view(it, saved[it.id]) }
+        return catalogue(saved, "ADMIN")
     }
-    fun available(role: String) = installed().filter { it.enabled && role in it.allowedRoles }
+    fun available(role: String) = catalogue(settings.findAll().associateBy { it.pluginId }, role).filter { it.active }
 
     fun definition(id: String) = manifests[id] ?: throw NotFoundException("Plugin not installed")
     fun validateConfiguration(id: String, values: Map<String, String>) = modules[id]?.validateConfiguration(values)
         ?: throw NotFoundException("Plugin not installed")
+    fun missingConfiguration(id: String, values: Map<String, String>) = modules[id]?.missingConfiguration(values) ?: throw NotFoundException("Plugin not installed")
+
+    fun requireFeature(id: String, feature: String, role: String) {
+        val plugin = available(role).find { it.manifest.id == id }
+        if (plugin?.features?.none { it.id == feature && it.available } != false) throw NotFoundException("Supporting plugins are unavailable")
+    }
+    fun requireCapability(caller: String, capability: String, provider: String, role: String) {
+        requireAvailable(caller, role)
+        if (available(role).none { it.manifest.id == provider && capability in it.manifest.capabilities }) throw NotFoundException("Supporting plugin unavailable")
+    }
 
     fun requireTable(id: String, table: String, role: String, write: Boolean = false) {
         requireAvailable(id, role)
@@ -48,6 +58,11 @@ class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: P
         val manifest = manifests[id] ?: throw NotFoundException("Plugin unavailable")
         val view = view(manifest, settings.findById(id).orElse(null))
         if (!view.enabled || role !in view.allowedRoles) throw NotFoundException("Plugin unavailable")
+        if (manifest.requiresCapabilities.isNotEmpty()) {
+            val saved = settings.findAll().associateBy { it.pluginId }.toMutableMap()
+            settings.findById(id).orElse(null)?.let { saved[id] = it }
+            if (catalogue(saved, role).none { it.manifest.id == id && it.active }) throw NotFoundException("Enable the required supporting plugins first")
+        }
     }
 
     @Transactional
@@ -59,13 +74,31 @@ class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: P
         row.enabled = request.enabled; row.allowedRolesCsv = request.allowedRoles.sorted().joinToString(",")
         row.searchEnabled = request.searchEnabled
         row.tableAccessJson = mapper.writeValueAsString(request.tableAccess)
-        return view(manifest, settings.saveAndFlush(row))
+        val saved = settings.saveAndFlush(row)
+        return catalogue(settings.findAll().associateBy { it.pluginId } + (id to saved), "ADMIN").first { it.manifest.id == id }
+    }
+    private fun catalogue(saved: Map<String, PluginSettings>, role: String): List<PluginView> {
+        val base = manifests.values.sortedBy { it.name }.map { view(it, saved[it.id]) }
+        val active = mutableSetOf<String>()
+        repeat(base.size) {
+            val supplied = base.filter { it.manifest.id in active }.flatMap { it.manifest.capabilities.keys }.toSet()
+            base.filter { it.enabled && role in it.allowedRoles && supplied.containsAll(it.manifest.requiresCapabilities) }.forEach { active += it.manifest.id }
+        }
+        val providers = base.filter { it.manifest.id in active }
+        val supplied = providers.flatMap { it.manifest.capabilities.keys }.toSet()
+        val labels = manifests.values.flatMap { it.capabilities.entries }.associate { it.key to it.value }
+        return base.map { plugin -> plugin.copy(active = plugin.manifest.id in active,
+            missingDependencies = (plugin.manifest.requiresCapabilities - supplied).map { labels[it] ?: it }.toSet(),
+            features = plugin.manifest.features.map { feature -> PluginFeatureView(feature.id, feature.label,
+                plugin.manifest.id in active && supplied.containsAll(feature.requires),
+                providers.filter { it.manifest.capabilities.keys.intersect(feature.requires).isNotEmpty() }.map { it.manifest.name }.toSet(),
+                (feature.requires - supplied).map { labels[it] ?: it }.toSet()) }) }
     }
     private val mapper = jacksonObjectMapper()
     private fun view(manifest: PluginManifest, row: PluginSettings?): PluginView {
         val overrides: Map<String, PluginTableAccess> = row?.let { mapper.readValue(it.tableAccessJson, object : TypeReference<Map<String, PluginTableAccess>>() {}) } ?: emptyMap()
         return PluginView(manifest, row?.enabled == true,
-            row?.allowedRolesCsv?.split(",")?.filter { it in manifest.supportedRoles }?.toSet() ?: manifest.supportedRoles,
+            row?.allowedRolesCsv?.split(",")?.filter { it in manifest.supportedRoles }?.toSet() ?: manifest.defaultRoles,
             row?.searchEnabled == true && PluginExtension.SEARCH in manifest.extensions,
             manifest.tables.associate { it.name to (overrides[it.name] ?: PluginTableAccess(it.readRoles, it.writeRoles)) })
     }

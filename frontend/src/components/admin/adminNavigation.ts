@@ -9,7 +9,8 @@ export const adminGroups = [
     { to: '/account/security', label: 'Security & MFA', description: 'Set up authenticator or email verification and recovery codes.' },
     { to: '/admin/shares', label: 'File sharing', description: 'Email protected PDF attachments and manage shared links.' },
     { to: '/admin/webhooks', label: 'Webhooks', description: 'Send JSON, receive signed requests, and review deliveries.' },
-    { to: '/admin/document-templates', label: 'Document templates', description: 'Design WeasyCanvas templates, data fields, quotes, and invoices.' },
+    { to: '/admin/workflows', label: 'Workflow builder', description: 'Design and publish the steps members follow in Workflows.' },
+    { to: '/admin/document-templates', label: 'Document templates', description: 'Design reusable documents with your own content, fields, and layout.' },
   ] },
   { label: 'Analytics', items: [
     { to: '/admin/ai', label: 'AI & search', description: 'Configure AI providers, protect API keys, and index shared documents.' },

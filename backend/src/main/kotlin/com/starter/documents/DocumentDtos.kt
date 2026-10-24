@@ -14,7 +14,7 @@ data class DataFieldRule(@field:Pattern(regexp = "[A-Za-z][A-Za-z0-9_.-]{0,119}"
     val type: DataFieldType = DataFieldType.TEXT, val operation: Calculation? = null,
     @field:Size(max = 2) val inputs: List<@Size(max = 120) String> = emptyList())
 data class TemplateRequest(@field:NotBlank @field:Size(max = 100) val name: String,
-    @field:Pattern(regexp = "QUOTE|INVOICE|OTHER") val category: String = "OTHER", val published: Boolean = false,
+    @field:Size(max = 100) val category: String = "", val published: Boolean = false,
     val template: JsonNode, @field:Valid @field:Size(max = 50) val fieldRules: List<DataFieldRule> = emptyList(),
     @field:Min(0) val revision: Long = 0)
 data class TemplateView(val id: UUID, val name: String, val category: String, val published: Boolean,

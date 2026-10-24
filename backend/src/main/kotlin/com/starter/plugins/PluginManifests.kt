@@ -5,7 +5,13 @@ import com.starter.exception.BadRequestException
 internal object PluginManifests {
     private val roles = setOf("ADMIN", "USER")
     fun validate(manifest: PluginManifest) {
+        val capabilities = manifest.capabilities.keys + manifest.requiresCapabilities + manifest.features.flatMap { it.requires }
+        require(capabilities.all { it.matches(Regex("[a-z][a-z0-9.-]{1,79}")) } && manifest.capabilities.values.all { it.isNotBlank() && it.length <= 100 }) { "Invalid plugin capabilities" }
+        require(manifest.requiresCapabilities.intersect(manifest.capabilities.keys).isEmpty()) { "A plugin cannot supply its own requirement" }
+        require(manifest.features.size <= 30 && manifest.features.map { it.id }.distinct().size == manifest.features.size)
+        manifest.features.forEach { require(it.id.matches(Regex("[a-z][a-z0-9-]{1,39}")) && it.label.isNotBlank() && it.label.length <= 100 && it.requires.isNotEmpty()) }
         require("ADMIN" in manifest.supportedRoles && roles.containsAll(manifest.supportedRoles)) { "Invalid supported plugin roles" }
+        require("ADMIN" in manifest.defaultRoles && manifest.supportedRoles.containsAll(manifest.defaultRoles)) { "Invalid default plugin roles" }
         require(manifest.settingsFields.size <= 30 && manifest.settingsFields.map { it.key }.distinct().size == manifest.settingsFields.size)
         manifest.settingsFields.forEach {
             require(it.key.matches(Regex("[a-z][A-Za-z0-9]{0,39}")) && it.label.isNotBlank() && it.label.length <= 100 && it.help.length <= 600 && it.maxLength in 1..4096) { "Invalid plugin settings field" }

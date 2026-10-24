@@ -5,13 +5,16 @@ import { AdminPageHeader } from '../admin/AdminPageHeader'
 import { PluginSetting } from '../admin/plugins/PluginSetting'
 import { PluginConfigurationForm } from '../admin/plugins/PluginConfigurationForm'
 import { PluginDataControls } from '../admin/plugins/PluginDataControls'
+import { PluginConnections } from '../admin/plugins/PluginConnections'
+import { useState } from 'react'
 
 export function AdminPluginsPage() {
   const plugins = useQuery({ queryKey: ['admin-plugins'], queryFn: pluginsApi.installed })
   const [params, setParams] = useSearchParams()
+  const [filter, setFilter] = useState('')
   const selected = plugins.data?.find(plugin => plugin.manifest.id === params.get('plugin'))
   const tab = params.get('tab') ?? 'general'
-  const tabs = [{id:'general',label:'General'}, {id:'configuration',label:'Configuration'}, ...(selected?.manifest.tables.length ? [{id:'data',label:'Data'}] : [])]
+  const tabs = [{id:'general',label:'General'}, {id:'configuration',label:'Configuration'}, {id:'connections',label:'Connections'}, ...(selected?.manifest.tables.length ? [{id:'data',label:'Data'}] : [])]
   return <div className="page-stack" style={{ maxWidth: selected ? 760 : 1000 }}>
     <AdminPageHeader title={selected ? `${selected.manifest.name} settings` : 'Plugins'} description={selected ? selected.manifest.description : 'Manage optional pages, connections, database access, and search.'} />
     {plugins.isLoading && <p role="status">Loading plugins…</p>}
@@ -20,11 +23,12 @@ export function AdminPluginsPage() {
     {selected ? <>
       <Link to="/admin/plugins">Back to plugins</Link>
       <nav className="workspace-tabs" aria-label="Plugin settings">{tabs.map(item => <button key={item.id} aria-current={tab === item.id ? 'page' : undefined} className={tab === item.id ? 'is-active' : ''} onClick={() => setParams({plugin:selected.manifest.id,tab:item.id})}>{item.label}</button>)}</nav>
-      {tab === 'configuration' ? <PluginConfigurationForm key={selected.manifest.id} plugin={selected} /> : tab === 'data' && selected.manifest.tables.length ? <PluginDataControls plugin={selected} /> : <PluginSetting key={selected.manifest.id} plugin={selected} />}
+      {tab === 'configuration' ? <PluginConfigurationForm key={selected.manifest.id} plugin={selected} /> : tab === 'connections' ? <PluginConnections plugin={selected} /> : tab === 'data' && selected.manifest.tables.length ? <PluginDataControls plugin={selected} /> : <PluginSetting key={selected.manifest.id} plugin={selected} />}
     </> : !params.has('plugin') && <>
       <p className="field-help">New plugins start disabled and excluded from search. Each plugin has its own settings menu. Disabling retains saved data and connection settings.</p>
-      <div className="admin-cards">{plugins.data?.map(plugin => <section key={plugin.manifest.id} className="page-stack">
-        <div><h2>{plugin.manifest.name}</h2><p className="field-help">{plugin.enabled ? 'Enabled' : 'Disabled'} · Version {plugin.manifest.version}</p></div>
+      <label className="form-field">Find a plugin<input type="search" value={filter} onChange={event => setFilter(event.target.value)} /></label>
+      <div className="admin-cards">{plugins.data?.filter(plugin => `${plugin.manifest.name} ${plugin.manifest.description}`.toLowerCase().includes(filter.toLowerCase())).map(plugin => <section key={plugin.manifest.id} className="page-stack">
+        <div><h2>{plugin.manifest.name}</h2><p className="field-help">{plugin.active ? 'Enabled' : plugin.enabled ? 'Waiting for support' : 'Disabled'} · Version {plugin.manifest.version}</p></div>
         <p>{plugin.manifest.description}</p>
         <Link className="button button-secondary" aria-label={`Settings for ${plugin.manifest.name}`} to={`/admin/plugins?plugin=${encodeURIComponent(plugin.manifest.id)}`}>Settings</Link>
       </section>)}</div>

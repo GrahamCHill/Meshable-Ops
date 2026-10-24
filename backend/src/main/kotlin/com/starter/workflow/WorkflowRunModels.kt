@@ -1,0 +1,48 @@
+package com.starter.workflow
+
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.starter.documents.GeneratedDocumentView
+import jakarta.persistence.*
+import jakarta.validation.constraints.*
+import org.springframework.data.domain.Pageable
+import org.springframework.data.jpa.repository.*
+import org.springframework.data.jpa.repository.Query
+import java.time.Instant
+import java.util.UUID
+
+enum class WorkflowRunStatus { IN_PROGRESS, COMPLETED, CANCELLED }
+enum class WorkflowEmailState { NONE, SENDING, UNCERTAIN }
+enum class WorkflowAction { CONTINUE, REVIEWED, EVALUATE, CONFIRM_EMAIL }
+data class WorkflowVisit(val nodeId: String,val label: String,val kind: BlockKind,val outcome: String,val note: String,val completedAt: Instant)
+data class WorkflowStartRequest(val workflowId: UUID)
+data class WorkflowAdvanceRequest(@field:Min(0) val revision: Long,val nodeId: String,val action: WorkflowAction = WorkflowAction.CONTINUE,
+    @field:Size(max=500) val value: String = "",@field:Size(max=1000) val note: String = "")
+data class WorkflowDocumentRequest(@field:Min(0) val revision: Long,val nodeId: String,val documentId: UUID)
+data class WorkflowSendRequest(@field:Min(0) val revision: Long,val nodeId: String,@field:com.starter.security.PasswordBytes @get:com.fasterxml.jackson.annotation.JsonProperty(access=com.fasterxml.jackson.annotation.JsonProperty.Access.WRITE_ONLY) val password: String = "") {
+    override fun toString() = "WorkflowSendRequest(nodeId=$nodeId)"
+}
+data class WorkflowRevisionRequest(@field:Min(0) val revision: Long)
+data class RunnableWorkflow(val id: UUID,val name: String,val revision: Long,val published: Boolean,val stepCount: Int)
+data class WorkflowRunSummary(val id: UUID,val name: String,val workflowId: UUID,val status: WorkflowRunStatus,val updatedAt: Instant)
+data class WorkflowRunView(val id: UUID,val name: String,val workflowId: UUID,val workflowRevision: Long,val status: WorkflowRunStatus,val revision: Long,
+    val current: WorkflowBlock?,val history: List<WorkflowVisit>,val values: Map<String,String>,val documents: List<GeneratedDocumentView>,
+    val blockedReason: String?,val emailState: WorkflowEmailState,val emailAttemptAt: Instant?)
+
+@Entity @Table(name="workflow_runs",indexes=[Index(columnList="owner_id,updated_at")])
+class WorkflowRun(@Id val id: UUID = UUID.randomUUID(),val ownerId: UUID = UUID.randomUUID(),val workflowId: UUID = UUID.randomUUID(),
+    val name: String = "",val workflowRevision: Long = 0,
+    @get:JsonIgnore @Column(columnDefinition="TEXT") val graphJson: String = "{}",
+    var currentNodeId: String? = null,@Enumerated(EnumType.STRING) var status: WorkflowRunStatus = WorkflowRunStatus.IN_PROGRESS,
+    @get:JsonIgnore @Column(columnDefinition="TEXT") var historyJson: String = "[]",
+    @get:JsonIgnore @Column(columnDefinition="TEXT") var valuesJson: String = "{}",
+    @get:JsonIgnore @Column(columnDefinition="TEXT") var documentOverridesJson: String = "{}",
+    @Enumerated(EnumType.STRING) var emailState: WorkflowEmailState = WorkflowEmailState.NONE,var emailAttemptId: UUID? = null,var emailAttemptAt: Instant? = null,
+    val createdAt: Instant = Instant.now(),var updatedAt: Instant = Instant.now(),@Version var revision: Long = 0) {
+    override fun toString() = "WorkflowRun(id=$id,status=$status)"
+}
+interface WorkflowRunRepository : JpaRepository<WorkflowRun,UUID> {
+    @Lock(LockModeType.PESSIMISTIC_WRITE) @Query("SELECT r FROM WorkflowRun r WHERE r.id = :id")
+    fun locked(id: UUID): java.util.Optional<WorkflowRun>
+    @Query("SELECT new com.starter.workflow.WorkflowRunSummary(r.id,r.name,r.workflowId,r.status,r.updatedAt) FROM WorkflowRun r WHERE r.ownerId = :owner ORDER BY r.updatedAt DESC")
+    fun owned(owner: UUID,pageable: Pageable): List<WorkflowRunSummary>
+}

@@ -7,12 +7,12 @@ WeaveOps brings everyday operations together for small and medium businesses and
 ## What it does
 
 - **Shared storage:** named S3-compatible buckets and Azure Blob containers, selected folder access, uploads, and in-app PDF viewing.
-- **Documents:** WeasyCanvas template editor, typed and calculated fields, quote/invoice starters, and a generated PDF library.
-- **Workflows:** a visual flowchart builder with document, review, condition, and email blocks. This version saves and validates designs; email sends are manual.
+- **Documents:** a general-purpose WeasyCanvas template editor, typed and calculated fields, and a generated PDF library.
+- **Workflows:** an admin flowchart builder and guided user processes with saved progress, document steps, conditions, reviews, and explicit email sends.
 - **Search and AI:** storage similarity search, scheduled indexing, and optional document chat with configurable providers. Ordinary search works without AI.
 - **Insights:** multiple embedded Apache Superset dashboards with role-based visibility and an admin authoring workspace.
 - **Communication and control:** SMTP/email services, protected PDF attachments, incoming/outgoing webhooks, optional MFA, encrypted credentials, and admin controls.
-- **Plugins:** optional pages, submenus, database roles, and searchable records, with a Kanban example. [Developer guide](docs/plugins/README.md).
+- **Plugins:** Kanban boards, GitHub/GitLab/Gitea links, calendars, and optional integrations, with connected features and access controls. [Developer guide](docs/plugins/README.md).
 
 Built with React/TypeScript, Kotlin/Spring Boot, PostgreSQL/pgvector, and a private WeasyPrint renderer. Docker Compose brings the services together.
 

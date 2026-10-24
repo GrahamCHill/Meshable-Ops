@@ -27,7 +27,7 @@ export function DocumentDataForm({ template, onGenerated }: { template: AppTempl
       })}</div>
     </fieldset>
     {error && <p role="alert" className="feedback error">{error}</p>}
-    <p className="field-help">A PDF and a snapshot of this template revision are saved. Calculations are validated on the server. Items are entered as multiline text in this first version.</p>
+    <p className="field-help">A PDF and a snapshot of this template revision are saved. Fields and layout come from the selected template. Calculations are validated on the server.</p>
     <div><Button type="submit" loading={busy}>Generate PDF</Button></div>
   </form>
 }

@@ -8,8 +8,9 @@ export function createPluginApi(id: string) {
     return `/plugins/${id}${route}`
   }
   return {
-    get: <T>(route: string) => api.get<T>(path(route)).then(response => response.data),
+    get: <T>(route: string, params?: Record<string, string | number>) => api.get<T>(path(route), { params }).then(response => response.data),
     post: <T>(route: string, body: unknown) => api.post<T>(path(route), body).then(response => response.data),
     put: <T>(route: string, body: unknown) => api.put<T>(path(route), body).then(response => response.data),
+    delete: (route: string, params?: Record<string, string | number>) => api.delete(path(route), { params }).then(() => undefined),
   }
 }

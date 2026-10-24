@@ -13,6 +13,7 @@ Open **Administration** (`/admin`) to see cards for each section. Admin sections
 | Security & MFA | `/account/security` | Personal authenticator/email enrollment and recovery codes |
 | File sharing | `/admin/shares` | Protected PDF email attachments and online links |
 | Webhooks | `/admin/webhooks` | Authenticated JSON receipt and manual outgoing requests |
+| Workflow builder | `/admin/workflows` | Design, validate, and publish guided processes |
 | Document templates | `/admin/document-templates` | WeasyCanvas designer, typed/derived fields, publishing |
 | AI & search | `/admin/ai` | Search, launcher, indexing switches, optional providers |
 | Superset workspace | `/admin/superset-graph-builder` | Dashboard, chart, and dataset authoring |
@@ -20,7 +21,7 @@ Open **Administration** (`/admin`) to see cards for each section. Admin sections
 | System health | `/admin/system` | Service connectivity and runtime details |
 | Audit & backup | `/admin/audit` | Audit history and application metadata export |
 
-Users open shared storage at `/storage`, insights at `/dashboards`, their generated PDF library at `/documents`, and workflow diagrams at `/workflows`. Search and chat controls follow the admin feature switches. Generated documents and workflows are owner-scoped; admins can manage all of them.
+Users open shared storage at `/storage`, insights at `/dashboards`, their generated PDF library at `/documents`, and guided workflows at `/workflows`. Search and chat controls follow the admin feature switches. Admins manage workflow designs and generated documents. Each workflow run and its progress are private to the member who started it, including against other admins. Published workflows grant access to their PDFs through the run as document/email steps are reached.
 
 ## User access management
 

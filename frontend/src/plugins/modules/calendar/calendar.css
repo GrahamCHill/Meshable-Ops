@@ -1,0 +1,9 @@
+.calendar-grid { display:grid;gap:1rem; }
+.calendar-month,.calendar-week { grid-template-columns:repeat(7,minmax(0,1fr)); }
+.calendar-week .calendar-day { min-height:15rem; }
+.calendar-day.calendar-grid { grid-template-columns:minmax(0,1fr); }
+.calendar-day { min-height:6rem;display:flex;flex-direction:column;align-items:start;gap:.4rem;overflow-wrap:anywhere; }
+.calendar-day time { color:var(--text-muted,#666);font-size:.85rem; }
+.calendar-day button { text-align:left; }
+.calendar-description { white-space:pre-wrap; }
+@media(max-width:650px) { .calendar-month { gap:.35rem;font-size:.8rem; } .calendar-day { min-height:4rem; } .calendar-week { grid-template-columns:minmax(0,1fr); } .calendar-week .calendar-day { min-height:5rem; } }

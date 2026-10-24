@@ -10,6 +10,15 @@ import org.mockito.Mockito.*
 import java.util.Optional
 
 class DocumentAccessTest {
+    @Test fun `template category is optional metadata without fixed business document types`() {
+        jakarta.validation.Validation.buildDefaultValidatorFactory().use { factory ->
+            val validator = factory.validator
+            val request = TemplateRequest("General document", template = jacksonObjectMapper().createObjectNode())
+            assertThat(validator.validate(request)).isEmpty()
+            assertThat(validator.validate(request.copy(category = "Internal policy"))).isEmpty()
+            assertThat(validator.validate(request.copy(category = "x".repeat(101))).map { it.propertyPath.toString() }).contains("category")
+        }
+    }
     @Test fun `users cannot access or attach another users document and administrators can manage it`() {
         val repository = mock(GeneratedDocumentRepository::class.java)
         val access = DocumentAccess(mock(UserRepository::class.java), repository)

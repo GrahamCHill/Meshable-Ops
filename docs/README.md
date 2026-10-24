@@ -14,6 +14,9 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Create a versioned template copy and deploy automatically over SSH | [GitHub Actions deployment](github-deployment.md) |
 | Set a business name, colours, logos, and sign-in backgrounds | [Branding](branding.md) |
 | Create plugins with pages, submenus, tables, and search | [Plugin authoring](plugins/README.md) |
+| Link Git repositories/PRs to boards and cards | [Source-control plugins](plugins/source-control.md) |
+| Use day/week/month views, private member sync, and board deadlines | [Calendar plugins](plugins/calendar.md) |
+| Add dependencies and optional connections between plugins | [Plugin composition](plugins/composition.md) |
 | Find admin sections and manage users and access | [Administration](administration.md) |
 | Connect buckets/containers, select shared folders, and configure uploads | [Storage connections](storage-connections.md) |
 | Author reports and manage embedded dashboards | [Dashboards and Superset](dashboards.md) |
@@ -25,7 +28,7 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Enroll an authenticator, verify email MFA, or use recovery codes | [Optional MFA](mfa.md) |
 | Send or receive authenticated JSON webhooks | [Webhooks](webhooks.md) |
 | Email password-protected, watermarked PDF attachments | [Protected PDF sharing](file-sharing.md) |
-| Design templates, generate quotes/invoices, and build workflow diagrams | [Documents and workflows](documents-and-workflows.md) |
+| Design templates, generate PDFs, and build or follow workflows | [Documents and workflows](documents-and-workflows.md) |
 | Inspect extraction formats, limits, and processing states | [Document processing](document-processing-extension.md) |
 | Understand tables, MongoDB collections, and backup boundaries | [Database layout](database-layout.md) |
 | Deploy, upgrade, verify, or troubleshoot the stack | [Deployment](deployment.md) |

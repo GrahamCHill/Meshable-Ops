@@ -7,7 +7,7 @@ export function isFieldRules(value: unknown): value is FieldRule[] {
     ['TEXT','MULTILINE','NUMBER','MONEY','DATE','EMAIL','DERIVED'].includes(rule.type) && Array.isArray(rule.inputs) && rule.inputs.length <= 2 && rule.inputs.every((key: unknown) => typeof key === 'string') &&
     (rule.operation === undefined || ['ADD','SUBTRACT','MULTIPLY','DIVIDE','PERCENT'].includes(rule.operation)))
 }
-export type AppTemplate = { id: string; name: string; category: 'QUOTE' | 'INVOICE' | 'OTHER'; published: boolean; revision: number; updatedAt: string; template: DocumentTemplate; fieldRules: FieldRule[] }
+export type AppTemplate = { id: string; name: string; category: string; published: boolean; revision: number; updatedAt: string; template: DocumentTemplate; fieldRules: FieldRule[] }
 export type TemplateInput = Omit<AppTemplate, 'id' | 'updatedAt'>
 export type GeneratedDocument = { id: string; ownerId: string; templateId: string; templateRevision: number; templateName: string; name: string; filename: string; pageCount: number; byteSize: number; createdAt: string }
 export type EmailDocumentInput = { recipient: string; subject: string; text: string; protection: 'PLAIN' | 'PASSWORD'; password?: string }

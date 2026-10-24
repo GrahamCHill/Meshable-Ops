@@ -58,6 +58,6 @@ class PluginConfigurationService(private val registry: PluginRegistry, private v
         val secrets = manifest.settingsFields.filter { it.type == PluginFieldType.SECRET }.map { it.key }.toSet()
         val publicKeys = manifest.settingsFields.filter { it.type != PluginFieldType.SECRET }.map { it.key }.toSet()
         return PluginConfigurationView(values.filterKeys { it in publicKeys }, secrets.filter { !values[it].isNullOrBlank() }.toSet(),
-            manifest.settingsFields.filter { it.required && values[it.key].isNullOrBlank() }.map { it.label }, revision, encryption.configured)
+            registry.missingConfiguration(manifest.id, values), revision, encryption.configured)
     }
 }

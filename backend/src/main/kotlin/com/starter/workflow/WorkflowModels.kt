@@ -28,19 +28,22 @@ data class WorkflowEdge(@field:Pattern(regexp = "[A-Za-z0-9_-]{1,80}") val id: S
     @field:Size(max = 80) val source: String, @field:Size(max = 80) val target: String, val branch: Branch = Branch.NEXT)
 data class WorkflowGraph(@field:Valid @field:Size(max = 50) val nodes: List<WorkflowBlock>, @field:Valid @field:Size(max = 100) val edges: List<WorkflowEdge>)
 data class WorkflowRequest(@field:NotBlank @field:Size(max = 120) val name: String, val state: WorkflowState = WorkflowState.DRAFT,
-    @field:Valid val graph: WorkflowGraph, @field:Size(max = 50) val documentIds: List<UUID> = emptyList(), @field:Min(0) val revision: Long = 0)
+    @field:Valid val graph: WorkflowGraph, @field:Size(max = 50) val documentIds: List<UUID> = emptyList(), @field:Min(0) val revision: Long = 0, val published: Boolean = false)
 data class WorkflowView(val id: UUID, val ownerId: UUID, val name: String, val state: WorkflowState, val revision: Long,
-    val updatedAt: Instant, val graph: WorkflowGraph, val documentIds: List<UUID>)
+    val updatedAt: Instant, val graph: WorkflowGraph, val documentIds: List<UUID>, val published: Boolean = false)
 
 @Entity @Table(name = "workflow_definitions", indexes = [Index(columnList = "owner_id,updated_at")])
 class WorkflowDefinition(@Id val id: UUID = UUID.randomUUID(), val ownerId: UUID = UUID.randomUUID(), var name: String = "",
     @Enumerated(EnumType.STRING) var state: WorkflowState = WorkflowState.DRAFT,
     @get:JsonIgnore @Column(columnDefinition = "TEXT") var graphJson: String = "{}",
     @get:JsonIgnore @Column(columnDefinition = "TEXT") var documentIdsJson: String = "[]",
-    val createdAt: Instant = Instant.now(), var updatedAt: Instant = Instant.now(), @Version var revision: Long = 0) {
+    val createdAt: Instant = Instant.now(), var updatedAt: Instant = Instant.now(), @Version var revision: Long = 0,
+    @Column(nullable=false) @org.hibernate.annotations.ColumnDefault("false") var published: Boolean = false) {
     override fun toString() = "WorkflowDefinition(id=$id)"
 }
 interface WorkflowRepository : JpaRepository<WorkflowDefinition, UUID> {
+    @Query("SELECT w FROM WorkflowDefinition w WHERE w.state = com.starter.workflow.WorkflowState.READY AND (w.published = true OR :admin = true) ORDER BY w.updatedAt DESC")
+    fun runnable(admin: Boolean,pageable: Pageable): List<WorkflowDefinition>
     @Query("SELECT w FROM WorkflowDefinition w WHERE (:admin = true OR w.ownerId = :owner) ORDER BY w.updatedAt DESC")
     fun visible(owner: UUID, admin: Boolean, pageable: Pageable): List<WorkflowDefinition>
 }

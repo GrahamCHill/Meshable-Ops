@@ -46,7 +46,9 @@ class PluginDataAccessTest {
         `when`(jdbc.update("DELETE FROM \"plugin_kanban_boards\"")).thenReturn(3)
         assertThat(data.clear("kanban", PluginClearRequest("kanban")).deletedRows).containsEntry("plugin_kanban_boards", 3)
         val ordered = inOrder(jdbc)
+        ordered.verify(jdbc).execute("LOCK TABLE \"plugin_kanban_development_links\" IN SHARE ROW EXCLUSIVE MODE")
         ordered.verify(jdbc).execute("LOCK TABLE \"plugin_kanban_boards\" IN SHARE ROW EXCLUSIVE MODE")
+        ordered.verify(jdbc).update("DELETE FROM \"plugin_kanban_development_links\"")
         ordered.verify(jdbc).update("DELETE FROM \"plugin_kanban_boards\"")
         verifyNoMoreInteractions(jdbc)
     }

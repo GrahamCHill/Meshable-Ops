@@ -31,6 +31,7 @@ import './styles/global.css'
 
 const AdminTemplatesPage = lazy(() => import('./components/pages/AdminTemplatesPage'))
 const DocumentsPage = lazy(() => import('./components/pages/DocumentsPage'))
+const AdminWorkflowsPage = lazy(() => import('./components/pages/AdminWorkflowsPage'))
 const WorkflowsPage = lazy(() => import('./components/pages/WorkflowsPage'))
 const PluginPage = lazy(() => import('./plugins/PluginPage'))
 const loading = (children: React.ReactNode) => <Suspense fallback={<p role="status">Loading workspace…</p>}>{children}</Suspense>
@@ -82,6 +83,7 @@ function App() {
                     <Route path="/admin/webhooks" element={<AdminRoute><AdminWebhooksPage /></AdminRoute>} />
                     <Route path="/admin/document-templates" element={<AdminRoute>{loading(<AdminTemplatesPage />)}</AdminRoute>} />
                     <Route path="/documents" element={loading(<DocumentsPage />)} />
+                    <Route path="/admin/workflows" element={<AdminRoute>{loading(<AdminWorkflowsPage />)}</AdminRoute>} />
                     <Route path="/workflows" element={loading(<WorkflowsPage />)} />
                     <Route path="/admin/storage" element={<AdminRoute><AdminStoragePage /></AdminRoute>} />
                     <Route path="/admin/system" element={<AdminRoute><AdminSystemPage /></AdminRoute>} />
