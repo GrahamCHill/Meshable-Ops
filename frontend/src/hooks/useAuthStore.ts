@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+// Remove credentials left by earlier releases; only a non-secret UI marker is persisted.
+localStorage.removeItem('token')
+
 interface AuthUser {
   id: string
   email: string
@@ -26,9 +29,9 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       token: null,
       user: null,
-      login: (token, user) => {
-        localStorage.setItem('token', token)
-        set({ token, user })
+      login: (_token, user) => {
+        localStorage.removeItem('token')
+        set({ token: 'cookie-session', user })
       },
       logout: () => {
         localStorage.removeItem('token')
@@ -40,6 +43,6 @@ export const useAuthStore = create<AuthState>()(
       refreshUser: user => set({ user }),
       isAuthenticated: () => !!get().token,
     }),
-    { name: 'auth-storage', partialize: state => ({ token: state.token, user: state.user }) }
+    { name: 'auth-storage', version: 2, migrate: () => ({token:null,user:null}), partialize: state => ({ token: state.user ? 'cookie-session' : null, user: state.user }) }
   )
 )

@@ -22,6 +22,7 @@ class ProjectSettingsService(private val records: ProjectSettingsRepository, pri
         jdbc.execute("SELECT pg_advisory_xact_lock(50272026)")
         val value = request.settings
         ProjectSectionRules.validate(value)
+        if(users.findAllById(value.sectionMoveUserIds).filter {it.active && it.role!="EXTERNAL"}.map {it.id}.toSet()!=value.sectionMoveUserIds)throw BadRequestException("Choose active internal users for moving projects")
         val assigned = jdbc.queryForList("SELECT DISTINCT category FROM workspace_projects", String::class.java).toSet()
         if (!value.sections.map { it.id }.toSet().containsAll(assigned)) throw BadRequestException("Move projects to another section before removing their current section")
         if (value.tags.size > 100 || value.tags.map { it.id }.distinct().size != value.tags.size || value.tags.map { it.name.trim().lowercase() }.distinct().size != value.tags.size) throw BadRequestException("Use up to 100 unique project tags")

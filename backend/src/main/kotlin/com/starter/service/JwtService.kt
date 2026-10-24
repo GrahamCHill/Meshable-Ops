@@ -30,6 +30,12 @@ class JwtService {
             .compact()
 
     fun extractUsername(token: String): String? = extractClaim(token, Claims::getSubject)
+    fun browserContext(token: String): Pair<java.util.UUID,String>? {
+        val claims=Jwts.parser().verifyWith(key()).build().parseSignedClaims(token).payload
+        val id=(claims["sid"] as? String)?.let {runCatching {java.util.UUID.fromString(it)}.getOrNull()} ?: return null
+        val fingerprint=claims["fp"] as? String ?: return null
+        return id to fingerprint
+    }
 
     fun isTokenValid(token: String, userDetails: UserDetails): Boolean {
         val username = extractUsername(token) ?: return false

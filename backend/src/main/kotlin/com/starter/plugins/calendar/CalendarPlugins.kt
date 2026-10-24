@@ -11,7 +11,6 @@ class CalendarPlugin : WorkspacePlugin {
         compatibleVersions = listOf("1.0.0"),
         extensions = setOf(PluginExtension.PAGE, PluginExtension.API, PluginExtension.DATABASE, PluginExtension.SETTINGS),
         navigationLabel = "Calendar", capabilities = mapOf("calendar.events" to "Calendar events"),
-        menuItems = listOf(PluginMenuItem("events", "Events")),
         tables = listOf(PluginTable("plugin_calendar_sync_links", "Personal sync relationships"), PluginTable("plugin_calendar_events", "Calendar events"),
             PluginTable("plugin_calendar_connections", "Personal connections and encrypted credentials")),
         features = listOf(PluginFeature("board-deadlines", "Kanban deadlines and sprints", setOf("kanban.boards")),

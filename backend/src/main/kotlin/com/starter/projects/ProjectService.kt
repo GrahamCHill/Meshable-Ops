@@ -22,22 +22,23 @@ class ProjectService(private val projects: ProjectRepository, private val client
     private val access: AccessControlService, private val settings: ProjectSettingsService, private val branding: BrandingPreferencesService,
     private val mapper: ObjectMapper, private val jdbc: JdbcTemplate, private val artwork: com.starter.service.WorkspaceArtworkService? = null) {
     fun people(email: String): List<ProjectPerson> { policy.actor(email); return users.findAll().filter { it.active && it.role != "EXTERNAL" }.sortedBy { it.name ?: it.username }.map { ProjectPerson(it.id, it.name ?: it.username, it.email) } }
-    fun options(email: String): Map<String, Any> { val actor = policy.actor(email); val configuration = settings.current().settings; val canCreate = ProjectCreationRules.allowed(actor, jdbc); return mapOf("tags" to configuration.tags, "groups" to groups.findAll().map { mapOf("id" to it.id, "name" to it.name, "description" to it.description, "kind" to it.kind, "projectRole" to it.projectRole) }, "identityName" to branding.current().applicationName, "sections" to configuration.sections, "defaultSectionId" to configuration.defaultSectionId, "canCreateProjects" to canCreate, "canCreateClients" to canCreate) }
-    fun list(email: String, query: String = "", category: String? = null, tags: Set<UUID> = emptySet()): List<ProjectSummary> {
+    fun options(email: String): Map<String, Any> { val actor = policy.actor(email); val configuration = settings.current().settings; val canCreate = ProjectCreationRules.allowed(actor, jdbc); return mapOf("tags" to configuration.tags, "groups" to groups.findAll().map { mapOf("id" to it.id, "name" to it.name, "description" to it.description, "kind" to it.kind, "projectRole" to it.projectRole) }, "identityName" to branding.current().applicationName, "sections" to configuration.sections, "defaultSectionId" to configuration.defaultSectionId, "canCreateProjects" to canCreate, "canCreateClients" to canCreate, "inactiveSectionId" to (configuration.inactiveSectionId ?: ""), "canMoveProjects" to ProjectSectionRules.canMove(actor,configuration)) }
+    fun list(email: String, query: String = "", category: String? = null, tags: Set<UUID> = emptySet(), clientId: UUID? = null, offset: Int = 0, limit: Int = 200): List<ProjectSummary> {
         val actor = policy.actor(email)
-        if (query.length > 200 || tags.size > 20) throw BadRequestException("Use a search up to 200 characters and up to 20 tag filters")
+        if (query.length > 200 || tags.size > 20 || offset !in 0..1000000 || limit !in 1..201) throw BadRequestException("Use a search up to 200 characters and up to 20 tag filters")
         val args = mutableListOf<Any>(*ProjectAccessSql.args(actor))
         val conditions = mutableListOf(ProjectAccessSql.predicate())
         val configuration = settings.current().settings
         if (!category.isNullOrBlank()) { ProjectSectionRules.require(configuration, category); conditions += "p.category = ?"; args += category }
         if (query.isNotBlank()) { conditions += "(p.name ILIKE ? ESCAPE '\\' OR COALESCE(c.name, '') ILIKE ? ESCAPE '\\' OR CAST(p.details_json AS jsonb)->>'description' ILIKE ? ESCAPE '\\')"; val term = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"; repeat(3) { args += term } }
         tags.forEach { conditions += "jsonb_exists(COALESCE(CAST(p.details_json AS jsonb)->'tagIds','[]'::jsonb), ?)"; args += it.toString() }
+        if(clientId!=null){conditions += "p.client_id = ?";args += clientId}
         val identity = branding.current().applicationName
-        val found = jdbc.query("SELECT p.id, p.name, p.client_id, c.name AS client_name, p.category, p.details_json, p.updated_at FROM workspace_projects p LEFT JOIN workspace_clients c ON c.id = p.client_id WHERE ${conditions.joinToString(" AND ")} ORDER BY p.updated_at DESC, p.id LIMIT 200",
+        val found = jdbc.query("SELECT p.id, p.name, p.client_id, c.name AS client_name, p.category, p.details_json, p.updated_at, p.revision FROM workspace_projects p LEFT JOIN workspace_clients c ON c.id = p.client_id WHERE ${conditions.joinToString(" AND ")} ORDER BY p.updated_at DESC, p.id LIMIT ? OFFSET ?",
             { rs, _ -> ProjectSummary(rs.getObject("id", UUID::class.java), rs.getString("name"), rs.getObject("client_id", UUID::class.java), rs.getString("client_name") ?: identity,
-                rs.getString("category"), mapper.readValue(rs.getString("details_json"), ProjectDetails::class.java).tagIds, rs.getTimestamp("updated_at").toInstant()) }, *args.toTypedArray())
+                rs.getString("category"), mapper.readValue(rs.getString("details_json"), ProjectDetails::class.java).tagIds, rs.getTimestamp("updated_at").toInstant(),revision=rs.getLong("revision")) }, *(args+listOf(limit,offset)).toTypedArray())
         val icons = artwork?.many(found.map { "project:${it.id}" }).orEmpty()
-        return found.map { it.copy(artwork = icons["project:${it.id}"] ?: com.starter.service.ArtworkView(), categoryName = ProjectSectionRules.name(configuration, it.category)) }
+        return found.map { it.copy(artwork = icons["project:${it.id}"] ?: com.starter.service.ArtworkView(), categoryName = ProjectSectionRules.name(configuration, it.category),canMove=ProjectSectionRules.canMove(actor,configuration)) }
     }
     fun get(email: String, id: UUID): ProjectView = view(policy.require(id, policy.actor(email)), policy.actor(email))
     @Transactional
@@ -55,6 +56,7 @@ class ProjectService(private val projects: ProjectRepository, private val client
         jdbc.execute("SELECT pg_advisory_xact_lock_shared(50272026)")
         val configuration = settings.current().settings
         val selectedSection = ProjectSectionRules.require(configuration, input.category ?: configuration.defaultSectionId)
+        if(id!=null && selectedSection!=row.category && !ProjectSectionRules.canMove(actor,configuration))throw ForbiddenException("You are not allowed to move projects between sections")
         val knownTags = configuration.tags.map { it.id }.toSet()
         val priorTags = if (id == null) emptySet() else policy.details(row).tagIds
         if (!(knownTags + priorTags).containsAll(value.tagIds)) throw BadRequestException("Choose existing project tags")

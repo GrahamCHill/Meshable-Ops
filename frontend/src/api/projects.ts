@@ -13,13 +13,13 @@ export interface StorageLink {id: string; folderId: string; path: string; direct
 export interface ProjectDetails {description: string; members: {userId: string; role: ProjectRole}[]; groupIds: string[]; tagIds: string[]; contacts: Contact[]; contactSource: 'CLIENT' | 'PROJECT'; links: WebLink[]; storage: StorageLink[]}
 export interface ProjectInput {name: string; leadId: string; clientId: string | null; category: ProjectCategory; details: ProjectDetails; revision: number}
 export interface Project extends ProjectInput {id: string; clientName: string; categoryName: string; inheritedContacts: Contact[]; effectiveContacts: Contact[]; canManage: boolean; updatedAt: string}
-export interface ProjectSummary {id: string; name: string; clientId: string | null; clientName: string; category: ProjectCategory; categoryName: string; tagIds: string[]; updatedAt: string; artwork:Artwork}
+export interface ProjectSummary {id: string; name: string; clientId: string | null; clientName: string; category: ProjectCategory; categoryName: string; revision?:number;canMove?:boolean; tagIds: string[]; updatedAt: string; artwork:Artwork}
 export interface ClientInput {name: string; details: {description: string; contacts: Contact[]; links: WebLink[]}; revision: number}
 export interface Client extends ClientInput {id: string; canManage: boolean; logo: Artwork}
 export interface ProjectTag {id: string; name: string; description: string; groupIds: string[]}
 export interface WorkGroup {id: string; name: string; description: string; kind: 'TEAM' | 'DEPARTMENT'; projectRole: ProjectRole; details: {memberIds: string[]; tagIds: string[]}; revision: number}
-export interface ProjectSettings {settings: {tags: ProjectTag[]; sections: ProjectSection[]; defaultSectionId: string}; revision: number}
-export interface ProjectOptions {canCreateProjects: boolean; canCreateClients: boolean; sections: ProjectSection[]; defaultSectionId: string; tags: ProjectTag[]; groups: Omit<WorkGroup, 'details' | 'revision'>[]; identityName: string}
+export interface ProjectSettings {settings: {tags: ProjectTag[]; sections: ProjectSection[]; defaultSectionId: string;inactiveSectionId?:string|null;sectionMoveRoles?:string[];sectionMoveUserIds?:string[]}; revision: number}
+export interface ProjectOptions {canCreateProjects: boolean; canCreateClients: boolean; sections: ProjectSection[]; defaultSectionId: string; tags: ProjectTag[]; groups: Omit<WorkGroup, 'details' | 'revision'>[]; identityName: string;inactiveSectionId?:string|null;canMoveProjects?:boolean}
 export interface ContextExtension {pluginId: string; label: string; href: string; panels: {title: string; text: string}[]}
 export interface ProjectReport {id: string; kind: string; from: string; to: string; createdAt: string; deliveries: Record<string, {status: string; message: string}>}
 export interface ReportInput {kind: 'SPRINT' | 'MONTHLY' | 'PERIOD'; from: string; to: string; sprintId: string | null; boardId: string | null; sendEmail: boolean; recipientIds: string[]}
@@ -30,6 +30,8 @@ export interface ScheduleInput {enabled: boolean; kind: 'REPORT' | 'DIGEST'; cad
 export interface WorkSchedule {id: string; projectId: string | null; configuration: ScheduleInput; nextRunAt: string | null; lastRunAt: string | null; lastStatus: string | null}
 export const emptyDetails = (): ProjectDetails => ({description: '', members: [], groupIds: [], tagIds: [], contacts: [], contactSource: 'CLIENT', links: [], storage: []})
 export const projectsApi = {
+  page: (category:string,query:string,clientId:string,tags:string[],offset:number) => api.get<{items:ProjectSummary[];hasMore:boolean;nextOffset:number}>('/projects/page',{params:{category,query,clientId:clientId||undefined,tags:tags.length?tags.join(','):undefined,offset,limit:10}}).then(r=>r.data),
+  moveSection: (project:ProjectSummary,sectionId:string) => api.post(`/projects/${project.id}/section`,{sectionId,revision:project.revision??0}),
   workSummary: (id:string) => api.get<WorkSummary>(`/projects/${id}/work-summary`).then(r=>r.data),
   list: (query = '', category?: string, tags: string[] = []) => api.get<ProjectSummary[]>('/projects', {params: {query, category: category || undefined, tags: tags.length ? tags.join(',') : undefined}}).then(r => r.data),
   get: (id: string) => api.get<Project>(`/projects/${id}`).then(r => r.data),

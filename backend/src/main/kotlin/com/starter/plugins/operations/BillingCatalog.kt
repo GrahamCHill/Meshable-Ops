@@ -55,7 +55,7 @@ class BillingCatalog(private val store:OperationsStore,private val access:Operat
         val p=project?.let {access.projects.require(it,actor)}
         val rows=if(project!=null)store.list("billing-items","kind='LINK' AND project_id=?",project)+p?.clientId?.let(::linksForClient).orEmpty() else linksForClient(client!!)
         return rows.map {row->val l=store.decode(row,BillingItemLink::class.java)
-            mapOf("id" to row.id,"revision" to row.revision,"link" to l,"item" to (project?.let {l.approvedOverrides[it]} ?: l.baseItem),"scope" to if(l.projectId!=null)"PROJECT"else"CLIENT", "pendingApproval" to (l.proposedItem!=null&&(project==null||l.approvals[project]!=l.proposalVersion)),"canApprove" to (p!=null&&canApprove(actor,p)))
+            mapOf("id" to row.id,"revision" to row.revision,"link" to l,"item" to (project?.let {l.approvedOverrides[it]} ?: l.baseItem),"scope" to if(l.projectId!=null)"PROJECT" else "CLIENT", "pendingApproval" to (l.proposedItem!=null&&(project==null||l.approvals[project]!=l.proposalVersion)),"canApprove" to (p!=null&&canApprove(actor,p)))
         }
     }
     @Transactional fun propose(email:String,id:UUID,input:BillingOverrideInput):OpsRow {

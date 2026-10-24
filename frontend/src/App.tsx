@@ -64,8 +64,8 @@ function App() {
   const token = useAuthStore(state => state.token)
   const qc = useMemo(makeQueryClient, [token])
   return (
-    <ThemeProvider>
-      <QueryClientProvider client={qc}>
+    <QueryClientProvider client={qc}>
+      <ThemeProvider>
         <BrandingHead />
         <BrowserRouter>
           <PageDraftProvider>
@@ -131,8 +131,8 @@ function App() {
           </Routes>
           </PageDraftProvider>
         </BrowserRouter>
-      </QueryClientProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   )
 }
 

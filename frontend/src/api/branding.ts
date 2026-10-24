@@ -1,6 +1,13 @@
 import api from './http'
 
 export type BrandingKind = 'LOGO' | 'FAVICON'
+export interface WorkspacePalette {
+  background?: string | null; surface?: string | null; raised?: string | null; text?: string | null; textSecondary?: string | null
+  link?: string | null; sidebarBackground?: string | null; sidebarText?: string | null
+  tableHeaderBackground?: string | null; tableHeaderText?: string | null; headerBackground?: string | null; headerText?: string | null
+}
+export interface WorkspaceThemes { switchingEnabled: boolean; fixedMode: 'LIGHT' | 'DARK'; light: WorkspacePalette; dark: WorkspacePalette; custom: WorkspacePalette }
+export const defaultWorkspaceThemes: WorkspaceThemes = { switchingEnabled: true, fixedMode: 'LIGHT', light: {}, dark: {}, custom: {} }
 export interface BrandingSettings {
   applicationName: string
   sidebarBackgroundColor: string | null
@@ -10,10 +17,11 @@ export interface BrandingSettings {
   loginBackgroundSlot: number | null
   slideshowSeconds: number
   revision: number
+  themes: WorkspaceThemes
 }
 export interface LoginImage { slot: number; version: string }
 export interface Branding { logoVersion: string | null; faviconVersion: string | null; settings: BrandingSettings; loginImages: LoginImage[] }
-export const defaultBrandingSettings: BrandingSettings = { applicationName: 'Meshable Ops', sidebarBackgroundColor: null, sidebarTextColor: null, linkColor: null, loginBackgroundMode: 'NONE', loginBackgroundSlot: null, slideshowSeconds: 8, revision: 0 }
+export const defaultBrandingSettings: BrandingSettings = { applicationName: 'Meshable Ops', sidebarBackgroundColor: null, sidebarTextColor: null, linkColor: null, loginBackgroundMode: 'NONE', loginBackgroundSlot: null, slideshowSeconds: 8, revision: 0, themes: defaultWorkspaceThemes }
 export const defaultBrandImage = '/brand-mark.svg'
 export const brandingApi = {
   current: () => api.get<Branding>('/branding').then(response => response.data),

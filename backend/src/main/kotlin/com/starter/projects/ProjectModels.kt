@@ -25,7 +25,9 @@ data class ProjectSection(val id: String = UUID.randomUUID().toString(), val nam
 @JsonIgnoreProperties(value=["identityContacts"])
 data class ProjectSettings(val tags: List<ProjectTag> = emptyList(),
     val sections: List<ProjectSection> = listOf(ProjectSection(ProjectCategory.PROPOSAL, "Proposals"), ProjectSection(ProjectCategory.ACTIVE, "Active"), ProjectSection(ProjectCategory.ARCHIVED, "Archived")),
-    val defaultSectionId: String = ProjectCategory.ACTIVE)
+    val defaultSectionId: String = ProjectCategory.ACTIVE,
+    val inactiveSectionId: String? = sections.find {it.id==ProjectCategory.ARCHIVED}?.id,
+    val sectionMoveRoles: Set<String> = setOf("ADMIN"),val sectionMoveUserIds: Set<UUID> = emptySet())
 
 @Entity @Table(name = "workspace_clients")
 class ClientRecord(@Id val id: UUID = UUID.randomUUID(), val ownerId: UUID = UUID.randomUUID(), var name: String = "",
@@ -59,7 +61,7 @@ data class ProjectView(val id: UUID, val name: String, val clientId: UUID?, val 
     val effectiveContacts:List<Contact> = if(details.contactSource==ProjectContactSource.PROJECT)details.contacts else inheritedContacts,
     val categoryName: String = category)
 data class ProjectSummary(val id: UUID, val name: String, val clientId: UUID?, val clientName: String, val category: String, val tagIds: Set<UUID>, val updatedAt: Instant,
-    val artwork: com.starter.service.ArtworkView = com.starter.service.ArtworkView(), val categoryName: String = category)
+    val artwork: com.starter.service.ArtworkView = com.starter.service.ArtworkView(), val categoryName: String = category,val revision: Long = 0,val canMove: Boolean = false)
 data class WorkGroupInput(val name: String, val description: String = "", val kind: GroupKind = GroupKind.TEAM, val projectRole: ProjectRole = ProjectRole.MEMBER,
     val details: WorkGroupData = WorkGroupData(), val revision: Long = -1)
 data class WorkGroupView(val id: UUID, val name: String, val description: String, val kind: GroupKind, val projectRole: ProjectRole, val details: WorkGroupData, val revision: Long)

@@ -24,9 +24,11 @@ export const adminGroups = [
   { id: 'documents-workflows', label: 'Documents & workflows', description: 'Reusable documents and the processes that use them.', items: [
   ] },
   { id: 'analytics-search', label: 'Analytics & search', description: 'Search providers, dashboards, and analytics authoring.', items: [
-    { to: '/admin/ai', label: 'AI & search', description: 'Configure AI providers, protect API keys, and index shared documents.' },
     { to: '/admin/superset-graph-builder', label: 'Superset workspace', description: 'Build dashboards, charts, and datasets.' },
     { to: '/admin/dashboard-links', label: 'Dashboard links', description: 'Choose the dashboards people see in the app.' },
+  ] },
+  { id: 'app-intelligence', label: 'App Intelligence', description: 'AI providers, embeddings, search and generated summaries.', items: [
+    { to: '/admin/ai', label: 'App Intelligence', description: 'Configure the optional LLM and embeddings used for search, retrospectives and operations.' },
   ] },
   { id: 'operations', label: 'Operations', description: 'Service health, activity history, and application backups.', items: [
     { to: '/admin/system', label: 'System health', description: 'Check services, connectivity, and runtime details.' },

@@ -82,11 +82,20 @@ class SecurityConfig(
 @Component
 class JwtAuthFilter(
     private val jwtService: JwtService,
-    private val userDetailsService: UserDetailsServiceImpl
+    private val userDetailsService: UserDetailsServiceImpl,
+    private val sessions: com.starter.security.BrowserSessions
 ) : OncePerRequestFilter() {
+    @Value("\${cors.allowed-origins}") private var allowedOrigins: String = ""
 
     override fun doFilterInternal(req: HttpServletRequest, res: HttpServletResponse, chain: FilterChain) {
         if (req.requestURI.startsWith("/api/webhooks/incoming/")) { chain.doFilter(req, res); return }
+        if(req.requestURI.startsWith("/api/") && req.method !in setOf("GET","HEAD","OPTIONS")) {
+            val origin=req.getHeader("Origin")
+            val own="${req.scheme}://${req.getHeader("Host") ?: req.serverName}"
+            if(req.getHeader("Sec-Fetch-Site")=="cross-site" || origin!=null && origin!=own && origin !in allowedOrigins.split(',').map(String::trim)) {
+                res.sendError(403,"Cross-site requests are not allowed");return
+            }
+        }
         val token = resolveToken(req)
         if (token == null) {
             chain.doFilter(req, res); return
@@ -95,26 +104,20 @@ class JwtAuthFilter(
             val username = jwtService.extractUsername(token)
             if (username != null && SecurityContextHolder.getContext().authentication == null) {
                 val userDetails = userDetailsService.loadUserByUsername(username)
-                if (userDetails.isEnabled && jwtService.isTokenValid(token, userDetails)) {
+                if (userDetails.isEnabled && jwtService.isTokenValid(token, userDetails) && sessions.valid(token,req)) {
+                    res.setHeader("Cache-Control","no-store")
                     val auth = UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
                     auth.details = WebAuthenticationDetailsSource().buildDetails(req)
                     SecurityContextHolder.getContext().authentication = auth
                 }
             }
         } catch (e: Exception) {
-            log.debug("JWT auth failed: ${e.message}")
+            log.debug("Browser session authentication rejected")
         }
         chain.doFilter(req, res)
     }
 
     private fun resolveToken(req: HttpServletRequest): String? {
-        val header = req.getHeader("Authorization")
-        if (header != null && header.startsWith("Bearer ")) {
-            return header.substring(7)
-        }
-
-        return req.cookies
-            ?.firstOrNull { it.name == "app_auth_token" && it.value.isNotBlank() }
-            ?.value
+        return com.starter.security.BrowserSessions.authToken(req)
     }
 }

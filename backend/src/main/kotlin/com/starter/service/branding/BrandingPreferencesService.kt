@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class BrandingPreferencesService(private val repository: BrandingPreferencesRepository, private val images: BrandingLoginImageRepository) {
+    private val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
     @Transactional(readOnly = true)
     fun current() = view(repository.findById(1).orElseGet { BrandingPreferencesRecord() })
 
@@ -25,6 +26,7 @@ class BrandingPreferencesService(private val repository: BrandingPreferencesRepo
         if (row.revision != request.revision) throw ConflictException("Branding changed. Reload the saved settings before editing.")
         row.applicationName = name; row.sidebarBackgroundColor = background; row.sidebarTextColor = text; row.linkColor = link
         row.loginBackgroundMode = request.loginBackgroundMode; row.loginBackgroundSlot = request.loginBackgroundSlot; row.slideshowSeconds = request.slideshowSeconds
+        row.themesJson = mapper.writeValueAsString(request.themes.copy(light = palette(request.themes.light), dark = palette(request.themes.dark), custom = palette(request.themes.custom)))
         return view(repository.saveAndFlush(row))
     }
     private fun color(value: String?): String? {
@@ -32,6 +34,10 @@ class BrandingPreferencesService(private val repository: BrandingPreferencesRepo
         if (!normalized.matches(Regex("#[0-9a-fA-F]{6}"))) throw BadRequestException("Colours must use six-digit hex values, such as #245A78")
         return normalized.lowercase()
     }
+    private fun palette(p: WorkspacePalette) = WorkspacePalette(color(p.background), color(p.surface), color(p.raised), color(p.text),
+        color(p.textSecondary), color(p.link), color(p.sidebarBackground), color(p.sidebarText), color(p.tableHeaderBackground),
+        color(p.tableHeaderText), color(p.headerBackground), color(p.headerText))
     private fun view(row: BrandingPreferencesRecord) = BrandingPreferences(if (row.applicationName == "WeaveOps") "Meshable Ops" else row.applicationName, row.sidebarBackgroundColor, row.sidebarTextColor,
-        row.linkColor, row.loginBackgroundMode, row.loginBackgroundSlot, row.slideshowSeconds, row.revision)
+        row.linkColor, row.loginBackgroundMode, row.loginBackgroundSlot, row.slideshowSeconds, row.revision,
+        mapper.readValue(row.themesJson, WorkspaceThemes::class.java))
 }

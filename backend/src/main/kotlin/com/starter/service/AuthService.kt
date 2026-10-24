@@ -25,9 +25,10 @@ class AuthService(
     private val authManager: AuthenticationManager,
     private val userDetailsService: UserDetailsServiceImpl,
     private val mfa: com.starter.mfa.MfaService,
+    private val browserSessions: com.starter.security.BrowserSessions? = null,
 ) {
     @Value("\${jwt.expiry-ms}") private var expiryMs: Long = 86_400_000L
-    @Value("\${app.auth-cookie-secure:false}") private var secureCookie: Boolean = false
+    @Value("\${app.auth-cookie-secure:true}") private var secureCookie: Boolean = true
 
     @Transactional
     fun register(req: RegisterRequest, response: HttpServletResponse): AuthResponse {
@@ -38,10 +39,7 @@ class AuthService(
             User(email = req.email, username = req.username,
                  password = passwordEncoder.encode(req.password), role = "USER")
         )
-        val ud = userDetailsService.loadUserByUsername(user.email)
-        val token = jwtService.generateToken(ud, mapOf("role" to user.role, "id" to user.id.toString()))
-        writeAuthCookie(response, token, expiryMs)
-        return user.toAuthResponse(token)
+        return issueSession(user,false,response)
     }
 
     fun login(req: AuthRequest, response: HttpServletResponse): com.starter.dto.LoginResponse {
@@ -60,20 +58,22 @@ class AuthService(
     fun refreshAuthCookie(email: String, response: HttpServletResponse): AuthResponse {
         val user = userRepository.findByEmail(email)
             .orElseThrow { UsernameNotFoundException("User not found") }
-        return issueSession(user, mfa.enabled(user.id), response)
+        return user.toAuthResponse("") // Validate the existing session without minting another transferable token.
     }
 
     fun issueSession(user: User, verifiedMfa: Boolean, response: HttpServletResponse): AuthResponse {
         val ud = userDetailsService.loadUserByUsername(user.email)
         if (!ud.isEnabled) throw org.springframework.security.authentication.DisabledException("Account is disabled")
-        val token = jwtService.generateToken(ud, mapOf("role" to user.role, "id" to user.id.toString(), "sv" to user.sessionVersion, "mfa" to verifiedMfa))
-        writeAuthCookie(response, token, expiryMs)
-        return user.toAuthResponse(token)
+        val context=browserSessions?.create(user.id,expiryMs) ?: throw IllegalStateException("Browser session storage is unavailable")
+        val token = jwtService.generateToken(ud, mapOf("role" to user.role, "id" to user.id.toString(), "sv" to user.sessionVersion, "mfa" to verifiedMfa,"sid" to context.id.toString(),"fp" to com.starter.security.SecureValues.hash(context.fingerprint)))
+        browserSessions.write(response,token,context,secureCookie,expiryMs)
+        return user.toAuthResponse("")
     }
 
     fun clearAuthCookie(response: HttpServletResponse) {
-        writeAuthCookie(response, "", 0)
+        browserSessions?.clear(response,secureCookie) ?: writeAuthCookie(response, "", 0)
     }
+    fun logout(request: jakarta.servlet.http.HttpServletRequest,response: HttpServletResponse) {browserSessions?.revoke(request);clearAuthCookie(response)}
 
     private fun writeAuthCookie(response: HttpServletResponse, token: String, maxAgeMs: Long) {
         val cookie = ResponseCookie.from("app_auth_token", token)

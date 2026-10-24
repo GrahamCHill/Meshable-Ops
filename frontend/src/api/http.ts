@@ -1,14 +1,20 @@
 import axios from 'axios'
+import {useAuthStore} from '../hooks/useAuthStore'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? '/api',
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 })
 
-// Inject JWT on every request
+// Credentials and the CSRF header are sent only to the configured application API.
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  const base=new URL(api.defaults.baseURL??'/api',window.location.origin)
+  const target=new URL(config.url??'',base.href.replace(/\/?$/,'/'))
+  if(!['http:','https:'].includes(target.protocol)||target.origin!==base.origin)throw new Error('API requests must stay on the configured application origin')
+  delete config.headers.Authorization
+  const csrf=document.cookie.split('; ').find(item=>item.startsWith('__Host-XSRF-TOKEN='))??document.cookie.split('; ').find(item=>item.startsWith('XSRF-TOKEN='))
+  if(csrf&& !['get','head','options'].includes((config.method??'get').toLowerCase()))config.headers['X-XSRF-TOKEN']=decodeURIComponent(csrf.slice(csrf.indexOf('=')+1))
   return config
 })
 
@@ -18,7 +24,7 @@ api.interceptors.response.use(
   err => {
     const authAttempt = /\/auth\/(login|mfa\/)|\/account\/mfa/.test(err.config?.url ?? '')
     if (err.response?.status === 401 && !authAttempt && err.response?.headers?.['x-meshable-plugin-response'] !== '1') {
-      localStorage.removeItem('token')
+      useAuthStore.getState().logout()
       window.location.href = '/login'
     }
     return Promise.reject(err)

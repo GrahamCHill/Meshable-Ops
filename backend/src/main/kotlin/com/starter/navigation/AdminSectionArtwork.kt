@@ -17,7 +17,7 @@ class AdminSectionCatalogue(private val registry:PluginRegistry,private val artw
     fun all():List<AdminSection> {
         val core=listOf(Triple("workspace","Workspace","layout"),Triple("people-security","People & security","users"),
             Triple("storage-sharing","Storage & sharing","cloud"),Triple("communications","Communications","mail"),
-            Triple("documents-workflows","Documents & workflows","workflow"),Triple("analytics-search","Analytics & search","chart"),Triple("operations","Operations","activity"))
+            Triple("documents-workflows","Documents & workflows","workflow"),Triple("analytics-search","Analytics & search","chart"),Triple("app-intelligence","App Intelligence","activity"),Triple("operations","Operations","activity"))
         val plugins=registry.installed().filter {!it.removed}.mapNotNull {it.manifest.adminMenu}.map {Triple(it.category,it.categoryLabel.ifEmpty {it.category},it.icon?.takeIf {name->name in WorkspaceArtworkService.ICONS} ?: "plug")}
         return (core+plugins).distinctBy {it.first}.map {(id,label,icon)->AdminSection(id,label,icon,artwork.current("admin:$id",icon))}
     }

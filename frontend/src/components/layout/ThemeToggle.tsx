@@ -3,7 +3,8 @@ import {useTheme} from '../../hooks/useTheme'
 import '../../styles/theme-toggle.css'
 
 export function ThemeToggle() {
-  const {mode, toggleMode} = useTheme()
+  const {mode, toggleMode, switchingEnabled} = useTheme()
+  if (!switchingEnabled) return null
 
   return <button type="button" className="theme-toggle" role="switch" aria-checked={mode === 'dark'}
     title={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`} onClick={toggleMode}>

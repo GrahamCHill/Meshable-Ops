@@ -29,7 +29,7 @@ class AuthController(private val authService: AuthService, private val rates: co
 
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun logout(response: HttpServletResponse) = authService.clearAuthCookie(response)
+    fun logout(response: HttpServletResponse,request: jakarta.servlet.http.HttpServletRequest) = authService.logout(request,response)
 
     @PostMapping("/session-cookie")
     fun refreshSessionCookie(

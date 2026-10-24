@@ -14,4 +14,5 @@ class BrandingPreferencesRecord(
     var loginBackgroundSlot: Int? = null,
     @Column(nullable = false) var slideshowSeconds: Int = 8,
     @Version var revision: Long = 0,
+    @Column(columnDefinition = "TEXT", nullable = false) @org.hibernate.annotations.ColumnDefault("'{}'") var themesJson: String = "{}",
 )
