@@ -1,0 +1,22 @@
+{
+  "manifest": {
+    "id": "zip-full-stack", "name": "Full stack example", "version": "1.0.0",
+    "description": "A React page calling uploaded Python and Kotlin code",
+    "compatibleVersions": ["1.0.0"], "runtimes": ["REACT", "PYTHON", "KOTLIN"],
+    "extensions": ["PAGE", "API", "DATABASE", "SEARCH", "SETTINGS"],
+    "tables": [{"name": "plugin_zip_full_stack_notes", "label": "Notes"}],
+    "settingsFields": [{"key": "heading", "label": "Heading", "maxLength": 100}]
+  },
+  "entrypoint": "frontend/index.html",
+  "backend": {
+    "modules": {
+      "notes": {"runtime": "PYTHON", "entrypoint": "backend/notes.py"},
+      "summary": {"runtime": "KOTLIN", "entrypoint": "backend/summary.jar"}
+    },
+    "routes": [
+      {"path": "/notes", "module": "notes", "methods": ["GET"], "permissions": ["data.read"]},
+      {"path": "/notes", "module": "notes", "methods": ["POST"], "permissions": ["data.write"]},
+      {"path": "/summary", "module": "summary", "methods": ["GET"], "permissions": ["data.read"]}
+    ]
+  }
+}

@@ -213,7 +213,7 @@ services:
       APP_BOOTSTRAP_USERS_JSON: ${APP_BOOTSTRAP_USERS_JSON:-}
       APP_WEBHOOK_ALLOW_PRIVATE_TARGETS: ${APP_WEBHOOK_ALLOW_PRIVATE_TARGETS:-false}
       APP_PLUGIN_ALLOW_PRIVATE_TARGETS: ${APP_PLUGIN_ALLOW_PRIVATE_TARGETS:-false}
-      APP_PLUGIN_RUNNER_URL: http://plugin-runner:8090
+      APP_PLUGIN_RUNNER_URL: ${APP_PLUGIN_RUNNER_URL:-http://plugin-runner:8090}
       APP_PLUGIN_RUNNER_TOKEN: ${APP_PLUGIN_RUNNER_TOKEN:-}
       APP_DOCUMENT_RENDER_URL: ${APP_DOCUMENT_RENDER_URL:-http://weasy-renderer:8000}
       APP_DOCUMENT_RENDER_TOKEN: ${APP_DOCUMENT_RENDER_TOKEN:-}
@@ -285,7 +285,7 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     tmpfs: ["/tmp:size=32m"]
-    mem_limit: 512m
+    mem_limit: 1g
     pids_limit: 64
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health')"]

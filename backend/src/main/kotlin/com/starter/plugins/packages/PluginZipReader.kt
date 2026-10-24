@@ -31,7 +31,7 @@ class PluginZipReader(mapper: ObjectMapper) {
                     if (!seen.add(path.lowercase(java.util.Locale.ROOT))) invalid("Duplicate ZIP entry")
                     val extension = path.substringAfterLast('.').lowercase()
                     val binary = extension in setOf("png", "jpg", "jpeg", "webp", "jar", "woff", "woff2")
-                    if (!entry.isDirectory && path !in setOf("plugin.json", "author.json", "LICENSE", "NOTICE") && extension !in setOf("html", "js", "css", "json", "py", "jar", "kt", "java", "ts", "tsx", "md", "txt", "xml", "toml", "yaml", "yml", "sh", "png", "jpg", "jpeg", "webp", "woff", "woff2")) invalid("Unsupported plugin artifact type")
+                    if (!entry.isDirectory && path !in setOf("plugin.json", "author.json", "LICENSE", "NOTICE") && extension !in setOf("html", "js", "mjs", "css", "json", "py", "jar", "kt", "java", "ts", "tsx", "md", "txt", "xml", "toml", "yaml", "yml", "sh", "png", "jpg", "jpeg", "webp", "woff", "woff2")) invalid("Unsupported plugin artifact type")
                     val output = java.io.ByteArrayOutputStream()
                     val buffer = ByteArray(8192)
                     while (true) {

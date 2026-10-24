@@ -1,0 +1,11 @@
+{
+  "manifest": {
+    "id": "zip-calculator", "name": "Backend calculator", "version": "1.0.0",
+    "description": "A backend-only Python endpoint with no frontend page",
+    "compatibleVersions": ["1.0.0"], "runtimes": ["PYTHON"], "extensions": ["API"]
+  },
+  "backend": {
+    "modules": {"calculator": {"runtime": "PYTHON", "entrypoint": "backend/calculator.py"}},
+    "routes": [{"path": "/calculate", "module": "calculator", "methods": ["POST"]}]
+  }
+}

@@ -1,0 +1,12 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion><groupId>com.meshable.examples</groupId><artifactId>zip-full-stack</artifactId><version>1.0.0</version>
+  <properties><kotlin.version>1.9.24</kotlin.version><project.build.sourceEncoding>UTF-8</project.build.sourceEncoding><maven.compiler.release>21</maven.compiler.release></properties>
+  <dependencies>
+    <dependency><groupId>org.jetbrains.kotlin</groupId><artifactId>kotlin-stdlib</artifactId><version>${kotlin.version}</version></dependency>
+    <dependency><groupId>com.fasterxml.jackson.core</groupId><artifactId>jackson-databind</artifactId><version>2.17.2</version></dependency>
+  </dependencies>
+  <build><plugins>
+    <plugin><groupId>org.jetbrains.kotlin</groupId><artifactId>kotlin-maven-plugin</artifactId><version>${kotlin.version}</version><executions><execution><id>compile</id><phase>compile</phase><goals><goal>compile</goal></goals><configuration><jvmTarget>21</jvmTarget><sourceDirs><sourceDir>${project.basedir}/backend</sourceDir><sourceDir>${project.basedir}/../../../plugin-runtime/sdk/kotlin</sourceDir></sourceDirs></configuration></execution></executions></plugin>
+    <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-assembly-plugin</artifactId><version>3.7.1</version><configuration><archive><manifest><mainClass>PluginKt</mainClass></manifest></archive><descriptorRefs><descriptorRef>jar-with-dependencies</descriptorRef></descriptorRefs></configuration><executions><execution><id>bundle</id><phase>package</phase><goals><goal>single</goal></goals></execution></executions></plugin>
+  </plugins></build>
+</project>

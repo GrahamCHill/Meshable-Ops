@@ -5,6 +5,9 @@
 /backend/target/
 /weasy-renderer/target/
 /weasy-renderer/.venv/
+/plugin-runtime/.venv/
+/plugin-runtime/target/
+/examples/plugins/*/target/
 .env
 .env.*
 !.env.example

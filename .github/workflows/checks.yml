@@ -78,6 +78,7 @@ jobs:
           cache-dependency-path: |
             ml-backend/requirements.txt
             weasy-renderer/requirements*.txt
+            plugin-runtime/requirements.txt
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-liberation
       - run: python -m venv /tmp/weaveops-renderer && /tmp/weaveops-renderer/bin/pip install -r weasy-renderer/requirements-dev.txt
       - run: /tmp/weaveops-renderer/bin/python -m unittest discover -s tests -v
@@ -86,7 +87,31 @@ jobs:
       - run: /tmp/weaveops-extraction/bin/python -m unittest discover -s tests -v
         working-directory: ml-backend
       - run: python -m unittest discover -s deploy/github/tests -v
+      - run: python -m venv /tmp/meshable-plugin-runtime && /tmp/meshable-plugin-runtime/bin/pip install -r plugin-runtime/requirements.txt
+      - run: /tmp/meshable-plugin-runtime/bin/python -m unittest discover -s tests -v
+        working-directory: plugin-runtime
       - run: python deploy/github/check-release-version.py
+
+  zip-plugin-example:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: examples/plugins/full-stack/pom.xml
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+      - run: npm ci
+        working-directory: frontend
+      - run: mvn --batch-mode --no-transfer-progress -f examples/plugins/full-stack/pom.xml package
+      - run: node examples/plugins/full-stack/build.mjs && python3 examples/plugins/full-stack/package.py
 
   deployment-config:
     runs-on: ubuntu-24.04

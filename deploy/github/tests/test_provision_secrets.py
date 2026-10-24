@@ -17,6 +17,7 @@ class ProvisionSecretsTests(unittest.TestCase):
             first = path.read_text()
             self.assertIn('POSTGRES_PASSWORD=', first)
             self.assertIn('APP_SECRETS_ENCRYPTION_KEY=', first)
+            self.assertIn('APP_PLUGIN_RUNNER_TOKEN=', first)
             module.complete(path)
             self.assertEqual(path.read_text(), first)
 

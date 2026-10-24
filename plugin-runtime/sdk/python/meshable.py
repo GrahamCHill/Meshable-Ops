@@ -6,6 +6,11 @@ import sys
 MAX_MESSAGE = 4 * 1024 * 1024
 
 
+class Response:
+    def __init__(self, body, status=200):
+        self.body, self.status = body, status
+
+
 class Host:
     def __init__(self):
         self.sequence = 0
@@ -38,7 +43,9 @@ def serve(handler):
     try:
         with open(os.environ['MESHABLE_REQUEST_FILE'], encoding='utf-8') as source:
             request = json.load(source)
-        result = json.dumps({'type': 'result', 'result': handler(request, Host())}, separators=(',', ':'))
+        value = handler(request, Host())
+        reply = value if isinstance(value, Response) else Response(value)
+        result = json.dumps({'type': 'result', 'status': reply.status, 'result': reply.body}, separators=(',', ':'))
         if len(result.encode()) > MAX_MESSAGE:
             raise ValueError('Result exceeds limits')
         print(result, flush=True)

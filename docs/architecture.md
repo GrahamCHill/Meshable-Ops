@@ -12,6 +12,7 @@ Trusted, compiled-in plugins register pages, submenus, APIs, database tables, an
 - Optional MFA gates session issuance. PostgreSQL stores encrypted factors, one-use challenges/recovery hashes, and shared rate counters. The notification boundary keeps core email and accepts separate Discord, Telegram, Teams, WhatsApp, or custom SMS adapters. Built-in MFA remains authenticator/email.
 - Admin webhook sends/receipts use authenticated JSON with encrypted bounded delivery history. Protected sharing generates password-encrypted, watermarked PDF attachments and separately controlled online links; originals stay in object storage.
 - Optional Documents and Workflows source plugins retain first-class pages and admin authoring. Their React/Kotlin modules own templates, typed fields, PDF persistence and guided runs; Documents contributes Python routes/workers to the private WeasyPrint host. Basic workflows operate independently, and project reports retain the shared renderer when either plugin is disabled. See [full-stack plugins](plugins/full-stack.md).
+- Uploaded ZIPs can contain frontend bundles, Python/Kotlin backend modules, or both. A private authenticated runner starts disposable network-free containers; a scoped host broker applies current permissions to managed data and allowlisted outbound requests. Backend-only ZIPs have no workspace page. The trusted runner has Docker-daemon privileges; uploaded jobs do not. See [backend runtime](plugins/backend-runtime.md).
 - Clients/projects own contact inheritance, scoped team membership, tags, file references, and plugin contexts. Project boards, reports, and personalized digests use current project/team access. Report/digest schedules are opt-in and stored in PostgreSQL.
 - Superset remains internal to the stack and is not intended to be exposed directly to users.
 
@@ -48,12 +49,13 @@ flowchart LR
         boards["Kanban + Git providers<br/>Tickets, sprints, comments, repo/PR links"]
         calendar["Calendar + provider adapters<br/>Owner-private two-way sync"]
         integrations["Discord, Telegram, Teams, WhatsApp<br/>SharePoint and OneDrive"]
-        zip["ZIP extensions<br/>Sandboxed pages and scoped data bridge"]
+        zip["ZIP extensions<br/>Optional frontend and/or backend code"]
     end
     subgraph python["Private Python services"]
         render["WeasyCanvas / WeasyPrint<br/>Templates and structured project reports"]
         extract["Content helper<br/>Bounded text/PDF/DOCX extraction"]
         superset["Superset web + Celery<br/>Analytics and dashboard authoring"]
+        runner["Authenticated plugin runner<br/>Disposable isolated Python / JVM jobs"]
     end
     data[("PostgreSQL + pgvector<br/>Workspace records, PDF bytes, encrypted secrets, search")]
     objects[("S3 / Azure Blob originals")]
@@ -70,6 +72,8 @@ flowchart LR
     projects --> render
     search -.-> extract
     host --> documents & workflows & boards & calendar & integrations & zip
+    zip --> runner
+    runner -. "Scoped operations recheck actor and route grants" .-> host
     workflows -. "Optional PDF steps" .-> documents
     projects --> boards
     boards -. "Visible deadlines" .-> calendar
@@ -86,6 +90,7 @@ flowchart LR
 | `ml-backend/app/` | Bounded content extraction for supported text, PDF, and DOCX files during content indexing. Its legacy vectorize/package helper endpoints are not the default search engine. Kotlin local feature hashing works without this container or an AI provider; missing extraction leaves metadata search available. OCR and MongoDB retrieval are deferred. |
 | `superset/` | Python configuration/bootstrap for Apache Superset's own Python analytics runtime. Redis and Celery belong to Superset; application jobs run in Kotlin. |
 | `deploy/github/` | Python setup/configuration/validation helpers used locally and by GitHub Actions. They prepare private configuration and check deployment; they are not request-serving services. |
+| `plugin-runtime/` | Private execution control plane and fixed Python/JVM worker images. Uploaded code runs in disposable containers without network, host mounts or credentials; host callbacks enforce grants, RBAC, ownership and provider origins. The Docker socket belongs only to the trusted control plane. |
 
 ### Project and delivery flow
 

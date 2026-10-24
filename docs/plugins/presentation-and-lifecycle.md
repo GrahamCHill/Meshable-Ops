@@ -27,7 +27,7 @@ This is a manifest fragment. Declare owned tables and package entrypoints/pages 
 
 ## Artwork and categories
 
-Artwork paths refer to PNG, JPEG, or WebP files inside the ZIP. Images are decoded with dimension/size limits and re-encoded before serving; SVG, external URLs, absolute paths, and traversal paths are rejected. Recommend a square icon of at least **64 × 64 px**, and a **1200 × 240 px** banner with important content near the center. Individual ZIP entries remain limited to 2 MiB, archives to 5 MiB, and expanded content to 10 MiB. Icons are normalized to square PNG; banners to bounded JPEG. These images are presentation, not executable assets or arbitrary network resources for HTML pages.
+Artwork paths refer to PNG, JPEG, or WebP files inside the ZIP. Images are decoded with dimension/size limits and re-encoded before serving; SVG, external URLs, absolute paths, and traversal paths are rejected. Recommend a square icon of at least **64 × 64 px**, and a **1200 × 240 px** banner with important content near the center. Package limits are 12 MiB per entry, 16 MiB compressed and 32 MiB expanded; artwork also has its own bounded image decoder. Icons are normalized to square PNG; banners to bounded JPEG. Gallery images are presentation assets; packaged page resources follow the [frontend asset contract](zip-packages.md).
 
 Bundled authors can place artwork under `backend/src/main/resources/plugins/<id>/<path>` and reference it in the manifest. Missing artwork can use the generated `builtin` fallback. Uploaded packages must supply referenced artwork themselves.
 
@@ -58,7 +58,7 @@ The host renders named slots, not arbitrary DOM injection. Current slots include
 
 For bundled code, add a loader to `WorkspacePluginModule.loadExtensions[slot]`. The component receives `{plugin, slot, context}`; the context contains routing information and any explicit data supplied by that slot (event ID/source for the event inspector). Its APIs must authorize IDs again. ZIP panels receive their normal scoped SDK and managed data access; `context().placement` names the slot and `hostContext` contains its explicit routing/event hints. The SDK's `placement`/`returnTo` values are routing hints, never proof of authorization; verified client/project contexts retain their dedicated checks.
 
-These mechanisms extend the app across screens, and trusted source modules can add backend APIs, tables, notification adapters, calendar providers, and client/project panels. They do **not** let an uploaded ZIP replace arbitrary core business logic, modify another plugin's tables, bypass RBAC, or run server code. A new inline location or business hook needs an explicit host slot/SPI. See [context extensions](project-contexts.md) and [notification adapters](notifications.md).
+These mechanisms extend the app across screens. Uploaded ZIPs can also provide [Python/Kotlin backend code](backend-runtime.md) in isolated workers with declared routes and grants. Trusted source modules can additionally register in-process APIs, notification adapters, calendar providers, and client/project panels. ZIP code cannot replace arbitrary core business logic, modify another plugin's tables or bypass RBAC. A new inline location or typed business hook needs an explicit host slot/SPI. See [context extensions](project-contexts.md) and [notification adapters](notifications.md).
 
 ## Removal and restoration
 

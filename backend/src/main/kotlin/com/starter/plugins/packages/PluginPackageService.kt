@@ -39,7 +39,7 @@ class PluginPackageService(private val records: PluginPackageRepository, private
         val manifest = parsed.descriptor.manifest
         if (bundled.any { it.manifest.id == manifest.id } || records.existsById(manifest.id)) throw ConflictException("A plugin with this ID is already installed. Packages cannot replace an installed plugin.")
         if (records.count() >= 30 || manifest.tables.size > 8) throw BadRequestException("At most 30 ZIP plugins and 8 managed tables per package are supported")
-        // Only validated identifiers and fixed host-owned DDL. Uploaded SQL/JARs are never executed.
+        // Only fixed host-owned DDL runs here. Backend artifacts execute in separate isolated workers.
         manifest.tables.forEach { table ->
             jdbc.execute("""CREATE TABLE IF NOT EXISTS "${table.name}" (
                 id uuid PRIMARY KEY, owner_id uuid NOT NULL, data jsonb NOT NULL,

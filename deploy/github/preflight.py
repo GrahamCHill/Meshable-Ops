@@ -43,6 +43,11 @@ def validate(config: dict) -> str:
             value = services[service]["environment"].get(key, "")
             if len(value) < 32 or any(marker in value.lower() for marker in ("replace-with", "change", "thisisasecret")):
                 raise ValueError(f"Set a strong unique {key}")
+    runner_token = backend.get("APP_PLUGIN_RUNNER_TOKEN", "")
+    if runner_token and len(runner_token) < 32:
+        raise ValueError("The private plugin runner token must have at least 32 characters")
+    if services["plugin-runner"]["environment"].get("APP_PLUGIN_RUNNER_TOKEN", "") != runner_token:
+        raise ValueError("The private plugin runner token must match the backend")
     pg_password = services["postgres"]["environment"]["POSTGRES_PASSWORD"]
     mongo_password = services["mongodb"]["environment"]["MONGO_INITDB_ROOT_PASSWORD"]
     if not all(re.fullmatch(r"[a-fA-F0-9]{64}", value) for value in (pg_password, mongo_password)):

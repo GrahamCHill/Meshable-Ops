@@ -52,12 +52,13 @@ class InstanceTests(unittest.TestCase):
         env = {"APP_PUBLIC_BASE_URL": "https://app.example.com", "SPRING_PROFILES_ACTIVE": "docker,prod",
                "APP_AUTH_COOKIE_SECURE": "true", "APP_SECRETS_ENCRYPTION_KEY": base64.b64encode(b"k" * 32).decode(),
                "APP_BOOTSTRAP_USERS_JSON": json.dumps([{"email": "owner@example.com", "password": "private-password-1234", "role": "ADMIN"}]),
-               "JWT_SECRET": "c" * 64, "APP_DOCUMENT_RENDER_TOKEN": "d" * 64, "SUPERSET_ADMIN_PASSWORD": "e" * 48,
+               "JWT_SECRET": "c" * 64, "APP_DOCUMENT_RENDER_TOKEN": "d" * 64, "APP_PLUGIN_RUNNER_TOKEN": "8" * 64, "SUPERSET_ADMIN_PASSWORD": "e" * 48,
                "POSTGRES_PASSWORD": pg, "MONGO_URI": f"mongodb://app_user:{mongo}@mongodb:27017/app_db?authSource=admin"}
         services = {name: {"environment": {"DATABASE_PASSWORD": pg, "SUPERSET_SECRET_KEY": "f" * 64, "GUEST_TOKEN_JWT_SECRET": "9" * 64}} for name in ("superset", "superset-init", "superset-worker", "superset-beat")}
         services.update({"backend": {"environment": env}, "caddy": {"environment": {"APP_DOMAIN": "app.example.com", "ACME_EMAIL": "ops@example.com"}},
                          "postgres": {"environment": {"POSTGRES_PASSWORD": pg}, "volumes": [{"target": "/docker-entrypoint-initdb.d/init.sql", "source": "/repo/docker/postgres/init.sql"}]},
-                         "mongodb": {"environment": {"MONGO_INITDB_ROOT_PASSWORD": mongo}}, "frontend": {}})
+                         "mongodb": {"environment": {"MONGO_INITDB_ROOT_PASSWORD": mongo}}, "frontend": {},
+                         "plugin-runner": {"environment": {"APP_PLUGIN_RUNNER_TOKEN": "8" * 64}}})
         return {"services": services}
 
     def test_preflight_blocks_exposed_services_example_secrets_and_wrong_connections(self):
@@ -68,6 +69,7 @@ class InstanceTests(unittest.TestCase):
             lambda s: s["backend"]["environment"].update(APP_AUTH_COOKIE_SECURE="false"),
             lambda s: s["superset"]["environment"].update(SUPERSET_SECRET_KEY="replace-with-a-strong-secret-key-1234"),
             lambda s: s["backend"]["environment"].update(POSTGRES_PASSWORD="wrong"),
+            lambda s: s["plugin-runner"]["environment"].update(APP_PLUGIN_RUNNER_TOKEN="wrong"),
             lambda s: s["backend"]["environment"].update(APP_BOOTSTRAP_USERS_JSON="[]"),
             lambda s: s["postgres"].update(volumes=[]),
             lambda s: s["backend"]["environment"].update(APP_SECRETS_ENCRYPTION_KEY=base64.b64encode(b"short").decode()),
@@ -77,6 +79,12 @@ class InstanceTests(unittest.TestCase):
             mutate(config["services"])
             with self.assertRaises(ValueError):
                 validate(config)
+
+    def test_an_upgrade_without_a_runner_token_keeps_core_services_available(self):
+        config = self.config()
+        for name in ('backend', 'plugin-runner'):
+            config['services'][name]['environment']['APP_PLUGIN_RUNNER_TOKEN'] = ''
+        self.assertEqual(validate(config), 'app.example.com')
 
 
 if __name__ == "__main__":

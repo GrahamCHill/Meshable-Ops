@@ -3,7 +3,7 @@ export function runtimeDocument(html: string, channel: string) {
   const sdk = `(() => {
     const channel = new MessageChannel(); const pending = new Map(); let sequence = 0;
     channel.port1.onmessage = event => { const item = pending.get(event.data.id); if (!item) return; pending.delete(event.data.id); clearTimeout(item.timer); event.data.error ? item.reject(new Error(event.data.error)) : item.resolve(event.data.result); };
-    function request(method, params = {}) { return new Promise((resolve, reject) => { const id = String(++sequence); const timer = setTimeout(() => { pending.delete(id); reject(new Error('The host did not respond. Reload the plugin.')); }, 30000); pending.set(id, {resolve, reject, timer}); channel.port1.postMessage({id, method, params}); }); }
+    function request(method, params = {}) { return new Promise((resolve, reject) => { const id = String(++sequence); const timer = setTimeout(() => { pending.delete(id); reject(new Error('The host did not respond. Reload the plugin.')); }, method === 'backend' ? 65000 : 30000); pending.set(id, {resolve, reject, timer}); channel.port1.postMessage({id, method, params}); }); }
     window.meshableOps = Object.freeze({
       context: () => request('context'), navigate: section => request('navigate', {section}),
       backend: Object.freeze({request: (path, body = null, method = 'POST', query = {}) => request('backend', {path, body, method, query})}),

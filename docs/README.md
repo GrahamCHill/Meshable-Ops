@@ -21,6 +21,7 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Declare compatible plugin versions and preserve extensions across app updates | [Plugin compatibility and updates](plugins/compatibility-and-updates.md) |
 | Create plugins with pages, submenus, tables, and search | [Plugin authoring](plugins/README.md) |
 | Upload ZIP plugins and configure third-party extension security | [Runtime ZIP packages](plugins/zip-packages.md) |
+| Install frontend and/or Python/Kotlin backend code from a ZIP | [Uploaded backend runtime and SDKs](plugins/backend-runtime.md) |
 | Link Git repositories/PRs to boards and cards | [Source-control plugins](plugins/source-control.md) |
 | Use day/week/month views, private member sync, and board deadlines | [Calendar plugins](plugins/calendar.md) |
 | Add dependencies and optional connections between plugins | [Plugin composition](plugins/composition.md) |
@@ -63,7 +64,7 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 - Internal members retain shared-root access unless restricted. External members need explicit directory/file grants. Upload permission defaults off and is unavailable to external members.
 - AI and storage keys saved through the app require a persistent server wrapping key. MinIO/Azurite development seeds also persist credentials, so set the key before starting those profiles.
 - MongoDB records, audit logs, and events are not search or AI-answer sources.
-- Plugins start disabled on new databases, including Documents and Workflows. Upgrades retain these modules' existing use when saved documents/designs/runs exist; explicit activation settings are preserved. Reviewed source modules support React, Kotlin and Python. Super admins can also install sandboxed browser ZIP plugins after enabling third-party extensions in Security. ZIP packages require an author file and are excluded from search by default.
+- Plugins start disabled on new databases, including Documents and Workflows. Upgrades retain these modules' existing use when saved documents/designs/runs exist; explicit activation settings are preserved. Source modules and runtime ZIPs support React, Kotlin and Python. Super admins can install ZIPs containing frontend code, isolated backend code, or both after enabling third-party extensions in Security. Backend-only packages need no page. ZIPs require an author file and are excluded from search by default.
 - Projects support scoped member/team-lead/manager roles and explicit team access. Departments and tags do not share work automatically. Reports and digests stay manual until schedules are configured; no schedule is created at startup.
 - Meshable Ops is the product name. Existing Docker project/volume names and the older plugin SDK alias remain compatible; business branding is preserved.
 

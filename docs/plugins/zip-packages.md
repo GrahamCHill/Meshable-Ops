@@ -1,6 +1,6 @@
 # Installing and creating ZIP plugins
 
-ZIP plugins install at runtime: no image rebuild or application restart is needed. They supply self-contained HTML/JavaScript pages, submenu items, settings fields, and optional host-managed PostgreSQL tables and search. Existing compiled plugins continue to support server integrations and capabilities.
+ZIP plugins install at runtime: no image rebuild or application restart is needed. A package can supply frontend code, backend code, or both. Frontends can include bundled React/JavaScript, HTML, CSS, submenus and artwork. Backend modules can run Python or Kotlin/JVM code with declared routes and host permissions. Backend-only plugins need no page. Settings, managed PostgreSQL tables and search are optional. See [backend runtime and SDKs](backend-runtime.md).
 
 Packages, artwork, settings, and records survive application container updates in PostgreSQL. Declare `compatibleVersions` in the manifest; omitted/mismatched releases warn with backup/caution advice and do not block use. See [compatibility and updates](compatibility-and-updates.md).
 
@@ -54,9 +54,11 @@ banner.jpg      # optional
 }
 ```
 
-The manifest uses the same ID/version, role, setting, submenu, and table-namespace validation as bundled modules. `ADMIN` represents administrators including super admins; `USER` represents internal members. External accounts are excluded. Every declared submenu must map to a page. ZIP pages support exact single-segment submenu paths, not arbitrary nested routes. The package must declare `PAGE`; optional extensions are `DATABASE`, `SEARCH`, and `SETTINGS`. `SEARCH` requires tables. Server `API`, notification adapters, capability declarations, and raw SQL are not supported by ZIP packages; implement those as reviewed [source modules](README.md).
+The manifest uses the same ID/version, role, setting, submenu, and table-namespace validation as bundled modules. `ADMIN` represents administrators including super admins; `USER` represents internal members. External accounts are excluded. Every declared submenu must map to a page. ZIP pages support exact single-segment submenu paths. Declare `PAGE`, `API`, or both; optional extensions are `DATABASE`, `SEARCH`, and `SETTINGS`. `SEARCH` requires tables. Backend-only packages omit pages/submenus. Add named Python/Kotlin modules and exact routes through [the backend descriptor](backend-runtime.md#descriptor). Typed notification adapters, capability declarations, scheduled jobs and arbitrary SQL remain reviewed [source-module hooks](full-stack.md).
 
-Limits: 5 MB compressed, 10 MB expanded, 2 MB per file, 50 ZIP entries, 30 installed ZIP packages, and 8 managed tables per package. Only UTF-8 `.html` pages, the two root JSON metadata files, and PNG/JPEG/WebP artwork are accepted. Declare relative `icon` and `banner` paths in the manifest; the host validates and normalizes them. Scripts and styles must be bundled inline in the HTML; page images/fonts must use data URLs. Categories, relationships, admin placement, optional settings, and screen contributions use the [presentation contract](presentation-and-lifecycle.md). Absolute/traversing paths, duplicate filenames, unsupported API versions, JARs, SQL, and other executables are rejected. Nothing is extracted to the server filesystem.
+Limits: 16 MiB compressed, 32 MiB expanded, 12 MiB per file, 200 ZIP entries, 30 installed ZIP packages, and 8 managed tables per package. Packages accept UTF-8 HTML/JS/CSS and source/build metadata, Python modules, executable JARs, PNG/JPEG/WebP raster images and WOFF/WOFF2 fonts. Absolute/traversing paths, duplicate filenames, unsupported API versions and raw SQL files are rejected. Code persists in PostgreSQL; artifacts are written only inside disposable worker tmpfs when invoked.
+
+For frontend assets, use relative script, stylesheet and image paths inside the package. The host inlines local JS/CSS and converts local raster/font references to data URLs in the sandbox document. Bundle all JavaScript imports and dependencies into one entry file (for example React with esbuild); runtime module imports, CSS imports, external scripts/CDNs and arbitrary resource fetching are unavailable. Inline HTML bundles remain supported. Declare relative `icon` and `banner` paths in the manifest; the host normalizes gallery artwork. Categories, relationships, admin placement, optional settings, and screen contributions use the [presentation contract](presentation-and-lifecycle.md).
 
 ## Page API
 
@@ -72,6 +74,7 @@ const record = await weaveops.data.get('plugin_zip_notes_notes', created.id);
 await weaveops.data.update('plugin_zip_notes_notes', record.id, {...record.data, title: 'Reviewed'}, record.revision);
 await weaveops.data.remove('plugin_zip_notes_notes', record.id, record.revision + 1);
 await weaveops.navigate('guide'); // Empty string returns to the root page.
+const total = await meshableOps.backend.request('/calculate', {values: [1, 2, 3]}, 'POST'); // Requires API and a declared route.
 ```
 
 Records are JSON objects up to 32 KB. The host creates UUIDs, owner IDs, timestamps, revisions, and local 384-dimensional vectors. `list(table, offset)` returns at most 100 rows in deterministic recent-update order. Members can only read/write their own records; administrators can manage all rows, subject to plugin feature and table access. Optimistic revision checks prevent lost updates/deletes (`409`). Table names are checked against the plugin's manifest, and queries use parameterized values. Do not render stored text with `innerHTML`.
@@ -82,7 +85,7 @@ Search is opt-in per plugin. Host-managed tables participate in keyword/local si
 
 Pages run in an `iframe` with `sandbox="allow-scripts allow-forms"`, without `allow-same-origin`, popups, downloads, or top-level navigation permissions. Form permission lets client-side submit handlers run; CSP `form-action 'none'` still blocks actual form submissions. CSP also restricts resource loading and blocks direct API connections. Refresh metadata, base tags, and embedded frames/objects are removed. A per-frame message channel exposes only this plugin's declared data operations and submenu navigation; no JWTs, session cookies, arbitrary host requests, or configuration secrets are passed to code. Requests are bounded to eight concurrent calls and 120 calls per minute per frame.
 
-This isolation limits host privileges; it is not a code review or a guarantee against malicious UI, data misuse, or browser exploits. A plugin can act on all records its current member may access in that plugin. Review packages before enabling them. Integrations requiring outbound credentials or privileged server logic belong in the compiled plugin model.
+This isolation limits host privileges; it is not a code review or a guarantee against malicious UI, data misuse, or browser exploits. A plugin can act on all records its current member may access in that plugin. Review packages before enabling them. Backend logic uses isolated jobs and an explicitly permissioned host broker; [backend trust boundaries and deployment](backend-runtime.md#deployment-and-isolation) describe its controls and limits.
 
 ## Working example
 
@@ -106,6 +109,8 @@ Upload `notes.zip`, configure its heading, and enable it. No example data is see
 | `POST /api/admin/plugins/{id}/restore` | Super admin; restore a bundled plugin, still disabled |
 | `POST /api/admin/plugins/install` | Super admin; multipart `file`, global policy must allow installation |
 | `GET /api/plugins/{id}/runtime?section=guide` | Active permitted member; sandbox page and redacted configuration |
+| `GET /api/admin/plugins/{id}/code` | Plugin administrator; uploaded modules, route grants, allowed origins, runner configuration and package hash |
+| `GET/POST/PUT/PATCH/DELETE /api/plugins/{id}/backend/{path}` | Active permitted member; exact declared route/method/roles; executes uploaded worker code |
 | `GET /api/plugins/{id}/data/{table}?offset=0` | Table reader; owner scope for members |
 | `GET /api/plugins/{id}/data/{table}/{record}` | Table reader; owner/admin |
 | `POST /api/plugins/{id}/data/{table}` | Table writer; `{data}` |

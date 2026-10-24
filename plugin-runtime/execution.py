@@ -1,9 +1,11 @@
 """Docker control plane. Only fixed trusted worker images receive uploaded artifacts."""
 import json
+import logging
 import os
 import socket
 import struct
 import time
+from threading import Timer
 from datetime import datetime, timezone
 import httpx
 
@@ -40,17 +42,28 @@ def execute(client, value, callback_url):
     if value.get('runtime') not in images or not isinstance(value.get('callbackToken'), str):
         raise ExecutionFailed()
     # No caller-supplied image, command, mounts, ports, network or Docker settings.
-    container = connection = None
+    container = connection = watchdog = None
+    stage = 'image'
     deadline = time.monotonic() + 40
     try:
         client.images.get(images[value['runtime']])  # Never pull an image in response to an uploaded package.
+        stage = 'create'
         container = client.containers.create(**container_options(images[value['runtime']]))
+        def expire():
+            try: container.kill()
+            except Exception: pass
+        watchdog = Timer(40, expire)
+        watchdog.daemon = True
+        watchdog.start()
+        stage = 'attach'
         connection = container.attach_socket(params={'stdin': 1, 'stdout': 1, 'stderr': 1, 'stream': 1})
         stream = connection._sock
         stream.settimeout(2)
         container.start()
+        stage = 'bootstrap'
         bootstrap = {key: value[key] for key in ('runtime', 'entrypoint', 'files', 'request')}
         stream.sendall(json.dumps(bootstrap, separators=(',', ':')).encode() + b'\n')
+        stage = 'protocol'
         wire = bytearray(); stdout = bytearray(); stderr_bytes = 0; calls = 0
         with httpx.Client(follow_redirects=False, timeout=22, trust_env=False) as host:
             while time.monotonic() < deadline:
@@ -77,7 +90,9 @@ def execute(client, value, callback_url):
                         if message.get('type') == 'result':
                             result = message.get('result')
                             if len(json.dumps(result).encode()) > MAX_MESSAGE: raise ExecutionFailed()
-                            return result
+                            status = message.get('status', 200)
+                            if type(status) is not int or not (200 <= status <= 299 or 400 <= status <= 599): raise ExecutionFailed()
+                            return {'status': status, 'body': result}
                         if message.get('type') != 'call' or calls >= 64 or not isinstance(message.get('id'), str): raise ExecutionFailed()
                         calls += 1
                         response = host.post(callback_url, headers={'X-Plugin-Invocation': value['callbackToken']},
@@ -86,9 +101,12 @@ def execute(client, value, callback_url):
                         reply = {'id': message['id'], 'result': response.json().get('result')} if response.status_code == 200 else {'id': message['id'], 'error': 'Host operation denied or unavailable'}
                         stream.sendall(json.dumps(reply, separators=(',', ':')).encode() + b'\n')
         raise ExecutionFailed()
-    except Exception:
+    except Exception as error:
+        # Fixed stage and exception type only: never source, request data, native messages or stderr.
+        logging.getLogger(__name__).warning('Plugin job failed at %s (%s)', stage, type(error).__name__)
         raise ExecutionFailed() from None
     finally:
+        if watchdog is not None: watchdog.cancel()
         if connection is not None: connection.close()
         if container is not None:
             try: container.remove(force=True)

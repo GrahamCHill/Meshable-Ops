@@ -1,5 +1,7 @@
 # Meshable Ops deployment guide
 
+Uploaded Python/Kotlin backend plugins use the private `plugin-runner` service and fixed `plugin-python-worker`/`plugin-kotlin-worker` images. Fresh setup generates `APP_PLUGIN_RUNNER_TOKEN`; preserve this private value and the existing PostgreSQL/wrapping keys during upgrades. Existing installations can add the token to enable server ZIPs; omitting it leaves core and frontend-only plugins available. The trusted runner mounts the Docker socket and must never expose its port publicly. See [setup, isolation and operational limits](plugins/backend-runtime.md#deployment-and-isolation).
+
 For independent template copies deploying automatically to an existing Linux VM, follow [GitHub Actions deployment](github-deployment.md). It includes fresh-instance credentials, an initializer without development users, verified SSH, and persisted release/data directories.
 
 For a new cloud installation, use the [AWS or Azure Terraform guide](terraform-deployment.md).

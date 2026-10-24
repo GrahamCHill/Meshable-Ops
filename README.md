@@ -54,7 +54,7 @@ flowchart TB
     api["Kotlin / Spring Boot<br/>Authentication, RBAC, jobs and application APIs"]
     state["Persistent data<br/>PostgreSQL + pgvector: records, PDFs, secrets, search<br/>S3 / Azure Blob: original documents<br/>MongoDB: events and audit, excluded from search"]
     python["Private Python document services<br/>WeasyCanvas / WeasyPrint: documents and reports<br/>Content helper: bounded PDF, DOCX and text extraction"]
-    plugins["Plugin host and optional providers<br/>Documents, workflows, boards, Git, calendars and chat<br/>React / Kotlin / Python source modules and sandboxed ZIPs"]
+    plugins["Plugin host and optional providers<br/>Documents, workflows, boards, Git, calendars and chat<br/>ZIP frontend bundles + isolated Python / Kotlin workers"]
     analytics["Python: Apache Superset<br/>Embedded dashboards and admin authoring<br/>Separate metadata, Redis, Celery worker and beat"]
     ci["GitHub Actions, Terraform and Python setup helpers<br/>Checks, releases, VM deployment on AWS / Azure"]
     users --> web --> api
@@ -67,7 +67,7 @@ Kotlin enforces permissions before records, files, reports, or search results ar
 
 ## Extend and contribute
 
-Create plugins with pages, submenus, settings, managed tables, search, and client/project extension points. Reviewed [full-stack source modules](docs/plugins/full-stack.md) support React, Kotlin and Python; uploaded ZIPs run sandboxed pages through a scoped host bridge. Documents and Workflows are separately optional plugins with normal workspace/admin pages. See [plugin authoring](docs/plugins/README.md), [contribution guidance](CONTRIBUTING.md), and [CLA](CLA.md).
+Create plugins with pages, submenus, settings, managed tables, search, and client/project extension points. [Full-stack plugins](docs/plugins/full-stack.md) support React, Kotlin and Python. A ZIP can install frontend bundles, isolated backend code, or both without rebuilding the app; backend-only plugins need no page. See the [working example](examples/plugins/full-stack/). Documents and Workflows are separately optional plugins with normal workspace/admin pages. See [plugin authoring](docs/plugins/README.md), [contribution guidance](CONTRIBUTING.md), and [CLA](CLA.md).
 
 Installed ZIP plugins and their saved data persist across application updates. Authors can declare supported app releases or ranges; missing/mismatched versions show caution and backup advice. [Compatibility and updates](docs/plugins/compatibility-and-updates.md).
 

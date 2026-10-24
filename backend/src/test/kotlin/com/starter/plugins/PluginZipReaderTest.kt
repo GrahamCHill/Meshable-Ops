@@ -34,14 +34,14 @@ class PluginZipReaderTest {
             assertThatThrownBy { reader.read(zip(files().also { it["author.json"] = author })) }.isInstanceOf(BadRequestException::class.java)
         }
     }
-    @Test fun `traversal absolute paths duplicate names and executable server payloads are rejected`() {
-        listOf("../outside.html", "/outside.html", "folder/../outside.html", "folder\\outside.html", "server.jar", "migration.sql", "INDEX.HTML").forEach { path ->
+    @Test fun `traversal absolute paths duplicate names and raw SQL are rejected`() {
+        listOf("../outside.html", "/outside.html", "folder/../outside.html", "folder\\outside.html", "migration.sql", "INDEX.HTML").forEach { path ->
             assertThatThrownBy { reader.read(zip(files() + (path to "payload"))) }.isInstanceOf(BadRequestException::class.java)
         }
     }
     @Test fun `zip bombs too many entries and oversized archives are rejected`() {
         assertThatThrownBy { reader.read(zip(files().also { it["index.html"] = "a".repeat(PluginZipReader.MAX_FILE_BYTES + 1) })) }.isInstanceOf(BadRequestException::class.java).hasMessageContaining("Expanded ZIP")
-        assertThatThrownBy { reader.read(zip(files() + (1..50).associate { "page$it.html" to "x" })) }.isInstanceOf(BadRequestException::class.java).hasMessageContaining("Too many")
+        assertThatThrownBy { reader.read(zip(files() + (1..200).associate { "page$it.html" to "x" })) }.isInstanceOf(BadRequestException::class.java).hasMessageContaining("Too many")
         assertThatThrownBy { reader.read(ByteArray(PluginZipReader.MAX_ARCHIVE_BYTES + 1)) }.isInstanceOf(BadRequestException::class.java)
     }
     @Test fun `directory entries cannot hide an unbounded compressed payload`() {
