@@ -10,7 +10,7 @@ class ProjectSearchService(private val service: ProjectService, private val acce
         val matches = service.list(email, query.take(200)).take(limit)
         return matches.filter { runCatching { access.require(it.id, actor) }.isSuccess }.map { project ->
             VectorSearchResult("project:${project.id}", 0.8f, mapOf("entityType" to "project", "title" to project.name,
-                "text" to "${project.clientName} · ${project.category.name.lowercase()}", "source" to "Projects", "matchMode" to "Keyword match", "href" to "/projects/${project.id}"))
+                "text" to "${project.clientName} · ${project.categoryName}", "source" to "Projects", "matchMode" to "Keyword match", "href" to "/projects/${project.id}"))
         }
     }
 }

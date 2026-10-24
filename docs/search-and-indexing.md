@@ -32,7 +32,7 @@ Open **Administration > Storage connections > Search index**, or use **Manage in
 - **At the next scheduled time when files change**: poll visible storage each minute and queue one run at the next chosen time. Set `00:00` for the next midnight after detection. Repeated detections preserve the pending deadline.
 - **At a fixed interval**: the existing 15-minute to 7-day interval.
 
-The timezone is an explicit IANA name, initially `Africa/Johannesburg`. Calendar schedules respect daylight-saving changes. The admin page shows the next run in the saved timezone, last result, and whether changes are queued. Uploads/browsing also queue detected changes, even if their initial indexing already completed.
+The timezone dropdown shows familiar names, city, and current UTC offset, with common choices first and a name/city filter under **Find a timezone**. It stores an explicit IANA identifier, initially `Africa/Johannesburg`. Calendar schedules respect daylight-saving changes. The admin page shows the next run in the saved timezone, last result, and whether changes are queued. Uploads/browsing also queue detected changes, even if their initial indexing already completed.
 
 Schedule configuration, pending state, and the next run are saved in PostgreSQL and survive backend restarts. A previously queued overdue job runs once after the application starts; the next calendar occurrence is then calculated. New changes first discovered after startup queue the next future time. Failed/partial runs are reported and retried at the next scheduled occurrence. The server must remain running to detect changes and execute jobs; this is an application job, not an operating-system scheduler. This scheduler assumes one backend instance.
 

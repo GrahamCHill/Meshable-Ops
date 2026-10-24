@@ -29,7 +29,7 @@ class NotificationService(private val transports: NotificationTransports,private
     fun sendOtp(method: String,target: NotificationTarget,code: String,expiresMinutes: Int=5): EmailDeliveryResult =
         deliver("security.otp",method,target,mapOf("code" to code,"expiresMinutes" to expiresMinutes.toString(),"subject" to "Your verification code","message" to ""))
     fun deliver(event: String,methodId: String,target: NotificationTarget,values: Map<String,String>,key: String=UUID.randomUUID().toString(),
-        attachments: List<EmailAttachment> = emptyList(),htmlOverride: String?=null): EmailDeliveryResult {
+        attachments: List<EmailAttachment> = emptyList(),htmlOverride: String?=null,splitLongText: Boolean=false): EmailDeliveryResult {
         if(!availableFor(event,methodId)) return EmailDeliveryResult("DISABLED","This notification or delivery method is disabled or unavailable")
         val definition=catalogue.get(event);val method=transports.get(methodId)
         if(definition.category==NotificationCategory.SECURITY && (!method.supportsOtp || methodId !in target.verifiedMethods || method.recipientKind==NotificationRecipientKind.FIXED))
@@ -38,7 +38,24 @@ class NotificationService(private val transports: NotificationTransports,private
         val rule=settings.rule(definition);val configured=settings.template(definition,method,rule);val template=htmlOverride?.let {configured.copy(html=it)} ?: configured
         val rendered=renderer.render(definition,method,template,mapOf("applicationName" to branding.current().applicationName,"recipientName" to target.name.ifBlank {"Member"},"subject" to definition.label,"message" to "")+values)
         val message=ChannelMessage(if(method.parameterized) "" else rendered.text,recipient,if(method.parameterized) rendered.parameters else emptyList(),rendered.subject,rendered.html,template.providerTemplate,attachments)
+        if (splitLongText && !method.parameterized && message.text.length > method.maxTextLength) {
+            val parts = splitText(message.text, method.maxTextLength)
+            val results = parts.mapIndexed { index, text -> transmit(event,methodId,target,message.copy(text=text),"$key:part:$index") }
+            return results.firstOrNull { it.status !in setOf("ACCEPTED","SKIPPED") } ?: EmailDeliveryResult("ACCEPTED","Accepted by the provider in ${parts.size} messages")
+        }
         return transmit(event,methodId,target,message,key)
+    }
+    companion object {
+        internal fun splitText(text: String, limit: Int): List<String> {
+            require(limit > 1)
+            val parts = mutableListOf<String>(); var offset = 0
+            while (offset < text.length) {
+                var end = (offset + limit).coerceAtMost(text.length)
+                if (end < text.length && text[end - 1].isHighSurrogate()) end--
+                parts += text.substring(offset,end); offset = end
+            }
+            return parts
+        }
     }
     private fun transmit(event: String,method: String,target: NotificationTarget,message: ChannelMessage,key: String): EmailDeliveryResult {
         transports.validate(method,message)

@@ -1,5 +1,8 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
+-- Section IDs remain in category, preserving existing assignments while allowing custom sections.
+ALTER TABLE IF EXISTS workspace_projects DROP CONSTRAINT IF EXISTS workspace_projects_category_check;
+
 ALTER TABLE IF EXISTS plugin_settings ADD COLUMN IF NOT EXISTS search_enabled BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE IF EXISTS plugin_settings ADD COLUMN IF NOT EXISTS table_access_json TEXT NOT NULL DEFAULT '{}';
 

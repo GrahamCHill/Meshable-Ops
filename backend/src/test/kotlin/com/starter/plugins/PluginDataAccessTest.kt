@@ -49,9 +49,11 @@ class PluginDataAccessTest {
         ordered.verify(jdbc).execute("LOCK TABLE \"plugin_kanban_comments\" IN SHARE ROW EXCLUSIVE MODE")
         ordered.verify(jdbc).execute("LOCK TABLE \"plugin_kanban_development_links\" IN SHARE ROW EXCLUSIVE MODE")
         ordered.verify(jdbc).execute("LOCK TABLE \"plugin_kanban_boards\" IN SHARE ROW EXCLUSIVE MODE")
+        ordered.verify(jdbc).execute("LOCK TABLE \"plugin_kanban_estimation\" IN SHARE ROW EXCLUSIVE MODE")
         ordered.verify(jdbc).update("DELETE FROM \"plugin_kanban_comments\"")
         ordered.verify(jdbc).update("DELETE FROM \"plugin_kanban_development_links\"")
         ordered.verify(jdbc).update("DELETE FROM \"plugin_kanban_boards\"")
+        ordered.verify(jdbc).update("DELETE FROM \"plugin_kanban_estimation\"")
         verifyNoMoreInteractions(jdbc)
     }
     @Test fun `search excludes disabled excluded and table restricted providers before any query`() {

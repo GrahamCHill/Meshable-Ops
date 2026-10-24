@@ -8,7 +8,7 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 
 | Task | Guide |
 | --- | --- |
-| Understand AGPL, commercial licensing, and upstream notices | [Licensing](../LICENSING.md) |
+| Understand community/commercial licensing and upstream notices | [Licensing](../LICENSING.md) |
 | License plugins and compatible external-service integration components | [Plugin licensing](plugins/licensing.md) |
 | Contribute changes and understand the contributor grant | [Contributing](../CONTRIBUTING.md) · [CLA](../CLA.md) |
 | Start the development stack with MinIO or Azurite | [Development setup](getting-started.md) |
@@ -52,6 +52,10 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Provision AWS/Azure networking, VM, HTTPS ingress, and object storage | [Terraform deployment](terraform-deployment.md) · [Modules](../infra/README.md) |
 
 ## Current operational defaults
+
+The [Event log](event-log.md) lives under Administration → Operations, with scrollable access to the full history and administrator-only APIs.
+
+For sidebar ordering, header/account behavior and admin section artwork, see [Navigation & section icons](navigation-and-icons.md). Project portfolios use cards grouped into configurable, ordered sections, with built-in or uploaded icons. [Google Drive](plugins/google-drive.md) adds a separate optional folder browser; [custom-page](../examples/plugins/custom-page/README.md) is a minimal frontend/backend ZIP reference. The [supplied quality report](supplied-quality-findings.md) records this remediation pass and protocol-specific security rationales.
 
 - Storage search is enabled. The launcher preference is on, but the chat button stays hidden until AI answers, content indexing, and a chat model are configured.
 - PDF viewing and normal downloads are enabled; admins can select watermark or disabled download mode.

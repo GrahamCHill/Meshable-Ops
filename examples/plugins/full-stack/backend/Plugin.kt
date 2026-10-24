@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: LicenseRef-Meshable-Ops-Community-1.0
 import com.meshable.plugins.PluginWorker
 
 fun main() = PluginWorker.serve { _, host ->

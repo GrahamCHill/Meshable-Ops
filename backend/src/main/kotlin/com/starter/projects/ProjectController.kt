@@ -8,7 +8,7 @@ import java.util.UUID
 
 @RestController @RequestMapping("/api/projects")
 class ProjectController(private val service: ProjectService) {
-    @GetMapping fun list(@AuthenticationPrincipal user: UserDetails, @RequestParam(defaultValue = "") query: String, @RequestParam(required = false) category: ProjectCategory?, @RequestParam(required = false) tags: Set<UUID>?) = service.list(user.username, query, category, tags ?: emptySet())
+    @GetMapping fun list(@AuthenticationPrincipal user: UserDetails, @RequestParam(defaultValue = "") query: String, @RequestParam(required = false) category: String?, @RequestParam(required = false) tags: Set<UUID>?) = service.list(user.username, query, category, tags ?: emptySet())
     @GetMapping("/people") fun people(@AuthenticationPrincipal user: UserDetails) = service.people(user.username)
     @GetMapping("/options") fun options(@AuthenticationPrincipal user: UserDetails) = service.options(user.username)
     @GetMapping("/clients") fun clients(@AuthenticationPrincipal user: UserDetails) = service.clients(user.username)

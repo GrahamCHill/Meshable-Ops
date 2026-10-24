@@ -3,7 +3,7 @@ import type {Person} from '../../../api/projects'
 import type {BoardColumn, BoardCard, ColumnPermission, MoveMode} from './api'
 
 const modes: [MoveMode,string][] = [['EDITORS','All board editors'],['ASSIGNEE','Ticket assignee'],['REVIEWERS','Ticket reviewers'],['SELECTED_MEMBERS','Selected members'],['MANAGERS','Board managers only']]
-function Permission({label,value,people,onChange}: {label:string;value?:ColumnPermission;people:Person[];onChange:(value:ColumnPermission)=>void}) {
+export function Permission({label,value,people,onChange}: {label:string;value?:ColumnPermission;people:Person[];onChange:(value:ColumnPermission)=>void}) {
   const rule=value??{mode:'EDITORS',userIds:[]}
   return <div className="page-stack"><label className="form-field">{label}<select value={rule.mode} onChange={e=>onChange({mode:e.target.value as MoveMode,userIds:[]})}>{modes.map(([id,text])=><option key={id} value={id}>{text}</option>)}</select></label>
     {rule.mode==='SELECTED_MEMBERS'&&<div className="project-choices">{people.map(person=><label key={person.id}><input type="checkbox" checked={rule.userIds.includes(person.id)} onChange={e=>onChange({...rule,userIds:e.target.checked?[...rule.userIds,person.id]:rule.userIds.filter(id=>id!==person.id)})}/>{person.name}</label>)}{!rule.userIds.length&&<small>No members selected: only board managers can move here.</small>}</div>}

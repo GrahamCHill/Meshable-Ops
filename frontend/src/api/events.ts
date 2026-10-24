@@ -1,5 +1,4 @@
 import api from './http'
-import type { PageResponse } from './types'
 
 export interface Event {
   id: string
@@ -8,7 +7,9 @@ export interface Event {
   createdAt: string
 }
 
+export interface EventHistory { content: Event[]; nextCursor: string | null }
+
 export const eventsApi = {
-  list: (page = 0, size = 20) =>
-    api.get<PageResponse<Event>>('/events', { params: { page, size } }).then(r => r.data),
+  history: (cursor?: string, signal?: AbortSignal) =>
+    api.get<EventHistory>('/admin/events', { params: { cursor, size: 50 }, signal }).then(r => r.data),
 }

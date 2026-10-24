@@ -24,18 +24,31 @@ data class KanbanCard(val id: UUID, val columnId: UUID, val title: String, val d
     val assigneeId: UUID? = null, val startDate: java.time.LocalDate? = null, val completionDate: java.time.LocalDate? = null,
     val sprintId: UUID? = null, val storyPoints: Double? = null, val reviewerIds: Set<UUID> = emptySet(), val status: CardStatus = CardStatus.TODO,
     val reference: String = "", val blocked: Boolean = false, val tags: List<String> = emptyList(), val epicId: UUID? = null,
-    val type: TicketType = TicketType.TASK, val priority: TicketPriority = TicketPriority.MEDIUM, val parentId: UUID? = null)
+    val type: TicketType = TicketType.TASK, val priority: TicketPriority = TicketPriority.MEDIUM, val parentId: UUID? = null,
+    val tshirtSize: TshirtSize? = null, val links: List<TicketLink> = emptyList())
+
+enum class TshirtSize { XS, S, M, L, XL, XXL }
+enum class TicketLinkType { RELATED, BLOCKS, BLOCKED_BY }
+data class TicketLink(val targetId: UUID, val type: TicketLinkType = TicketLinkType.RELATED)
+data class WorkflowPosition(val x: Double, val y: Double)
+data class KanbanTransition(val id: UUID, val source: UUID, val target: UUID, val name: String = "Move",
+    val permission: ColumnPermission = ColumnPermission())
+data class KanbanWorkflow(val enabled: Boolean = false, val transitions: List<KanbanTransition> = emptyList(),
+    val positions: Map<UUID, WorkflowPosition> = emptyMap())
 
 enum class TicketType { TASK, STORY, BUG, SUBTASK }
 enum class TicketPriority { LOW, MEDIUM, HIGH, URGENT }
 data class KanbanEpic(val id: UUID, val name: String, val description: String = "", val color: String = "#6554c0")
-data class KanbanSprint(val id: UUID, val name: String, val startDate: java.time.LocalDate, val endDate: java.time.LocalDate)
-data class KanbanContent(val columns: List<KanbanColumn> = emptyList(), val cards: List<KanbanCard> = emptyList(), val sprints: List<KanbanSprint> = emptyList(), val epics: List<KanbanEpic> = emptyList())
+enum class SprintStatus { PLANNED, ACTIVE, COMPLETED }
+data class KanbanSprint(val id: UUID, val name: String, val startDate: java.time.LocalDate, val endDate: java.time.LocalDate,
+    val status: SprintStatus = SprintStatus.PLANNED, val goal: String = "")
+data class KanbanContent(val columns: List<KanbanColumn> = emptyList(), val cards: List<KanbanCard> = emptyList(), val sprints: List<KanbanSprint> = emptyList(), val epics: List<KanbanEpic> = emptyList(), val workflow: KanbanWorkflow = KanbanWorkflow())
 data class KanbanRequest(val name: String, val content: KanbanContent, val revision: Long = 0, val projectId: UUID? = null, val teamIds: Set<UUID> = emptySet())
 data class KanbanSummary @JvmOverloads constructor(val id: UUID, val ownerId: UUID, val name: String, val updatedAt: Instant, val projectId: UUID? = null, val ticketCount: Int = 0, val completedCount: Int = 0)
 data class KanbanView(val id: UUID, val ownerId: UUID, val name: String, val updatedAt: Instant, val revision: Long, val content: KanbanContent, val projectId: UUID? = null, val teamIds: Set<UUID> = emptySet(), val canManage: Boolean = false,
-    val moves: Map<UUID, Set<UUID>> = emptyMap())
+    val moves: Map<UUID, Set<UUID>> = emptyMap(), val estimation: KanbanEstimation = KanbanEstimation())
 data class MoveTicketRequest(val columnId: UUID, val revision: Long, val beforeId: UUID? = null)
+data class SprintActionRequest(val revision: Long, val destinationSprintId: UUID? = null)
 
 interface KanbanRepository : JpaRepository<KanbanBoard, UUID> {
     fun findByProjectId(projectId: UUID): List<KanbanBoard>

@@ -13,4 +13,6 @@ class KanbanController(private val service: KanbanService) {
     @PostMapping fun create(@AuthenticationPrincipal user: UserDetails, @RequestBody request: KanbanRequest) = service.save(user.username, null, request)
     @PutMapping("/{id}") fun update(@AuthenticationPrincipal user: UserDetails, @PathVariable id: UUID, @RequestBody request: KanbanRequest) = service.save(user.username, id, request)
     @PostMapping("/{id}/cards/{cardId}/move") fun move(@AuthenticationPrincipal user: UserDetails, @PathVariable id: UUID, @PathVariable cardId: UUID, @RequestBody request: MoveTicketRequest) = service.move(user.username, id, cardId, request)
+    @PostMapping("/{id}/sprints/{sprintId}/start") fun startSprint(@AuthenticationPrincipal user: UserDetails, @PathVariable id: UUID, @PathVariable sprintId: UUID, @RequestBody request: SprintActionRequest) = service.startSprint(user.username, id, sprintId, request)
+    @PostMapping("/{id}/sprints/{sprintId}/complete") fun completeSprint(@AuthenticationPrincipal user: UserDetails, @PathVariable id: UUID, @PathVariable sprintId: UUID, @RequestBody request: SprintActionRequest) = service.completeSprint(user.username, id, sprintId, request)
 }

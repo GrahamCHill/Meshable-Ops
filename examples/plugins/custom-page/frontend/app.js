@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: LicenseRef-Meshable-Ops-Community-1.0
 const result = document.getElementById('result')
 const send = document.getElementById('send')
 meshableOps.context().then(context => {

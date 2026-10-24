@@ -15,7 +15,8 @@ import java.util.UUID
 class KanbanService(private val boards: KanbanRepository, private val actors: PluginActor,
     private val plugins: PluginRegistry, private val mapper: ObjectMapper,
     private val search: KanbanSearchProvider? = null, private val development: KanbanDevelopmentLinkRepository? = null,
-    private val projects: com.starter.projects.ProjectBoardAccess? = null, private val comments: KanbanCommentRepository? = null) {
+    private val projects: com.starter.projects.ProjectBoardAccess? = null, private val comments: KanbanCommentRepository? = null,
+    private val estimates: KanbanEstimationService? = null) {
     fun list(email: String, projectId: UUID? = null): List<KanbanSummary> { val actor = actor(email); return projects?.list(actor, projectId) ?: boards.visible(actor.id, com.starter.access.Roles.admin(actor.role), PageRequest.of(0, 100)) }
     fun get(email: String, id: UUID) = actor(email).let { view(owned(it, id), it) }
     fun members(email: String, id: UUID) = actor(email).let { actor -> projects?.members(actor, owned(actor, id)) ?: emptyList() }
@@ -34,16 +35,23 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
         row.projectId = request.projectId
         row.teamIdsJson = mapper.writeValueAsString(request.teamIds)
         projects?.validatePeople(actor, row, request.content.cards.flatMap { it.reviewerIds + listOfNotNull(it.assigneeId) }.toSet())
-        val permissionMembers = request.content.columns.flatMap { it.enter.userIds + it.leave.userIds }.toSet()
-        val previousPermissionMembers = previous.columns.flatMap { it.enter.userIds + it.leave.userIds }.toSet()
+        val permissionMembers = (request.content.columns.flatMap { it.enter.userIds + it.leave.userIds } + request.content.workflow.transitions.flatMap { it.permission.userIds }).toSet()
+        val previousPermissionMembers = (previous.columns.flatMap { it.enter.userIds + it.leave.userIds } + previous.workflow.transitions.flatMap { it.permission.userIds }).toSet()
         projects?.validatePeople(actor, row, permissionMembers - previousPermissionMembers)
         val old = previous.cards.associateBy { it.id }
-        val content = request.content.copy(cards = request.content.cards.map { card ->
+        val normalized = request.content.copy(cards = request.content.cards.map { card ->
             val status = request.content.columns.first { it.id == card.columnId }.status ?: card.status
             card.copy(status = status, tags = card.tags.map(String::trim),
             reference = old[card.id]?.reference?.takeIf { it.isNotBlank() } ?: "B-${row.id.toString().take(6).uppercase()}-${row.nextCardNumber++}",
             startDate = if (status == CardStatus.IN_PROGRESS) card.startDate ?: java.time.LocalDate.now(java.time.ZoneOffset.UTC) else card.startDate,
             completionDate = if (status == CardStatus.DONE) card.completionDate ?: java.time.LocalDate.now(java.time.ZoneOffset.UTC) else null) })
+        val completedSprints = previous.sprints.filter { it.status == SprintStatus.COMPLETED }.map { it.id }.toSet()
+        val parents = normalized.cards.filter { it.parentId == null }.associate { card ->
+            card.id to if (card.status != CardStatus.DONE && card.sprintId in completedSprints && old[card.id]?.sprintId == card.sprintId) card.copy(sprintId = null) else card
+        }
+        val content = normalized.copy(cards = normalized.cards.map { card ->
+            if (card.parentId == null) parents.getValue(card.id) else card.copy(sprintId = parents[card.parentId]?.sprintId)
+        })
         KanbanRules.check(actor.id, previous, content, id == null || manager)
         validate(request.copy(content = content))
         row.name = request.name.trim(); row.contentJson = mapper.writeValueAsString(content); row.updatedAt = Instant.now()
@@ -66,7 +74,7 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
         val card = content.cards.find { it.id == cardId } ?: throw NotFoundException("Ticket unavailable")
         val destination = content.columns.find { it.id == request.columnId } ?: throw BadRequestException("Destination column unavailable")
         val source = content.columns.find { it.id == card.columnId } ?: throw BadRequestException("Saved column unavailable")
-        if (!KanbanRules.canMove(actor.id, card, source, destination, canManage(actor, row))) throw ForbiddenException("You cannot move this ticket between these columns")
+        if (!KanbanRules.canMove(actor.id, card, source, destination, canManage(actor, row), content.workflow)) throw ForbiddenException("You cannot move this ticket between these columns")
         val cards = content.cards.filter { it.id != cardId }.toMutableList()
         val target = request.beforeId?.let { before -> cards.indexOfFirst { it.id == before && it.columnId == request.columnId }.takeIf { it >= 0 }
             ?: throw BadRequestException("The target ticket is unavailable in that column") } ?: cards.size
@@ -74,6 +82,28 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
         return save(email, id, KanbanRequest(row.name, content.copy(cards = cards), row.revision, row.projectId,
             mapper.readValue(row.teamIdsJson, object : com.fasterxml.jackson.core.type.TypeReference<Set<UUID>>() {})))
     }
+    @Transactional
+    fun startSprint(email: String, id: UUID, sprintId: UUID, request: SprintActionRequest): KanbanView {
+        val row = sprintBoard(email, id, request.revision)
+        return saveSprint(email, row, KanbanSprintRules.start(mapper.readValue(row.contentJson, KanbanContent::class.java), sprintId))
+    }
+    @Transactional
+    fun completeSprint(email: String, id: UUID, sprintId: UUID, request: SprintActionRequest): KanbanView {
+        val row = sprintBoard(email, id, request.revision)
+        return saveSprint(email, row, KanbanSprintRules.complete(mapper.readValue(row.contentJson, KanbanContent::class.java), sprintId, request.destinationSprintId))
+    }
+    private fun sprintBoard(email: String, id: UUID, revision: Long): KanbanBoard {
+        val actor = actor(email)
+        plugins.requireTable("kanban", "plugin_kanban_boards", actor.role, write = true)
+        val row = boards.locked(id).orElse(null)?.takeIf { projects?.readable(actor, it) ?: (it.ownerId == actor.id || com.starter.access.Roles.admin(actor.role)) }
+            ?: throw NotFoundException("Board unavailable")
+        if (!canManage(actor, row)) throw ForbiddenException("Only a board manager can start or complete sprints")
+        if (row.revision != revision) throw ConflictException("This board changed. Reload before changing its sprint.")
+        return row
+    }
+    private fun saveSprint(email: String, row: KanbanBoard, content: KanbanContent) = save(email, row.id,
+        KanbanRequest(row.name, content, row.revision, row.projectId,
+            mapper.readValue(row.teamIdsJson, object : com.fasterxml.jackson.core.type.TypeReference<Set<UUID>>() {})))
     private fun actor(email: String) = actors.current(email).also { plugins.requireTable("kanban", "plugin_kanban_boards", it.role) }
     private fun owned(actor: User, id: UUID) = boards.findById(id).orElse(null)?.takeIf { projects?.readable(actor, it) ?: (it.ownerId == actor.id || com.starter.access.Roles.admin(actor.role)) }
         ?: throw NotFoundException("Board unavailable")
@@ -84,10 +114,10 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
         val writable = runCatching { plugins.requireTable("kanban", "plugin_kanban_boards", actor.role, write = true) }.isSuccess
         val moves = content.cards.associate { card -> card.id to if (!writable) emptySet() else content.columns.filter { column ->
             val from = content.columns.find { it.id == card.columnId }
-            from != null && KanbanRules.canMove(actor.id, card, from, column, manager)
+            from != null && KanbanRules.canMove(actor.id, card, from, column, manager, content.workflow)
         }.map { it.id }.toSet() }
         return KanbanView(row.id, row.ownerId, row.name, row.updatedAt, row.revision, content, row.projectId,
-            mapper.readValue(row.teamIdsJson, object : com.fasterxml.jackson.core.type.TypeReference<Set<UUID>>() {}), manager && writable, moves)
+            mapper.readValue(row.teamIdsJson, object : com.fasterxml.jackson.core.type.TypeReference<Set<UUID>>() {}), manager && writable, moves, estimates?.effective(row.projectId) ?: KanbanEstimation())
     }
     internal fun validate(request: KanbanRequest) {
         KanbanRules.validate(request.content)

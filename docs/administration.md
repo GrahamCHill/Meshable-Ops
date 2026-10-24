@@ -9,7 +9,7 @@ Related settings are consolidated into seven card groups: **Workspace**, **Peopl
 | Area | Route | Purpose |
 | --- | --- | --- |
 | Users | `/admin/users` | Row-based roster, role assignment, activation, upload permissions, and Add user dialog |
-| Project tags & teams | `/admin/projects` | Tags, described team/department groups, scoped project roles, memberships, and identity contacts |
+| Project settings | `/admin/projects` | Ordered project sections/default, tags, described team/department groups, scoped project roles, and memberships |
 | Access controls | `/admin/access-controls` | Super admin role features, member views, external sharing, and protected cloud paths |
 | Security | `/admin/security` | Super admin global third-party extension switch; links to access controls and personal MFA |
 | Branding | `/admin/branding` | Business name, sidebar/link colours, logo/favicon, and sign-in backgrounds |
@@ -27,6 +27,7 @@ Related settings are consolidated into seven card groups: **Workspace**, **Peopl
 | Superset workspace | `/admin/superset-graph-builder` | Dashboard, chart, and dataset authoring |
 | Dashboard links | `/admin/dashboard-links` | Select, label, order, and restrict shared dashboards |
 | System health | `/admin/system` | Service connectivity and runtime details |
+| Event log | `/admin/events` | Administrator-only, scrollable history with progressive loading and event details |
 | Audit & backup | `/admin/audit` | Audit history and application metadata export |
 
 Users open shared storage at `/storage`, insights at `/dashboards`, their generated PDF library at `/documents`, and guided workflows at `/workflows`. Search and chat controls follow the admin feature switches. Admins manage workflow designs and generated documents. Each workflow run and its progress are private to the member who started it, including against other admins. Published workflows grant access to their PDFs through the run as document/email steps are reached.
@@ -42,6 +43,7 @@ Current admin capabilities include:
 - deactivate users
 - grant or revoke the independent document-upload permission
 - review live stack and network-boundary status from `/admin/system`
+- browse the full event history from **Operations → Event log**; see [event log controls and APIs](event-log.md)
 - review audit activity and export backups from `/admin/audit`
 - manage object storage and vector reindexing from `/admin/storage`
 

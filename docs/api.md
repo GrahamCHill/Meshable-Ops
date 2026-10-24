@@ -1,5 +1,7 @@
 # Application API reference
 
+See [navigation and artwork APIs](navigation-and-icons.md#api), [repository discovery/project links](plugins/source-control.md#api), and the [Google Drive endpoint](plugins/google-drive.md). The [custom-page example](../examples/plugins/custom-page/README.md) demonstrates an installed ZIP's scoped frontend/backend call.
+
 ## Projects and delivery
 
 All routes require an active internal account and the Projects feature. Record-level project/team permissions and plugin/table policies apply independently. Existing records require their current `revision`; unauthorized records are unavailable.
@@ -20,10 +22,14 @@ All routes require an active internal account and the Projects feature. Record-l
 | POST | `/projects/{id}/digests` | Leadership send of recipient-specific work/calendar emails; statuses only |
 | GET / POST | `/projects/schedules`, `/projects/{id}/schedules` | Own/project schedule list/create, disabled by default |
 | PUT | `/projects/schedules/{scheduleId}`, `/projects/{id}/schedules/{scheduleId}` | Revision-checked schedule edit |
-| GET / PUT | `/admin/projects` | Admin project tags and business identity contacts |
+| GET / PUT | `/admin/projects` | Admin project sections, default section, and tags |
 | GET / POST | `/admin/projects/groups` | Described team/department roles and members |
 | PUT | `/admin/projects/groups/{id}` | Revision-checked group edit |
 | GET | `/admin/projects/people` | Internal member options within delegated admin permission |
+
+Client requests store contacts in `details.contacts`. Project requests use `details.contactSource`: `CLIENT` reads the linked client’s current contacts; `PROJECT` uses only `details.contacts`, including an explicitly empty override. No-client projects are normalized to `PROJECT`. Responses include `effectiveContacts` for display and `inheritedContacts` for the linked client’s list only. Missing `contactSource` on legacy input defaults to `PROJECT` when contacts are nonempty, otherwise `CLIENT`. `/admin/projects` settings contain `tags`, ordered `sections: [{id, name}]`, and `defaultSectionId`; legacy `identityContacts` is ignored and omitted from responses. There is no global contact fallback.
+
+Project `category` is now a stable configurable section ID, retaining the original `PROPOSAL`, `ACTIVE`, and `ARCHIVED` IDs. Omit it on create to use `defaultSectionId`. `/projects/options` includes ordered `sections` and `defaultSectionId`; project and summary responses include `categoryName` for the current display name. The list `category` filter accepts an existing section ID. Admin section names must be unique after trimming/case folding, 1–80 characters, with 1–20 sections; IDs use 1–40 letters, digits, underscores or hyphens. Removing an assigned section returns `400`; stale settings writes return `409`. Send the full settings object to preserve tags and sections. Project changes retain leadership/RBAC checks.
 
 Reports accept `kind` (`SPRINT`, `MONTHLY`, `PERIOD`), ISO `from`/`to`, optional `boardId`/`sprintId`, `sendEmail`, and `recipientIds`. Digests accept `from`, `to`, `timeZone`, `includeAi`, and team `recipientIds`. Full behavior/limits: [Projects and delivery](projects-and-delivery.md).
 
@@ -305,7 +311,7 @@ Validation errors use HTTP 400 (field-error maps or a safe message). Explicit pe
 
 
 
-Related existing endpoints include `POST /api/auth/login`, `POST /api/auth/logout`, `POST /api/auth/session-cookie`, `GET /api/health`, `GET /api/superset/dashboard-embeds`, admin dashboard-link routes, `GET /api/events`, and admin audit/export routes. Registration is invite-only and rejects self-service requests. Event/audit viewing and admin JSON export remain separate from search.
+Related existing endpoints include `POST /api/auth/login`, `POST /api/auth/logout`, `POST /api/auth/session-cookie`, `GET /api/health`, `GET /api/superset/dashboard-embeds`, admin dashboard-link routes, and admin audit/export routes. Registration is invite-only and rejects self-service requests. The admin-only [event log](event-log.md#api) uses cursor pagination at `GET /api/admin/events`; the legacy `/api/events` page API retains administrator access only. Event/audit viewing and admin JSON export remain separate from search.
 
 
 

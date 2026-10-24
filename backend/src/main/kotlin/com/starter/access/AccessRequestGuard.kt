@@ -38,6 +38,7 @@ class AccessRequestGuard(private val access: AccessControlService) : HandlerInte
             path.startsWith("/api/admin/document-templates") -> "admin.templates"
             path.startsWith("/api/admin/notifications") || path.startsWith("/api/admin/email") -> "admin.notifications"
             path.startsWith("/api/admin/audit-logs") || path.startsWith("/api/admin/backup") -> "admin.audit"
+            path == "/api/admin/events" || path.startsWith("/api/admin/events/") -> "events"
             path.startsWith("/api/admin/stack") || path == "/api/stack" || path == "/api/health" -> "admin.system"
             path.startsWith("/api/admin/") -> "admin." + path.removePrefix("/api/admin/").substringBefore('/')
             path.startsWith("/api/items") -> if (method == "GET" || path.endsWith("/upload")) "storage" else "admin.storage"

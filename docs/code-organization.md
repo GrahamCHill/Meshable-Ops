@@ -1,5 +1,9 @@
 # Code organization
 
+The admin event viewer is `components/pages/AdminEventsPage.tsx`, with `api/events.ts` and scoped `styles/events.css`. `EventController` gates both the cursor and legacy page APIs; `EventHistoryService` performs read-only, timestamp/ID keyset queries over the existing event collection. The stable `events` feature is now admin-only at `/admin/events`, and `NavigationCatalogue` omits it from workspace links. See [event history and access](event-log.md).
+
+`navigation/` owns the declared menu catalogue, filtered member response, optimistic global ordering and registered category artwork controllers. `WorkspaceArtworkService` shares bounded raster normalization while project/admin controllers enforce their own permissions. The frontend separates `WorkspaceNavigation`, `NavigationToggle`, `AdminNavigationPage`, reusable `ArtworkPicker` and project cards/artwork. `projects/ProjectRepositoryLinks` enforces membership/manage rights independently of Kanban. Git provider discovery lives in `sourcecontrol/`; Google Drive has its own `googledrive/` service/controller and lazy frontend folder browser.
+
 Extension contracts, discovery, access gates, and Kanban live in `backend/src/main/kotlin/com/starter/plugins/` and `frontend/src/plugins/`. Plugin pages/APIs use module discovery. See [Workspace plugins](plugins.md) for contracts, layout, checks, and trust boundaries.
 
 Documents and Workflows are separately optional source modules under `backend/.../plugins/{documents,workflows}/` and `frontend/src/plugins/modules/{documents,workflows}/`. Each frontend module owns its pages, API contracts and components. Compiled route descriptors retain first-class URLs/admin cards; `BundledModuleGuard` protects the legacy API roots and `BundledModuleAccess` applies service/table policy. Notification definitions and workflow alerts belong to the modules. `BundledModuleMigration` preserves existing use without reseeding records or overwriting settings. The Documents Python contribution lives in `weasy-renderer/plugins/documents/`, explicitly registered by `plugins/registry.py`. Shared `rendering/WeasyRendererClient` and the renderer host retain independent project reporting. See [full-stack plugins](plugins/full-stack.md) and [module lifecycle](plugins/documents-and-workflows.md).
@@ -16,11 +20,15 @@ Meshable Ops is the product name. Existing `com.starter` package paths, Docker s
 
 Files are grouped by feature and responsibility. Page components compose the screen; API modules own requests and response types; hooks own stateful workflows. Related components sit together so a change to one feature does not require editing a general application file.
 
+`ProjectSections` groups card grids by configured order. `ProjectSectionsSettings` edits section names/order/default; `ProjectSectionRules` validates IDs/names and resolves display names. Existing project category strings retain section assignments across upgrades.
+
 `backend/.../projects/` separates models, project/team access and SQL predicates, client/project validation, extension contexts, work aggregation, PDF reporting, digests, and opt-in schedules. `frontend/src/api/projects.ts` supplies typed contracts; `components/projects/` contains reusable forms/reports/digest/schedule panels; route pages compose these. Kanban splits card fields, sprint fields, project/team selection, comments, and development links into module components.
 
 Kanban's `KanbanRules` owns saved-state movement policies and epic/tag/subtask validation; both whole-board writes and locked move commands use it. Frontend board configuration, column/epic settings, ticket tiles/dialogs, filters and summaries are separate module files. `ProjectWorkOverview`/`WorkCharts` render permission-scoped aggregates. `usePageDraft` retains dialog fields only within a page/account; `useModalDialog` supplies safe backdrop dismissal. `PluginActivationService` applies revision-checked activation batches in one transaction while preserving other plugin settings.
 
 `plugins/integrations/MemberMessaging*` separates provider identity mapping, private delivery, and explicit shared posts. `MemberIdentityEntities` supplies fixed JPA schemas; credentials remain in encrypted plugin configuration. `weasy-renderer/report.py` renders escaped structured project reports independently of authored document templates. Python's complete service roles are documented in [architecture](architecture.md#why-python-is-present).
+
+`components/ui/TimeZoneSelect.tsx` and `lib/timezones.ts` share grouped, searchable timezone choices across member profiles, work schedules/digests, and indexing. API values remain IANA identifiers; labels use familiar names and current offsets. `ProjectDetails.contactSource` and `ProjectView.effectiveContacts` centralize client inheritance versus project replacement without a global fallback.
 
 ## Frontend
 

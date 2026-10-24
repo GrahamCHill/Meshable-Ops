@@ -19,4 +19,4 @@ WeasyCanvas schema version; application revision numbers are stored separately.
 
 ## Licensing of this snapshot
 
-The project owner has included this WeasyCanvas source snapshot under the same AGPL-3.0-only / separately agreed commercial licensing choice as Meshable Ops. See the repository [licensing guide](../../../../LICENSING.md). Dependencies retain their upstream terms. This notice applies to the imported copy and does not change the separate source project.
+The project owner has included this WeasyCanvas source snapshot under the same Meshable Ops Community License 1.0 / separately agreed commercial licensing choice as Meshable Ops. See the repository [licensing guide](../../../../LICENSING.md). Dependencies retain their upstream terms. This notice applies to the imported copy and does not change the separate source project.

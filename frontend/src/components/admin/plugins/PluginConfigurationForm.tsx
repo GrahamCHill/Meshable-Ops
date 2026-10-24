@@ -32,6 +32,7 @@ export function PluginConfigurationForm({plugin}: {plugin: PluginView}) {
         const secret = field.type === 'SECRET'
         const stored = current.configuredSecrets.includes(field.key)
         const cleared = clearSecrets.includes(field.key)
+        if (field.type === 'BOOLEAN') return <label key={field.key} className="checkbox-label"><input type="checkbox" checked={(values[field.key] ?? field.defaultValue) === 'true'} onChange={event => {setValues(previous => ({...previous,[field.key]:String(event.target.checked)}));setDirty(true);save.reset()}}/><span>{field.label}{field.help && <small className="field-help">{field.help}</small>}</span></label>
         return <div key={field.key} className="page-stack">
           <label className="form-field">{field.label}{field.required ? ' (required for use)' : ''}
             <input type={secret ? 'password' : 'text'} autoComplete={secret ? 'new-password' : 'off'} spellCheck={false} maxLength={field.maxLength} value={values[field.key] ?? ''} disabled={cleared}

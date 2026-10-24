@@ -5,11 +5,13 @@ import org.springframework.stereotype.Component
 
 @Component
 class KanbanPlugin : WorkspacePlugin {
-    override val manifest = PluginManifest("kanban", "Kanban boards", "1.2.0",
+    override val manifest = PluginManifest("kanban", "Kanban boards", "1.6.0",
         "Project boards, sprints, assignments, reviews, comments, and Git repository links.", navigationLabel = "Boards",
         compatibleVersions = listOf("1.0.0"), extensions = PluginExtension.entries.toSet(),
         menuItems = listOf(PluginMenuItem("boards", "Saved boards"), PluginMenuItem("guide", "Board guide")),
-        tables = listOf(PluginTable("plugin_kanban_comments", "Card comments and mentions"), PluginTable("plugin_kanban_development_links", "Repository and PR links"), PluginTable("plugin_kanban_boards", "Boards and cards")),
+        tables = listOf(PluginTable("plugin_kanban_comments", "Card comments and mentions"), PluginTable("plugin_kanban_development_links", "Repository and PR links"), PluginTable("plugin_kanban_boards", "Boards and cards"), PluginTable("plugin_kanban_estimation", "Project estimation preferences")),
+        settingsFields = listOf(PluginSettingField("storyPoints", "Enable story points", PluginFieldType.BOOLEAN, help = "Organisation default. Project managers can override this for their project.", defaultValue = "true"),
+            PluginSettingField("tshirtSizes", "Enable T-shirt sizes", PluginFieldType.BOOLEAN, help = "Use XS, S, M, L, XL and XXL estimates. Can be used alongside story points.", defaultValue = "false")),
         capabilities = mapOf("kanban.boards" to "Kanban boards"),
         features = listOf(PluginFeature("development-links", "Repository and pull request links", setOf("source.repositories")),
             PluginFeature("calendar-deadlines", "Card deadlines in Calendar", setOf("calendar.events"))), contextTargets = setOf("PROJECT"))

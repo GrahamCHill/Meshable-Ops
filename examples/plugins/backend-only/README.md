@@ -15,4 +15,4 @@ Content-Type: application/json
 {"values": [10, 20, 30]}
 ```
 
-The uploaded Python code returns `{"total":60,"count":3}` or a `422` validation response. It has no database or HTTP grants. [Backend runtime and setup](../../../docs/plugins/backend-runtime.md). Original example code inherits the application's [AGPL community licensing](../../../LICENSING.md).
+The uploaded Python code returns `{"total":60,"count":3}` or a `422` validation response. It has no database or HTTP grants. [Backend runtime and setup](../../../docs/plugins/backend-runtime.md). Original example code inherits the application's [community licensing](../../../LICENSING.md).

@@ -22,7 +22,7 @@ export interface PluginView {
   settingsRevision: number
   author?: { name: string; organization: string; email: string; website: string }
 }
-export interface PluginSettingField {key: string; label: string; type: 'TEXT' | 'SECRET'; required: boolean; help: string; maxLength: number}
+export interface PluginSettingField {key: string; label: string; type: 'TEXT' | 'SECRET' | 'BOOLEAN'; required: boolean; help: string; maxLength: number; defaultValue?: string}
 export interface PluginConfiguration {values: Record<string, string>; configuredSecrets: string[]; missingRequired: string[]; revision: number; encryptionConfigured: boolean}
 export type PluginSettings = Pick<PluginView, 'enabled' | 'allowedRoles' | 'searchEnabled' | 'tableAccess'>
 export const pluginsApi = {

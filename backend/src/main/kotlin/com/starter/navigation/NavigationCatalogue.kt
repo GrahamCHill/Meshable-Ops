@@ -13,7 +13,7 @@ class NavigationCatalogue(private val modules: List<WorkspacePlugin>, private va
     fun all(): List<NavigationItem> {
         val core = listOf(NavigationItem("home", "Home", "/"), NavigationItem("dashboards", "Dashboards", "/dashboards"),
             NavigationItem("storage", "Storage", "/storage"), NavigationItem("projects", "Projects", "/projects"),
-            NavigationItem("events", "Events", "/events"), NavigationItem("search", "Search workspace", "/search"))
+            NavigationItem("search", "Search workspace", "/search"))
         val manifests = (modules.map { it.manifest } + packages.manifests()).distinctBy { it.id }
             .filter { PluginExtension.PAGE in it.extensions }.sortedBy { it.name.lowercase() }
         val pages = manifests.map { manifest ->

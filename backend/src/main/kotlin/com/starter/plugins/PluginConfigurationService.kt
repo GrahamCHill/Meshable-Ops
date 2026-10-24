@@ -37,6 +37,7 @@ class PluginConfigurationService(private val registry: PluginRegistry, private v
             val field = fields.getValue(key)
             if (raw.length > field.maxLength || raw.any { it.isISOControl() }) throw BadRequestException("Invalid ${field.label.lowercase()}")
             val value = raw.trim()
+            if (field.type == PluginFieldType.BOOLEAN && value !in setOf("true", "false")) throw BadRequestException("Choose enabled or disabled for ${field.label}")
             if (field.type == PluginFieldType.SECRET && value.isBlank()) return@forEach // blank preserves an existing secret
             if (key in request.clearSecrets && value.isNotBlank()) throw BadRequestException("Clear or replace a credential, not both")
             if (value.isEmpty()) values.remove(key) else values[key] = value

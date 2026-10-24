@@ -1,16 +1,28 @@
 # Clients, projects, and delivery
 
-**Projects** is an internal-member workspace at `/projects`. The directory supports text search, Active/Archived/Proposal categories, and multiple tag filters (all selected tags must match). Workspace search also includes authorized project matches. Lists are bounded to 200 results; narrow filters for larger portfolios.
+The portfolio displays projects as responsive cards, grouped into workspace-defined sections, retaining section, text, client and multi-tag filters. Cards show each project's icon, client, section, tags and update time. On a project detail page, managers/team leads/admins can choose a built-in icon or upload WebP/PNG/JPEG up to 1 MiB (128 × 128 px recommended). Image reads enforce project membership; icons have their own revision, so editing artwork does not overwrite project details. [Repository links](plugins/source-control.md#project-links) connect projects directly to enabled Git providers without requiring a board.
+
+**Projects** is an internal-member workspace at `/projects`. The directory supports text search, configurable sections, and multiple tag filters (all selected tags must match). Workspace search also includes authorized project matches. Lists are bounded to 200 results; narrow filters for larger portfolios.
+
+## Project sections
+
+Cards are grouped beneath ordered section headings, with a visible count and an empty-state message for each section. The initial sections are **Proposals**, **Active**, and **Archived**. All sections are shown by default; use the Section filter to focus on one. Counts reflect the current filters and loaded results.
+
+Open **Administration → People & security → Project settings → Sections** to create, rename, reorder, or remove sections and choose the default for new projects. Use up to 20 sections with unique names of at most 80 characters. For example, rename the defaults and add a fourth section to use **Prototypes**, **Active development**, **Deployed**, and **Sunsetted**. Settings apply to the workspace.
+
+Section IDs are stable: renaming or reordering does not move projects. A section containing projects cannot be removed; authorized project leaders/managers/admins must move those projects first through **Edit project → Details → Section**. Ordinary project members cannot change sections, and section membership grants no additional access. Existing `PROPOSAL`, `ACTIVE`, and `ARCHIVED` assignments are preserved on upgrade; legacy settings automatically receive the original sections. New projects use the configured default, including API creates that omit `category`.
 
 ## Clients, contacts, and files
 
-A client can have many projects. Projects inherit client contacts and retain their own contacts, members, web links, and S3/Blob file or directory references. Without a client, the business name and identity contacts are used. Configure identity contacts in **Administration → People & security → Project tags & teams**.
+A client can have many projects. Set contact details on each client in **Projects → Clients**. In **Edit project → Contacts & links**, choose **Use client contacts** to follow the linked client’s current list, or **Override for this project** to replace it with a project-specific list. An override may be empty. **Copy client contacts to project** makes an independent editable copy; subsequent client changes do not affect it. Projects without a client use only their own contacts. There is no app-wide default contact list. The app name may still identify an unlinked project.
+
+Existing nonempty project contact lists become project overrides; existing empty lists inherit the linked client. Previously saved app-wide contacts are ignored, without altering existing client/project data. Contact edits retain the existing client-owner/admin and project-leadership permissions. Members see the effective list with its source. Projects also retain members, web links, and S3/Blob file or directory references.
 
 Client owners and administrators edit inherited details; authorized project members can read them. Storage references never grant file access: each viewer still needs connection, root, and path permission. Hidden references are omitted from views and preserved during edits by members who cannot see them. PDF links open the existing viewer, subject to policy. Other files open their containing folder.
 
 ## Roles and team boundaries
 
-Global roles remain Super admin, Admin, Member, and External. Projects add scoped **Member**, **Team lead**, and **Manager** assignments. Project leads have Team lead authority. Only project managers, team leads, and authorized administrators edit projects, change categories, manage membership, configure project schedules, or send team reports/digests. External accounts cannot use projects.
+Global roles remain Super admin, Admin, Member, and External. Projects add scoped **Member**, **Team lead**, and **Manager** assignments. Project leads have Team lead authority. Only project managers, team leads, and authorized administrators edit projects, change sections, manage membership, configure project schedules, or send team reports/digests. External accounts cannot use projects.
 
 Admins create described groups with Team or Department kind, a project role, members, and tags. Explicitly linking a **Team** to a project grants its members that project role. Department membership and tags classify work without granting access. A member can belong to one department and a separate project team without seeing other teams' work.
 
@@ -18,7 +30,7 @@ Boards can restrict visibility to selected teams linked to their project. Projec
 
 ## Boards and tickets
 
-Enable **Kanban boards** under Plugins. Open boards from the card directory or a project's **Open project boards** link. Managers configure columns, permissions and project/team access separately from everyday tickets. Drag tickets between columns, or open a ticket and choose its column. Changes save immediately; optimistic revisions reject stale saves. See [Kanban 1.2.0](plugins/kanban.md).
+Enable **Kanban boards** under Plugins. Open boards from the card directory or a project's **Open project boards** link. Managers configure columns, permissions and project/team access separately from everyday tickets. Drag tickets between columns, or open a ticket and choose its column. Backlog plans future sprints; managers start and complete sprints with unfinished work carried forward. Changes save immediately; optimistic revisions reject stale saves. See [Kanban 1.3.0](plugins/kanban.md).
 
 Tickets support stable references, types/priorities, descriptions, assignees, reviewers, dates, sprints, points, blocked flags, tags, epics and subtasks. Columns supply reporting status and independent entry/exit permissions. Completing fills an omitted completion date; reopening clears it. Assignees/reviewers and selected transition members must have internal board access. Project Overview charts current tickets by actual column/stage, assignee, epic and tag across only visible boards.
 
@@ -48,7 +60,7 @@ A configured LLM can summarize bounded facts. Summaries are labeled and ordinary
 
 Nothing is scheduled automatically. Personal schedules send the owner's digest; project schedules require leadership and internal recipients. Emailed reports always include the lead.
 
-Schedules support daily/weekly/monthly cadence, local time, IANA timezone, weekday, and month day 1–28. Defaults are **disabled**, monthly, 08:00 UTC. Monthly reports cover the previous calendar month; period reports cover seven previous days; sprint jobs select the latest newly completed sprint. Digests cover the scheduled date through seven days ahead.
+Schedules support daily/weekly/monthly cadence, local time, timezone, weekday, and month day 1–28. Profile, schedule, digest, and indexing forms share a grouped timezone dropdown with familiar names (such as South Africa Time and Eastern Time), city, and current UTC offset. **Find a timezone** filters by name, city, or identifier. Values remain IANA identifiers and schedules adjust for daylight saving. Defaults are **disabled**, monthly, 08:00 UTC. Monthly reports cover the previous calendar month; period reports cover seven previous days; sprint jobs select the latest newly completed sprint. Digests cover the scheduled date through seven days ahead.
 
 The backend checks each minute, claims due rows in PostgreSQL, advances deadlines, and uses delivery deduplication keys. After downtime, work runs once rather than once per missed interval. The backend must be running. Unavailable providers are recorded for manual review, without indefinite automatic retries.
 

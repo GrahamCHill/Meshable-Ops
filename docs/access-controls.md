@@ -1,5 +1,7 @@
 # Roles, views, and external storage access
 
+The **Event log** feature (`events`) is administrator-only at `/admin/events`, under Administration → Operations. Old member grants cannot expose it. Both `/api/admin/events` and the legacy `/api/events` endpoint require an administrator role plus this feature; super admins retain access. See [event history](event-log.md).
+
 Open **Administration → Access controls** (`/admin/access-controls`). Only super admins can change these policies. Access checks run on the server as well as in frontend navigation; hiding a view also blocks its API. Unknown feature endpoints fail closed for lower roles.
 
 ## Roles and user management

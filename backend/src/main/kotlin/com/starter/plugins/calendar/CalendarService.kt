@@ -19,7 +19,7 @@ class CalendarService(private val events: CalendarEventRepository, private val a
         val dateUntil=until.atZone(zone).let { if (it.toLocalTime()==LocalTime.MIDNIGHT) it.toLocalDate() else it.toLocalDate().plusDays(1) }
         val local = events.window(actor.id, com.starter.access.Roles.admin(actor.role), from, until,dateFrom.atStartOfDay(ZoneOffset.UTC).toInstant(),dateUntil.atStartOfDay(ZoneOffset.UTC).toInstant(),PageRequest.of(0,201))
         val deadlinePlugin = registry.available(actor.role).find { it.manifest.id == "kanban" }
-        val due = if (deadlinePlugin?.tableAccess?.get("plugin_kanban_boards")?.readRoles?.contains(com.starter.access.Roles.plugin(actor.role)) == true) deadlines(actor, dateFrom, dateUntil) else emptyList()
+        val due = if (deadlinePlugin?.tableAccess?.get("plugin_kanban_boards")?.readRoles?.contains(com.starter.access.Roles.plugin(actor.role)) == true) (deadlines(actor, dateFrom, dateUntil) + sprints(actor,dateFrom,dateUntil)).sortedBy { it.start } else emptyList()
         return CalendarWindow((local.take(200).map(::view) + due.take(200)).sortedBy { it.start }, local.size > 200 || due.size > 200)
     }
     @Transactional
@@ -55,8 +55,21 @@ class CalendarService(private val events: CalendarEventRepository, private val a
     """.trimIndent(), { rs, _ ->
         val date = LocalDate.parse(rs.getString("due")); val boardId = rs.getString("board_id")
         CalendarEventView("kanban:$boardId:${rs.getString("card_id")}", rs.getString("title"), rs.getString("name") + " · " + rs.getString("description").orEmpty(),
-            date.toString(), date.plusDays(1).toString(), true, "kanban", "/plugins/kanban/boards?board=$boardId", calendarName = "Board: " + rs.getString("name"))
+            date.toString(), date.plusDays(1).toString(), true, "kanban", "/plugins/kanban/boards?board=$boardId&card=${rs.getString("card_id")}", calendarName = "Board: " + rs.getString("name"))
     }, *scope, from.toString(),until.toString())
+    }
+    private fun sprints(actor: com.starter.model.postgres.User, from: LocalDate, until: LocalDate): List<CalendarEventView> {
+        val predicate = if (projects == null) "(? = TRUE OR b.owner_id = ?)" else com.starter.projects.ProjectAccessSql.boardPredicate()
+        val scope = projects?.sqlArgs(actor) ?: arrayOf(com.starter.access.Roles.admin(actor.role),actor.id)
+        return jdbc.query("""SELECT b.id AS board_id,b.name,s->>'id' AS sprint_id,s->>'name' AS title,s->>'goal' AS goal,
+            s->>'startDate' AS starts,s->>'endDate' AS ends,s->>'status' AS state FROM plugin_kanban_boards b
+            CROSS JOIN LATERAL jsonb_array_elements(COALESCE(CAST(b.content_json AS jsonb)->'sprints','[]'::jsonb)) s
+            WHERE $predicate AND s->>'startDate' < ? AND s->>'endDate' >= ? ORDER BY s->>'startDate',b.id LIMIT 201""",
+            { rs,_ -> val board = rs.getString("board_id"); CalendarEventView("kanban-sprint:$board:${rs.getString("sprint_id")}",
+                rs.getString("title"), "${rs.getString("name")} · ${rs.getString("state") ?: "PLANNED"}\n${rs.getString("goal").orEmpty()}",
+                rs.getString("starts"), LocalDate.parse(rs.getString("ends")).plusDays(1).toString(),true,"kanban",
+                "/plugins/kanban/boards?board=$board&sprint=${rs.getString("sprint_id")}",calendarName="Sprints: ${rs.getString("name")}") },
+            *scope,until.toString(),from.toString())
     }
     companion object {
         fun validateWindow(from: Instant, until: Instant) { if (from < Instant.parse("1900-01-01T00:00:00Z") || until > Instant.parse("9999-12-31T23:59:59Z") || until <= from || Duration.between(from,until) > Duration.ofDays(93)) throw BadRequestException("Choose a calendar window of at most 93 days, between 1900 and 9999") }

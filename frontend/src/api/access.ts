@@ -27,10 +27,11 @@ export function useAccess() {
   const canPath = (path: string): boolean => {
     path = path.split('?')[0]
     if (path.startsWith('/account/')) return true
-    if (path === '/admin') return isAdminRole(query.data?.role) && query.data?.features.some(id => id.startsWith('admin.')) === true
+    if (path === '/admin') return isAdminRole(query.data?.role) && query.data?.views.some(view => view.admin && can(view.id)) === true
     if (path.startsWith('/admin/sections/')) return isAdminRole(query.data?.role) && (can('admin.plugins') || bundledRoutes.some(route => route.adminCategory && path === `/admin/sections/${route.adminCategory}` && can(route.feature)) || adminGroups.find(group => path === `/admin/sections/${group.id}`)?.items.some(item => canPath(item.to)) === true)
     if (path === '/admin/email') return can('admin.notifications')
     if (path === '/items') path = '/storage'
+    if (path === '/events') path = '/admin/events'
     const view = query.data?.views.filter(view => path === view.path || view.path !== '/' && path.startsWith(view.path + '/')).sort((a, b) => b.path.length - a.path.length)[0]
     return !!view && can(view.id)
   }

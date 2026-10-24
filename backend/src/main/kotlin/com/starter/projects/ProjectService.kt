@@ -22,21 +22,22 @@ class ProjectService(private val projects: ProjectRepository, private val client
     private val access: AccessControlService, private val settings: ProjectSettingsService, private val branding: BrandingPreferencesService,
     private val mapper: ObjectMapper, private val jdbc: JdbcTemplate, private val artwork: com.starter.service.WorkspaceArtworkService? = null) {
     fun people(email: String): List<ProjectPerson> { policy.actor(email); return users.findAll().filter { it.active && it.role != "EXTERNAL" }.sortedBy { it.name ?: it.username }.map { ProjectPerson(it.id, it.name ?: it.username, it.email) } }
-    fun options(email: String): Map<String, Any> { policy.actor(email); return mapOf("tags" to settings.current().settings.tags, "groups" to groups.findAll().map { mapOf("id" to it.id, "name" to it.name, "description" to it.description, "kind" to it.kind, "projectRole" to it.projectRole) }, "identityName" to branding.current().applicationName) }
-    fun list(email: String, query: String = "", category: ProjectCategory? = null, tags: Set<UUID> = emptySet()): List<ProjectSummary> {
+    fun options(email: String): Map<String, Any> { policy.actor(email); val configuration = settings.current().settings; return mapOf("tags" to configuration.tags, "groups" to groups.findAll().map { mapOf("id" to it.id, "name" to it.name, "description" to it.description, "kind" to it.kind, "projectRole" to it.projectRole) }, "identityName" to branding.current().applicationName, "sections" to configuration.sections, "defaultSectionId" to configuration.defaultSectionId) }
+    fun list(email: String, query: String = "", category: String? = null, tags: Set<UUID> = emptySet()): List<ProjectSummary> {
         val actor = policy.actor(email)
         if (query.length > 200 || tags.size > 20) throw BadRequestException("Use a search up to 200 characters and up to 20 tag filters")
         val args = mutableListOf<Any>(*ProjectAccessSql.args(actor))
         val conditions = mutableListOf(ProjectAccessSql.predicate())
-        if (category != null) { conditions += "p.category = ?"; args += category.name }
+        val configuration = settings.current().settings
+        if (!category.isNullOrBlank()) { ProjectSectionRules.require(configuration, category); conditions += "p.category = ?"; args += category }
         if (query.isNotBlank()) { conditions += "(p.name ILIKE ? ESCAPE '\\' OR COALESCE(c.name, '') ILIKE ? ESCAPE '\\' OR CAST(p.details_json AS jsonb)->>'description' ILIKE ? ESCAPE '\\')"; val term = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"; repeat(3) { args += term } }
         tags.forEach { conditions += "jsonb_exists(COALESCE(CAST(p.details_json AS jsonb)->'tagIds','[]'::jsonb), ?)"; args += it.toString() }
         val identity = branding.current().applicationName
         val found = jdbc.query("SELECT p.id, p.name, p.client_id, c.name AS client_name, p.category, p.details_json, p.updated_at FROM workspace_projects p LEFT JOIN workspace_clients c ON c.id = p.client_id WHERE ${conditions.joinToString(" AND ")} ORDER BY p.updated_at DESC, p.id LIMIT 200",
             { rs, _ -> ProjectSummary(rs.getObject("id", UUID::class.java), rs.getString("name"), rs.getObject("client_id", UUID::class.java), rs.getString("client_name") ?: identity,
-                ProjectCategory.valueOf(rs.getString("category")), mapper.readValue(rs.getString("details_json"), ProjectDetails::class.java).tagIds, rs.getTimestamp("updated_at").toInstant()) }, *args.toTypedArray())
+                rs.getString("category"), mapper.readValue(rs.getString("details_json"), ProjectDetails::class.java).tagIds, rs.getTimestamp("updated_at").toInstant()) }, *args.toTypedArray())
         val icons = artwork?.many(found.map { "project:${it.id}" }).orEmpty()
-        return found.map { it.copy(artwork = icons["project:${it.id}"] ?: com.starter.service.ArtworkView()) }
+        return found.map { it.copy(artwork = icons["project:${it.id}"] ?: com.starter.service.ArtworkView(), categoryName = ProjectSectionRules.name(configuration, it.category)) }
     }
     fun get(email: String, id: UUID): ProjectView = view(policy.require(id, policy.actor(email)), policy.actor(email))
     @Transactional
@@ -50,7 +51,10 @@ class ProjectService(private val projects: ProjectRepository, private val client
         val people = value.members.map { it.userId }.toSet() + input.leadId
         if (users.findAllById(people).filter { it.active && it.role != "EXTERNAL" }.map { it.id }.toSet() != people) throw BadRequestException("Choose active internal project members and a lead")
         if (groups.findAllById(value.groupIds).filter { it.kind == GroupKind.TEAM }.map { it.id }.toSet() != value.groupIds) throw BadRequestException("Choose explicit team groups for project access; department tags do not grant access")
-        val knownTags = settings.current().settings.tags.map { it.id }.toSet()
+        jdbc.execute("SELECT pg_advisory_xact_lock_shared(50272026)")
+        val configuration = settings.current().settings
+        val selectedSection = ProjectSectionRules.require(configuration, input.category ?: configuration.defaultSectionId)
+        val knownTags = configuration.tags.map { it.id }.toSet()
         val priorTags = if (id == null) emptySet() else policy.details(row).tagIds
         if (!(knownTags + priorTags).containsAll(value.tagIds)) throw BadRequestException("Choose existing project tags")
         input.clientId?.let { client(actor, it) }
@@ -64,8 +68,9 @@ class ProjectService(private val projects: ProjectRepository, private val client
         }
         if (linked.map { it.id }.distinct().size != linked.size) throw BadRequestException("Storage link IDs must be unique")
         val hidden = if (id == null) emptyList() else policy.details(row).storage.filter { !visibleStorage(actor, it) }
-        row.name = input.name.trim(); row.leadId = input.leadId; row.clientId = input.clientId; row.category = input.category
-        row.detailsJson = mapper.writeValueAsString(value.copy(tagIds = value.tagIds.intersect(knownTags), storage = (hidden + linked).distinctBy { it.id })); row.updatedAt = Instant.now()
+        row.name = input.name.trim(); row.leadId = input.leadId; row.clientId = input.clientId; row.category = selectedSection
+        row.detailsJson = mapper.writeValueAsString(value.copy(tagIds = value.tagIds.intersect(knownTags), storage = (hidden + linked).distinctBy { it.id },
+            contactSource=if(input.clientId==null)ProjectContactSource.PROJECT else value.contactSource)); row.updatedAt = Instant.now()
         if (id == null && policy.role(actor, row) !in setOf(ProjectRole.TEAM_LEAD, ProjectRole.MANAGER)) throw BadRequestException("Include yourself as the project lead or a manager when creating a project")
         return view(projects.saveAndFlush(row), actor)
     }
@@ -100,9 +105,10 @@ class ProjectService(private val projects: ProjectRepository, private val client
     private fun clientView(row: ClientRecord, actor: User) = ClientView(row.id, row.name, mapper.readValue(row.detailsJson, ClientDetails::class.java), row.revision, row.ownerId == actor.id || Roles.admin(actor.role))
     private fun view(row: ProjectRecord, actor: User): ProjectView {
         val inherited = row.clientId?.let { clients.findById(it).orElse(null) }
-        val contacts = inherited?.let { mapper.readValue(it.detailsJson, ClientDetails::class.java).contacts } ?: settings.current().settings.identityContacts
+        val contacts = inherited?.let { mapper.readValue(it.detailsJson, ClientDetails::class.java).contacts }.orEmpty()
+        val details=policy.details(row).let {it.copy(storage=it.storage.filter {link->visibleStorage(actor,link)},contactSource=if(row.clientId==null)ProjectContactSource.PROJECT else it.contactSource)}
         return ProjectView(row.id, row.name, row.clientId, inherited?.name ?: branding.current().applicationName, row.leadId, row.category,
-            policy.details(row).let { it.copy(storage = it.storage.filter { link -> visibleStorage(actor, link) }) }, contacts,
-            row.revision, policy.role(actor, row) != ProjectRole.MEMBER, row.updatedAt)
+            details, contacts,
+            row.revision, policy.role(actor, row) != ProjectRole.MEMBER, row.updatedAt, categoryName = ProjectSectionRules.name(settings.current().settings, row.category))
     }
 }

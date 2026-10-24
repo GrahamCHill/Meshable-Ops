@@ -3,9 +3,9 @@ package com.starter.plugins
 enum class PluginExtension { PAGE, API, DATABASE, SEARCH, SETTINGS, NOTIFICATIONS }
 enum class PluginRuntime { REACT, KOTLIN, PYTHON }
 
-enum class PluginFieldType { TEXT, SECRET }
+enum class PluginFieldType { TEXT, SECRET, BOOLEAN }
 data class PluginSettingField(val key: String, val label: String, val type: PluginFieldType = PluginFieldType.TEXT,
-    val required: Boolean = false, val help: String = "", val maxLength: Int = 200)
+    val required: Boolean = false, val help: String = "", val maxLength: Int = 200, val defaultValue: String = "")
 
 data class PluginMenuItem(val path: String, val label: String, val roles: Set<String> = setOf("ADMIN", "USER"))
 data class PluginTable(val name: String, val label: String,

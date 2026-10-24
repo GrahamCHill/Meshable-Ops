@@ -2,7 +2,7 @@
 
 For a minimal uploadable frontend + backend example, use [custom-page](../../examples/plugins/custom-page/README.md): run its `package.py`, then install the resulting ZIP. It includes a custom page, guide submenu, settings, author file, and Python route. For React plus Python/Kotlin, use the [full-stack example](../../examples/plugins/full-stack/README.md).
 
-See [Kanban 1.2.0](kanban.md) for columns, transition permissions, draggable tickets, epics, tags, project charts and bulk plugin activation.
+See [Kanban 1.3.0](kanban.md) for columns, transition permissions, draggable tickets, sprint planning/completion, swimlanes, subtasks, project charts and bulk plugin activation.
 
 See [presentation, admin categories, screen contributions, and removal](presentation-and-lifecycle.md) for icons/banners, categories, required/optional plugin relationships, author-defined incompatibility, optional settings, and extension slots.
 
@@ -12,14 +12,14 @@ Choose between [runtime ZIP packages](zip-packages.md) for optional frontend pag
 
 Source plugins support **React, Kotlin and Python** contributions. Start from the [full-stack authoring guide](full-stack.md) and the [Documents/Workflows extraction](documents-and-workflows.md), or use `backend/src/main/kotlin/com/starter/plugins/kanban/` and `frontend/src/plugins/modules/kanban/` for a React/Kotlin example. Source modules are built into application/worker images; runtime ZIPs load optional browser bundles and isolated Python/Kotlin backend code from their uploaded artifacts. Review dependencies, SQL migrations, secrets, ownership, and outbound requests as application code.
 
-1. Add a Spring `@Component` implementing `WorkspacePlugin` under `com.starter.plugins.<module>`. Declare a unique lowercase ID of 2–40 characters, a SemVer version (for example `1.2.0` or `1.0.0-a`), and host `apiVersion = 1`.
+1. Add a Spring `@Component` implementing `WorkspacePlugin` under `com.starter.plugins.<module>`. Declare a unique lowercase ID of 2â€“40 characters, a SemVer version (for example `1.2.0` or `1.0.0-a`), and host `apiVersion = 1`.
 2. Declare extension types: `PAGE`, `API`, `DATABASE`, `SETTINGS`, `NOTIFICATIONS`, and/or `SEARCH`. Add submenu definitions and owned table declarations as needed. `defaultRoles` may restrict initial access within `supportedRoles` (both must retain `ADMIN`).
 3. Put controller routes under `/api/plugins/<id>/...`. The host interceptor rechecks account activation, plugin enabled state, and allowed roles. Services must call `PluginRegistry.requireTable` before database reads/writes and enforce record ownership. Background jobs need the same checks.
 4. Add JPA entities/repositories in the plugin package and a reviewed migration. Declare all owned tables in the manifest; declarations register ownership/policy, they do not execute arbitrary DDL. Prefix tables `plugin_<id_with_underscores>_`. The existing Spring/JPA scanning includes this package.
 5. Add the frontend module descriptor and lazy page. See [Pages and submenus](pages-and-menus.md).
 6. Declare configuration fields and validators for the shared [Settings menu](settings.md). Add [notification methods and types](notifications.md) when the plugin delivers messages. Optionally implement a `PluginSearchProvider`; see [Search](search.md).
 7. Test disabled/restricted states, direct API requests, ownership, read-only roles, search exclusion, stale writes, and clear-data rollback. Run `mvn test` using Java 21 in `backend/` and `npm run build` in `frontend/`.
-8. Rebuild and deploy backend/frontend, then open its **Manage** view in **Administration → Plugins** and enable it under **General**. Expose editable configuration through an admin category when appropriate; modules without editable options can omit Settings. New modules do not seed business records.
+8. Rebuild and deploy backend/frontend, then open its **Manage** view in **Administration â†’ Plugins** and enable it under **General**. Expose editable configuration through an admin category when appropriate; modules without editable options can omit Settings. New modules do not seed business records.
 
 ```kotlin
 @Component
@@ -44,4 +44,4 @@ Separate [integration plugins](integrations.md) provide Discord, Telegram, Teams
 
 ## Licensing modules
 
-Plugins that form a covered extension or combined work inherit the app's **AGPL-3.0-only** community licensing. Original plugin functionality accepted into this repository follows that license. Independently authored service-integration components may retain compatible licenses, while independent external services retain their own terms. The covered combination remains subject to AGPL; language, ZIP packaging or process boundaries do not automatically create an exemption. See the [licensing policy](../../LICENSING.md#plugins-and-external-service-integrations) and [plugin examples](licensing.md). The commercial alternative requires an executed agreement covering the relevant rights. Core/community contributions still need explicit [CLA acceptance](../../CLA.md) before merging.
+Covered plugins inherit the app's custom **Meshable Ops Community License**, including its paid-plugin exception and source/notice conditions. Authors may charge and keep revenue. Commercial application distribution/hosting requires a separate written grant from the creator or an expressly authorized Licensing Maintainer; independent plugin publication does not accept the CLA or confer relicensing rights. Independently authored separable service-integration components may retain compatible terms; independent services retain their own terms. See [licensing policy](../../LICENSING.md#plugins-and-external-service-integrations), [examples](licensing.md), and [CLA 2.0](../../CLA.md). This is source available, not AGPL or OSI-approved open source.

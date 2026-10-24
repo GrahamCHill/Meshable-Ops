@@ -26,7 +26,7 @@ import { AdminSystemPage } from './components/pages/AdminSystemPage'
 import { AdminAuditPage } from './components/pages/AdminAuditPage'
 import { ItemsPage } from './components/pages/ItemsPage'
 import { SearchPage } from './components/pages/SearchPage'
-import { EventsPage } from './components/pages/EventsPage'
+import { AdminEventsPage } from './components/pages/AdminEventsPage'
 import { LoginPage, RegisterPage } from './components/pages/AuthPages'
 import { useAuthStore } from './hooks/useAuthStore'
 import { ThemeProvider } from './hooks/useTheme'
@@ -107,6 +107,7 @@ function App() {
                     <Route path="/admin/storage" element={<AdminRoute><AdminStoragePage /></AdminRoute>} />
                     <Route path="/admin/system" element={<AdminRoute><AdminSystemPage /></AdminRoute>} />
                     <Route path="/admin/audit" element={<AdminRoute><AdminAuditPage /></AdminRoute>} />
+                    <Route path="/admin/events" element={<AdminRoute><AdminEventsPage /></AdminRoute>} />
                     <Route path="/admin/superset-graph-builder" element={
                       <AdminRoute>
                         <SupersetAdminPage />
@@ -120,7 +121,7 @@ function App() {
                     <Route path="/storage" element={<ItemsPage />} />
                     <Route path="/items" element={<Navigate to="/storage" replace />} />
                     <Route path="/search" element={<SearchPage />} />
-                    <Route path="/events" element={<EventsPage />} />
+                    <Route path="/events" element={<Navigate to="/admin/events" replace />} />
                   </Routes>
                 </AppLayout></AccessBoundary>
               </ProtectedRoute>

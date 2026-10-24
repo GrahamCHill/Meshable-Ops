@@ -12,10 +12,10 @@ class AccessCatalogue(private val plugins: List<WorkspacePlugin>, private val pa
     fun maximum(role: String) = features.filter { if (Roles.admin(role)) it.id !in setOf(ACCESS_CONTROLS, EXTENSION_SECURITY) else !it.admin }.map { it.id }.toSet()
     val features get() = listOf(
         AccessFeature("home", "Home", "/"), AccessFeature("dashboards", "Dashboards", "/dashboards"),
-        AccessFeature("storage", "Storage", "/storage"), AccessFeature("events", "Events", "/events"),
+        AccessFeature("storage", "Storage", "/storage"), AccessFeature("events", "Event log", "/admin/events", true),
         AccessFeature("search", "Search and AI assistant", "/search"),
         AccessFeature("projects", "Clients and projects", "/projects"),
-        AccessFeature("admin.projects", "Project tags, teams, and custom roles", "/admin/projects", true),
+        AccessFeature("admin.projects", "Project settings, sections, tags, and teams", "/admin/projects", true),
         AccessFeature("admin.branding", "Branding", "/admin/branding", true),
         AccessFeature("admin.navigation", "Menu ordering", "/admin/navigation", true),
         AccessFeature("admin.plugins", "Plugin administration", "/admin/plugins", true),

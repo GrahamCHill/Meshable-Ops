@@ -96,7 +96,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    client["Client or app identity<br/>Inherited contacts"] --> project["Project<br/>Lead, members, teams, tags, links"]
+    client["Client<br/>Shared contacts; project override available"] --> project["Project<br/>Lead, members, teams, tags, links"]
     project --> board["Team-scoped boards<br/>Tickets, sprints, comments"]
     project --> refs["Storage references<br/>Original file ACL still required"]
     project --> ext["Authorized plugin contexts"]
@@ -179,8 +179,8 @@ The main user-visible routes are:
   registered storage roots and a nested S3/Azure Blob folder browser (`/items` redirects here)
 - `/search`
   dedicated search panel; ordinary search is also available directly in Storage
-- `/events`
-  event log
+- `/admin/events`
+  administrator-only event log with progressively loaded scrollable history (`/events` redirects authorized admins here)
 - `/admin`
   card-based administration menu; sections provide a back link instead of sidebar child items
 - `/admin/users`

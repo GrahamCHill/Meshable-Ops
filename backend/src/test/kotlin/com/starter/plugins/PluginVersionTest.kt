@@ -25,7 +25,7 @@ class PluginVersionTest {
             com.starter.plugins.sharepoint.SharePointPlugin(),com.starter.plugins.onedrive.OneDrivePlugin(),
             com.starter.plugins.documents.DocumentsPlugin(),com.starter.plugins.workflows.WorkflowsPlugin())
         plugins.forEach { plugin -> PluginManifests.validateIdentity(plugin.manifest)
-            assertThat(plugin.manifest.version).isEqualTo(when(plugin.manifest.id) { "kanban" -> "1.2.0"; "calendar" -> "1.1.1"; else -> "1.0.0-a" })
+            assertThat(plugin.manifest.version).isEqualTo(when(plugin.manifest.id) { "kanban" -> "1.6.0"; "calendar" -> "1.1.1"; else -> "1.0.0-a" })
             assertThat(plugin.manifest.compatibleVersions).describedAs(plugin.manifest.id).isNotEmpty()
             assertThat(policy.assess(plugin.manifest).status).describedAs(plugin.manifest.id).isEqualTo(PluginVersionStatus.COMPATIBLE) }
     }

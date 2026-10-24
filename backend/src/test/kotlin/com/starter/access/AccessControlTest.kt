@@ -136,4 +136,17 @@ class AccessControlTest {
         assertThat(details.authorities.map { it.authority }).contains("ROLE_SUPER_ADMIN", "ROLE_ADMIN")
         assertThat(Roles.plugin("SUPER_ADMIN")).isEqualTo("ADMIN")
     }
+    @Test fun `event log is an admin feature and existing member event grants cannot expose it`() {
+        val legacy=AccessPolicy(roleFeatures=mapOf("USER" to setOf("events")))
+        assertThat(access.features(User(role="USER"),legacy)).doesNotContain("events")
+        assertThat(access.features(User(role="EXTERNAL"))).doesNotContain("events")
+        assertThat(access.features(User(role="ADMIN"))).contains("events")
+        assertThat(access.features(User(role="ADMIN"),AccessPolicy(roleFeatures=mapOf("ADMIN" to setOf("storage"))))).doesNotContain("events")
+        assertThat(catalogue.features.single {it.id=="events"}.admin).isTrue()
+        assertThat(catalogue.features.single {it.id=="events"}.path).isEqualTo("/admin/events")
+        assertThat(AccessRequestGuard.feature("/api/admin/events")).isEqualTo("events")
+        assertThat(AccessRequestGuard.feature("/api/events")).isEqualTo("events")
+        policy(legacy);signIn(User(email="super@example.test",role="SUPER_ADMIN"))
+        assertThat(access.view().policy.roleFeatures.getValue("USER")).doesNotContain("events")
+    }
 }

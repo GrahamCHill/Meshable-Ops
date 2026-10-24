@@ -1,80 +1,45 @@
 # Meshable Ops licensing
 
-Copyright (C) 2026 Graham Hill and the Meshable Ops contributors.
+Original Meshable Ops code uses the **Meshable Ops Community License 1.0**, a custom **source-available** license. Read the complete [LICENSE](LICENSE). It is not AGPL, an OSI-approved open source license, or a general permission to sell commercial forks.
 
-## Two licensing paths
+## Community and commercial paths
 
-Original Meshable Ops code is offered under either:
+Businesses and individuals may run and customize Meshable Ops for their own internal operations without a commercial license. Staff, contractors acting on their behalf and customers accessing the business's own records/processes can participate. Ordinary revenue from those activities is allowed.
 
-1. **GNU Affero General Public License, version 3 only (`AGPL-3.0-only`)**, whose complete, unmodified text is in [LICENSE](LICENSE); or
-2. **A separate commercial license**, if you obtain an express written agreement from the relevant copyright holder or an authorized commercial licensor.
+Selling/licensing the application or a fork, charging for distribution, or offering it as a commercial hosted/managed/SaaS product requires a **separate written license from the original creator or a current maintainer expressly authorized by the rights holder**. This includes renamed and unmodified copies, bundled charges and indirect monetization. A fork's own maintainers cannot authorize themselves. Paid installation/consulting/maintenance on a customer's own system remains allowed; a paid application-hosting offering needs permission. See [commercial licensing](COMMERCIAL-LICENSE.md) and [licensing authority](MAINTAINERS.md).
 
-The AGPL option is available immediately. This repository does not grant a commercial license, publish commercial contract terms, or promise a premium edition. A future commercial agreement can provide alternative permissions for the Meshable Ops code covered by that agreement. Merely paying for hosting, support, or a subscription does not grant those permissions unless the agreement expressly says so.
+Noncommercial redistribution preserves the terms, notices, modifications and complete source. Modified network deployments offer their users complete source at no extra charge. Internal modifications need not be published to everyone on the internet. Business records, uploads, credentials and generated documents do not become licensed software merely because the app processes them.
 
-Contact the [project maintainer](https://github.com/GrahamCHill) to discuss commercial licensing. A future premium offering can include separately licensed original modules and services; its scope and terms must be stated in its own agreement. Existing AGPL permissions for released copies remain available under the AGPL; a commercial offering does not revoke them.
-
-Package metadata identifies the currently published public license as `AGPL-3.0-only`. There is no public commercial license text to add to an SPDX `OR` expression.
+A donation or upstream pull request does not automatically earn commercial permission. An executed commercial agreement can specify development/maintenance contributions, fees and permitted use. The repository supplies no such agreement and promises no premium edition. Package metadata uses `LicenseRef-Meshable-Ops-Community-1.0`; no public commercial text exists for an SPDX `OR` choice.
 
 ## Code covered by this choice
 
-Except where an upstream or file-specific notice says otherwise, this choice covers the original application frontend/backend, original plugins, deployment tooling, documentation, and original rendering-service integration in this repository.
+Except where a file-specific/upstream notice says otherwise, this covers original frontend/backend code, original plugins, deployment tools, documentation, rendering integration and the owner's imported **WeasyCanvas v0.8.0** snapshot in `frontend/src/vendor/weasycanvas/` and `weasy-renderer/backend/`. The owner authorized its inclusion; dependencies and the separate WeasyCanvas repository are not relicensed here.
 
-It also covers the project owner's imported **WeasyCanvas v0.8.0 source snapshot** in `frontend/src/vendor/weasycanvas/` and `weasy-renderer/backend/`. That source is included with the owner's authorization under this repository's licensing choice. This does not change the license of WeasyPrint or any other dependency, or edit the separate WeasyCanvas source repository.
+Authors retain copyright. The project needs ownership or sufficient relicensing rights for code published under these terms. See [third-party notices](THIRD_PARTY_NOTICES.md). A commit or DCO sign-off does not grant commercial relicensing authority; explicit [CLA acceptance](CLA.md) is required for identified new contributions.
 
-Copyright stays with each author unless a separate agreement assigns it. The root license cannot grant rights that an author or upstream project has not supplied. Third-party dependencies, container images, copied upstream notices, trademarks, and separately identified assets retain their own terms. See [third-party notices](THIRD_PARTY_NOTICES.md).
+## Earlier private versions
 
-## What the AGPL option means
+The owner intends this notice to cover their current and earlier **unreleased** versions, branches and snapshots when supplied under it, subject to existing rights. The owner reports sole control and no other recipients. Keep a release/licensing record before publication and verify any collaborator, contractor or customer access.
 
-The AGPL is a strong copyleft **open source** license. It permits commercial use and charging for software, hosting, or support while imposing its source and redistribution requirements. It is not a prohibition on competitors, commercial use, or particular industries.
-
-Among other obligations, distributing covered software requires satisfying the AGPL's license/notice and Corresponding Source provisions. Under section 13, if you modify the program and users interact with that version remotely over a network, that version must prominently offer those users its Corresponding Source at no charge. Internal network users can also be users of a modified deployment. A source offer should identify the actual running revision and include the necessary covered source and build/install material; a link to an unrelated or outdated public branch is insufficient.
-
-Corresponding Source concerns covered software. Ordinary business records, uploaded client files, credentials, and generated documents do not become AGPL-licensed merely because they are processed by Meshable Ops. Material copied from licensed code or assets into an output can have separate obligations. The license itself controls the exact requirements.
-
-LGPL would allow more proprietary linking, and ordinary GPL does not add the AGPL's network-interaction condition. AGPLv3 is the public-license choice here because this application is used through a browser and server.
-
-## Apache Superset compatibility
-
-Apache Superset and its embedded SDK retain **Apache-2.0** licensing. Apache-2.0 code can be included in GPLv3-compatible copyleft works while preserving the Apache license and applicable notices; this project uses the AGPLv3 family and keeps Superset as a separate service. Meshable Ops does **not** relicense Superset, claim Apache endorsement, or grant proprietary rights to Apache or other upstream code through its commercial option.
-
-The project's licensing choice does not make Meshable Ops code eligible for inclusion in an Apache-licensed upstream project on Apache terms. Nor does compatibility with Superset establish that every dependency or future plugin has been audited. Redis, MongoDB, development storage, and other services have independent version-specific terms; preserve their notices and assess the exact distribution and hosting model.
+Private visibility does not undo a license grant. Anyone who already legitimately received an earlier copy under AGPL or another valid license may retain those rights. Replacing this file cannot retroactively revoke them or relicense independent third-party contributions. The unchanged AGPL text under `LICENSES/` is a historical reference, **not an alternative grant for the current release**.
 
 ## Plugins and external-service integrations
 
-**Plugins that form a covered work with Meshable Ops inherit the application's licensing.** This includes plugins that incorporate or adapt app code, or combine with it as a single program. Under the community licensing path, the covered application/plugin combination must be available under **AGPL-3.0-only**, with the applicable notices, Corresponding Source, and network-source-offer obligations. App-derived plugin code cannot be made proprietary merely by packaging it as a plugin. React, Kotlin, Python, ZIP packaging, dynamic loading, a separate directory, or a separate process do not by themselves determine the licensing boundary.
+Covered extensions inherit the community license with an **express paid-plugin allowance**. Authors may sell plugin copies, place their plugin/service behind a paywall, charge subscriptions/support and keep revenue without automatic maintainer royalties. They retain ownership. Independent publication, installation or sale does not accept the CLA or grant the project relicensing rights over that plugin.
 
-For plugins accepted into this repository, original Meshable Ops plugin functionality must be made available under the application's community license, subject to the integration-component allowance below and any separately identified upstream material. The existing contributor agreement and commercial licensing rules still apply. A commercial alternative applies only where an executed agreement expressly supplies the necessary rights for the relevant application and plugin code; it does not automatically cover third-party plugins or dependencies.
+Covered plugin code retains source/notice conditions and recipients' permitted rights. Supply required source with paid copies at no additional cost and to users of modified covered network versions. Plugin revenue does not authorize selling or commercially hosting Meshable Ops itself. Moving the core into a plugin or bundling the app into a paid plugin offer cannot evade the application restriction.
 
-### Allowance for service-integration components
+Independently authored, separable external-service clients/adapters may keep a license that permits the actual combination, including suitable MIT/BSD/Apache-2.0 components. Preserve their notices/obligations. Independent external services keep their own terms. React, Kotlin, Python, ZIP packaging, dynamic loading and process boundaries do not establish independence by themselves. GPL/AGPL components cannot be assumed compatible with this commercial restriction: review exact dependencies and obtain required rights/exceptions before combining them. See [plugin examples](docs/plugins/licensing.md).
 
-Community plugin developers may charge for plugin copies, subscriptions, hosted access, and services, and retain the proceeds without an automatic royalty to the maintainer. A paywall does not remove applicable AGPL source, network-source-offer, or recipient redistribution rights. Independent plugin publication does not accept the CLA or grant commercial relicensing rights. See [CLA version 1.1](CLA.md#paid-community-plugins). AGPL likewise permits commercial forks; it requires compliance with its source/license terms rather than donations or upstream contributions.
+## Apache Superset and other upstream software
 
-Independently authored, separable code whose role is communicating with an external service may retain another license **compatible with AGPL-3.0-only for the actual combination and distribution**. This can include a reusable protocol client, an external-service adapter, or an upstream SDK under compatible terms such as MIT, BSD-3-Clause, or Apache-2.0. Preserve its own license, copyright and required notices, and include its source where the applicable Corresponding Source requirements call for it. The covered application/plugin combination remains subject to the AGPL.
+Superset and its embedded SDK remain **Apache-2.0**. This license neither relicenses them nor restricts rights granted by Apache. Preserve their license, NOTICE, modification and attribution material when redistributing them. Superset is a separate service; the SDK has its own notices. No Apache endorsement is claimed.
 
-This allowance does not relicense copied or modified Meshable Ops code, or exempt the plugin's covered pages, business logic, permissions, persistence, or workflow functionality just because they communicate with a service. It does not permit combining an incompatible proprietary SDK with covered code without the necessary separate permissions from all relevant rights holders. A Meshable Ops commercial agreement cannot waive an upstream owner's terms.
+This is not a certification of every dependency/image. Review exact dependencies, native libraries, fonts, services and distributions before release. A commercial Meshable Ops agreement cannot waive upstream terms.
 
-An independent external service accessed through an ordinary API or protocol may keep its own license or commercial service terms. Communicating with it does not, by itself, relicense that service under the AGPL. Conversely, moving covered plugin functionality behind HTTP, RPC, or a worker process does not automatically turn it into an independent work. Assess the actual code, dependencies, and degree of integration.
+## Why this is source available
 
-### Scope and examples
+AGPL/GPL permit commercial distribution and forks, without requiring donations or upstream maintenance contributions. Restricting commercial application offerings requires a different license; the project must not advertise this license as OSI open source. See the [OSI definition](https://opensource.org/osd), [GNU licensing FAQ](https://www.gnu.org/licenses/gpl-faq.en.html#CanDeveloperThirdParty), and [Apache license](https://www.apache.org/licenses/LICENSE-2.0).
 
-These statements explain the project's licensing scope and contribution policy; they do not modify the standard [AGPL text](LICENSE), impose additional restrictions on rights it grants, or purport to relicense genuinely independent works or upstream components. License compatibility and required source/notice obligations must be assessed for the exact components and versions. See [plugin licensing examples](docs/plugins/licensing.md).
-
-## Contributions and future commercial licensing
-
-Future commercial licensing requires control of the relevant copyrights or sufficient permission from their holders. AGPL permission alone does not authorize a maintainer to relicense someone else's contribution as proprietary software.
-
-Before merging a copyrightable contribution, maintainers require explicit acceptance of the [contributor license agreement](CLA.md), including any necessary employer or organizational authorization. The agreement keeps contributor ownership while granting the project permission to offer the contribution under AGPL and separate commercial terms. Submitting a pull request, signing off a commit, or opening an issue is **not**, by itself, acceptance of that additional grant. Existing contributions are not retroactively covered: their rights must be established separately.
-
-Plugin contributions follow the [plugin and integration policy](#plugins-and-external-service-integrations). Independently licensed upstream components must be identified, and contributors cannot grant commercial relicensing rights they do not hold. See the [plugin guide](docs/plugins/README.md).
-
-Commercial contracts, contribution acceptance, and release-specific third-party obligations should receive legal review before a commercial release. This guide explains the project's intended licensing structure; the applicable license texts and executed agreements govern.
-
-## Primary references
-
-- [GNU AGPLv3, including network interaction in section 13](https://www.gnu.org/licenses/agpl-3.0.en.html)
-- [GNU license compatibility list, including Apache-2.0 and AGPLv3](https://www.gnu.org/licenses/license-list.html)
-- [Apache Software Foundation: Apache-2.0 / GPLv3 compatibility](https://www.apache.org/licenses/GPL-compatibility.html)
-- [GNU FAQ: a copyright holder can release code under different licenses](https://www.gnu.org/licenses/gpl-faq.html#HeardOtherLicense)
-- [GNU: selling separate licensing exceptions](https://www.gnu.org/philosophy/selling-exceptions.html)
-- [GNU FAQ: plugins and combined works](https://www.gnu.org/licenses/gpl-faq.en.html#GPLAndPlugins)
-- [GNU FAQ: separate programs and aggregation](https://www.gnu.org/licenses/gpl-faq.en.html#MereAggregation)
+The actual licenses/agreements govern. Obtain qualified legal review of these custom terms, contributor authority and prior-release history before public or commercial distribution.

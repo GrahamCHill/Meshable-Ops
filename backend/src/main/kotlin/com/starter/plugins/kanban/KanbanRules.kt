@@ -13,15 +13,20 @@ object KanbanRules {
         MovePermission.SELECTED_MEMBERS -> actor in permission.userIds
         MovePermission.MANAGERS -> false
     }
-    fun canMove(actor: UUID, card: KanbanCard, from: KanbanColumn, to: KanbanColumn, manager: Boolean) =
-        allows(from.leave, actor, card, manager) && allows(to.enter, actor, card, manager)
+    fun canMove(actor: UUID, card: KanbanCard, from: KanbanColumn, to: KanbanColumn, manager: Boolean, workflow: KanbanWorkflow = KanbanWorkflow()) =
+        allows(from.leave, actor, card, manager) && allows(to.enter, actor, card, manager) &&
+            (from.id == to.id || !workflow.enabled || workflow.transitions.any { it.source == from.id && it.target == to.id && allows(it.permission, actor, card, manager) })
     fun check(actor: UUID, previous: KanbanContent, next: KanbanContent, manager: Boolean) {
         val before = previous.columns.associateBy { it.id }
         val after = next.columns.associateBy { it.id }
-        if (!manager && (previous.columns != next.columns || previous.sprints != next.sprints || previous.epics != next.epics))
+        if (!manager && (previous.columns != next.columns || previous.sprints != next.sprints || previous.epics != next.epics || previous.workflow != next.workflow))
             throw ForbiddenException("Only a board manager can change columns, permissions, sprints or epics")
+        KanbanSprintRules.check(previous, next)
         val incoming = next.cards.associateBy { it.id }
         val saved = previous.cards.associateBy { it.id }
+        if (next.cards.any { card -> card.status == CardStatus.DONE && saved[card.id]?.status != CardStatus.DONE &&
+                next.cards.any { it.parentId == card.id && it.status != CardStatus.DONE } })
+            throw BadRequestException("Complete all subtasks before completing their parent ticket")
         previous.cards.forEach { old ->
             val updated = incoming[old.id]
             val source = before[old.columnId] ?: throw BadRequestException("Saved column unavailable")
@@ -30,7 +35,7 @@ object KanbanRules {
             } else if (updated.columnId != old.columnId || updated.status != old.status) {
                 val destination = before[updated.columnId] ?: after[updated.columnId]?.takeIf { manager }
                     ?: throw BadRequestException("Destination column unavailable")
-                if (!canMove(actor, old, source, destination, manager)) throw ForbiddenException("You cannot move this ticket from ${source.title} to ${destination.title}")
+                if (!canMove(actor, old, source, destination, manager, previous.workflow)) throw ForbiddenException("You cannot move this ticket from ${source.title} to ${destination.title}")
             }
         }
         next.cards.filter { it.id !in saved }.forEach { card ->
@@ -39,6 +44,8 @@ object KanbanRules {
         }
     }
     fun validate(content: KanbanContent) {
+        KanbanSprintRules.validate(content)
+        KanbanGraphRules.validate(content)
         val epics = content.epics
         if (epics.size > 100 || epics.map { it.id }.distinct().size != epics.size || epics.any { it.name.isBlank() || it.name.length > 100 || it.description.length > 2000 ||
             !it.color.matches(Regex("#[0-9a-fA-F]{6}")) }) throw BadRequestException("Use up to 100 named epics with a six-digit color")
@@ -50,7 +57,7 @@ object KanbanRules {
                 throw BadRequestException("Subtasks must link to an existing top-level ticket on this board")
             if (card.type == TicketType.SUBTASK && card.parentId == null) throw BadRequestException("Choose a parent ticket for a subtask")
         }
-        content.columns.flatMap { listOf(it.enter, it.leave) }.forEach { rule ->
+        (content.columns.flatMap { listOf(it.enter, it.leave) } + content.workflow.transitions.map { it.permission }).forEach { rule ->
             if (rule.userIds.size > 100 || rule.mode != MovePermission.SELECTED_MEMBERS && rule.userIds.isNotEmpty())
                 throw BadRequestException("Choose up to 100 members for a selected-member movement rule")
         }

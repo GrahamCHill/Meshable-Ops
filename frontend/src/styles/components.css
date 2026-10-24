@@ -21,3 +21,10 @@
 .empty-state p { color: var(--color-text-secondary); font-size: 0.85rem; }
 .repository-options {display:grid;gap:10px;max-height:320px;overflow:auto;}
 .repository-options label {display:flex;align-items:center;gap:8px;overflow-wrap:anywhere;}
+.workspace-artwork {object-fit:contain;flex-shrink:0;}
+.artwork-picker {padding:16px 0;}
+.timezone-select {min-width:0;}
+.timezone-select select {width:100%;min-width:0;max-width:100%;text-overflow:ellipsis;}
+.timezone-select summary {font-size:.8rem;cursor:pointer;color:var(--color-text-secondary);}
+.timezone-select details[open] {display:grid;gap:6px;}
+.timezone-select details label {display:block;margin-top:8px;}

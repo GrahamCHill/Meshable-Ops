@@ -1,3 +1,4 @@
+import {TimeZoneSelect} from '../ui/TimeZoneSelect'
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { projectsApi, type ScheduleInput, type WorkSchedule } from '../../api/projects'
@@ -21,7 +22,7 @@ export function WorkSchedulesPanel({projectId}: {projectId?: string}) {
       <label className="form-field">Repeat<select value={draft.cadence} onChange={event => setDraft({...draft, cadence: event.target.value as ScheduleInput['cadence']})}><option value="DAILY">Daily</option><option value="WEEKLY">Weekly</option><option value="MONTHLY">Monthly</option></select></label>
       {draft.cadence === 'WEEKLY' && <label className="form-field">Weekday<select value={draft.dayOfWeek} onChange={event => setDraft({...draft, dayOfWeek: Number(event.target.value)})}>{['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day, i) => <option key={day} value={i + 1}>{day}</option>)}</select></label>}
       {draft.cadence === 'MONTHLY' && <label className="form-field">Day of month<input required type="number" min={1} max={28} value={draft.dayOfMonth} onChange={event => setDraft({...draft, dayOfMonth: Number(event.target.value)})} /></label>}
-      <label className="form-field">Time<input type="time" required value={draft.time} onChange={event => setDraft({...draft, time: event.target.value})} /></label><label className="form-field">Timezone<input required value={draft.timeZone} onChange={event => setDraft({...draft, timeZone: event.target.value})} /></label></div>
+      <label className="form-field">Time<input type="time" required value={draft.time} onChange={event => setDraft({...draft, time: event.target.value})} /></label><TimeZoneSelect value={draft.timeZone} onChange={timeZone => setDraft({...draft, timeZone})} /></div>
       {draft.kind === 'DIGEST' && <label><input type="checkbox" checked={draft.includeAi} onChange={event => setDraft({...draft, includeAi: event.target.checked})} />Optional AI summary when configured</label>}
       {projectId && <><h3>{draft.kind === 'REPORT' ? 'Additional internal recipients' : 'Internal digest recipients'}</h3><div className="project-choices">{members.data?.map(person => <label key={person.id}><input type="checkbox" checked={draft.recipientIds.includes(person.id)} onChange={event => setDraft({...draft, recipientIds: event.target.checked ? [...draft.recipientIds, person.id] : draft.recipientIds.filter(id => id !== person.id)})} />{person.name}</label>)}</div></>}
       <div className="inline-actions"><Button type="submit" loading={busy}>Save schedule</Button><Button type="button" variant="ghost" onClick={() => setDraft(undefined)}>Cancel</Button></div>

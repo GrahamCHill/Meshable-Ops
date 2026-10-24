@@ -72,7 +72,7 @@ class AccessControlService(private val policies: AccessPolicyRepository, private
         val row = policies.findById(1).orElse(null)
         val current = row?.let { mapper.readValue(it.policyJson, AccessPolicy::class.java) } ?: AccessPolicy()
         return AccessPolicyView(row?.revision ?: -1, current.copy(roleFeatures = listOf("ADMIN", "USER", "EXTERNAL").associateWith {
-            current.roleFeatures[it] ?: catalogue.defaults(it)
+            current.roleFeatures[it]?.intersect(catalogue.maximum(it)) ?: catalogue.defaults(it)
         }), catalogue.features)
     }
     @Transactional

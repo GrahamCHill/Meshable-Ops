@@ -1,22 +1,31 @@
+import {useState} from 'react'
+import {useSearchParams} from 'react-router-dom'
 import {Button} from '../../../components/ui'
 import {Modal} from '../../../components/ui/Modal'
 import {usePageDraft} from '../../../hooks/usePageDraft'
-import type {BoardCard, BoardColumn, BoardEpic, BoardSprint} from './api'
+import type {BoardCard, BoardColumn, BoardEpic, BoardSprint, Estimation, TshirtSize} from './api'
 import type {Person} from '../../../api/projects'
 import {CardDiscussion} from './CardDiscussion'
+import {CardRelations} from './CardRelations'
+import {TicketTypeIcon} from './TicketTile'
 
-export function CardEditor({boardId, card, columns, epics = [], cards, allowedColumns, onSave, onCancel, onRemove, people = [], sprints = [], busy = false, readOnly = false, error}: {
+export function CardEditor({boardId, card, columns, epics = [], cards, allowedColumns, onSave, onCancel, onRemove, people = [], sprints = [], busy = false, readOnly = false, error, onOpenCard, onCreateSubtask, estimation = {storyPoints:true,tshirtSizes:false}}: Readonly<{
   boardId?: string; card: BoardCard; columns: BoardColumn[]; epics?: BoardEpic[]; cards: BoardCard[]; allowedColumns?: string[];
   onSave: (card: BoardCard) => void; onCancel: () => void; onRemove?: () => void; people?: Person[]; sprints?: BoardSprint[]; busy?: boolean; readOnly?: boolean; error?: string
-}) {
+  onOpenCard?: (card: BoardCard) => void; onCreateSubtask?: (parent: BoardCard) => void
+  estimation?: Estimation
+}>) {
   const key = 'ticket:' + (boardId ?? 'new') + ':' + card.id
   const [draft, setDraft] = usePageDraft(key, card)
   const [tags, setTags] = usePageDraft(key + ':tags', (card.tags ?? []).join(', '))
+  const [params]=useSearchParams(),[tab,setTab]=useState(params.has('comment')?'discussion':'details')
   const change = (fields: Partial<BoardCard>) => setDraft(value => ({...value, ...fields}))
   const tagValues = [...new Set(tags.split(',').map(value => value.trim()).filter(Boolean))]
   const tagError = tagValues.length > 20 || tagValues.some(value => value.length > 40)
-  return <Modal title={card.reference || 'New ticket'} onClose={onCancel} busy={busy}>
-    <form className="page-stack" onSubmit={event => {event.preventDefault(); if (!readOnly && !tagError && draft.title.trim()) onSave({...draft, title: draft.title.trim(), tags: tagValues})}}>
+  return <Modal title={card.reference || 'New ticket'} className="project-dialog kanban-ticket-dialog" onClose={onCancel} busy={busy}>
+    <div className="kanban-ticket-context"><TicketTypeIcon type={draft.type}/>{(draft.type??'TASK').toLowerCase()}{readOnly&&<span>Read-only</span>}</div>
+    <nav className="workspace-tabs kanban-view-tabs" aria-label="Ticket sections"><button type="button" aria-current={tab==='details'?'page':undefined} onClick={()=>setTab('details')}>Details</button><button type="button" aria-current={tab==='discussion'?'page':undefined} onClick={()=>setTab('discussion')}>Discussion</button></nav>
+    <form className="page-stack kanban-ticket-form" hidden={tab!=='details'} onSubmit={event => {event.preventDefault(); if (!readOnly && !busy && !tagError && draft.title.trim()) onSave({...draft, title: draft.title.trim(), tags: tagValues})}}>
       <fieldset className="page-stack" disabled={busy || readOnly}>
         <label className="form-field">Ticket title<input autoFocus required maxLength={160} value={draft.title} onChange={event => change({title:event.target.value})}/></label>
         <label className="form-field">Description<textarea rows={5} maxLength={2000} value={draft.description} onChange={event => change({description:event.target.value})}/></label>
@@ -26,22 +35,26 @@ export function CardEditor({boardId, card, columns, epics = [], cards, allowedCo
           <label className="form-field">Priority<select value={draft.priority ?? 'MEDIUM'} onChange={event => change({priority:event.target.value as BoardCard['priority']})}>{['LOW','MEDIUM','HIGH','URGENT'].map(value => <option key={value} value={value}>{value.toLowerCase()}</option>)}</select></label>
           <label className="form-field">Assignee<select value={draft.assigneeId ?? ''} onChange={event => change({assigneeId:event.target.value || null})}><option value="">Unassigned</option>{people.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label>
           <label className="form-field">Epic<select value={draft.epicId ?? ''} onChange={event => change({epicId:event.target.value || null})}><option value="">No epic</option>{epics.map(epic => <option key={epic.id} value={epic.id}>{epic.name}</option>)}</select></label>
-          <label className="form-field">Sprint<select value={draft.sprintId ?? ''} onChange={event => change({sprintId:event.target.value || null})}><option value="">Backlog / no sprint</option>{sprints.map(sprint => <option key={sprint.id} value={sprint.id}>{sprint.name}</option>)}</select></label>
-          <label className="form-field">Story points<input type="number" min={0} max={1000} step={0.5} value={draft.storyPoints ?? ''} onChange={event => change({storyPoints:event.target.value === '' ? null : Number(event.target.value)})}/></label>
+          <label className="form-field">Sprint<select disabled={!!draft.parentId} value={draft.sprintId ?? ''} onChange={event => change({sprintId:event.target.value || null})}><option value="">Backlog / no sprint</option>{sprints.map(sprint => <option key={sprint.id} value={sprint.id} disabled={sprint.status === 'COMPLETED' && sprint.id !== card.sprintId}>{sprint.name}{sprint.status === 'COMPLETED' ? ' · completed' : ''}</option>)}</select>{draft.parentId && <small>Inherited from the parent ticket.</small>}</label>
+          {estimation.storyPoints&&<label className="form-field">Story points<input type="number" min={0} max={1000} step={0.5} value={draft.storyPoints ?? ''} onChange={event => change({storyPoints:event.target.value === '' ? null : Number(event.target.value)})}/></label>}
+          {estimation.tshirtSizes&&<label className="form-field">T-shirt size<select value={draft.tshirtSize??''} onChange={event=>change({tshirtSize:event.target.value as TshirtSize||null})}><option value="">Not estimated</option>{['XS','S','M','L','XL','XXL'].map(size=><option key={size}>{size}</option>)}</select></label>}
           <label className="form-field">Start date<input type="date" min="1900-01-01" max="9999-12-31" value={draft.startDate ?? ''} onChange={event => change({startDate:event.target.value || null})}/></label>
           <label className="form-field">Due date<input type="date" min={draft.startDate || '1900-01-01'} max="9999-12-31" value={draft.dueDate ?? ''} onChange={event => change({dueDate:event.target.value || null})}/></label>
           <label className="form-field">Completion date<input type="date" disabled={(columns.find(column => column.id === draft.columnId)?.status ?? draft.status) !== 'DONE'} min={draft.startDate || '1900-01-01'} max="9999-12-31" value={draft.completionDate ?? ''} onChange={event => change({completionDate:event.target.value || null})}/></label>
         </div>
-        {draft.type === 'SUBTASK' && <label className="form-field">Parent ticket<select required value={draft.parentId ?? ''} onChange={event => change({parentId:event.target.value || null})}><option value="">Choose a parent ticket</option>{cards.filter(item => item.id !== card.id && !item.parentId).map(item => <option key={item.id} value={item.id}>{item.reference} {item.title}</option>)}</select></label>}
+        {draft.type === 'SUBTASK' && <label className="form-field">Parent ticket<select required value={draft.parentId ?? ''} onChange={event => {const parent = cards.find(item => item.id === event.target.value); change({parentId:parent?.id ?? null, sprintId:parent?.sprintId ?? null})}}><option value="">Choose a parent ticket</option>{cards.filter(item => item.id !== card.id && !item.parentId).map(item => <option key={item.id} value={item.id}>{item.reference} {item.title}</option>)}</select></label>}
         <label className="form-field">Tags<input value={tags} onChange={event => setTags(event.target.value)} placeholder="frontend, customer-request, release"/><small>Comma-separated, up to 20 tags of 40 characters each.</small></label>
         {tagError && <p role="alert">Use up to 20 tags with at most 40 characters each.</p>}
         <fieldset className="project-choices"><legend>Reviewers</legend>{people.map(person => <label key={person.id}><input type="checkbox" checked={draft.reviewerIds?.includes(person.id) ?? false} onChange={event => change({reviewerIds:event.target.checked ? [...(draft.reviewerIds ?? []),person.id] : draft.reviewerIds?.filter(id => id !== person.id)})}/>{person.name}</label>)}</fieldset>
         <label><input type="checkbox" checked={draft.blocked ?? false} onChange={event => change({blocked:event.target.checked})}/> Blocked</label>
       </fieldset>
+      <CardRelations card={draft} cards={cards} onChange={links=>change({links})} onOpen={onOpenCard} readOnly={readOnly} busy={busy}/>
       {error && <p role="alert">{error}</p>}
-      <div className="inline-actions">{!readOnly && <Button type="submit" loading={busy} disabled={!draft.title.trim() || tagError || draft.type === 'SUBTASK' && !draft.parentId}>Save ticket</Button>}<Button type="button" variant="ghost" disabled={busy} onClick={onCancel}>Close</Button>{onRemove && !readOnly && <Button type="button" variant="ghost" disabled={busy || cards.some(item => item.parentId === card.id)} onClick={onRemove}>Delete ticket</Button>}</div>
+      <div className="inline-actions kanban-ticket-actions">{!readOnly && <Button type="submit" loading={busy} disabled={!draft.title.trim() || tagError || draft.type === 'SUBTASK' && !draft.parentId}>Save ticket</Button>}<Button type="button" variant="ghost" disabled={busy} onClick={onCancel}>Close</Button>{onRemove && !readOnly && <Button type="button" variant="ghost" disabled={busy || cards.some(item => item.parentId === card.id)} onClick={onRemove}>Delete ticket</Button>}</div>
       <small>Draft fields are kept until you leave this page. Saved tickets receive a permanent reference.</small>
     </form>
-    {boardId && card.reference && <CardDiscussion key={card.id} boardId={boardId} cards={[card]} selectedCardId={card.id} locked={busy}/>}
+    {card.parentId && onOpenCard && <p>Parent: <button type="button" className="kanban-ticket-link" disabled={busy} onClick={() => {const parent = cards.find(item => item.id === card.parentId); if (parent) onOpenCard(parent)}}>{cards.find(item => item.id === card.parentId)?.reference || 'Open parent ticket'}</button></p>}
+    {tab==='details'&&!card.parentId && card.reference && <section className="page-stack kanban-editor-subtasks"><div className="page-heading"><h3>Subtasks</h3>{onCreateSubtask && !readOnly && <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => onCreateSubtask(card)}>Create subtask</Button>}</div>{cards.filter(item => item.parentId === card.id).map(child => <button type="button" className="kanban-subtask-editor-row" disabled={busy} key={child.id} onClick={() => onOpenCard?.(child)}><strong>{child.reference}</strong><span>{child.title}</span><small>{columns.find(column => column.id === child.columnId)?.title}</small></button>)}{!cards.some(item => item.parentId === card.id) && <p className="field-help">Break this ticket into smaller pieces of work.</p>}</section>}
+    {tab==='discussion'&&(boardId&&card.reference?<CardDiscussion key={card.id} boardId={boardId} cards={[card]} selectedCardId={card.id} locked={busy}/>:<p>Save this ticket to start a discussion.</p>)}
   </Modal>
 }

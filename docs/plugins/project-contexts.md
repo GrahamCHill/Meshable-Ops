@@ -29,6 +29,10 @@ const context = await window.meshableOps.context();
 
 The host verifies the ID through the protected core API before releasing context. SDK navigation preserves context parameters. `window.weaveops` remains an alias for older packages; the bridge protocol stays compatible. Context does not expose project members, secrets, arbitrary APIs, or direct database access. ZIP managed records retain their declared role/owner rules; context alone does not share them between project members. Use reviewed compiled code for custom multi-user relational behavior.
 
+Project views expose `details.contactSource` and `effectiveContacts`. Use the effective list for the project’s chosen contact details; `inheritedContacts` is only the linked client’s source list and may be overridden. An empty project override is intentional. Projects without a client never inherit workspace contacts.
+
+Project `category` values are stable section IDs from `/projects/options`; use `categoryName` for display and avoid hard-coding three statuses. Section labels/order can be changed without changing IDs or project access.
+
 ## Contracts and lifecycle
 
 `GET /api/projects/{id}/extensions` and `/api/projects/clients/{id}/extensions` return the current authorized plugin links/panels. Changing access, disabling the plugin, or disabling third-party extensions removes runtime availability without deleting business data. Tags are classification; only explicit membership/team grants confer access.

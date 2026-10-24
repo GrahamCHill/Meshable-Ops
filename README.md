@@ -5,7 +5,7 @@
 **Connect your people, projects, documents, and operations. On your infrastructure.**
 
 [![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF.svg)](.github/workflows/pipeline.yml)
-[![License](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Source_available-blue.svg)](LICENSE)
 [![Self hosted](https://img.shields.io/badge/Deployment-Self_hosted-334155.svg)](docs/deployment.md)
 
 Meshable Ops is an extensible business workspace for teams that want control over their tools and data. Manage clients and projects, connect cloud files, create documents, follow workflows, and bring analytics and communication together. Enable the plugins your business needs and make the workspace your own.
@@ -19,8 +19,8 @@ Meshable Ops is an extensible business workspace for teams that want control ove
 | **Clients and delivery** | Project portfolios, team boundaries, Jira-style boards, column permissions, epics, tagged tickets, sprints, Git/PR links, project charts, reports and work digests. [Projects](docs/projects-and-delivery.md) · [Boards](docs/plugins/kanban.md) |
 | **Files and documents** | Named S3/Azure Blob locations, file permissions, PDF previews, download policies, protected sharing, and an optional document-generator plugin with WeasyCanvas templates and calculated fields. [Files](docs/storage-connections.md) · [Documents](docs/documents-and-workflows.md) |
 | **Processes and insight** | Optional visual workflow design and guided member runs, multiple Apache Superset dashboards, and permission-aware search with optional AI. [Workflows](docs/plugins/documents-and-workflows.md) · [Search](docs/search-and-indexing.md) |
-| **Connected teams** | SMTP/API email, notification templates and preferences, webhooks, personal calendar sync, and separate Git, Discord, Telegram, Teams, WhatsApp, and Microsoft file plugins. [Plugins](docs/plugins/README.md) |
-| **Your workspace** | Business branding, optional MFA, delegated administration, restricted external file access, encrypted secrets, and sandboxed ZIP extensions. [Access](docs/access-controls.md) · [Branding](docs/branding.md) |
+| **Connected teams** | SMTP/API email, notification templates and preferences, webhooks, personal calendar sync, and separate Git, Discord, Telegram, Teams, WhatsApp, Microsoft file and Google Drive plugins. [Plugins](docs/plugins/README.md) |
+| **Your workspace** | Business branding, ordered navigation, project/section icons, optional MFA, delegated administration, restricted external file access, encrypted secrets, and sandboxed ZIP extensions. [Access](docs/access-controls.md) · [Branding](docs/branding.md) · [Navigation](docs/navigation-and-icons.md) |
 
 ## Quick start
 
@@ -75,6 +75,6 @@ The project is evolving. Providers require your credentials and permissions; ext
 
 ## License
 
-**AGPL-3.0-only with an alternative commercial licensing path.** The community license covers original Meshable Ops code and the project owner's imported WeasyCanvas source. Alternative terms require a separate written agreement; future premium terms are not granted here. Apache Superset and other dependencies retain their licenses. Read [LICENSE](LICENSE), [licensing](LICENSING.md), and [third-party notices](THIRD_PARTY_NOTICES.md).
+**Source available under the Meshable Ops Community License.** Internal business use and customization are allowed. Selling/licensing the application or its forks, or offering commercial hosted access, requires written permission from the creator or an expressly authorized Licensing Maintainer. Paid community plugins are allowed. Apache Superset and dependencies retain their own terms. Read [LICENSE](LICENSE), [licensing](LICENSING.md), [authority](MAINTAINERS.md), and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 Covered plugins inherit the app's community license. Independently authored service-integration components may retain compatible licenses, and independent external services keep their own terms. See [plugin licensing](docs/plugins/licensing.md).

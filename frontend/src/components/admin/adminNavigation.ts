@@ -7,7 +7,7 @@ export const adminGroups = [
   { id: 'people-security', label: 'People & security', description: 'Accounts, permissions, external access, and extension security.', items: [
     { to: '/admin/access-controls', label: 'Access controls', description: 'Control role features, member views, external sharing, and protected cloud directories.' },
     { to: '/admin/users', label: 'Users', description: 'Manage accounts, roles, and upload permissions.' },
-    { to: '/admin/projects', label: 'Project tags & teams', description: 'Shared tags, departments, custom team roles, memberships, and identity contacts.' },
+    { to: '/admin/projects', label: 'Project settings', description: 'Project sections, shared tags, departments, custom team roles, and memberships.' },
     { to: '/admin/security', label: 'Security', description: 'Allow third-party extensions and manage account protection.' },
     { to: '/account/security', label: 'My security & MFA', description: 'Set up authenticator or email verification and recovery codes.' },
   ] },
@@ -30,6 +30,7 @@ export const adminGroups = [
   ] },
   { id: 'operations', label: 'Operations', description: 'Service health, activity history, and application backups.', items: [
     { to: '/admin/system', label: 'System health', description: 'Check services, connectivity, and runtime details.' },
+    { to: '/admin/events', label: 'Event log', description: 'Scroll through the complete event history and inspect event details.' },
     { to: '/admin/audit', label: 'Audit & backup', description: 'Review activity and export application data.' },
   ] },
 ]

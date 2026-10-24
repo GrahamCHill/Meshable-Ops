@@ -22,8 +22,6 @@ Links store the provider's title, HTTPS URL, state, and check time. Opening a sa
 
 Owned tables: `plugin_kanban_development_links` (child) and `plugin_kanban_boards` (parent). Both have independent member read/write policies in Kanban settings; board ownership applies to links too. Clearing Kanban deletes both tables' rows in child-first order, retaining settings/schema. Disabling a source provider retains links but hides their sensitive metadata and blocks refresh/add until access returns.
 
-## API
-
 ## Project links
 
 Open a saved project's **Repositories** section to link a repository without requiring Kanban. A project manager, team lead, or administrator can add, refresh, and remove links; project membership is required to read them. Only active, allowed Git providers appear. Links store a sanitized title, HTTPS URL and check time. Disabling a provider, removing repository approval, or changing provider configuration hides saved metadata until a manager refreshes it under the new connection. Removal remains available when the provider is disabled. Repository links do not grant project membership or provider access.

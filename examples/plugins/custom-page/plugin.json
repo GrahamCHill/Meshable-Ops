@@ -5,6 +5,7 @@
     "apiVersion": 1, "compatibleVersions": ["1.0.0"],
     "extensions": ["PAGE", "API", "SETTINGS"], "runtimes": ["PYTHON"],
     "categories": ["Examples"], "menuItems": [{"path": "guide", "label": "Guide"}],
+    "adminMenu": {"category":"examples", "categoryLabel":"Examples", "label":"Custom page", "icon":"code"},
     "settingsFields": [{"key": "heading", "label": "Page heading", "maxLength": 100}]
   },
   "entrypoint": "frontend/index.html", "pages": {"guide": "frontend/guide.html"},

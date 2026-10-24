@@ -1,9 +1,9 @@
 import type { StorageSettingsState } from './useStorageSettings'
 import { Button, Card } from '../../ui'
 import { formatDate } from '../adminUtils'
+import {TimeZoneSelect} from '../../ui/TimeZoneSelect'
 
 const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
-const zones = [...new Set([Intl.DateTimeFormat().resolvedOptions().timeZone, 'Africa/Johannesburg', 'UTC', 'Europe/London', 'Europe/Paris', 'America/New_York', 'America/Los_Angeles', 'Asia/Dubai', 'Asia/Singapore', 'Australia/Sydney'])]
 
 export function ReindexScheduleSettings({ state }: { state: StorageSettingsState }) {
   const { fieldId, form, settings, update, reindex, dirty } = state
@@ -18,7 +18,7 @@ export function ReindexScheduleSettings({ state }: { state: StorageSettingsState
     <fieldset disabled={!form.vectorReindexEnabled} className="form-grid" style={{ marginTop: 16 }}>
       <div className="form-field"><label htmlFor={`${fieldId}-schedule`}>Run</label><select id={`${fieldId}-schedule`} value={form.vectorReindexSchedule} onChange={event => update({ vectorReindexSchedule: event.target.value as typeof form.vectorReindexSchedule })}><option value="DAILY">Every day</option><option value="WEEKLY">Every week</option><option value="ON_CHANGE">At the next scheduled time when files change</option><option value="INTERVAL">At a fixed interval</option></select></div>
       {form.vectorReindexSchedule === 'WEEKLY' && <div className="form-field"><label htmlFor={`${fieldId}-day`}>Day</label><select id={`${fieldId}-day`} value={form.vectorReindexDayOfWeek} onChange={event => update({ vectorReindexDayOfWeek: event.target.value })}>{days.map(day => <option key={day} value={day}>{day[0] + day.slice(1).toLowerCase()}</option>)}</select></div>}
-      {scheduled ? <><div className="form-field"><label htmlFor={`${fieldId}-time`}>{changed ? 'Run after a change at' : 'Time'}</label><input id={`${fieldId}-time`} type="time" required value={form.vectorReindexTime} onChange={event => update({ vectorReindexTime: event.target.value })} /></div><div className="form-field"><label htmlFor={`${fieldId}-zone`}>Timezone</label><input id={`${fieldId}-zone`} list={`${fieldId}-zones`} required value={form.vectorReindexTimeZone} onChange={event => update({ vectorReindexTimeZone: event.target.value })} /><datalist id={`${fieldId}-zones`}>{zones.map(zone => <option key={zone} value={zone} />)}</datalist></div></> : <div className="form-field"><label htmlFor={`${fieldId}-interval`}>Interval in minutes</label><input id={`${fieldId}-interval`} type="number" min={15} max={10080} required value={form.vectorReindexIntervalMinutes} onChange={event => update({ vectorReindexIntervalMinutes: Number(event.target.value) })} /></div>}
+      {scheduled ? <><div className="form-field"><label htmlFor={`${fieldId}-time`}>{changed ? 'Run after a change at' : 'Time'}</label><input id={`${fieldId}-time`} type="time" required value={form.vectorReindexTime} onChange={event => update({ vectorReindexTime: event.target.value })} /></div><TimeZoneSelect id={`${fieldId}-zone`} value={form.vectorReindexTimeZone} onChange={timeZone => update({vectorReindexTimeZone: timeZone})} /></> : <div className="form-field"><label htmlFor={`${fieldId}-interval`}>Interval in minutes</label><input id={`${fieldId}-interval`} type="number" min={15} max={10080} required value={form.vectorReindexIntervalMinutes} onChange={event => update({ vectorReindexIntervalMinutes: Number(event.target.value) })} /></div>}
     </fieldset>
     {changed && <p className="field-help">Checks shared storage every minute for new, changed, or removed files. Changes queue one run at the next chosen time; choose 00:00 for the next midnight.</p>}
     <p className="field-help">Save to apply this schedule. The application server must be running for jobs to execute.</p>
