@@ -9,9 +9,10 @@ Trusted, compiled-in plugins register pages, submenus, APIs, database tables, an
 - End users access the React frontend.
 - The frontend proxies backend API calls, embedded Superset dashboards, and admin-only Superset authoring routes.
 - The backend owns application auth, storage boundaries, search/indexing jobs, optional AI calls, guest-token minting, and embed configuration management.
-- Optional MFA gates session issuance. PostgreSQL stores encrypted factors, one-use challenges/recovery hashes, and shared rate counters. The notification boundary keeps core email and accepts optional channel adapters from Telegram, Teams, and WhatsApp plugins; SMS remains reserved.
+- Optional MFA gates session issuance. PostgreSQL stores encrypted factors, one-use challenges/recovery hashes, and shared rate counters. The notification boundary keeps core email and accepts separate Discord, Telegram, Teams, WhatsApp, or custom SMS adapters. Built-in MFA remains authenticator/email.
 - Admin webhook sends/receipts use authenticated JSON with encrypted bounded delivery history. Protected sharing generates password-encrypted, watermarked PDF attachments and separately controlled online links; originals stay in object storage.
-- The integrated WeasyCanvas designer uses a private Python/WeasyPrint renderer. Kotlin owns template publication, typed data/calculations, document/workflow access, PDF persistence, and explicit email sends. Workflow graphs are saved/validated definitions; automatic execution is outside this first version.
+- The integrated WeasyCanvas designer uses a private Python/WeasyPrint renderer. Kotlin owns template publication, typed data/calculations, document/workflow access, PDF persistence, and email delivery. Members follow published workflows through saved runs; the visual maker remains in administration.
+- Clients/projects own contact inheritance, scoped team membership, tags, file references, and plugin contexts. Project boards, reports, and personalized digests use current project/team access. Report/digest schedules are opt-in and stored in PostgreSQL.
 - Superset remains internal to the stack and is not intended to be exposed directly to users.
 
 In practice, the architecture can be run in two main ways:
@@ -27,7 +28,81 @@ The request and permission model stays the same in both cases.
 
 ## System diagram
 
-The [complete Mermaid diagram in the README](../README.md#architecture) shows the application boundary, access controls, document services, storage/search data flow, plugin composition, Superset services, and optional external providers. That block is the maintained diagram source; the sections below explain its behavior and deployment boundaries.
+The [README](../README.md#architecture) provides the compact overview. This diagram separates application responsibilities from optional integrations and private services.
+
+```mermaid
+flowchart LR
+    browser["React workspace<br/>nginx / Caddy entrypoint"]
+    subgraph core["Kotlin application boundary"]
+        auth["Accounts, MFA and permissions"]
+        projects["Clients and projects<br/>Team roles, tags, contact inheritance"]
+        storage["Named storage connections<br/>Directory and file ACLs"]
+        documents["Templates and generated documents<br/>Guided workflow runs"]
+        search["Keyword/vector retrieval<br/>Indexing and optional grounded AI"]
+        messaging["Notifications and webhooks<br/>Templates, preferences, protected attachments"]
+        jobs["Explicitly configured jobs<br/>Indexing, calendar sync, reports, digests"]
+        host["Plugin registry and policy<br/>Tables, settings, search, context hooks"]
+    end
+    subgraph modules["Optional plugins"]
+        boards["Kanban + Git providers<br/>Tickets, sprints, comments, repo/PR links"]
+        calendar["Calendar + provider adapters<br/>Owner-private two-way sync"]
+        integrations["Discord, Telegram, Teams, WhatsApp<br/>SharePoint and OneDrive"]
+        zip["ZIP extensions<br/>Sandboxed pages and scoped data bridge"]
+    end
+    subgraph python["Private Python services"]
+        render["WeasyCanvas / WeasyPrint<br/>Templates and structured project reports"]
+        extract["Content helper<br/>Bounded text/PDF/DOCX extraction"]
+        superset["Superset web + Celery<br/>Analytics and dashboard authoring"]
+    end
+    data[("PostgreSQL + pgvector<br/>Workspace records, PDF bytes, encrypted secrets, search")]
+    objects[("S3 / Azure Blob originals")]
+    mongo[("MongoDB events and audit<br/>Outside search and AI")]
+    analytics[("Superset metadata DB + Redis")]
+    external["Configured provider APIs<br/>AI, email, Git, calendar, chat, files"]
+    browser --> auth
+    auth --> projects & storage & documents & search & messaging & host
+    browser --> superset --> analytics
+    projects & storage & documents & search & messaging & jobs & host --> data
+    storage --> objects
+    auth --> mongo
+    documents --> render
+    projects --> render
+    search -.-> extract
+    host --> boards & calendar & integrations & zip
+    projects --> boards
+    boards -. "Visible deadlines" .-> calendar
+    boards -. "Private mentions" .-> messaging
+    jobs --> projects & search & calendar
+    messaging & search & boards & calendar & integrations -.-> external
+```
+
+### Why Python is present
+
+| Location | Purpose and boundary |
+| --- | --- |
+| `weasy-renderer/` | FastAPI adapter around the imported WeasyCanvas generator and WeasyPrint. Validates templates and renders documents; `/reports/render` renders escaped structured multipage project reports. Worker processes have time/page/size limits and no arbitrary remote asset fetching. Kotlin owns permissions, storage, encryption/watermarks, and delivery. |
+| `ml-backend/app/` | Bounded content extraction for supported text, PDF, and DOCX files during content indexing. Its legacy vectorize/package helper endpoints are not the default search engine. Kotlin local feature hashing works without this container or an AI provider; missing extraction leaves metadata search available. OCR and MongoDB retrieval are deferred. |
+| `superset/` | Python configuration/bootstrap for Apache Superset's own Python analytics runtime. Redis and Celery belong to Superset; application jobs run in Kotlin. |
+| `deploy/github/` | Python setup/configuration/validation helpers used locally and by GitHub Actions. They prepare private configuration and check deployment; they are not request-serving services. |
+
+### Project and delivery flow
+
+```mermaid
+flowchart LR
+    client["Client or app identity<br/>Inherited contacts"] --> project["Project<br/>Lead, members, teams, tags, links"]
+    project --> board["Team-scoped boards<br/>Tickets, sprints, comments"]
+    project --> refs["Storage references<br/>Original file ACL still required"]
+    project --> ext["Authorized plugin contexts"]
+    board --> report["Period/sprint snapshot<br/>Python PDF with cover"]
+    report --> saved["Saved report + board scope<br/>Recheck access on every read"]
+    saved --> email["PDF email attachment<br/>Lead + authorized internal recipients"]
+    board --> digest["Per-recipient work digest"]
+    personal["Recipient's private calendar"] --> digest
+    digest -. "Optional, failure-tolerant" .-> ai["Configured LLM summary"]
+    digest --> ownmail["Recipient's own email"]
+```
+
+Schedules are disabled by default. Details and operational limits are in [projects and delivery](projects-and-delivery.md).
 
 ## Request Flow Notes
 

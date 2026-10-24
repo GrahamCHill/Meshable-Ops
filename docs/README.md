@@ -25,6 +25,8 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Connect buckets/containers, select shared folders, and configure uploads | [Storage connections](storage-connections.md) |
 | Author reports and manage embedded dashboards | [Dashboards and Superset](dashboards.md) |
 | Understand services, access rules, and data flow | [Architecture](architecture.md) |
+| Manage clients, projects, team boards, reports, and work digests | [Projects and delivery](projects-and-delivery.md) |
+| Add plugin features to clients and projects | [Context extensions](plugins/project-contexts.md) |
 | Configure search, its launcher, or indexing schedules | [Search and indexing jobs](search-and-indexing.md) |
 | Set up optional AI, protect credentials, or rotate wrapping keys | [AI search and credential security](ai-search-and-secrets.md) |
 | Control PDF viewing, downloads, and watermarks | [Document access](document-access.md) |
@@ -56,6 +58,8 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 - AI and storage keys saved through the app require a persistent server wrapping key. MinIO/Azurite development seeds also persist credentials, so set the key before starting those profiles.
 - MongoDB records, audit logs, and events are not search or AI-answer sources.
 - Plugins start disabled. Bundled modules support server integrations; super admins can also install sandboxed ZIP plugins after enabling third-party extensions in Security. ZIP packages require an author file and are excluded from search by default.
+- Projects support scoped member/team-lead/manager roles and explicit team access. Departments and tags do not share work automatically. Reports and digests stay manual until schedules are configured; no schedule is created at startup.
+- Meshable Ops is the product name. Existing Docker project/volume names and the older plugin SDK alias remain compatible; business branding is preserved.
 
 ## Upgrading an existing checkout
 

@@ -26,9 +26,9 @@ class TasksPlugin : WorkspacePlugin {
 
 Plugin settings and content belong in PostgreSQL backups; the metadata JSON export omits them. Disabling or removing code does not drop tables. Keep required migrations while upgrading old installations. Do not store credentials in manifests or browser bundles; use the server's existing secret encryption facilities.
 
-Kanban has saved-board and guide submenus. Boards support up to 20 lists and 200 cards, with UUID identifiers, validation, owner access, and optimistic revisions (`409` for stale saves). Team sharing, assignments, attachments, and workflow execution hooks are not implemented by this example. MongoDB is unchanged.
+Kanban has saved-board and guide submenus. Boards support up to 20 lists and 200 cards, with private ownership or project/team access, assignments/reviewers, sprints, dates, story points, stable references, comments/mentions, and optimistic revisions (`409` for stale saves). Projects link existing storage files/folders rather than copying originals into cards. See [projects and delivery](../projects-and-delivery.md). MongoDB is unchanged.
 
-Separate [integration plugins](integrations.md) provide Telegram, Teams, WhatsApp Business, SharePoint, and OneDrive connections. See [Settings](settings.md) to add encrypted plugin-specific configuration without a custom frontend form.
+Separate [integration plugins](integrations.md) provide Discord, Telegram, Teams, WhatsApp Business, SharePoint, and OneDrive connections. See [Settings](settings.md) for encrypted configuration and [client/project contexts](project-contexts.md) for extending business records.
 
 [Source-control plugins](source-control.md) add GitHub, GitLab, and Gitea repository/PR links to boards and individual cards. [Calendar](calendar.md) adds local events, Kanban deadlines, and separate Microsoft, Google, and CalDAV connections. Use [plugin composition](composition.md) to declare capabilities, dependencies, and optional cross-plugin features. Every settings menu includes a Connections tab; disabled dependencies retain data and block dependent operations.
 

@@ -25,6 +25,9 @@ Call `registry.requireFeature("planning", "development", actor.role)` and `regis
 | Calendar | `calendar.provider` | Read selected Microsoft, Google, or CalDAV calendars; explicitly publish saved local events |
 | Calendar | `calendar.personal-sync` | Opt-in per-member two-way appointment sync, with independent encrypted credentials and owner-only imported events |
 | Microsoft Calendar | SharePoint/OneDrive `microsoft.graph.credentials` | Optionally reuse the explicitly selected enabled plugin's tenant/client credentials; calendar permission still needs separate consent |
+| Projects | Kanban `kanban.boards` | Attach boards with project/team ACLs, generate scoped PDF reports, and build recipient-specific work digests |
+| Projects / Clients | Manifest `contextTargets` | Authorized extension links and compiled computed panels; context does not grant record access |
+| Card @mentions | Registered member notification adapters | Deliver through recipient preferences; private events exclude shared fixed destinations |
 
 Disabling support blocks connected operations without deleting local events, board links, or credentials. Unavailable source-control links have their title, repository, URL, status, and check time redacted; an authorized board owner/admin can still remove the local link. The Calendar page and Kanban base functionality work independently. Provider metadata and calendar events are not ingested into workspace search. Kanban's existing search opt-in indexes board/card text only.
 

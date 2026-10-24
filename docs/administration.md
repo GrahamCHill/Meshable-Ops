@@ -7,6 +7,7 @@ Related settings are consolidated into seven card groups: **Workspace**, **Peopl
 | Area | Route | Purpose |
 | --- | --- | --- |
 | Users | `/admin/users` | Row-based roster, role assignment, activation, upload permissions, and Add user dialog |
+| Project tags & teams | `/admin/projects` | Tags, described team/department groups, scoped project roles, memberships, and identity contacts |
 | Access controls | `/admin/access-controls` | Super admin role features, member views, external sharing, and protected cloud paths |
 | Security | `/admin/security` | Super admin global third-party extension switch; links to access controls and personal MFA |
 | Branding | `/admin/branding` | Business name, sidebar/link colours, logo/favicon, and sign-in backgrounds |

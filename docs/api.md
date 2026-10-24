@@ -1,5 +1,35 @@
 # Application API reference
 
+## Projects and delivery
+
+All routes require an active internal account and the Projects feature. Record-level project/team permissions and plugin/table policies apply independently. Existing records require their current `revision`; unauthorized records are unavailable.
+
+| Method | Route under `/api` | Purpose |
+| --- | --- | --- |
+| GET / POST | `/projects` | Filtered directory / create; GET accepts `query`, `category`, repeated `tags` UUIDs |
+| GET / PUT | `/projects/{id}` | Authorized project / leadership edit |
+| GET | `/projects/options`, `/projects/people` | Tags, described groups, business identity / active internal member directory |
+| GET / POST | `/projects/clients` | Visible clients / create client |
+| GET / PUT | `/projects/clients/{id}` | Inherited details / owner or admin edit |
+| GET | `/projects/{id}/members`, `/work`, `/sprints`, `/risks` | Membership, visible tickets, sprints, leadership-only indicators |
+| GET | `/projects/{id}/extensions`, `/projects/clients/{id}/extensions` | Authorized plugin links/panels |
+| GET / POST | `/projects/{id}/reports` | Scoped saved reports / generate PDF; leadership required when emailing |
+| GET | `/projects/{id}/reports/{reportId}/pdf` | Download PDF after current project/board/policy checks |
+| POST | `/projects/digests/preview`, `/projects/digests/send` | Own preview/email |
+| POST | `/projects/{id}/digests` | Leadership send of recipient-specific work/calendar emails; statuses only |
+| GET / POST | `/projects/schedules`, `/projects/{id}/schedules` | Own/project schedule list/create, disabled by default |
+| PUT | `/projects/schedules/{scheduleId}`, `/projects/{id}/schedules/{scheduleId}` | Revision-checked schedule edit |
+| GET / PUT | `/admin/projects` | Admin project tags and business identity contacts |
+| GET / POST | `/admin/projects/groups` | Described team/department roles and members |
+| PUT | `/admin/projects/groups/{id}` | Revision-checked group edit |
+| GET | `/admin/projects/people` | Internal member options within delegated admin permission |
+
+Reports accept `kind` (`SPRINT`, `MONTHLY`, `PERIOD`), ISO `from`/`to`, optional `boardId`/`sprintId`, `sendEmail`, and `recipientIds`. Digests accept `from`, `to`, `timeZone`, `includeAi`, and team `recipientIds`. Full behavior/limits: [Projects and delivery](projects-and-delivery.md).
+
+Kanban retains `/plugins/kanban/boards`; its list accepts optional `projectId`. Board requests additionally accept `projectId` and `teamIds`. `/boards/{id}/members` lists eligible assignees/reviewers. `GET/POST /plugins/kanban/boards/{boardId}/cards/{cardId}/comments` reads/adds comments (`text`, `mentionIds`). Members must have board and comment-table access.
+
+`GET /admin/notifications/members` supplies the internal picker for mapped-member sends without requiring delegated plugin administration. See [messaging identities and post APIs](plugins/integrations.md#member-links-and-shared-posts).
+
 Optional modules use the authenticated `/api/plugins` catalogue, administrator-only `/api/admin/plugins` settings, and guarded `/api/plugins/{id}/…` routes. See [Workspace plugins](plugins.md#api) for contracts and Kanban endpoints, [plugin settings](plugins/settings.md) for redacted configuration APIs, and [integration plugins](plugins/integrations.md) for messaging/file-listing endpoints.
 
 Super-admin ZIP installation, global extension security, runtime pages, and owner-scoped managed record endpoints are documented in [Runtime ZIP packages](plugins/zip-packages.md#http-endpoints). These packages are loaded dynamically without rebuilding the host.

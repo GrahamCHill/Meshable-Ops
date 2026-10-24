@@ -41,7 +41,7 @@ class ProjectReportService(private val access: ProjectAccess, private val projec
             val card = item.card
             listOf("${card.reference.ifBlank { card.id.toString() }}\n${card.title}", "${card.assigneeId?.let { names[it] } ?: "Unassigned"}\nReview: ${card.reviewerIds.mapNotNull { names[it] }.joinToString().ifBlank { "—" }}",
                 "${card.status.name.replace('_', ' ')}\n${card.storyPoints?.toString() ?: "—"} points${if (card.blocked) "\nBlocked" else ""}",
-                "Start: ${card.startDate ?: "—"}\nDue: ${card.dueDate ?: "—"}\nDone: ${card.completionDate ?: "—"}", card.description.take(1500))
+                "Start: ${card.startDate ?: "—"}\nDue: ${card.dueDate ?: "—"}\nDone: ${card.completionDate ?: "—"}", if (card.description.length > 500) card.description.take(497) + "…" else card.description)
         }) }.ifEmpty { listOf(ProjectReportSection("Project activity", listOf("Result"), listOf(listOf("No tickets matched the selected period or sprint.")))) }
         val context = projects.get(email, id)
         val pdf = renderer.report(ProjectReportDocument("${request.kind.name.lowercase().replaceFirstChar { it.titlecase() }} report", branding.current().applicationName,

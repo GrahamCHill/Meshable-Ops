@@ -13,7 +13,7 @@ from .document_text import extract_with_limits, MAX_BYTES
 
 
 app = FastAPI(
-    title="Superset ML Backend",
+    title="Meshable Ops Content Helper",
     version="1.0.0",
     description="Small Python service for ML-friendly workflows and package-backed helpers."
 )

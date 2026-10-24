@@ -14,6 +14,10 @@ Meshable Ops is the product name. Existing `com.starter` package paths, Docker s
 
 Files are grouped by feature and responsibility. Page components compose the screen; API modules own requests and response types; hooks own stateful workflows. Related components sit together so a change to one feature does not require editing a general application file.
 
+`backend/.../projects/` separates models, project/team access and SQL predicates, client/project validation, extension contexts, work aggregation, PDF reporting, digests, and opt-in schedules. `frontend/src/api/projects.ts` supplies typed contracts; `components/projects/` contains reusable forms/reports/digest/schedule panels; route pages compose these. Kanban splits card fields, sprint fields, project/team selection, comments, and development links into module components.
+
+`plugins/integrations/MemberMessaging*` separates provider identity mapping, private delivery, and explicit shared posts. `MemberIdentityEntities` supplies fixed JPA schemas; credentials remain in encrypted plugin configuration. `weasy-renderer/report.py` renders escaped structured project reports independently of authored document templates. Python's complete service roles are documented in [architecture](architecture.md#why-python-is-present).
+
 ## Frontend
 
 | Location | Responsibility |

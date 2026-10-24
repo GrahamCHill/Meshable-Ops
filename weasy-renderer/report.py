@@ -45,7 +45,7 @@ def report_html(value):
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><style>
     @page {{size:A4; margin:20mm 15mm 20mm; @bottom-left {{content:'Internal project report';font-size:8pt;color:#666}}
       @bottom-right {{content:counter(page) ' / ' counter(pages);font-size:8pt;color:#666}}}}
-    body {{font:10pt 'DejaVu Sans',sans-serif;color:#17202a;line-height:1.5}}
+    body {{font:10pt 'Liberation Sans',sans-serif;color:#17202a;line-height:1.5}}
     .cover {{break-after:page;padding-top:35mm}} .eyebrow {{font-size:12pt;color:#52616b}}
     h1 {{font-size:30pt;line-height:1.15;margin:12mm 0 6mm}} h2 {{font-size:16pt;break-after:avoid;margin-top:12mm}}
     .subtitle {{font-size:14pt}} .muted {{color:#666}} ul {{padding-left:5mm}} li {{margin:3mm 0}}

@@ -1,12 +1,16 @@
 # Integration plugins
 
-Telegram, Microsoft Teams, WhatsApp Business, SharePoint, and OneDrive are five separate compiled plugins with independent activation and encrypted configuration. They start disabled, are administrator-only, and register no workspace pages or search providers. Configure them in **Administration → Plugins → Settings → Configuration**, then enable under **General**.
+Discord, Telegram, Microsoft Teams, WhatsApp Business, SharePoint, and OneDrive are separate compiled plugins with independent activation and encrypted configuration. They start disabled, are administrator-only, and register no workspace pages or search providers. Configure them in **Administration → Plugins → Settings → Configuration**, then enable under **General**. Discord/Telegram/Teams also have **People & chats** settings for internal identity links and explicit approved-destination posts.
 
-Saving configuration performs no network call. No account messages, scheduled broadcasts, MFA-channel changes, or file synchronization are triggered automatically. The initial APIs are extension points for reviewed server-side code and future workflow blocks. The existing workflow editor continues to use its email block.
+Saving configuration performs no network call. Notifications require both an enabled method and an allowed rule. Linking an identity does not send a message or enroll MFA. Shared posts are explicit admin actions; private notifications use mapped member destinations without shared fallback. Workflow email blocks remain email delivery.
+
+## Discord
+
+Set **Bot token** and approved channel IDs. In **People & chats**, link each member's numeric Discord user ID and optional display name. The bot resolves a direct conversation for private delivery; Discord privacy settings can reject it. Shared posts use only approved channels. Plain-text messages are bounded to 2,000 characters with remote mention parsing disabled. This is a bot/API integration, not Discord OAuth login. See [Discord's message API](https://github.com/discord/discord-api-docs/blob/main/developers/resources/message.mdx).
 
 ## Telegram
 
-Create a bot with BotFather, give it access to the destination chat, then set **Bot token** and **Destination chat ID**. Sending always uses the saved chat, with plain text and no markup parser. The bot token is stored as a credential. See [Telegram Bot API](https://core.telegram.org/bots/api#sendmessage) and [bot setup](https://core.telegram.org/bots).
+Create a bot with BotFather and set **Bot token**. Shared posting supports an optional default chat and approved chat IDs. For private notifications the member must first start the bot; link their positive numeric user/chat ID. Negative group IDs are rejected for private mappings. Messages use plain text without markup parsing. See [Telegram Bot API](https://core.telegram.org/bots/api#sendmessage) and [bot setup](https://core.telegram.org/bots).
 
 ```http
 POST /api/plugins/telegram/send
@@ -17,7 +21,9 @@ Content-Type: application/json
 
 ## Microsoft Teams
 
-Create a Teams Workflows webhook that posts an Adaptive Card to your chosen channel/chat. Set its full URL as **Workflows webhook URL**. This adapter supports HTTPS Power Platform (`*.api.powerplatform.com`) and Azure Logic Apps (`*.logic.azure.com`) endpoints with URL-based webhook authorization. Tenant-authenticated triggers, Teams bots, Graph chat messaging, and retired connector URLs are outside this adapter. Choose a workflow authentication mode compatible with server-to-server webhook requests and maintain its owners in Teams. See [Microsoft's Workflows setup](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook).
+Choose **WEBHOOK** for explicit shared posts via Teams Workflows or **GRAPH** for approved chats/private member delivery. Webhook mode supports signed HTTPS Power Platform (`*.api.powerplatform.com`) and Azure Logic Apps (`*.logic.azure.com`) URLs. Maintain workflow owners/authentication in Teams. See [Workflows setup](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook).
+
+Graph mode uses an externally acquired delegated access token saved as a secret, plus approved existing chat IDs. Link members by Entra UUID and existing one-to-one chat ID. Before private delivery the app verifies chat type and mapped membership; group chats are refused. Grant appropriate read/member/message-send permissions and refresh the token when it expires. Automated OAuth consent/refresh and chat creation are not implemented. See [Graph chat messages](https://learn.microsoft.com/en-us/graph/api/chat-post-messages?view=graph-rest-1.0).
 
 ```http
 POST /api/plugins/teams/send
@@ -26,7 +32,22 @@ Content-Type: application/json
 {"text":"A document needs approval."}
 ```
 
-The entire URL, including its signature/query, is encrypted and redacted. A successful HTTP response means the workflow accepted the request; later workflow execution and delivery are not confirmed.
+The signed URL is encrypted/redacted. Provider acceptance does not confirm workflow completion or recipient delivery. Webhook mode is unavailable for private member notifications.
+
+## Member links and shared posts
+
+For `discord`, `telegram`, or `teams`:
+
+```text
+GET    /api/admin/plugins/{id}/members
+GET    /api/admin/plugins/{id}/member-options
+PUT    /api/admin/plugins/{id}/members/{userId}
+DELETE /api/admin/plugins/{id}/members/{userId}?revision=N
+GET    /api/plugins/{id}/destinations
+POST   /api/plugins/{id}/post
+```
+
+Mappings contain `remoteUserId`, optional `remoteName`, `destinationId` (Teams; Telegram defaults to its user ID), and `revision` (`-1` for new). Stale edits and duplicate remote identities are rejected. Only active internal accounts are eligible. Shared posts use `{"destination":"approved-id","text":"Message"}`; other destinations are refused. Legacy Telegram/Teams `/send` remains an explicit shared-send compatibility API.
 
 ## WhatsApp Business
 
@@ -56,7 +77,7 @@ These calls list up to 100 immediate children of the configured root (or drive r
 
 ## Extending notifications
 
-Plugins declare the `NOTIFICATIONS` extension and register `NotificationChannelAdapter` beans with unique method IDs and recipient/content capabilities. Enable both the plugin and its method in **Administration > Notifications**, then allow it for the relevant notification. See the [plugin notification guide](notifications.md) for templates, member preferences, OTP contracts, and a future SMS provider example. `NotificationService.available("telegram")` and `send("telegram", ChannelMessage(text = "…"))` select an enabled adapter. Teams uses `teams`; WhatsApp uses `whatsapp` with recipient/template parameters. Unknown or disabled channels return an unavailable/disabled result. Existing mail callers continue using `NotificationChannel.EMAIL`; SMS is supplied by a provider plugin; no SMS provider is installed by default. Adding another plugin channel no longer requires expanding a core enum.
+Plugins declare `NOTIFICATIONS` and register `NotificationChannelAdapter` beans. Enable the plugin/method in **Administration > Notifications**, then allow its notification rules. Discord/Telegram/Teams use `MEMBER` recipients: an internal UUID resolves to a private mapping. Missing links/providers return unavailable without shared fallback. `NotificationPublisher` selects member preferences; shared posts use the separate API. See [notification contracts](notifications.md). WhatsApp uses phone/template delivery; SMS can be added by a provider plugin. Existing core email callers stay compatible.
 
 HTTP send/file APIs require an active app administrator and an enabled plugin. Sending is limited to 10 calls per minute per admin/plugin; file listing to 20. Transport uses fixed provider hosts or validated Microsoft workflow hosts, HTTPS, public DNS targets, no redirects or automatic retries, bounded responses, and timeouts. Errors omit request URLs, tokens, provider bodies, and credentials. Automated tests mock providers; deployment checks save disposable local credentials only and do not send external messages.
 

@@ -33,6 +33,8 @@ This is a provider integration example, not an installed SMSportal implementatio
 
 Method IDs must be unique lowercase names up to 80 characters; the plugin ID must refer to an installed module declaring `NOTIFICATIONS`. A plugin can register multiple methods. `recipientKind` is `EMAIL`, `PHONE`, or `FIXED`; `FIXED` means the plugin controls a shared destination and must never declare OTP support. `supportsHtml` and `supportsAttachments` default false. `parameterized` defaults false; an approved-template method receives ordered `templateParameters` and an optional `providerTemplate` override instead of free text. The current attachment type is one bounded PDF through the already-authorized document flow. Declaring a capability is a contract, not permission to bypass document access checks.
 
+`MEMBER` is also supported: `ChannelMessage.recipient` is the internal member UUID, resolved by the adapter to a private provider identity. Discord, Telegram, and Teams implement this contract. Adapters can report `reachable(userId)` so unavailable mappings are omitted from member choices. Never fall back to a default shared destination for a private member message. Set a definition's `privateToRecipient=true` to exclude `FIXED` channels (used by Kanban mentions).
+
 New methods start off. Administrators must enable the plugin, complete its connection, enable its notification method, and allow it for the relevant notification types. The host rechecks the plugin and notification settings immediately before transport dispatch. Background notification delivery is server-authorized and uses the plugin's admin connection; member preferences do not grant access to its admin APIs or credentials.
 
 ## Publishing optional notifications

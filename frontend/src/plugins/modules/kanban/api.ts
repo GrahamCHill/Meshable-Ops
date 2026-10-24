@@ -9,7 +9,7 @@ export interface BoardSummary { id: string; ownerId: string; name: string; updat
 export interface Board extends Omit<BoardInput, 'projectId'>, BoardSummary {}
 const api = createPluginApi('kanban')
 export const boardsApi = {
-  list: (project?: string) => api.get<BoardSummary[]>(`/boards${project ? '?projectId=' + project : ''}`),
+  list: (project?: string) => api.get<BoardSummary[]>('/boards', project ? {projectId: project} : undefined),
   get: (id: string) => api.get<Board>(`/boards/${id}`),
   save: (id: string | undefined, board: BoardInput) => id ? api.put<Board>(`/boards/${id}`, board) : api.post<Board>('/boards', board),
   members: (id: string) => api.get<{id: string; name: string; email: string}[]>(`/boards/${id}/members`),

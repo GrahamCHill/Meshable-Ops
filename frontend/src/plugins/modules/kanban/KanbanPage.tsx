@@ -11,7 +11,7 @@ import './kanban.css'
 
 export default function KanbanPage() {
   const { '*': section = '' } = useParams()
-  return section === 'guide' ? <div className="page-stack"><h1>Board guide</h1><p>Create a board, add lists for stages of work, then add cards. Move cards by dragging or choosing another list. Save changes before leaving.</p><p>Members see their own boards. Administrators can access all boards. Table permissions can make boards read only for members.</p><Link to="/plugins/kanban/boards">Open saved boards</Link></div> : <Boards />
+  return section === 'guide' ? <div className="page-stack"><h1>Board guide</h1><p>Create a board, add lists for stages of work, then add cards. Move cards by dragging or choosing another list. Save changes before leaving.</p><p>Boards can be private or linked to projects with optional team restrictions. Assign members and reviewers, define sprints, and save before commenting or mentioning teammates. Enabled Git plugins add repository and pull-request links. Table permissions can make boards read only.</p><Link to="/plugins/kanban/boards">Open saved boards</Link></div> : <Boards />
 }
 
 function Boards() {
