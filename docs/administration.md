@@ -1,5 +1,7 @@
 # Administration and access
 
+Plugin connection settings can appear as direct cards within existing admin categories or plugin-defined categories; the main Plugins catalogue retains activation/data/removal controls. Calendar and Git providers add Calendars/Development groups. Plugin-specific Settings tabs are omitted when no editable schema is supplied. See [plugin presentation](plugins/presentation-and-lifecycle.md). Personal security and notifications are grouped under the header account menu's [User settings](user-settings.md).
+
 Open **Administration** (`/admin`) to see cards for each section. Admin sections have return navigation to Administration; they are not nested items in the main sidebar. `SUPER_ADMIN` manages role features, member views, and directory access. Delegated `ADMIN` accounts manage only the areas permitted by a super admin. See [access controls](access-controls.md).
 
 Related settings are consolidated into seven card groups: **Workspace**, **People & security**, **Storage & sharing**, **Communications**, **Documents & workflows**, **Analytics & search**, and **Operations**. Each group opens a compact settings menu at `/admin/sections/<group-id>`. Existing settings URLs still work; breadcrumbs return to either their group or the admin overview. Restricted cards are hidden according to the same feature permissions as their destination pages.

@@ -1,5 +1,7 @@
 # Creating a plugin
 
+See [presentation, admin categories, screen contributions, and removal](presentation-and-lifecycle.md) for icons/banners, categories, required/optional plugin relationships, author-defined incompatibility, optional settings, and extension slots.
+
 Choose between [runtime ZIP packages](zip-packages.md) for sandboxed pages, submenus, managed data/settings/search, and compiled source modules for privileged server integrations and composition. Both need source and permission review. ZIP installation requires the super admin's third-party extensions security switch.
 
 For a source module, start from `backend/src/main/kotlin/com/starter/plugins/kanban/` and `frontend/src/plugins/modules/kanban/`. Source modules are included in both application images. Review dependencies, SQL migrations, secrets, ownership, and outbound requests as application code.

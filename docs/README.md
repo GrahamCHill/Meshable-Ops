@@ -15,6 +15,8 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Keep the workspace out of compliant search and AI crawlers | [Crawler exclusion](crawler-exclusion.md) |
 | Create a versioned template copy and deploy automatically over SSH | [GitHub Actions deployment](github-deployment.md) |
 | Set a business name, colours, logos, and sign-in backgrounds | [Branding](branding.md) |
+| Set a profile photo, personal settings, and navigation preferences | [User settings](user-settings.md) |
+| Add plugin artwork, categories, admin shortcuts, dependencies, and screen panels | [Plugin presentation and lifecycle](plugins/presentation-and-lifecycle.md) |
 | Create plugins with pages, submenus, tables, and search | [Plugin authoring](plugins/README.md) |
 | Upload ZIP plugins and configure third-party extension security | [Runtime ZIP packages](plugins/zip-packages.md) |
 | Link Git repositories/PRs to boards and cards | [Source-control plugins](plugins/source-control.md) |

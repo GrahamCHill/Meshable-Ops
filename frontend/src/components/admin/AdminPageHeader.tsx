@@ -1,15 +1,17 @@
 import { Link, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { adminGroups } from './adminNavigation'
+import { useAdminGroups } from './useAdminGroups'
 
 export function AdminPageHeader({ title, description, actions }: Readonly<{
   title: string
   description: string
   actions?: ReactNode
 }>) {
-  const path = useLocation().pathname
+  const location = useLocation(); const path = location.pathname
+  const plugin = new URLSearchParams(location.search).get('plugin')
+  const adminGroups = useAdminGroups()
   const isOverview = path === '/admin'
-  const group = adminGroups.find(group => group.items.some(item => item.to === path))
+  const group = adminGroups.find(group => group.items.some(item => plugin ? item.to.split('?')[0] === path && new URLSearchParams(item.to.split('?')[1]).get('plugin') === plugin : item.to === path))
   return (
     <header className="admin-page-header">
       <nav className="breadcrumbs" aria-label="Back navigation">

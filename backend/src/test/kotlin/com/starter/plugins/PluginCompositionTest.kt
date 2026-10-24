@@ -21,7 +21,7 @@ class PluginCompositionTest {
     }
     @Test fun `hard dependencies block enabled providers until the base plugin is available`() {
         rows += PluginSettings("calendar-microsoft",true,"ADMIN")
-        assertThat(registry.installed().first { it.manifest.id == "calendar-microsoft" }.missingDependencies).containsExactly("Calendar events")
+        assertThat(registry.installed().first { it.manifest.id == "calendar-microsoft" }.missingDependencies).containsExactly("Calendar events", "Calendar")
         assertThat(registry.available("ADMIN")).isEmpty()
         assertThatThrownBy { registry.requireAvailable("calendar-microsoft","ADMIN") }.isInstanceOf(NotFoundException::class.java)
         rows += PluginSettings("calendar",true,"ADMIN")

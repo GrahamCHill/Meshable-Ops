@@ -15,7 +15,7 @@ import '../../styles/notifications.css'
 export default function AdminNotificationsPage() {
   const client = useQueryClient(); const user = useAuthStore(state => state.user)
   const key = ['admin-notifications', user?.id]
-  const settings = useQuery({ queryKey: key, queryFn: notificationsApi.settings })
+  const settings = useQuery({ queryKey: key, queryFn: notificationsApi.settings, refetchInterval: 15000 })
   const [draft, setDraft] = useState<NotificationInput>(); const [dirty, setDirty] = useState(false); const [saving, setSaving] = useState(false)
   const [tab, setTab] = useState('notifications'); const [selectedId, setSelectedId] = useState('general.message'); const [filter, setFilter] = useState('')
   const [error, setError] = useState(''); const [notice, setNotice] = useState('')

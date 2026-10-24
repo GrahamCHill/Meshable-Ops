@@ -8,7 +8,7 @@ import { Button, Spinner } from '../ui'
 
 export default function NotificationPreferencesPage({embedded=false}: {embedded?: boolean} = {}) {
   const user = useAuthStore(state => state.user); const client = useQueryClient(); const key = ['notification-preferences', user?.id]
-  const query = useQuery({ queryKey: key, queryFn: notificationsApi.preferences })
+  const query = useQuery({ queryKey: key, queryFn: notificationsApi.preferences, refetchInterval: 15000 })
   const [draft, setDraft] = useState<PreferenceInput>(); const [dirty, setDirty] = useState(false); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [notice, setNotice] = useState('')
   const fromQuery = () => query.data && ({ revision: query.data.revision, choices: Object.fromEntries(query.data.notifications.filter(item => !item.usingDefaults && item.editable).map(item => [item.id, item.selected])) })
   useEffect(() => { if (query.data && !dirty) setDraft(fromQuery()) }, [query.data, dirty])

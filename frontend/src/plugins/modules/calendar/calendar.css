@@ -4,7 +4,7 @@
 .calendar-month-day { cursor:pointer; }
 .calendar-month-day.is-today .calendar-date { background:var(--color-accent);color:white;border-radius:50%; }
 .calendar-date { min-width:36px;min-height:36px;display:block;margin-bottom:4px; }
-.calendar-event { text-align:left;width:100%;color:var(--brand-link-color,var(--color-accent)); }
+.calendar-event { text-align:left;width:100%;color:var(--brand-link-colour,var(--color-accent)); }
 .calendar-month-event { display:flex;gap:4px;align-items:baseline;min-width:0;margin:5px 0;font-size:.8rem; }
 .calendar-month-event .calendar-event { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 .calendar-month-event small { flex-shrink:0; }

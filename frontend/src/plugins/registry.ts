@@ -5,7 +5,9 @@ export interface WorkspacePluginModule {
   id: string
   apiVersion: 1
   loadPage: () => Promise<{ default: ComponentType<{plugin: PluginView}> }>
+  loadExtensions?: Record<string, () => Promise<{default: ComponentType<{plugin: PluginView; slot: string; context: Record<string,unknown>}>}>>
 }
+export function extensionModule(plugin: PluginView, slot: string) {return plugin.source==='BUNDLED' && plugin.manifest.apiVersion===1 ? registry.get(plugin.manifest.id)?.loadExtensions?.[slot] : undefined}
 
 // Bundled pages share the app runtime; uploaded pages use a separate sandboxed loader.
 const sources = import.meta.glob<{ default: WorkspacePluginModule }>('./modules/*/index.ts', { eager: true })

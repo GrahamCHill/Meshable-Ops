@@ -41,3 +41,5 @@
 .plugin-catalog-card { min-width:0;align-content:start; }
 .application-extensions { display:flex;flex-wrap:wrap;gap:12px;padding:12px 0; }
 .application-extensions.is-compact { padding:0; }
+
+.application-extension-panel {width:100%;min-width:0;}

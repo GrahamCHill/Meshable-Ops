@@ -11,7 +11,7 @@ export function PluginSetting({ plugin }: { plugin: PluginView }) {
   const [settings, setSettings] = useState(() => settingsFor(plugin))
   useEffect(() => setSettings(settingsFor(plugin)), [plugin])
   const save = useMutation({ mutationFn: () => pluginsApi.configure(plugin.manifest.id, settings), onSuccess: async () => {
-    await Promise.all([client.invalidateQueries({ queryKey: ['admin-plugins'] }), client.invalidateQueries({ queryKey: ['plugins'] })])
+    await Promise.all([client.invalidateQueries({ queryKey: ['admin-plugins'] }), client.invalidateQueries({ queryKey: ['plugins'] }),client.invalidateQueries({queryKey:['admin-notifications']}),client.invalidateQueries({queryKey:['notification-preferences']})])
   } })
   const update = (values: Partial<PluginSettings>) => {setSettings(current => ({...current, ...values})); save.reset()}
   const tableAccess = (name: string, level: string) => update({tableAccess: {...settings.tableAccess, [name]: {

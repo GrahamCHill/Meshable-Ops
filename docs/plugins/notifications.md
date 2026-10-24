@@ -2,6 +2,8 @@
 
 Messaging plugins register delivery methods through a reviewed Spring `NotificationChannelAdapter` bean. The host discovers it at startup and displays it under **Administration > Notifications > Delivery methods**. No core enum, controller, or frontend form is required for a new provider. Add `PluginExtension.NOTIFICATIONS` to the owning plugin manifest, plus `SETTINGS` for connection fields. Use the shared encrypted plugin configuration service for API keys.
 
+For SMS, also set `PluginManifest.providesSms = true`; the adapter's `sms` flag is inferred for IDs `sms` or ending in `.sms`, or can be overridden. Disabled/removed/incompatible plugins disappear from notification choices while retaining their saved configuration. A declaration alone supplies no transport: implement and configure the provider adapter.
+
 ```kotlin
 @Component
 class SmsPortalDelivery(
