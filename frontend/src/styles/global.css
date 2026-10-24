@@ -8,3 +8,10 @@
 @import './analytics.css';
 @import './search.css';
 @import './pdf.css';
+
+/* Application tables follow workspace palettes; authored document canvases retain their paper styles. */
+:where(table):not(.weasy-host table) > thead,
+:where(table):not(.weasy-host table) > thead > tr > th,
+[role="columnheader"] { background: var(--color-table-header-background); color: var(--color-table-header-text); }
+
+.clickable-card{position:relative;isolation:isolate}.clickable-card .card-primary-link::after{content:'';position:absolute;inset:0;z-index:1;cursor:pointer;border-radius:inherit}.clickable-card .card-primary-link:focus-visible::after{outline:2px solid #579dff;outline-offset:3px}.clickable-card :is(a:not(.card-primary-link),button,input,textarea,select,summary,label){position:relative;z-index:2}.clickable-card:has(.card-primary-link):hover{border-color:#579dff}

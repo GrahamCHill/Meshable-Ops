@@ -45,6 +45,7 @@ class SecurityConfig(
         .csrf { it.disable() }
         .cors { it.configurationSource(corsConfigurationSource()) }
         .headers { it.addHeaderWriter(StaticHeadersWriter("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet, noimageindex")) }
+        .headers { it.addHeaderWriter(StaticHeadersWriter("Referrer-Policy","no-referrer")) }
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
         .authorizeHttpRequests { auth ->
             auth.requestMatchers("/api/health", "/api/auth/**").permitAll()

@@ -1,4 +1,4 @@
-import { type ReactNode, type ButtonHTMLAttributes, forwardRef } from 'react'
+import { type ReactNode, type ButtonHTMLAttributes, forwardRef, useRef, useEffect } from 'react'
 import clsx from 'clsx'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -18,7 +18,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 Button.displayName = 'Button'
 
 export function Card({ children, className, style }: { children: ReactNode; className?: string; style?: React.CSSProperties }) {
-  return <div className={clsx('content-section', className)} style={style}>{children}</div>
+  const root=useRef<HTMLDivElement>(null)
+  useEffect(()=>{
+    const mark=()=>{const host=root.current;if(!host)return;const link=[...host.querySelectorAll<HTMLAnchorElement>('h1 a[href],h2 a[href],h3 a[href],a[data-card-link]')].find(item=>item.closest('.clickable-card')===host);if(link)link.classList.add('card-primary-link')}
+    mark();const observer=new MutationObserver(mark);if(root.current)observer.observe(root.current,{childList:true,subtree:true});return()=>observer.disconnect()
+  },[])
+  return <div ref={root} className={clsx('content-section','clickable-card', className)} style={style}>{children}</div>
 }
 
 export function Badge({ children, color = 'default' }: { children: ReactNode; color?: 'default' | 'success' | 'warning' | 'danger' | 'accent' }) {

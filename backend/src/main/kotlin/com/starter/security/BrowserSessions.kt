@@ -16,7 +16,7 @@ import java.util.UUID
 class BrowserSession(@Id val id: UUID = UUID.randomUUID(),val userId: UUID = UUID.randomUUID(),val contextHash: String = "",val csrfHash: String = "",
     val expiresAt: Instant = Instant.now(),var revokedAt: Instant? = null)
 interface BrowserSessionRepository: JpaRepository<BrowserSession,UUID> {fun deleteByExpiresAtBefore(time: Instant): Long}
-data class BrowserSessionContext(val id: UUID,val fingerprint: String,val csrf: String)
+data class BrowserSessionContext(val id: UUID,val fingerprint: String,val csrf: String) {override fun toString()="BrowserSessionContext(id=$id)"}
 
 @Service
 class BrowserSessions(private val rows: BrowserSessionRepository,private val jwt: JwtService,private val values: SecureValues) {

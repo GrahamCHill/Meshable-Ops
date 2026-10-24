@@ -57,4 +57,22 @@ class BrandingPreferencesTest {
         assertThat(stored!!.applicationName).isEqualTo("Existing")
         verify(repository, never()).saveAndFlush(any(BrandingPreferencesRecord::class.java))
     }
+    @Test fun `workspace palettes persist separately and switching can be disabled`() {
+        val value = service.save(BrandingPreferences(themes = com.starter.dto.WorkspaceThemes(switchingEnabled = false,
+            light = com.starter.dto.WorkspacePalette(tableHeaderBackground = "#EEEEEE"),
+            dark = com.starter.dto.WorkspacePalette(tableHeaderBackground = "#222222"),
+            custom = com.starter.dto.WorkspacePalette(background = "#123456", text = "#FFFFFF"))))
+        assertThat(value.themes.switchingEnabled).isFalse()
+        assertThat(value.themes.light.tableHeaderBackground).isEqualTo("#eeeeee")
+        assertThat(value.themes.dark.tableHeaderBackground).isEqualTo("#222222")
+        assertThat(service.current().themes.custom.text).isEqualTo("#ffffff")
+    }
+    @Test fun `palette colours reject CSS injection and legacy records retain theme switching`() {
+        stored = BrandingPreferencesRecord()
+        assertThat(service.current().themes.switchingEnabled).isTrue()
+        assertThatThrownBy { service.save(BrandingPreferences(themes = com.starter.dto.WorkspaceThemes(
+            dark = com.starter.dto.WorkspacePalette(headerBackground = "red;display:none")))) }.isInstanceOf(BadRequestException::class.java)
+        verify(repository, never()).saveAndFlush(any(BrandingPreferencesRecord::class.java))
+    }
+
 }

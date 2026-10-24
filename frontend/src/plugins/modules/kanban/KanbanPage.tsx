@@ -27,7 +27,7 @@ function Boards() {
   const select=(id:string)=>setParams({...projectId?{project:projectId}:{},...id?{board:id}:{}})
   const creationAccess=useQuery({queryKey:['kanban-create-access',user?.id,projectId],queryFn:()=>boardsApi.permissions(projectId),enabled:canWrite,refetchInterval:15000})
   const list=useQuery({queryKey:['plugin-kanban-boards',user?.id,role,projectId],queryFn:()=>boardsApi.list(projectId)})
-  const board=useQuery({queryKey:['plugin-kanban-board',user?.id,role,selected],queryFn:()=>boardsApi.get(selected),enabled:!!selected,refetchOnWindowFocus:false})
+  const board=useQuery({queryKey:['plugin-kanban-board',user?.id,role,selected],queryFn:()=>boardsApi.get(selected),enabled:!!selected,refetchOnWindowFocus:false,refetchInterval:query=>Object.values(query.state.data?.retrospectives??{}).some(r=>r.status==='PENDING'||r.status==='GENERATING')?15000:false})
   const saved=(value:Board)=>{
     client.setQueryData(['plugin-kanban-board',user?.id,role,value.id],value)
     void client.invalidateQueries({queryKey:['plugin-kanban-boards']})

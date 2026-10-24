@@ -46,7 +46,7 @@ export function AdminAiPage() {
   const boundKey = (kind: 'chat' | 'embeddings') => !!view?.[kind].apiKeyConfigured && (environment || (draft?.[kind].provider === view[kind].provider && trimTrailingSlashes(draft[kind].baseUrl) === view[kind].baseUrl))
 
   return <div className="page-stack" style={{ maxWidth: 1000 }}>
-    <AdminPageHeader title="AI & search" description="Connect answer generation to the documents your team can access in Storage." />
+    <AdminPageHeader title="App Intelligence" description="Connect answer generation to the documents your team can access in Storage." />
     <p><Link to="/admin/storage?tab=vectors">Manage indexing jobs and schedules</Link></p>
     {query.isLoading && <Spinner />}
     {query.isError && <div role="alert" className="feedback error">Unable to load AI settings. <Button variant="ghost" onClick={() => query.refetch()}>Retry</Button></div>}

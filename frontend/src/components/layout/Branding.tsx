@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { brandImage, brandingApi, defaultBrandImage } from '../../api/branding'
-import { sidebarForeground, validColour } from './brandingColours'
 
 export function useBranding() {
   return useQuery({ queryKey: ['branding'], queryFn: brandingApi.current, staleTime: 60_000, refetchInterval: 60_000, retry: false })
@@ -17,13 +16,6 @@ export function BrandingHead() {
   const { data } = useBranding()
   useEffect(() => {
     document.title = data?.settings?.applicationName ?? 'Meshable Ops'
-    const root = document.documentElement.style
-    const settings = data?.settings
-    const background = validColour(settings?.sidebarBackgroundColor) ? settings.sidebarBackgroundColor : undefined
-    const foreground = validColour(settings?.sidebarTextColor) ? settings.sidebarTextColor : background ? sidebarForeground(background) : undefined
-    const colours = { '--brand-sidebar-background': background, '--brand-sidebar-text': foreground, '--brand-link-colour': validColour(settings?.linkColor) ? settings.linkColor : undefined }
-    for (const [key, value] of Object.entries(colours)) { if (value) root.setProperty(key, value); else root.removeProperty(key) }
-    return () => { for (const key of Object.keys(colours)) root.removeProperty(key) }
   }, [data?.settings])
   useEffect(() => {
     const icon = document.querySelector<HTMLLinkElement>('#app-favicon')

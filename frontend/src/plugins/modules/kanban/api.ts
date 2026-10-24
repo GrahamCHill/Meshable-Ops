@@ -15,9 +15,11 @@ export interface BoardTransition {id: string; source: string; target: string; na
 export interface BoardWorkflow {enabled: boolean; transitions: BoardTransition[]; positions: Record<string,{x:number;y:number}>}
 export interface Estimation {storyPoints: boolean; tshirtSizes: boolean}
 export interface ProjectEstimation extends Estimation {inherit: boolean; revision: number; canManage: boolean}
-export interface BoardInput { name: string; revision: number; projectId?: string | null; teamIds?: string[]; content: { columns: BoardColumn[]; cards: BoardCard[]; sprints?: BoardSprint[]; epics?: BoardEpic[]; workflow?: BoardWorkflow } }
+export interface TicketAccessPolicy {createMode:'ANY_MEMBER'|'SELECTED_MEMBERS'|'ADMINS';creatorIds:string[];deleteMode:'ALL_ADMINS'|'SELECTED_ADMINS';deleterIds:string[]}
+export interface SprintRetrospective {status:string;summary:string}
+export interface BoardInput { name: string; revision: number; projectId?: string | null; teamIds?: string[]; content: { columns: BoardColumn[]; cards: BoardCard[]; sprints?: BoardSprint[]; epics?: BoardEpic[]; workflow?: BoardWorkflow; ticketAccess?: TicketAccessPolicy } }
 export interface BoardSummary { id: string; ownerId: string; name: string; updatedAt: string; projectId: string | null; ticketCount?: number; completedCount?: number }
-export interface Board extends Omit<BoardInput, 'projectId'>, BoardSummary {canManage: boolean; moves: Record<string,string[]>; estimation?: Estimation}
+export interface Board extends Omit<BoardInput, 'projectId'>, BoardSummary {canManage: boolean; canCreateTickets?:boolean;canDeleteTickets?:boolean;canManageTicketAccess?:boolean;retrospectives?:Record<string,SprintRetrospective>; moves: Record<string,string[]>; estimation?: Estimation}
 const api = createPluginApi('kanban')
 export const boardsApi = {
   permissions: (project?:string) => api.get<{canCreate:boolean}>('/permissions',project?{projectId:project}:undefined),
@@ -28,6 +30,8 @@ export const boardsApi = {
   move: (board: string, card: string, columnId: string, revision: number, beforeId?: string) => api.post<Board>(`/boards/${board}/cards/${card}/move`, {columnId, revision, beforeId: beforeId ?? null}),
   startSprint: (board: string, sprint: string, revision: number) => api.post<Board>(`/boards/${board}/sprints/${sprint}/start`, {revision}),
   completeSprint: (board: string, sprint: string, revision: number, destinationSprintId: string | null) => api.post<Board>(`/boards/${board}/sprints/${sprint}/complete`, {revision, destinationSprintId}),
+  deleteTicket: (board:string,card:string,revision:number,confirmation:string)=>api.post<Board>(`/boards/${board}/cards/${card}/delete`,{revision,confirmation}),
+  deleteSprint: (board:string,sprint:string,revision:number)=>api.post<Board>(`/boards/${board}/sprints/${sprint}/delete`,{revision,confirmation:'DELETE'}),
   comments: (board: string, card: string) => api.get<BoardComment[]>(`/boards/${board}/cards/${card}/comments`),
   comment: (board: string, card: string, text: string, mentionIds: string[] = [], parentId?: string | null) => api.post<BoardComment>(`/boards/${board}/cards/${card}/comments`, {text, mentionIds, parentId: parentId ?? null}),
   estimation: (project: string) => api.get<ProjectEstimation>(`/projects/${project}/estimation`),

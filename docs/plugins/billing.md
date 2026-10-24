@@ -10,6 +10,14 @@ Each client has a registered billing email/address, internal Business Manager (o
 
 Stored catalog/manual prices explicitly record **includes tax** or **excludes tax**. For VAT-enabled invoices, inclusive prices are converted to net prices, and the PDF shows net line/unit values plus a separate VAT column/total. Exclusive prices have VAT added. Without VAT, no tax is inferred or stripped from stored amounts. Currency precision and per-line rounding are applied before totals are summed. The administrator chooses rates appropriate to the business; the app does not determine tax jurisdiction.
 
+## Shared catalog and local agreements
+
+Billing items are a shared catalog, independent of projects. Administrators, Business Managers and project leaders can create definitions; the owner or an administrator can edit them. Link an item to a client or a project. A link snapshots its agreed values so catalog edits do not silently change a price.
+
+A local override is a proposal. The existing baseline or previously approved override remains effective until a project **MANAGER** or administrator approves the exact proposal version. Team lead status alone cannot approve. Client-wide proposals require approval separately for each affected project. Project links take precedence over inherited client links. Relinking a new catalog version cannot bypass an inherited agreement. No pending value enters an invoice. A client-wide monthly item uses one shared charge key across the client's projects, preventing the same charge being billed once per project.
+
+Use **Billing items & rates > Project links / Client links** to link definitions and propose changes; project managers approve from the project view. Editing the catalog does not require project approval because it does not alter an existing link. Existing project-scoped records remain readable for migration compatibility.
+
 ## Sources and duplicate protection
 
 | Source | Invoice key / behavior |
@@ -28,7 +36,7 @@ Only enabled supporting plugins contribute sources. All selected sources must us
 
 ## PDFs, templates and delivery
 
-The standard escaped invoice layout is rendered by the private Python WeasyPrint service. It supports multiple pages, repeating column headings and net/VAT totals. An optional published WeasyCanvas template can replace its layout. Template fields are `invoice_number`, `document_kind`, `client_name`, `billing_email`, `billing_address`, `project_name`, `period_from`, `period_to`, `currency`, `subtotal`, `vat`, `total`, and `invoice_lines` (multiline net-price detail). Configure required template fields accordingly. Quotes/provisional outputs are watermarked regardless of layout.
+The standard escaped invoice layout is rendered by the private Python WeasyPrint service. It supports multiple pages, repeating column headings and net/VAT totals. An optional published WeasyCanvas template adds a custom cover before the complete itemized layout. The fixed itemized pages always retain net prices and VAT totals. Template fields are `invoice_number`, `document_kind`, `client_name`, `billing_email`, `billing_address`, `project_name`, `period_from`, `period_to`, `currency`, `subtotal`, `vat`, `total`, and `invoice_lines` (a bounded multiline preview; full details follow on the itemized pages). Configure required template fields accordingly. Quotes/provisional outputs are watermarked regardless of layout.
 
 Generated PDFs appear in Documents for their owner and administrators, with project-authorized download/delivery through Billing. Download disable/watermark rules still apply. Clearing Documents is blocked while saved billing documents reference its PDFs. PDF attachments are capped at 10 MB. Normal manual sends may optionally password-protect the attachment; passwords are used in memory and are never emailed alongside it or stored.
 

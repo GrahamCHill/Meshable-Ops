@@ -21,7 +21,7 @@ class CrawlerHeadersTest {
     open class Config {
         @Bean open fun jwtService() = mock(JwtService::class.java)
         @Bean open fun users() = mock(UserDetailsServiceImpl::class.java)
-        @Bean open fun jwtFilter(jwt: JwtService, users: UserDetailsServiceImpl) = JwtAuthFilter(jwt, users)
+        @Bean open fun jwtFilter(jwt: JwtService, users: UserDetailsServiceImpl) = JwtAuthFilter(jwt, users,mock(com.starter.security.BrowserSessions::class.java))
         @Bean open fun controller() = PublicController()
     }
     @RestController

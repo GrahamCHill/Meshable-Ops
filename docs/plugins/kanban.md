@@ -100,3 +100,21 @@ Tests cover direct moves/full-board writes, saved-ticket authority, manager over
 ## Board creation authority
 
 New private boards require an administrator, Business Manager, or current project manager/team lead. Linked boards require leadership in that specific project. Business Manager follows `USER` plugin/table policies and does not gain unrelated project access. Existing board ownership and contribution rules remain, including the ability to edit previously created boards. The host exposes `/api/plugins/kanban/permissions` for creation controls; server POST checks remain authoritative.
+
+## Ticket permissions and sprint lifecycle
+
+**Configure board > Ticket access** is available to administrators. Creation can allow any member with board write access, selected board members, or administrators. Deletion always requires an administrator with board write access and can be narrowed to selected administrators. Project and team restrictions continue to apply. Saved permissions govern full-board API updates as well as dedicated actions; including a new permission in the same request cannot authorize that request.
+
+Ticket deletion asks for confirmation and removes its subtasks, comments and repository links. The API requires the saved ticket reference, current board revision and permission. Bulk board writes must explicitly list every removed ticket ID in `confirmedTicketDeletions`.
+
+Managers can edit a planned sprint and choose **Delete planned sprint**, then confirm. Its tickets return to the backlog. Active and completed sprints cannot be deleted.
+
+On completion, a snapshot queues an automatic retrospective when a chat provider is enabled in **Administration > App Intelligence**. A background worker makes a single attempt; completion is independent of the provider. Backlog shows the retrospective or its status under the completed sprint. With no AI, the status is `NOT_CONFIGURED`; an unavailable provider yields `UNAVAILABLE`. The model receives ticket titles, states, estimates and blockers; suggestions are labelled as suggestions. Retrospectives live in the Kanban-owned `plugin_kanban_retrospectives` table, follow its RBAC and clear with Kanban data. Interrupted attempts may remain `GENERATING` and require operator review rather than automatically repeat an external request.
+
+| Action | API |
+| --- | --- |
+| Delete ticket and its subtasks | `POST /api/plugins/kanban/boards/{id}/cards/{cardId}/delete` with `{revision, confirmation: "saved-ticket-reference"}` |
+| Delete planned sprint | `POST /api/plugins/kanban/boards/{id}/sprints/{sprintId}/delete` with `{revision, confirmation: "DELETE"}` |
+| Configure ticket permissions | `PUT /api/plugins/kanban/boards/{id}` with `content.ticketAccess` |
+
+`ticketAccess` contains `createMode` (`ANY_MEMBER`, `SELECTED_MEMBERS`, `ADMINS`), `creatorIds`, `deleteMode` (`ALL_ADMINS`, `SELECTED_ADMINS`), and `deleterIds`. Board responses expose `canCreateTickets`, `canDeleteTickets`, `canManageTicketAccess`, and a sprint-keyed `retrospectives` map. Refresh the board to retrieve a finished background result.

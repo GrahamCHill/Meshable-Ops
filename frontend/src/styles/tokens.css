@@ -1,5 +1,7 @@
 :root, :root[data-theme='dark'] {
   color-scheme: dark;
+  --color-table-header-background: var(--color-surface-2);
+  --color-table-header-text: var(--color-text);
   --color-bg: #181818;
   --color-surface: #181818;
   --color-surface-2: #262626;

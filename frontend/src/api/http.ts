@@ -11,6 +11,7 @@ const api = axios.create({
 api.interceptors.request.use(config => {
   const base=new URL(api.defaults.baseURL??'/api',window.location.origin)
   const target=new URL(config.url??'',base.href.replace(/\/?$/,'/'))
+  if(target.protocol!=='https:'&&!['localhost','127.0.0.1','[::1]'].includes(target.hostname))throw new Error('Use HTTPS for application API requests outside localhost')
   if(!['http:','https:'].includes(target.protocol)||target.origin!==base.origin)throw new Error('API requests must stay on the configured application origin')
   delete config.headers.Authorization
   const csrf=document.cookie.split('; ').find(item=>item.startsWith('__Host-XSRF-TOKEN='))??document.cookie.split('; ').find(item=>item.startsWith('XSRF-TOKEN='))

@@ -12,7 +12,7 @@ Related settings are consolidated into seven card groups: **Workspace**, **Peopl
 | Project settings | `/admin/projects` | Ordered project sections/default, tags, described team/department groups, scoped project roles, and memberships |
 | Access controls | `/admin/access-controls` | Super admin role features, member views, external sharing, and protected cloud paths |
 | Security | `/admin/security` | Super admin global third-party extension switch; links to access controls and personal MFA |
-| Branding | `/admin/branding` | Business name, sidebar/link colours, logo/favicon, and sign-in backgrounds |
+| Branding | `/admin/branding` | Business name, separate light/dark or fixed custom palettes, logo/favicon, and sign-in backgrounds |
 | Plugins | `/admin/plugins` | ZIP installation by super admins; module settings, roles, tables, and search |
 | Storage connections | `/admin/storage` | Named S3/Blob locations, shared folders, indexing jobs |
 | Document access | `/admin/documents` | PDF viewing, download policies, and watermarks |
@@ -23,7 +23,7 @@ Related settings are consolidated into seven card groups: **Workspace**, **Peopl
 | Webhooks | `/admin/webhooks` | Authenticated JSON receipt and manual outgoing requests |
 | Workflow builder | `/admin/workflows` | Design, validate, and publish guided processes |
 | Document templates | `/admin/document-templates` | WeasyCanvas designer, typed/derived fields, publishing |
-| AI & search | `/admin/ai` | Search, launcher, indexing switches, optional providers |
+| App Intelligence | `/admin/ai` | Search, launcher, indexing switches, optional providers |
 | Superset workspace | `/admin/superset-graph-builder` | Dashboard, chart, and dataset authoring |
 | Dashboard links | `/admin/dashboard-links` | Select, label, order, and restrict shared dashboards |
 | System health | `/admin/system` | Service connectivity and runtime details |
@@ -61,3 +61,5 @@ Application passwords use salted bcrypt at cost 12. Authenticator/email MFA is o
 Saved provider credentials are encrypted with the persistent server wrapping key and are not returned to the browser. Environment and admin settings are separate configuration sources. See [credential security](ai-search-and-secrets.md). Metadata exports omit credentials and are not complete recovery backups; retain database backups, original files, and wrapping keys separately.
 
 Server-side ownership, role, feature, and storage-access checks enforce permissions. Superset authoring also has an authenticated proxy boundary. Download permission and watermark policies apply independently of upload permission. See [architecture](architecture.md), [document access](document-access.md), and the [documentation index](README.md) for each feature's controls.
+
+Disabled plugins do not expose configuration shortcuts in admin categories or delivery methods in Notifications. Their installation/configuration remains accessible in the Plugins catalogue. Calendar opens directly; its empty Events submenu has been removed.

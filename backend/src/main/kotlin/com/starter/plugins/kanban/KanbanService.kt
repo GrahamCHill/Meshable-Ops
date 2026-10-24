@@ -16,7 +16,8 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
     private val plugins: PluginRegistry, private val mapper: ObjectMapper,
     private val search: KanbanSearchProvider? = null, private val development: KanbanDevelopmentLinkRepository? = null,
     private val projects: com.starter.projects.ProjectBoardAccess? = null, private val comments: KanbanCommentRepository? = null,
-    private val estimates: KanbanEstimationService? = null) {
+    private val estimates: KanbanEstimationService? = null,
+    private val users: com.starter.repository.postgres.UserRepository? = null, private val retrospectives: SprintRetrospectives? = null) {
     fun list(email: String, projectId: UUID? = null): List<KanbanSummary> { val actor = actor(email); return projects?.list(actor, projectId) ?: boards.visible(actor.id, com.starter.access.Roles.admin(actor.role), PageRequest.of(0, 100)) }
     fun get(email: String, id: UUID) = actor(email).let { view(owned(it, id), it) }
     fun members(email: String, id: UUID) = actor(email).let { actor -> projects?.members(actor, owned(actor, id)) ?: emptyList() }
@@ -40,6 +41,12 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
         projects?.validateTeams(actor, row, request.projectId, request.teamIds)
         val previous = if (id == null) KanbanContent() else KanbanCompletion.read(mapper.readValue(row.contentJson, KanbanContent::class.java))
         val manager = canManage(actor, row)
+        TicketAccess.check(actor, previous, requested, request.confirmedTicketDeletions)
+        if (requested.ticketAccess != previous.ticketAccess) {
+            projects?.validatePeople(actor, row, requested.ticketAccess.creatorIds - previous.ticketAccess.creatorIds)
+            if (requested.ticketAccess.deleterIds.any { userId -> users?.findById(userId)?.orElse(null)?.let {it.active && com.starter.access.Roles.admin(it.role)} != true })
+                throw BadRequestException("Ticket deletion can only be assigned to active administrators")
+        }
         if (id != null && !manager && row.name != request.name.trim()) throw ForbiddenException("Only a board manager can rename this board")
         row.projectId = request.projectId
         row.teamIdsJson = mapper.writeValueAsString(request.teamIds)
@@ -72,6 +79,7 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
         val removed = previous.cards.map { it.id }.filter { it !in cards }
         if (removed.isNotEmpty()) comments?.deleteByBoardIdAndCardIdIn(saved.id, removed)
         search?.index(saved, content)
+        retrospectives?.enqueue(saved, previous, content, actor.id, actor.role)
         return view(saved, actor)
     }
     @Transactional
@@ -103,6 +111,27 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
         val row = sprintBoard(email, id, request.revision)
         return saveSprint(email, row, KanbanSprintRules.complete(KanbanCompletion.read(mapper.readValue(row.contentJson, KanbanContent::class.java)), sprintId, request.destinationSprintId))
     }
+    @Transactional
+    fun deleteSprint(email: String, id: UUID, sprintId: UUID, request: DeleteTicketRequest): KanbanView {
+        val row = sprintBoard(email, id, request.revision)
+        val content = KanbanCompletion.read(mapper.readValue(row.contentJson, KanbanContent::class.java))
+        val sprint = content.sprints.find {it.id == sprintId} ?: throw NotFoundException("Sprint unavailable")
+        if (sprint.status != SprintStatus.PLANNED) throw BadRequestException("Only planned sprints can be deleted")
+        if (request.confirmation != "DELETE") throw BadRequestException("Confirm sprint deletion")
+        return saveSprint(email, row, content.copy(sprints = content.sprints.filter {it.id != sprintId}, cards = content.cards.map {if(it.sprintId == sprintId) it.copy(sprintId = null) else it}))
+    }
+    @Transactional
+    fun deleteTicket(email: String, id: UUID, cardId: UUID, request: DeleteTicketRequest): KanbanView {
+        val actor = actor(email)
+        val row = owned(actor, id)
+        val content = KanbanCompletion.read(mapper.readValue(row.contentJson, KanbanContent::class.java))
+        val card = content.cards.find {it.id == cardId} ?: throw NotFoundException("Ticket unavailable")
+        if (request.confirmation != card.reference) throw BadRequestException("Confirm the ticket reference before deleting")
+        val deleted = content.cards.filter {it.id == cardId || it.parentId == cardId}.map {it.id}.toSet()
+        val cards = content.cards.filter {it.id !in deleted}.map {it.copy(links = it.links.filter {link -> link.targetId !in deleted})}
+        return save(email, id, KanbanRequest(row.name, content.copy(cards = cards), request.revision, row.projectId,
+            mapper.readValue(row.teamIdsJson, object : com.fasterxml.jackson.core.type.TypeReference<Set<UUID>>() {}), deleted))
+    }
     private fun sprintBoard(email: String, id: UUID, revision: Long): KanbanBoard {
         val actor = actor(email)
         plugins.requireTable("kanban", "plugin_kanban_boards", actor.role, write = true)
@@ -128,7 +157,9 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
             from != null && KanbanRules.canMove(actor.id, card, from, column, manager, content.workflow)
         }.map { it.id }.toSet() }
         return KanbanView(row.id, row.ownerId, row.name, row.updatedAt, row.revision, content, row.projectId,
-            mapper.readValue(row.teamIdsJson, object : com.fasterxml.jackson.core.type.TypeReference<Set<UUID>>() {}), manager && writable, moves, estimates?.effective(row.projectId) ?: KanbanEstimation())
+            mapper.readValue(row.teamIdsJson, object : com.fasterxml.jackson.core.type.TypeReference<Set<UUID>>() {}), manager && writable, moves, estimates?.effective(row.projectId) ?: KanbanEstimation(),
+            writable && TicketAccess.create(actor, content.ticketAccess), writable && TicketAccess.delete(actor, content.ticketAccess), writable && com.starter.access.Roles.admin(actor.role),
+            if (runCatching {plugins.requireTable("kanban", "plugin_kanban_retrospectives", actor.role)}.isSuccess) retrospectives?.views(row.id).orEmpty() else emptyMap())
     }
     internal fun validate(request: KanbanRequest) {
         KanbanRules.validate(request.content)

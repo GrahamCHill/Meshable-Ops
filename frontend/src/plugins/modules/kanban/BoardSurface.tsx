@@ -45,7 +45,7 @@ export function BoardSurface({board, cards, people, group, busy, readOnly, onOpe
               {columnCards.map((card, index) => <TicketTile key={card.id} card={card} columns={board.content.columns} epic={board.content.epics?.find(epic => epic.id === card.epicId)} person={people.find(person => person.id === card.assigneeId)}
                 storyPoints={board.estimation?.storyPoints??true} tshirtSizes={board.estimation?.tshirtSizes??false}
                 subtasks={board.content.cards.filter(item => item.parentId === card.id)} expanded={expanded.includes(card.id)} onToggle={() => toggle(card.id)} onOpenCard={onOpen}
-                onCreateSubtask={!readOnly && board.content.cards.length < 200 ? () => {setExpanded(value => [...new Set([...value, card.id])]); onSubtask(card)} : undefined}
+                onCreateSubtask={board.canCreateTickets && !readOnly && board.content.cards.length < 200 ? () => {setExpanded(value => [...new Set([...value, card.id])]); onSubtask(card)} : undefined}
                 disabled={busy} draggable={!readOnly && !busy && !!board.moves[card.id]?.length} onOpen={() => onOpen(card)}
                 onDragStart={event => {event.stopPropagation(); event.dataTransfer.setData('text/plain', card.id); event.dataTransfer.effectAllowed = 'move'; setDrag({kind: 'ticket', id: card.id})}} onDragEnd={stopDrag}
                 dropPosition={drop?.id === card.id && drag?.id !== card.id ? (drop.after ? 'after' : 'before') : undefined}
@@ -55,7 +55,7 @@ export function BoardSurface({board, cards, people, group, busy, readOnly, onOpe
                 canRankUp={index > 0 && allowed(card.id, column.id)} canRankDown={index < columnCards.length - 1 && allowed(card.id, column.id)}
               />)}
               {creating === key ? <QuickCreate draftKey={'quick-ticket:' + board.id + ':' + key} busy={busy} onCancel={() => setCreating('')} onCreate={async (title, type) => {await onCreate(column.id, title, type, lane.id); setCreating('')}}/>
-                : !readOnly && <button type="button" className="kanban-add-ticket" disabled={busy || board.content.cards.length >= 200} onClick={() => setCreating(key)}><Plus size={15}/> Create ticket</button>}
+                : board.canCreateTickets && !readOnly && <button type="button" className="kanban-add-ticket" disabled={busy || board.content.cards.length >= 200} onClick={() => setCreating(key)}><Plus size={15}/> Create ticket</button>}
             </div>
           </section>
         })}

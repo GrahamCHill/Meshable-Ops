@@ -2,6 +2,7 @@ import {useEffect, useState} from 'react'
 import {useMutation, useQuery} from '@tanstack/react-query'
 import {Link,useSearchParams} from 'react-router-dom'
 import {CalendarDays, CheckCheck, Plus, Settings2} from 'lucide-react'
+import {Modal} from '../../../components/ui/Modal'
 import {Button} from '../../../components/ui'
 import {getErrorMessage} from '../../../components/admin/adminUtils'
 import {usePageDraft, useDiscardPageDraft} from '../../../hooks/usePageDraft'
@@ -25,6 +26,7 @@ export function BoardEditor({initial, onSaved, readOnly = false}: Readonly<{init
   const [params]=useSearchParams()
   const [draft, setDraft] = useState(initial)
   const [editing, setEditing] = useState<BoardCard>()
+  const [deleting,setDeleting] = useState<BoardCard>()
   const [configure, setConfigure] = useState(false)
   const [tab, setTab] = useState('board')
   const [filters, setFilters] = useState<BoardFilters>(emptyFilters)
@@ -40,14 +42,15 @@ export function BoardEditor({initial, onSaved, readOnly = false}: Readonly<{init
   const people = members.data ?? []
   const accept = (board: Board) => {setDraft(board); onSaved(board)}
   const save = useMutation({mutationFn: (board: BoardInput) => boardsApi.save(initial.id, board), onSuccess: accept})
+  const deletion = useMutation({mutationFn:(card:BoardCard)=>boardsApi.deleteTicket(initial.id,card.id,draft.revision,card.reference??''),onSuccess:board=>{accept(board);setDeleting(undefined);closeTicket()}})
   const move = useMutation({mutationFn: ({card, column, before}: {card: string; column: string; before?: string}) => boardsApi.move(initial.id, card, column, draft.revision, before), onSuccess: accept})
-  const sprintAction = useMutation({mutationFn: ({kind, id, destination}: {kind: 'start' | 'complete'; id: string; destination?: string | null}) => kind === 'start'
+  const sprintAction = useMutation({mutationFn: ({kind, id, destination}: {kind: 'start' | 'complete' | 'delete'; id: string; destination?: string | null}) => kind === 'start'
     ? boardsApi.startSprint(initial.id, id, draft.revision)
-    : boardsApi.completeSprint(initial.id, id, draft.revision, destination ?? null), onSuccess: accept})
+    : kind==='delete'? boardsApi.deleteSprint(initial.id,id,draft.revision) : boardsApi.completeSprint(initial.id, id, draft.revision, destination ?? null), onSuccess: accept})
   const resetSave = save.reset, resetMove = move.reset, resetSprint = sprintAction.reset
   useEffect(() => {setDraft(initial); resetSave(); resetMove(); resetSprint()}, [initial, resetSave, resetMove, resetSprint])
-  const busy = save.isPending || move.isPending || sprintAction.isPending
-  const failure = save.error ?? move.error ?? sprintAction.error
+  const busy = deletion.isPending || save.isPending || move.isPending || sprintAction.isPending
+  const failure = deletion.error ?? save.error ?? move.error ?? sprintAction.error
   const error = failure ? getErrorMessage(failure) : undefined
   const canManage = draft.canManage && !readOnly
   const active = draft.content.sprints?.find(sprint => sprint.status === 'ACTIVE')
@@ -67,7 +70,7 @@ export function BoardEditor({initial, onSaved, readOnly = false}: Readonly<{init
     assigneeId: parent?.assigneeId ?? (filters.assignees.length === 1 && filters.assignees[0] !== 'unassigned' ? filters.assignees[0] : null),
   })
   const add = (columnId: string, sprintId: string | null = selectedSprint(), parent?: BoardCard) => {
-    if (readOnly || busy || draft.content.cards.length >= 200) return
+    if (!draft.canCreateTickets || readOnly || busy || draft.content.cards.length >= 200) return
     const key = columnId + ':' + (sprintId ?? '') + ':' + (parent?.id ?? '')
     const card = fresh[key] ?? makeCard(columnId, sprintId, parent)
     setFresh({...fresh, [key]: card}); setEditing(card); save.reset()
@@ -100,7 +103,7 @@ export function BoardEditor({initial, onSaved, readOnly = false}: Readonly<{init
   const openSprint = (action: SprintDialogAction) => {save.reset(); sprintAction.reset(); setSprintDialog(action)}
   const visible = filterTickets(draft.content, filters, tab === 'board')
   const parents = parentTickets(visible, draft.content.cards)
-  const canCreate = !readOnly && !busy && draft.content.cards.length < 200
+  const canCreate = !!draft.canCreateTickets && !readOnly && !busy && draft.content.cards.length < 200
   return <div className="page-stack kanban-workspace">
     <div className="page-heading kanban-board-heading"><div><h1>{draft.name}</h1><div className="kanban-board-context">{draft.projectId && <Link to={'/projects/' + draft.projectId}>Open project</Link>}{active && <span><CalendarDays size={14}/>{active.name} · {active.startDate} – {active.endDate}</span>}</div></div><div className="inline-actions">
       {canManage && active && <Button className="kanban-sprint-complete" disabled={busy} onClick={() => openSprint({kind: 'complete', sprint: active})}><CheckCheck size={15}/> Complete sprint</Button>}
@@ -120,10 +123,12 @@ export function BoardEditor({initial, onSaved, readOnly = false}: Readonly<{init
     {configure && canManage && <BoardConfiguration id={draft.id} board={draft} people={people} busy={busy} error={error} onSave={value => {void save.mutateAsync(value).then(()=>{discard('board-config:' + draft.id);setConfigure(false)}).catch(()=>undefined)}} onClose={() => setConfigure(false)}/>}
     {sprintDialog && canManage && <SprintDialog key={sprintDialog.kind+('sprint' in sprintDialog?sprintDialog.sprint.id:'')} board={draft} action={sprintDialog} busy={busy} error={error} onClose={() => setSprintDialog(undefined)}
       onCreate={async sprint => {const sprints=draft.content.sprints??[];await save.mutateAsync({...draft, content: {...draft.content, sprints: sprints.some(item=>item.id===sprint.id)?sprints.map(item=>item.id===sprint.id?sprint:item):[...sprints,sprint]}})}}
+      onDelete={async id=>{await sprintAction.mutateAsync({kind:'delete',id})}}
       onStart={async id => {await sprintAction.mutateAsync({kind: 'start', id}); setFilters(value => ({...value, sprint: ''})); setTab('board')}}
       onComplete={async (id, destination) => {await sprintAction.mutateAsync({kind: 'complete', id, destination}); setFilters(value => ({...value, sprint: ''})); setTab('backlog')}}/>}
     {editing && <CardEditor key={editing.id} boardId={draft.id} card={editing} cards={draft.content.cards} columns={draft.content.columns} epics={draft.content.epics} sprints={draft.content.sprints} people={people} allowedColumns={draft.moves[editing.id]} estimation={draft.estimation} busy={busy} readOnly={readOnly} error={error} onCancel={closeTicket} onSave={card => {void saveCard(card).catch(() => undefined)}} onOpenCard={open} onCreateSubtask={canCreate ? addSubtask : undefined}
-      onRemove={draft.content.cards.some(card => card.id === editing.id) ? () => {void save.mutateAsync({...draft, content: {...draft.content, cards: draft.content.cards.filter(card => card.id !== editing.id).map(card=>({...card,links:card.links?.filter(link=>link.targetId!==editing.id)}))}}).then(()=>{discard('ticket:' + draft.id + ':' + editing.id);closeTicket()}).catch(()=>undefined)} : undefined}/>}
+      onRemove={draft.canDeleteTickets && draft.content.cards.some(card=>card.id===editing.id) ? ()=>{setDeleting(editing);closeTicket()} : undefined}/>}
+    {deleting&&<Modal title="Delete ticket?" busy={busy} onClose={()=>{setEditing(deleting);setDeleting(undefined);deletion.reset()}}><div className="page-stack"><p>Delete {deleting.reference}: {deleting.title}? This also removes its subtasks, comments and repository links. This cannot be undone.</p>{deletion.isError&&<p role="alert">{getErrorMessage(deletion.error)}</p>}<div className="inline-actions"><Button variant="danger" disabled={busy} onClick={()=>deletion.mutate(deleting)}>Confirm deletion</Button><Button variant="ghost" disabled={busy} onClick={()=>{setEditing(deleting);setDeleting(undefined);deletion.reset()}}>Cancel</Button></div></div></Modal>}
     <details className="kanban-development"><summary>Repositories and pull requests</summary><DevelopmentLinks boardId={draft.id} projectId={draft.projectId} cards={draft.content.cards} locked={readOnly || busy}/></details>
     {draft.projectId&&<details className="kanban-development"><summary>Project branches, pull requests and deployments</summary><ProjectDevelopment projectId={draft.projectId} canManage={canManage} boardId={draft.id} cards={draft.content.cards} locked={readOnly||busy}/></details>}
   </div>

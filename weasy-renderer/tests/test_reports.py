@@ -18,6 +18,15 @@ class ProjectReportsTest(unittest.TestCase):
         value = self.value(); value["sections"][0]["rows"] = [["one", "two"]]
         with self.assertRaises(ValueError):
             ReportDocument.model_validate(value)
+
+    def test_numbered_pages_follow_the_requested_order_and_export_cells_are_bounded(self):
+        value = self.value()
+        value['sections'][0]['rows'] = [['longword' * 400]]
+        html = report_html(value)
+        anchors = ['id="report-summary"', 'id="report-insights"', 'id="report-leadtime"', 'id="ticket-export"']
+        self.assertEqual([html.index(anchor) for anchor in anchors], sorted(html.index(anchor) for anchor in anchors))
+        self.assertNotIn('longword' * 40, html)
+        self.assertIn('table-layout:fixed', html)
         value = self.value(); value["sections"][0]["rows"] = [["x"]] * 2001
         with self.assertRaises(ValueError):
             ReportDocument.model_validate(value)

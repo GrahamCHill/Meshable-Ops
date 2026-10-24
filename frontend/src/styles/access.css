@@ -1,7 +1,7 @@
 .access-table-wrap { overflow: auto; max-height: 70vh; }
 .access-table { width: 100%; border-collapse: collapse; text-align: left; font-size: .85rem; }
 .access-table th, .access-table td { padding: .7rem .8rem; white-space: nowrap; vertical-align: middle; }
-.access-table thead { position: sticky; top: 0; background: var(--color-bg); z-index: 1; }
+.access-table thead { position: sticky; top: 0; background: var(--color-table-header-background); color: var(--color-table-header-text); z-index: 1; }
 .access-table tbody tr:nth-child(odd) { background: var(--color-bg-secondary, rgba(128,128,128,.05)); }
 .access-table small { display: block; font-weight: normal; color: var(--color-text-secondary); font-size: .75rem; }
 .access-table select { min-width: 140px; }

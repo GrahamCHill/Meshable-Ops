@@ -42,13 +42,20 @@ data class KanbanEpic(val id: UUID, val name: String, val description: String = 
 enum class SprintStatus { PLANNED, ACTIVE, COMPLETED }
 data class KanbanSprint(val id: UUID, val name: String, val startDate: java.time.LocalDate, val endDate: java.time.LocalDate,
     val status: SprintStatus = SprintStatus.PLANNED, val goal: String = "")
-data class KanbanContent(val columns: List<KanbanColumn> = emptyList(), val cards: List<KanbanCard> = emptyList(), val sprints: List<KanbanSprint> = emptyList(), val epics: List<KanbanEpic> = emptyList(), val workflow: KanbanWorkflow = KanbanWorkflow())
-data class KanbanRequest(val name: String, val content: KanbanContent, val revision: Long = 0, val projectId: UUID? = null, val teamIds: Set<UUID> = emptySet())
+enum class TicketCreationMode { ANY_MEMBER, SELECTED_MEMBERS, ADMINS }
+enum class TicketDeletionMode { ALL_ADMINS, SELECTED_ADMINS }
+data class TicketAccessPolicy(val createMode: TicketCreationMode = TicketCreationMode.ANY_MEMBER, val creatorIds: Set<UUID> = emptySet(),
+    val deleteMode: TicketDeletionMode = TicketDeletionMode.ALL_ADMINS, val deleterIds: Set<UUID> = emptySet())
+data class KanbanContent(val columns: List<KanbanColumn> = emptyList(), val cards: List<KanbanCard> = emptyList(), val sprints: List<KanbanSprint> = emptyList(), val epics: List<KanbanEpic> = emptyList(), val workflow: KanbanWorkflow = KanbanWorkflow(), val ticketAccess: TicketAccessPolicy = TicketAccessPolicy())
+data class KanbanRequest(val name: String, val content: KanbanContent, val revision: Long = 0, val projectId: UUID? = null, val teamIds: Set<UUID> = emptySet(), val confirmedTicketDeletions: Set<UUID> = emptySet())
 data class KanbanSummary @JvmOverloads constructor(val id: UUID, val ownerId: UUID, val name: String, val updatedAt: Instant, val projectId: UUID? = null, val ticketCount: Int = 0, val completedCount: Int = 0)
 data class KanbanView(val id: UUID, val ownerId: UUID, val name: String, val updatedAt: Instant, val revision: Long, val content: KanbanContent, val projectId: UUID? = null, val teamIds: Set<UUID> = emptySet(), val canManage: Boolean = false,
-    val moves: Map<UUID, Set<UUID>> = emptyMap(), val estimation: KanbanEstimation = KanbanEstimation())
+    val moves: Map<UUID, Set<UUID>> = emptyMap(), val estimation: KanbanEstimation = KanbanEstimation(),
+    val canCreateTickets: Boolean = false, val canDeleteTickets: Boolean = false, val canManageTicketAccess: Boolean = false,
+    val retrospectives: Map<UUID, SprintRetrospectiveView> = emptyMap())
 data class MoveTicketRequest(val columnId: UUID, val revision: Long, val beforeId: UUID? = null)
 data class SprintActionRequest(val revision: Long, val destinationSprintId: UUID? = null)
+data class DeleteTicketRequest(val revision: Long, val confirmation: String)
 
 interface KanbanRepository : JpaRepository<KanbanBoard, UUID> {
     fun findByProjectId(projectId: UUID): List<KanbanBoard>

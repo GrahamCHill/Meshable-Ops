@@ -1,5 +1,5 @@
 .app-shell { --sidebar-width:220px;display:grid;grid-template-columns:var(--sidebar-width) minmax(0,1fr);grid-template-rows:64px minmax(0,1fr);min-height:100dvh;align-items:start; }
-.app-header { grid-column:1/-1;grid-row:1;position:sticky;top:0;z-index:60;height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 24px;background:var(--color-bg); }
+.app-header { grid-column:1/-1;grid-row:1;position:sticky;top:0;z-index:60;height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 24px;background:var(--color-header-background,var(--color-bg));color:var(--color-header-text,var(--color-text)); }
 .header-start,.header-end { display:flex;align-items:center;gap:20px;min-width:0; }
 .brand { display:flex;align-items:center;gap:10px;min-width:0;font-size:.95rem;font-weight:600; }
 .brand-logo { width:28px;height:28px;flex-shrink:0;object-fit:contain; }

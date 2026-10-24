@@ -6,11 +6,13 @@ import type {Board, BoardSprint} from './api'
 
 export type SprintDialogAction = {kind: 'create'} | {kind: 'start' | 'complete' | 'edit'; sprint: BoardSprint}
 
-export function SprintDialog({board, action, busy, error, onClose, onCreate, onStart, onComplete}: Readonly<{
+export function SprintDialog({board, action, busy, error, onClose, onCreate, onStart, onComplete, onDelete}: Readonly<{
   board: Board; action: SprintDialogAction; busy: boolean; error?: string; onClose: () => void;
   onCreate: (sprint: BoardSprint) => Promise<void>; onStart: (id: string) => Promise<void>;
+  onDelete: (id:string)=>Promise<void>;
   onComplete: (id: string, destination: string | null) => Promise<void>
 }>) {
+  const [confirmDelete,setConfirmDelete]=useState(false)
   const [destination, setDestination] = useState('')
   const existing = action.kind === 'edit' ? action.sprint : undefined
   const editing = action.kind === 'create' || action.kind === 'edit'
@@ -46,6 +48,7 @@ export function SprintDialog({board, action, busy, error, onClose, onCreate, onS
           </>}
         </>}
       </fieldset>
+      {existing&&(existing.status??'PLANNED')==='PLANNED'&&<div className="page-stack">{confirmDelete?<><p>Delete this planned sprint? Tickets return to the backlog and are retained.</p><div className="inline-actions"><Button type="button" variant="danger" disabled={busy} onClick={()=>void onDelete(existing.id).then(onClose).catch(()=>undefined)}>Confirm sprint deletion</Button><Button type="button" variant="ghost" disabled={busy} onClick={()=>setConfirmDelete(false)}>Keep sprint</Button></div></>:<Button type="button" variant="danger" disabled={busy} onClick={()=>setConfirmDelete(true)}>Delete planned sprint</Button>}</div>}
       {error && <p role="alert">{error}</p>}
       <div className="inline-actions"><Button type="submit" loading={busy} disabled={editing && (!draft.name.trim() || draft.endDate < draft.startDate)}>{action.kind === 'edit' ? 'Save sprint' : action.kind === 'create' ? 'Create sprint' : action.kind === 'start' ? 'Start sprint' : 'Complete sprint'}</Button><Button type="button" variant="ghost" disabled={busy} onClick={onClose}>Cancel</Button></div>
     </form>

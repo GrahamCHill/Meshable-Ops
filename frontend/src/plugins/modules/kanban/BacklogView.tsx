@@ -16,7 +16,7 @@ export function BacklogView({board, cards, people, busy, readOnly, onOpen, onPla
   const [over, setOver] = useState<string>()
   const [collapsed, setCollapsed] = useState<string[]>([])
   const active = board.content.sprints?.find(sprint => sprint.status === 'ACTIVE')
-  const displayed = board.content.sprints?.filter(sprint => sprint.status !== 'COMPLETED' || cards.some(card => card.sprintId === sprint.id)) ?? []
+  const displayed = board.content.sprints?.filter(sprint => sprint.status !== 'COMPLETED' || cards.some(card => card.sprintId === sprint.id) || board.retrospectives?.[sprint.id]) ?? []
   const groups = [...displayed.map(sprint => ({id: sprint.id, name: sprint.name, sprint})), {id: '', name: 'Backlog', sprint: undefined}]
   const editable = !readOnly && !busy
   return <div className="kanban-backlog">
@@ -38,6 +38,7 @@ export function BacklogView({board, cards, people, busy, readOnly, onOpen, onPla
         </header>
         {!collapsed.includes(section.id) && <>
           {section.sprint?.goal && <p className="kanban-sprint-goal">{section.sprint.goal}</p>}
+          {section.sprint?.status==='COMPLETED'&&board.retrospectives?.[section.id]&&<details><summary>Sprint retrospective</summary>{board.retrospectives[section.id].status==='GENERATED'?<p style={{whiteSpace:'pre-wrap'}}>{board.retrospectives[section.id].summary}</p>:<p>{({NOT_CONFIGURED:'Configure an AI provider in App Intelligence to generate retrospectives for future sprints.',PENDING:'Retrospective queued.',GENERATING:'Generating retrospective…',UNAVAILABLE:'AI was unavailable. Sprint completion was saved.'} as Record<string,string>)[board.retrospectives[section.id].status]??'Retrospective unavailable.'}</p>}</details>}
           <div className="kanban-backlog-rows">{tickets.map(card => <div key={card.id} className="kanban-backlog-row" draggable={canPlan}
             onDragStart={event => {event.dataTransfer.setData('text/plain', card.id); event.dataTransfer.effectAllowed = 'move'; setDrag(card.id)}} onDragEnd={() => {setDrag(undefined); setOver(undefined)}}
             onDragEnter={event => {if (canPlan && drag && drag !== card.id) {event.preventDefault(); event.stopPropagation()}}}
@@ -52,7 +53,7 @@ export function BacklogView({board, cards, people, busy, readOnly, onOpen, onPla
             <span className="kanban-avatar" title={people.find(person => person.id === card.assigneeId)?.name ?? 'Unassigned'}>{personInitials(people.find(person => person.id === card.assigneeId)?.name ?? 'â€“')}</span>
           </div>)}</div>
           {!tickets.length && <p className="kanban-backlog-empty">{section.sprint ? 'Drag tickets here to plan this sprint.' : 'No tickets in the backlog.'}</p>}
-          {!readOnly && section.sprint?.status !== 'COMPLETED' && <button type="button" className="kanban-add-ticket" disabled={busy || board.content.cards.length >= 200} onClick={() => onCreate(section.id || null)}><Plus size={15}/> Create ticket</button>}
+          {board.canCreateTickets && !readOnly && section.sprint?.status !== 'COMPLETED' && <button type="button" className="kanban-add-ticket" disabled={busy || board.content.cards.length >= 200} onClick={() => onCreate(section.id || null)}><Plus size={15}/> Create ticket</button>}
         </>}
       </section>
     })}

@@ -3,7 +3,7 @@ import {artworkApi} from '../../api/artwork'
 import {ArtworkIcon} from '../ui/ArtworkIcon'
 import {ArtworkPicker} from '../ui/ArtworkPicker'
 
-const defaults:Record<string,string>={workspace:'layout','people-security':'users','storage-sharing':'cloud',communications:'mail','documents-workflows':'workflow','analytics-search':'chart',operations:'activity'}
+const defaults:Record<string,string>={workspace:'layout','people-security':'users','storage-sharing':'cloud',communications:'mail','documents-workflows':'workflow','analytics-search':'chart',operations:'activity','app-intelligence':'activity'}
 export function AdminSectionIcon({id}:{id:string}) {
   const query=useQuery({queryKey:['admin-section-icons'],queryFn:artworkApi.sectionIcons})
   const value=query.data?.[id]??{icon:defaults[id]??'plug',imageVersion:null}

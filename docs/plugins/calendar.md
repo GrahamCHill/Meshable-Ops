@@ -93,3 +93,5 @@ Google and Microsoft shared overlays expose attendee metadata when supplied by t
 Local participant/document fields are app metadata, not invitation sending or a permissions system. They are not exported as ICS invitations or sent through provider updates. Personal sync continues to handle appointments and omit recurring/invited meetings; view those through the shared overlay or provider. Notes continue to use the existing description field and its sync behavior.
 
 `CalendarEventRequest` additionally accepts `documents: [{label, url}]` and `participants: [{name, email, response}]`. Calendar views return these plus `calendarName`. Omitted arrays default empty on a replacement event save; clients should send the existing arrays when editing. Optimistic revisions and existing owner/admin/private-event checks apply to metadata too.
+
+Calendar opens without an Events submenu. Use the main calendar and agenda to inspect events.
