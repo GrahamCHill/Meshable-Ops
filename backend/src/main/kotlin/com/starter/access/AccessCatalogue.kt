@@ -4,9 +4,12 @@ import com.starter.plugins.WorkspacePlugin
 import com.starter.plugins.PluginExtension
 import org.springframework.stereotype.Component
 
+private const val ACCESS_CONTROLS = "admin.access"
+private const val EXTENSION_SECURITY = "admin.security"
+
 @Component
 class AccessCatalogue(private val plugins: List<WorkspacePlugin>, private val packages: com.starter.plugins.packages.InstalledPluginCatalogue? = null) {
-    fun maximum(role: String) = features.filter { if (Roles.admin(role)) it.id !in setOf("admin.access", "admin.security") else !it.admin }.map { it.id }.toSet()
+    fun maximum(role: String) = features.filter { if (Roles.admin(role)) it.id !in setOf(ACCESS_CONTROLS, EXTENSION_SECURITY) else !it.admin }.map { it.id }.toSet()
     val features get() = listOf(
         AccessFeature("home", "Home", "/"), AccessFeature("dashboards", "Dashboards", "/dashboards"),
         AccessFeature("storage", "Storage", "/storage"), AccessFeature("events", "Events", "/events"),
@@ -27,14 +30,14 @@ class AccessCatalogue(private val plugins: List<WorkspacePlugin>, private val pa
         AccessFeature("admin.dashboards", "Dashboard links", "/admin/dashboard-links", true),
         AccessFeature("admin.system", "System health", "/admin/system", true),
         AccessFeature("admin.audit", "Audit and backup", "/admin/audit", true),
-        AccessFeature("admin.access", "Access controls", "/admin/access-controls", true),
-        AccessFeature("admin.security", "Extension security", "/admin/security", true),
+        AccessFeature(ACCESS_CONTROLS, "Access controls", "/admin/access-controls", true),
+        AccessFeature(EXTENSION_SECURITY, "Extension security", "/admin/security", true),
     ) + plugins.flatMap { it.accessViews } + (packages?.manifests() ?: emptyList()).map { AccessFeature("plugin.${it.id}", it.name, "/plugins/${it.id}") }
 
     fun defaults(role: String): Set<String> = features.filter {
         when (role) {
             Roles.SUPER_ADMIN -> true
-            "ADMIN" -> it.id !in setOf("admin.access", "admin.security")
+            "ADMIN" -> it.id !in setOf(ACCESS_CONTROLS, EXTENSION_SECURITY)
             "USER" -> !it.admin
             "EXTERNAL" -> it.id == "storage"
             else -> false

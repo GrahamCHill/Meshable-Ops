@@ -1,7 +1,11 @@
 .calendar-month-grid { display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--color-surface-2); }
 .calendar-weekday { padding:10px;text-align:center;background:var(--color-bg);font-size:.8rem; }
 .calendar-month-day,.calendar-month-empty { background:var(--color-bg);min-height:125px;padding:8px;overflow-wrap:anywhere; }
-.calendar-month-day { cursor:pointer; }
+.calendar-month-day { position:relative; }
+.calendar-day-create {position:absolute;inset:0;width:100%;height:100%;background:transparent;}
+.calendar-day-create:hover {background:var(--color-surface-2);}
+.calendar-date,.calendar-month-event {position:relative;}
+.calendar-day-create:focus-visible {outline:2px solid var(--color-accent);outline-offset:-2px;}
 .calendar-month-day.is-today .calendar-date { background:var(--color-accent);color:white;border-radius:50%; }
 .calendar-date { min-width:36px;min-height:36px;display:block;margin-bottom:4px; }
 .calendar-event { text-align:left;width:100%;color:var(--brand-link-colour,var(--color-accent)); }

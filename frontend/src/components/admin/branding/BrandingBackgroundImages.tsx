@@ -20,7 +20,7 @@ function BackgroundImage({ slot, image }: { slot: number; image?: LoginImage }) 
   } })
   return <section className="page-stack">
     <h3>{image ? `Image ${slot + 1}` : 'Add a sign-in image'}</h3>
-    {(preview || image) && <img src={preview ?? loginImageUrl(image!)} alt={`Sign-in image ${slot + 1} preview`} />}
+    {(preview || image) && <img src={preview ?? loginImageUrl(image!)} alt={`Sign-in background ${slot + 1}`} />}
     <label className="form-field">{image ? `Replace image ${slot + 1}` : `Choose image ${slot + 1}`}<input ref={input} type="file" accept="image/png,image/jpeg,image/webp" disabled={save.isPending} onChange={event => {
       const selected = event.target.files?.[0]; setError(''); save.reset(); setFile(undefined)
       if (selected && (!['image/png', 'image/jpeg', 'image/webp'].includes(selected.type) || selected.size > 5 * 1024 * 1024)) { setError('Choose a PNG, JPEG, or WebP up to 5 MiB.'); event.target.value = ''; return }

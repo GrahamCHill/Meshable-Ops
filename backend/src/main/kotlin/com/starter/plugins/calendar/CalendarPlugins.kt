@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component
 
 @Component
 class CalendarPlugin : WorkspacePlugin {
-    override val manifest = PluginManifest("calendar", "Calendar", "1.0.0", "Private events, board deadlines, calendar export, and optional connected calendars.",
+    override val manifest = PluginManifest("calendar", "Calendar", "1.1.1", "Private events, board deadlines, calendar export, and optional connected calendars.",
         compatibleVersions = listOf("1.0.0"),
         extensions = setOf(PluginExtension.PAGE, PluginExtension.API, PluginExtension.DATABASE, PluginExtension.SETTINGS),
         navigationLabel = "Calendar", capabilities = mapOf("calendar.events" to "Calendar events"),
@@ -19,7 +19,7 @@ class CalendarPlugin : WorkspacePlugin {
 }
 @Component
 class MicrosoftCalendarPlugin : WorkspacePlugin {
-    override val manifest = PluginManifest("calendar-microsoft", "Microsoft Calendar", "1.0.0", "Shared Outlook calendars and private two-way member sync through Microsoft Graph.",
+    override val manifest = PluginManifest("calendar-microsoft", "Microsoft Calendar", "1.0.0-a", "Shared Outlook calendars and private two-way member sync through Microsoft Graph.",
         compatibleVersions = listOf("1.0.0"),
         extensions = setOf(PluginExtension.API,PluginExtension.SETTINGS), defaultRoles = setOf("ADMIN"),
         requiresCapabilities = setOf("calendar.events"), capabilities = mapOf("calendar.provider" to "External calendar connections", "calendar.personal-sync" to "Personal calendar sync"),
@@ -40,7 +40,7 @@ class MicrosoftCalendarPlugin : WorkspacePlugin {
 }
 @Component
 class GoogleCalendarPlugin : WorkspacePlugin {
-    override val manifest = PluginManifest("calendar-google", "Google Calendar", "1.0.0", "Shared Google calendars and private two-way member sync using offline OAuth grants.",
+    override val manifest = PluginManifest("calendar-google", "Google Calendar", "1.0.0-a", "Shared Google calendars and private two-way member sync using offline OAuth grants.",
         compatibleVersions = listOf("1.0.0"),
         extensions = setOf(PluginExtension.API,PluginExtension.SETTINGS), defaultRoles = setOf("ADMIN"), requiresCapabilities = setOf("calendar.events"),
         capabilities = mapOf("calendar.provider" to "External calendar connections", "calendar.personal-sync" to "Personal calendar sync"), settingsFields = listOf(
@@ -51,7 +51,7 @@ class GoogleCalendarPlugin : WorkspacePlugin {
 }
 @Component
 class CalDavCalendarPlugin : WorkspacePlugin {
-    override val manifest = PluginManifest("calendar-caldav", "CalDAV Calendar", "1.0.0", "Connect a selected CalDAV calendar, including iCloud, Nextcloud, and Fastmail.",
+    override val manifest = PluginManifest("calendar-caldav", "CalDAV Calendar", "1.0.0-a", "Connect a selected CalDAV calendar, including iCloud, Nextcloud, and Fastmail.",
         compatibleVersions = listOf("1.0.0"),
         extensions = setOf(PluginExtension.API,PluginExtension.SETTINGS), defaultRoles = setOf("ADMIN"), requiresCapabilities = setOf("calendar.events"),
         capabilities = mapOf("calendar.provider" to "External calendar connections", "calendar.personal-sync" to "Personal calendar sync"), settingsFields = listOf(

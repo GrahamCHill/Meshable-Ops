@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component
 
 @Component
 class KanbanPlugin : WorkspacePlugin {
-    override val manifest = PluginManifest("kanban", "Kanban boards", "2.0.0",
+    override val manifest = PluginManifest("kanban", "Kanban boards", "1.2.0",
         "Project boards, sprints, assignments, reviews, comments, and Git repository links.", navigationLabel = "Boards",
         compatibleVersions = listOf("1.0.0"), extensions = PluginExtension.entries.toSet(),
         menuItems = listOf(PluginMenuItem("boards", "Saved boards"), PluginMenuItem("guide", "Board guide")),

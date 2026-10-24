@@ -11,7 +11,7 @@ export function PluginActivation({plugins,draft,setDraft,onPending}: {plugins:Pl
     setDraft({});client.setQueryData(['admin-plugins'],values)
     await Promise.all(['plugins','my-access','admin-notifications','notification-preferences'].map(key=>client.invalidateQueries({queryKey:[key]})))
   }})
-  useEffect(()=>{onPending(save.isPending)},[save.isPending,onPending])
+  useEffect(()=>{onPending(save.isPending);return()=>onPending(false)},[save.isPending,onPending])
   const all=(enabled:boolean)=>setDraft(Object.fromEntries(plugins.filter(plugin=>!plugin.removed&&plugin.enabled!==enabled).map(plugin=>[plugin.manifest.id,{enabled,expectedRevision:plugin.settingsRevision}])))
   const count=Object.keys(draft).length
   return <section className="page-stack" aria-label="Plugin activation"><div className="inline-actions"><Button variant="secondary" disabled={save.isPending||!count} onClick={()=>save.mutate()}>Save activation changes{count?' ('+count+')':''}</Button><Button variant="ghost" disabled={save.isPending} onClick={()=>all(true)}>Select all</Button><Button variant="ghost" disabled={save.isPending} onClick={()=>all(false)}>Deselect all</Button>{count>0&&<Button variant="ghost" disabled={save.isPending} onClick={()=>{setDraft({});save.reset()}}>Discard choices</Button>}</div>

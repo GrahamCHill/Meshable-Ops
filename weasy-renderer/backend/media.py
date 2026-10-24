@@ -9,7 +9,7 @@ from typing import Literal
 from PIL import Image
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-SIGNATURE_MARKER = re.compile(r"\{\{signature\}\}|^[ \t]*(?:(?:signature|signed(?: by)?|sign here)[ \t]*:?[ \t]*)?_{5,}[ \t]*$", re.I | re.M)
+SIGNATURE_MARKER = re.compile(r"\{\{signature\}\}|^[ \t]*+(?:(?:signature|signed(?: by)?|sign here)[ \t]*+:?[ \t]*+)?_{5,}+[ \t]*+$", re.I | re.M)
 
 
 def validate_raster(value: str) -> str:

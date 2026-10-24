@@ -1,6 +1,7 @@
 export const adminGroups = [
   { id: 'workspace', label: 'Workspace', description: 'Business identity, appearance, and optional plugins.', items: [
     { to: '/admin/branding', label: 'Branding', description: 'Set your business name, colours, logos, and sign-in backgrounds.' },
+    { to: '/admin/navigation', label: 'Navigation & section icons', description: 'Arrange menu items and set icons or WebP artwork for administration sections.' },
     { to: '/admin/plugins', label: 'Plugins', description: 'Enable optional pages and functionality, including Kanban boards.' },
   ] },
   { id: 'people-security', label: 'People & security', description: 'Accounts, permissions, external access, and extension security.', items: [

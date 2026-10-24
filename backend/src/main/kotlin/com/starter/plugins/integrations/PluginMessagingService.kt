@@ -44,7 +44,7 @@ class PluginMessagingService(private val registry: PluginRegistry, private val s
                 "teams" -> {
                     if (message.text.isBlank()) throw BadRequestException("Enter a message")
                     val card = mapOf("type" to "message", "attachments" to listOf(mapOf("contentType" to "application/vnd.microsoft.card.adaptive",
-                        "content" to mapOf("\$schema" to "http://adaptivecards.io/schemas/adaptive-card.json", "type" to "AdaptiveCard", "version" to "1.2",
+                        "content" to mapOf("\$schema" to "https://adaptivecards.io/schemas/adaptive-card.json", "type" to "AdaptiveCard", "version" to "1.2",
                             "body" to listOf(mapOf("type" to "TextBlock", "text" to message.text, "wrap" to true))))))
                     http.request("POST", config.getValue("webhookUrl"), body = mapper.writeValueAsString(card))
                 }

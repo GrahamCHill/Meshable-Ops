@@ -61,7 +61,7 @@ For a provider key, declare a `SECRET` setting and an `allowedOrigins` entry suc
 
 ```python
 result = host.http('POST', 'https://api.example.com/jobs', body={'title': 'Review'},
-                   credential={'key': 'api-key', 'header': 'Authorization', 'prefix': 'Bearer '})
+                   credential={'key': 'apiKey', 'header': 'Authorization', 'prefix': 'Bearer '})
 ```
 
 Keys saved through admin remain encrypted in PostgreSQL under the persistent app wrapping key. The host injects only this plugin's declared secret into its outbound request; it does not give the raw value to frontend or worker code. Review allowed origins before entering credentials. A provider can return sensitive data, so plugins and their configured services must still be trusted. Private-address targets are rejected by default; the existing deployment-wide `APP_PLUGIN_ALLOW_PRIVATE_TARGETS` setting is a deliberate administrator override.

@@ -45,3 +45,5 @@ Saving refreshes the current browser immediately. Other open sessions refresh on
 No external image URLs or arbitrary CSS are accepted. All image responses retain crawler-exclusion headers. Use images suitable for public display. Changing the display name does not rename source packages, operational identifiers, existing authenticator issuers, or generated documents.
 
 See the [API reference](api.md#branding) and [crawler exclusion](crawler-exclusion.md).
+
+Category artwork and sidebar ordering are separate workspace settings under [Navigation & section icons](navigation-and-icons.md). Project icons are managed on each project's detail page.

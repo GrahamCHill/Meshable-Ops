@@ -80,7 +80,7 @@ export function LoginPage() {
         </> : <>
           {!!challenge.methods.length && <><label htmlFor="mfa-method">Verification method</label><select id="mfa-method" value={method} onChange={event => {setMethod(event.target.value as MfaMethod); setCode(''); setError(''); setNotice('')}}>{challenge.methods.map(value => <option key={value} value={value}>{value === 'TOTP' ? 'Authenticator app' : value === 'EMAIL' ? 'Email verification code' : 'Recovery code'}</option>)}</select>
           {method === 'EMAIL' && <Button type="button" variant="secondary" disabled={busy} onClick={() => void sendEmail()}>Send verification email</Button>}
-          <label htmlFor="mfa-code">{method === 'RECOVERY' ? 'Recovery code' : 'Verification code'}</label><input id="mfa-code" autoFocus autoComplete="one-time-code" maxLength={128} value={code} onChange={event => setCode(event.target.value)} /></>}
+          <label htmlFor="mfa-code">{method === 'RECOVERY' ? 'Recovery code' : 'Verification code'}</label><input id="mfa-code" autoComplete="one-time-code" maxLength={128} value={code} onChange={event => setCode(event.target.value)} /></>}
           {!challenge.methods.length && <p role="alert">Email delivery is unavailable and there are no remaining recovery codes. Restore email delivery or contact your administrator.</p>}
           <Button type="button" variant="ghost" disabled={busy} onClick={() => {setChallenge(undefined); setCode(''); setError(''); setNotice('')}}>Back to sign in</Button>
         </>}

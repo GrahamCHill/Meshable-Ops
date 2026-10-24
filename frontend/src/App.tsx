@@ -8,7 +8,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppLayout } from './components/layout/AppLayout'
 import { BrandingHead } from './components/layout/Branding'
 import { AdminBrandingPage } from './components/pages/AdminBrandingPage'
-import { AdminPluginsPage } from './components/pages/AdminPluginsPage'
 import { AdminSecurityPage } from './components/pages/AdminSecurityPage'
 import { AdminSectionPage } from './components/pages/AdminSectionPage'
 import { AdminPage } from './components/pages/AdminPage'
@@ -35,6 +34,7 @@ import {PageDraftProvider} from './hooks/usePageDraft'
 import './styles/global.css'
 
 const AdminUsersPage = lazy(() => import('./components/pages/AdminUsersPage').then(module => ({default: module.AdminUsersPage})))
+const AdminPluginsPage = lazy(() => import('./components/pages/AdminPluginsPage').then(module => ({default: module.AdminPluginsPage})))
 const AdminAccessPage = lazy(() => import('./components/pages/AdminAccessPage'))
 const PluginPage = lazy(() => import('./plugins/PluginPage'))
 const AdminNotificationsPage = lazy(() => import('./components/pages/AdminNotificationsPage'))
@@ -42,6 +42,7 @@ const ProjectsPage = lazy(() => import('./components/pages/ProjectsPage'))
 const ProjectDetailPage = lazy(() => import('./components/pages/ProjectDetailPage'))
 const AdminProjectSettingsPage = lazy(() => import('./components/pages/AdminProjectSettingsPage'))
 const UserSettingsPage = lazy(() => import('./components/pages/UserSettingsPage'))
+const AdminNavigationPage = lazy(() => import('./components/pages/AdminNavigationPage'))
 const loading = (children: React.ReactNode) => <Suspense fallback={<p role="status">Loading workspace…</p>}>{children}</Suspense>
 
 const makeQueryClient = () => new QueryClient({
@@ -90,7 +91,8 @@ function App() {
                     <Route path="/admin/sections/:sectionId" element={<AdminRoute><AdminSectionPage /></AdminRoute>} />
                     <Route path="/admin/users" element={<AdminRoute>{loading(<AdminUsersPage />)}</AdminRoute>} />
                     <Route path="/admin/branding" element={<AdminRoute><AdminBrandingPage /></AdminRoute>} />
-                    <Route path="/admin/plugins" element={<AdminRoute><AdminPluginsPage /></AdminRoute>} />
+                    <Route path="/admin/navigation" element={<AdminRoute>{loading(<AdminNavigationPage />)}</AdminRoute>} />
+                    <Route path="/admin/plugins" element={<AdminRoute>{loading(<AdminPluginsPage />)}</AdminRoute>} />
                     {bundledRoutes.map(route => <Route key={route.path} path={route.path} element={<BundledPluginRoute route={route}/>}/>)}
                     <Route path="/plugins/:pluginId/*" element={loading(<PluginPage />)} />
                     <Route path="/admin/ai" element={<AdminRoute><AdminAiPage /></AdminRoute>} />

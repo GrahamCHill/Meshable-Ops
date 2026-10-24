@@ -5,7 +5,7 @@ import com.starter.exception.BadRequestException
 internal object PluginManifests {
     private val roles = setOf("ADMIN", "USER")
     fun validateIdentity(manifest: PluginManifest) {
-        require(manifest.id.matches(Regex("[a-z][a-z0-9-]{1,39}")) && manifest.apiVersion in 1..100 && manifest.version.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+"))) { "Invalid plugin manifest" }
+        require(manifest.id.matches(Regex("[a-z][a-z0-9-]{1,39}")) && manifest.apiVersion in 1..100 && manifest.version.length <= 80 && PluginVersionRules.version(manifest.version) != null) { "Invalid plugin manifest: use a valid semantic version, including optional prerelease labels" }
         require(manifest.name.isNotBlank() && manifest.name.length <= 100 && manifest.navigationLabel.isNotBlank() && manifest.navigationLabel.length <= 60 && manifest.description.length <= 500) { "Invalid plugin metadata" }
     }
     fun validate(manifest: PluginManifest, retainedTables: Set<String> = emptySet()) {
@@ -15,7 +15,7 @@ internal object PluginManifests {
         require(manifest.incompatibleWith.values.all { it.isNotBlank() && it.length <= 300 }) { "Explain plugin incompatibilities" }
         require(manifest.categories.size <= 5 && manifest.categories.all { it.isNotBlank() && it.length <= 50 && it.none(Char::isISOControl) }) { "Use up to five short categories" }
         listOfNotNull(manifest.icon, manifest.banner).forEach { require(it == "builtin" || it.matches(Regex("[A-Za-z0-9][A-Za-z0-9_./-]{0,119}")) && it.split('/').none { segment -> segment in setOf("", ".", "..") }) { "Use packaged image paths" } }
-        manifest.adminMenu?.let { require(it.category.matches(Regex("[a-z][a-z0-9-]{1,59}")) && it.categoryLabel.length <= 80 && it.label.length <= 100 && listOf(it.categoryLabel,it.label).none { value -> value.any(Char::isISOControl) }) { "Use a valid admin category and labels" } }
+        manifest.adminMenu?.let { require(it.category.matches(Regex("[a-z][a-z0-9-]{1,59}")) && it.categoryLabel.length <= 80 && it.label.length <= 100 && listOf(it.categoryLabel,it.label).none { value -> value.any(Char::isISOControl) } && (it.icon == null || it.icon in com.starter.service.WorkspaceArtworkService.ICONS)) { "Use a valid admin category, labels and built-in icon" } }
         require(!manifest.providesSms || PluginExtension.NOTIFICATIONS in manifest.extensions) { "SMS providers must declare notifications" }
         require(manifest.placements.size <= 30 && manifest.placements.map { it.slot to it.section }.distinct().size == manifest.placements.size)
         manifest.placements.forEach { require(it.slot.matches(Regex("[a-z][a-z0-9.-]{1,79}")) && it.label.isNotBlank() && it.label.length <= 100 && (it.section.isBlank() || manifest.menuItems.any { menu -> menu.path == it.section })) { "Use named extension slots and declared submenu pages" } }

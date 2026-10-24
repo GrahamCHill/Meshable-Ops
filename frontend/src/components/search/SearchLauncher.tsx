@@ -15,9 +15,19 @@ export function SearchLauncher() {
   const close = () => { setOpen(false); button.current?.focus() }
   useEffect(() => { if (!enabled) setOpen(false) }, [enabled])
   useEffect(() => { if (open) input.current?.querySelector('input')?.focus() }, [open])
+  useEffect(() => {
+    if (!open) return
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && event.target instanceof Node && input.current?.contains(event.target)) {
+        event.stopPropagation(); setOpen(false); button.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', escape)
+    return () => document.removeEventListener('keydown', escape)
+  }, [open])
   if (!enabled) return null
   return <>
-    {opened && <aside ref={input} hidden={!open} role="dialog" aria-modal="false" aria-label="AI assistant" className="search-assistant" onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); close() } }}>
+    {opened && <aside ref={input} hidden={!open} role="dialog" aria-modal="false" aria-label="AI assistant" className="search-assistant">
       <div className="search-assistant-heading"><h2>Ask your documents</h2><button className="utility-button" type="button" onClick={close}>Close</button></div>
       <div className="search-assistant-content"><SearchPanel compact onNavigate={close} /></div>
     </aside>}

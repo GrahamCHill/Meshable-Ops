@@ -4,6 +4,7 @@ import json
 import re
 import secrets
 from pathlib import Path
+from private_config import open_private
 
 
 def hostname(value: str) -> str:
@@ -16,7 +17,8 @@ def hostname(value: str) -> str:
 
 
 def email(value: str) -> str:
-    if not re.fullmatch(r"[^\s@'\"\\]+@[^\s@'\"\\]+\.[^\s@'\"\\]+", value) or any(ord(c) < 32 for c in value):
+    parts=value.split('@')
+    if len(value)>254 or len(parts)!=2 or not parts[0] or '.' not in parts[1] or parts[1].startswith('.') or parts[1].endswith('.') or any(c.isspace() or ord(c)<32 or c in "'\"\\" for c in value):
         raise ValueError("Enter a valid email address")
     return value.lower()
 
@@ -61,8 +63,6 @@ def local_environment(admin_email: str, admin_password: str) -> str:
 
 def write_new(path: Path, content: str) -> None:
     import os
-    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    # O_EXCL refuses existing files and symlinks; rerunning cannot rotate keys accidentally.
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    descriptor = open_private(path, create=True)
     with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
         stream.write(content)

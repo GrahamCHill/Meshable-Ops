@@ -1,21 +1,23 @@
-import { useEffect, useRef, useState } from 'react'
+import {useState} from 'react'
+import {usePageDraft} from '../../../../hooks/usePageDraft'
+import {useModalDialog} from '../../../../hooks/useModalDialog'
 import { documentsApi, type EmailDocumentInput, type GeneratedDocument } from '../api'
 import { getErrorMessage } from '../../../../components/admin/adminUtils'
 import { Button } from '../../../../components/ui/index'
 
 export function EmailDocumentDialog({ document, defaults, onClose }: { document: GeneratedDocument; defaults?: Partial<EmailDocumentInput>; onClose: () => void }) {
-  const dialog = useRef<HTMLDialogElement>(null)
-  const [input, setInput] = useState<EmailDocumentInput>({ recipient: '', subject: document.name, text: `Please find ${document.name} attached.`, protection: 'PLAIN', password: '', ...defaults })
+  const [input, setInput] = usePageDraft<EmailDocumentInput>('email-document:'+document.id, { recipient: '', subject: document.name, text: `Please find ${document.name} attached.`, protection: 'PLAIN', password: '', ...defaults })
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [notice, setNotice] = useState('')
-  useEffect(() => { dialog.current?.showModal() }, [])
+  const dismiss = () => {setInput(current=>({...current,password:''}));onClose()}
+  const dialog = useModalDialog(dismiss, busy)
   const send = async () => {
     setBusy(true); setError('')
     try { const result = await documentsApi.email(document.id, input); setInput(current => ({ ...current, password: '' })); setNotice(result.message) }
     catch (failure) { setError(getErrorMessage(failure, 'Unable to email the document.')) }
     finally { setBusy(false) }
   }
-  return <dialog ref={dialog} className="pdf-viewer" style={{ maxWidth: 680 }} aria-labelledby="email-document-title" onCancel={e => { e.preventDefault(); if (!busy) onClose() }}>
-    <div className="pdf-toolbar"><h2 id="email-document-title">Email {document.name}</h2><Button variant="ghost" disabled={busy} onClick={onClose}>Close</Button></div>
+  return <dialog ref={dialog} className="pdf-viewer" style={{ maxWidth: 680 }} aria-labelledby="email-document-title" onCancel={e => { e.preventDefault(); if (!busy) dismiss() }}>
+    <div className="pdf-toolbar"><h2 id="email-document-title">Email {document.name}</h2><Button variant="ghost" disabled={busy} onClick={dismiss}>Close</Button></div>
     {notice ? <p role="status">{notice}</p> : <form className="page-stack" onSubmit={e => { e.preventDefault(); void send() }}><fieldset disabled={busy} className="page-stack">
       <div className="form-field"><label htmlFor="document-email-to">Recipient email</label><input id="document-email-to" type="email" required maxLength={254} value={input.recipient} onChange={e => setInput({ ...input, recipient: e.target.value })} /></div>
       <div className="form-field"><label htmlFor="document-email-subject">Subject</label><input id="document-email-subject" required maxLength={200} value={input.subject} onChange={e => setInput({ ...input, subject: e.target.value })} /></div>

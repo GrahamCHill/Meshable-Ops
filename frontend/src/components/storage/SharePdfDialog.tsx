@@ -1,17 +1,18 @@
-import { useEffect, useRef, useState } from 'react'
+import {useState} from 'react'
+import {usePageDraft} from '../../hooks/usePageDraft'
+import {useModalDialog} from '../../hooks/useModalDialog'
 import { sharesApi } from '../../api/shares'
 import { getErrorMessage } from '../admin/adminUtils'
 import { Button } from '../ui'
 
 export function SharePdfDialog({ folderId, path, maxLifetimeHours, onClose }: { folderId: string; path: string; maxLifetimeHours: number; onClose: () => void }) {
-  const dialog = useRef<HTMLDialogElement>(null)
-  const [recipient, setRecipient] = useState('')
+  const [recipient, setRecipient] = usePageDraft('share-recipient:'+folderId+':'+path, '')
   const [password, setPassword] = useState('')
-  const [hours, setHours] = useState(Math.min(72, maxLifetimeHours))
+  const [hours, setHours] = usePageDraft('share-hours:'+folderId+':'+path, Math.min(72, maxLifetimeHours))
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  useEffect(() => { dialog.current?.showModal() }, [])
+  const dialog = useModalDialog(onClose, busy)
   const send = async () => {
     setBusy(true); setError('')
     try {

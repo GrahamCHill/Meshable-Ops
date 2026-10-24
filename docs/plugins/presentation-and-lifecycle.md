@@ -1,5 +1,7 @@
 # Plugin presentation, placement, and lifecycle
 
+Artwork appears in the catalogue and management view. Workspace page banners are optional: `showPageBanner` defaults to `false`; authors may explicitly enable it. Kanban leaves it off. Catalogue activation checkboxes are staged until **Save activation changes** applies them together; see [bulk activation](kanban.md#bulk-plugin-activation).
+
 Plugin API version 1 now supports artwork, categories, explicit dependencies, optional relationships, admin placement, and screen contributions. Old manifests receive defaults; bundled modules get category/artwork defaults. ZIP metadata still needs the required `author.json` fields, even when blank.
 
 ```json
@@ -31,7 +33,7 @@ Artwork paths refer to PNG, JPEG, or WebP files inside the ZIP. Images are decod
 
 Bundled authors can place artwork under `backend/src/main/resources/plugins/<id>/<path>` and reference it in the manifest. Missing artwork can use the generated `builtin` fallback. Uploaded packages must supply referenced artwork themselves.
 
-The plugin catalogue can filter up to five short categories per plugin. The icon appears in its catalogue entry; the banner appears in the catalogue/settings and workspace plugin page. Artwork endpoints enforce member plugin access or administrator plugin-management permission.
+The plugin catalogue can filter up to five short categories per plugin. The icon and banner appear in the catalogue/settings. Workspace pages omit banners by default, including Calendar; authors can opt in with `showPageBanner: true`. Artwork endpoints enforce member plugin access or administrator plugin-management permission.
 
 ## Requires, extends, and incompatibility
 
@@ -47,6 +49,8 @@ Dependency and conflict checks also protect direct APIs. Disabling/removing a re
 ## Admin categories and optional settings
 
 `adminMenu.category` can use an existing admin group (`workspace`, `people-security`, `storage-sharing`, `communications`, `documents-workflows`, `analytics-search`, `operations`) or a custom slug with `categoryLabel`. The host adds a direct settings card there, including while a connection is disabled and needs configuration. Existing group names cannot be replaced by a plugin.
+
+`adminMenu.icon` selects a default built-in section icon. Administrators can override category artwork with a built-in icon or uploaded WebP in **Workspace → Navigation & section icons**. See [navigation and artwork](../navigation-and-icons.md) for icon names, limits, permissions, and ordering.
 
 `hasAdminSettings: false` removes its configuration tab and settings shortcuts and blocks configuration writes. Empty settings schemas also omit the Settings tab. Host controls for activation, roles, search, data retention, and removal remain under **Manage** in the plugin catalogue; these are distinct from the plugin's own settings. Bundled calendar providers appear in a Calendars admin group, Git providers in Development, chat providers in Communications, and Microsoft file providers in Storage & sharing.
 

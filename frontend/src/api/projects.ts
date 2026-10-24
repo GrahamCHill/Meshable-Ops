@@ -1,15 +1,18 @@
 import api from './http'
+import type {Artwork} from './artwork'
 
 export type ProjectCategory = 'ACTIVE' | 'ARCHIVED' | 'PROPOSAL'
 export type ProjectRole = 'MEMBER' | 'TEAM_LEAD' | 'MANAGER'
 export interface Person {id: string; name: string; email: string}
+export interface WorkBreakdown {id:string;label:string;count:number;completed?:number}
+export interface WorkSummary {total:number;completed:number;overdue:number;storyPoints:number;stages:WorkBreakdown[];assignees:WorkBreakdown[];epics:WorkBreakdown[];tags:WorkBreakdown[]}
 export interface Contact {id: string; name: string; email: string; phone: string; position: string}
 export interface WebLink {label: string; url: string}
 export interface StorageLink {id: string; folderId: string; path: string; directory: boolean; label: string}
 export interface ProjectDetails {description: string; members: {userId: string; role: ProjectRole}[]; groupIds: string[]; tagIds: string[]; contacts: Contact[]; links: WebLink[]; storage: StorageLink[]}
 export interface ProjectInput {name: string; leadId: string; clientId: string | null; category: ProjectCategory; details: ProjectDetails; revision: number}
 export interface Project extends ProjectInput {id: string; clientName: string; inheritedContacts: Contact[]; canManage: boolean; updatedAt: string}
-export interface ProjectSummary {id: string; name: string; clientId: string | null; clientName: string; category: ProjectCategory; tagIds: string[]; updatedAt: string}
+export interface ProjectSummary {id: string; name: string; clientId: string | null; clientName: string; category: ProjectCategory; tagIds: string[]; updatedAt: string; artwork:Artwork}
 export interface ClientInput {name: string; details: {description: string; contacts: Contact[]; links: WebLink[]}; revision: number}
 export interface Client extends ClientInput {id: string; canManage: boolean}
 export interface ProjectTag {id: string; name: string; description: string; groupIds: string[]}
@@ -26,7 +29,7 @@ export interface ScheduleInput {enabled: boolean; kind: 'REPORT' | 'DIGEST'; cad
 export interface WorkSchedule {id: string; projectId: string | null; configuration: ScheduleInput; nextRunAt: string | null; lastRunAt: string | null; lastStatus: string | null}
 export const emptyDetails = (): ProjectDetails => ({description: '', members: [], groupIds: [], tagIds: [], contacts: [], links: [], storage: []})
 export const projectsApi = {
-  workSummary: (id:string) => api.get<import('../components/projects/WorkCharts').WorkSummary>(`/projects/${id}/work-summary`).then(r=>r.data),
+  workSummary: (id:string) => api.get<WorkSummary>(`/projects/${id}/work-summary`).then(r=>r.data),
   list: (query = '', category?: string, tags: string[] = []) => api.get<ProjectSummary[]>('/projects', {params: {query, category: category || undefined, tags: tags.length ? tags.join(',') : undefined}}).then(r => r.data),
   get: (id: string) => api.get<Project>(`/projects/${id}`).then(r => r.data),
   save: (id: string | undefined, input: ProjectInput) => (id ? api.put<Project>(`/projects/${id}`, input) : api.post<Project>('/projects', input)).then(r => r.data),

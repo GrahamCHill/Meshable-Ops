@@ -26,7 +26,8 @@ export function BoardEditor({initial,onSaved,readOnly=false}: {initial:Board;onS
   const accept=(board:Board)=>{setDraft(board);onSaved(board)}
   const save=useMutation({mutationFn:(board:BoardInput)=>boardsApi.save(initial.id,board),onSuccess:accept})
   const move=useMutation({mutationFn:({card,column,before}:{card:string;column:string;before?:string})=>boardsApi.move(initial.id,card,column,draft.revision,before),onSuccess:accept})
-  useEffect(()=>setDraft(initial),[initial])
+  const resetSave=save.reset,resetMove=move.reset
+  useEffect(()=>{setDraft(initial);resetSave();resetMove()},[initial,resetSave,resetMove])
   const busy=save.isPending||move.isPending
   const error=save.isError?getErrorMessage(save.error):move.isError?getErrorMessage(move.error):undefined
   const canManage=draft.canManage&&!readOnly

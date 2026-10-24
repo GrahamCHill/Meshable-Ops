@@ -64,7 +64,9 @@ class KanbanService(private val boards: KanbanRepository, private val actors: Pl
         if (row.revision != request.revision) throw ConflictException("This board changed. Reload before moving this ticket.")
         val content = mapper.readValue(row.contentJson, KanbanContent::class.java)
         val card = content.cards.find { it.id == cardId } ?: throw NotFoundException("Ticket unavailable")
-        if (content.columns.none { it.id == request.columnId }) throw BadRequestException("Destination column unavailable")
+        val destination = content.columns.find { it.id == request.columnId } ?: throw BadRequestException("Destination column unavailable")
+        val source = content.columns.find { it.id == card.columnId } ?: throw BadRequestException("Saved column unavailable")
+        if (!KanbanRules.canMove(actor.id, card, source, destination, canManage(actor, row))) throw ForbiddenException("You cannot move this ticket between these columns")
         val cards = content.cards.filter { it.id != cardId }.toMutableList()
         val target = request.beforeId?.let { before -> cards.indexOfFirst { it.id == before && it.columnId == request.columnId }.takeIf { it >= 0 }
             ?: throw BadRequestException("The target ticket is unavailable in that column") } ?: cards.size

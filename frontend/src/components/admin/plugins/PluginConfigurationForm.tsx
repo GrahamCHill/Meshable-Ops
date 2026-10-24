@@ -3,9 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { pluginsApi, type PluginView } from '../../../api/plugins'
 import { getErrorMessage } from '../adminUtils'
 import { Button } from '../../ui'
+import {RepositoryScopeSettings} from './RepositoryScopeSettings'
 
 export function PluginConfigurationForm({plugin}: {plugin: PluginView}) {
   const id = plugin.manifest.id
+  const git=['github','gitlab','gitea'].includes(id)
   const client = useQueryClient()
   const configuration = useQuery({queryKey:['plugin-configuration', id], queryFn: () => pluginsApi.configuration(id), refetchOnWindowFocus:false})
   const [values, setValues] = useState<Record<string, string>>({})
@@ -26,7 +28,7 @@ export function PluginConfigurationForm({plugin}: {plugin: PluginView}) {
     {!current.encryptionConfigured && <p role="alert">Configure the server encryption key before saving plugin configuration.</p>}
     {current.missingRequired.length > 0 && <p className="field-help">Required before use: {current.missingRequired.join(', ')}.</p>}
     <fieldset className="page-stack" disabled={save.isPending || !current.encryptionConfigured}>
-      {plugin.manifest.settingsFields.map(field => {
+      {plugin.manifest.settingsFields.filter(field=>!git||!['repositoryAccess','repositories'].includes(field.key)).map(field => {
         const secret = field.type === 'SECRET'
         const stored = current.configuredSecrets.includes(field.key)
         const cleared = clearSecrets.includes(field.key)
@@ -40,6 +42,7 @@ export function PluginConfigurationForm({plugin}: {plugin: PluginView}) {
           {secret && stored && <label className="checkbox-label"><input type="checkbox" checked={cleared} onChange={event => {setClearSecrets(previous => event.target.checked ? [...previous,field.key] : previous.filter(key => key !== field.key)); setValues(previous => ({...previous,[field.key]:''})); setDirty(true); save.reset()}} />Remove stored {field.label.toLowerCase()}</label>}
         </div>
       })}
+      {git&&<RepositoryScopeSettings id={id} values={values} revision={current.revision} ready={current.configuredSecrets.includes('accessToken')&&!values.accessToken&&!clearSecrets.includes('accessToken')&&(values.baseUrl??'')===(current.values.baseUrl??'')} onChange={(key,value)=>{setValues(previous=>({...previous,[key]:value}));setDirty(true);save.reset()}}/>}
       <div className="inline-actions"><Button type="submit" disabled={!dirty || save.isPending}>Save configuration</Button>{dirty && <Button type="button" variant="ghost" onClick={() => {setValues(current.values); setClearSecrets([]); setDirty(false); save.reset()}}>Discard changes</Button>}</div>
     </fieldset>
     {save.isError && <p className="feedback error" role="alert">{getErrorMessage(save.error)}</p>}

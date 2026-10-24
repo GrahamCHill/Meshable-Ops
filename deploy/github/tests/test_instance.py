@@ -31,7 +31,7 @@ class InstanceTests(unittest.TestCase):
         self.assertNotEqual(first, second)
         self.assertNotIn("admin@app.local", first)
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "settings"
+            path = Path(directory) / ".env.production"
             write_new(path, first)
             with self.assertRaises(FileExistsError):
                 write_new(path, second)

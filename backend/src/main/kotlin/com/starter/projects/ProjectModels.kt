@@ -48,7 +48,8 @@ data class ProjectInput(val name: String, val leadId: UUID, val clientId: UUID? 
     val details: ProjectDetails = ProjectDetails(), val revision: Long = -1)
 data class ProjectView(val id: UUID, val name: String, val clientId: UUID?, val clientName: String, val leadId: UUID, val category: ProjectCategory,
     val details: ProjectDetails, val inheritedContacts: List<Contact>, val revision: Long, val canManage: Boolean, val updatedAt: Instant)
-data class ProjectSummary(val id: UUID, val name: String, val clientId: UUID?, val clientName: String, val category: ProjectCategory, val tagIds: Set<UUID>, val updatedAt: Instant)
+data class ProjectSummary(val id: UUID, val name: String, val clientId: UUID?, val clientName: String, val category: ProjectCategory, val tagIds: Set<UUID>, val updatedAt: Instant,
+    val artwork: com.starter.service.ArtworkView = com.starter.service.ArtworkView())
 data class WorkGroupInput(val name: String, val description: String = "", val kind: GroupKind = GroupKind.TEAM, val projectRole: ProjectRole = ProjectRole.MEMBER,
     val details: WorkGroupData = WorkGroupData(), val revision: Long = -1)
 data class WorkGroupView(val id: UUID, val name: String, val description: String, val kind: GroupKind, val projectRole: ProjectRole, val details: WorkGroupData, val revision: Long)

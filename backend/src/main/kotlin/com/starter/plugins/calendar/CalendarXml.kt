@@ -13,9 +13,11 @@ internal object CalendarXml {
             if (xml.length>1_048_576) throw IllegalArgumentException("Oversized XML")
             val factory=DocumentBuilderFactory.newInstance().apply {
                 isNamespaceAware=true;isXIncludeAware=false;isExpandEntityReferences=false
-                setFeature("http://apache.org/xml/features/disallow-doctype-decl",true)
-                setFeature("http://xml.org/sax/features/external-general-entities",false)
-                setFeature("http://xml.org/sax/features/external-parameter-entities",false)
+                setFeature(XMLConstants.FEATURE_SECURE_PROCESSING,true)
+                // Parser feature identifiers, not network requests. Their exact HTTP namespace is required.
+                setFeature("http://apache.org/xml/features/disallow-doctype-decl",true) // NOSONAR: disables DOCTYPE processing.
+                setFeature("http://xml.org/sax/features/external-general-entities",false) // NOSONAR: disables external entity resolution.
+                setFeature("http://xml.org/sax/features/external-parameter-entities",false) // NOSONAR: disables external parameter entities.
                 setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD,"");setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA,"")
             }
             val builder=factory.newDocumentBuilder().apply {setErrorHandler(object:org.xml.sax.helpers.DefaultHandler() {

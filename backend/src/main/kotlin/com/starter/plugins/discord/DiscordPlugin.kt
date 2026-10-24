@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component
 
 @Component
 class DiscordPlugin : WorkspacePlugin {
-    override val manifest = PluginManifest("discord", "Discord", "1.0.0", "Post to approved Discord channels and deliver private member notifications through a bot.",
+    override val manifest = PluginManifest("discord", "Discord", "1.0.0-a", "Post to approved Discord channels and deliver private member notifications through a bot.",
         compatibleVersions = listOf("1.0.0"),
         extensions = setOf(PluginExtension.API, PluginExtension.SETTINGS, PluginExtension.NOTIFICATIONS, PluginExtension.DATABASE), supportedRoles = setOf("ADMIN"),
         tables = listOf(PluginTable("plugin_discord_identities", "Internal member Discord links", setOf("ADMIN"), setOf("ADMIN"))),

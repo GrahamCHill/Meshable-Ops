@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import {useEffect,useState} from 'react'
+import {usePageDraft} from '../../../../hooks/usePageDraft'
+import {useModalDialog} from '../../../../hooks/useModalDialog'
 import { documentsApi, type GeneratedDocument } from '../api'
 import { Button } from '../../../../components/ui/index'
 
 export function GeneratedPdfViewer({ document, onClose, loadPage }: { document: GeneratedDocument; onClose: () => void; loadPage?: (page: number, signal: AbortSignal) => Promise<Blob> }) {
-  const dialog = useRef<HTMLDialogElement>(null)
-  const [page, setPage] = useState(1); const [url, setUrl] = useState(''); const [error, setError] = useState('')
-  useEffect(() => { dialog.current?.showModal() }, [])
+  const dialog = useModalDialog(onClose)
+  const [page, setPage] = usePageDraft('generated-pdf-page:'+document.id, 1); const [url, setUrl] = useState(''); const [error, setError] = useState('')
   useEffect(() => {
     const controller = new AbortController(); let objectUrl = ''; setUrl(''); setError('')
     void (loadPage ? loadPage(page, controller.signal) : documentsApi.page(document.id, page, controller.signal)).then(blob => { if (!controller.signal.aborted) { objectUrl = URL.createObjectURL(blob); setUrl(objectUrl) } }).catch(() => { if (!controller.signal.aborted) setError('Unable to open this PDF page.') })

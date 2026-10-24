@@ -16,7 +16,7 @@ Meshable Ops is an extensible business workspace for teams that want control ove
 
 | Capability | Included |
 | --- | --- |
-| **Clients and delivery** | Project portfolios, inherited contacts, teams, tags, Kanban tickets, sprints, Git/PR links, comments, PDF reports, and personal work digests. [Guide](docs/projects-and-delivery.md) |
+| **Clients and delivery** | Project portfolios, team boundaries, Jira-style boards, column permissions, epics, tagged tickets, sprints, Git/PR links, project charts, reports and work digests. [Projects](docs/projects-and-delivery.md) · [Boards](docs/plugins/kanban.md) |
 | **Files and documents** | Named S3/Azure Blob locations, file permissions, PDF previews, download policies, protected sharing, and an optional document-generator plugin with WeasyCanvas templates and calculated fields. [Files](docs/storage-connections.md) · [Documents](docs/documents-and-workflows.md) |
 | **Processes and insight** | Optional visual workflow design and guided member runs, multiple Apache Superset dashboards, and permission-aware search with optional AI. [Workflows](docs/plugins/documents-and-workflows.md) · [Search](docs/search-and-indexing.md) |
 | **Connected teams** | SMTP/API email, notification templates and preferences, webhooks, personal calendar sync, and separate Git, Discord, Telegram, Teams, WhatsApp, and Microsoft file plugins. [Plugins](docs/plugins/README.md) |

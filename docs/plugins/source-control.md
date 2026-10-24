@@ -8,7 +8,9 @@ These are three independent plugins with encrypted access tokens and their own s
 | `gitlab` | Blank uses `https://gitlab.com`; self-managed base excludes `/api/v4` | `group/repo` or `group/subgroup/repo` |
 | `gitea` | Required HTTPS server base, including any installation prefix; exclude `/api/v1` | `owner/repo` |
 
-Set **Allowed repositories** to at most 20 comma-separated paths. Every lookup is checked against this allowlist before a network request. Use an appropriate read-only token scoped to the selected repositories. GitHub fine-grained tokens need repository metadata and pull-request read permissions. For GitLab, use a suitable project/group/personal read-API token; Gitea token scopes depend on its installed version. Account consent and repository permissions are managed at the provider, not granted by Meshable Ops.
+Save the provider URL/access token, then choose **All repositories accessible to this token** or **Selected repositories**. Selected is the default and preserves existing allowlists. **Load repositories from provider** queries GitHub's user repositories, GitLab membership projects, or Gitea's user repositories, with 100 results per page and a Load more action. Choose at most 100 paths within 4096 characters. Every selected-mode lookup checks the allowlist before a network request. All mode permits repository lookups only through the saved token's provider permissions; it does not make private repositories public. Admin discovery works before activation so a connection can be configured safely.
+
+Use a read-only token scoped to intended repositories. GitHub fine-grained tokens need repository metadata and pull-request read permissions. For GitLab, use a suitable read-API token; Gitea token scopes depend on its installed version. Discovery lists resources exposed by the provider's user/membership endpoint and token type; narrowly scoped installation/project tokens may need an existing manually configured path. Account consent and repository permissions are managed at the provider.
 
 Each provider defaults to administrator access. The administrator may explicitly enable all signed-in users. Enabling member access shares metadata for the approved repositories using the saved server account. It does not use individual members' Git credentials. Members still need Kanban table access and ownership of the board; administrators can manage all boards.
 
@@ -22,7 +24,15 @@ Owned tables: `plugin_kanban_development_links` (child) and `plugin_kanban_board
 
 ## API
 
-- `GET /api/plugins/{github|gitlab|gitea}/repositories` returns the configured repository allowlist without contacting the provider.
+## Project links
+
+Open a saved project's **Repositories** section to link a repository without requiring Kanban. A project manager, team lead, or administrator can add, refresh, and remove links; project membership is required to read them. Only active, allowed Git providers appear. Links store a sanitized title, HTTPS URL and check time. Disabling a provider, removing repository approval, or changing provider configuration hides saved metadata until a manager refreshes it under the new connection. Removal remains available when the provider is disabled. Repository links do not grant project membership or provider access.
+
+## API
+
+- `GET /api/plugins/{github|gitlab|gitea}/repository-options?page=1` returns `{repositories,page,hasMore}`. Selected mode reads the allowlist locally; All mode queries the provider. The legacy `/repositories` route returns only the first page.
+- `GET /api/admin/plugins/{github|gitlab|gitea}/repository-options?page=1` discovers repositories using saved credentials before activation; requires plugin administration.
+- `GET/POST /api/projects/{projectId}/repositories` lists/adds project repository links. Add accepts `{providerId,repository}`. `POST /{linkId}/refresh?revision=N` and `DELETE /{linkId}?revision=N` use optimistic revisions.
 - `GET /api/plugins/{github|gitlab|gitea}/pulls?repository=owner%2Frepo` returns up to 30 open requests (30 calls/minute/user/provider).
 - `GET /api/plugins/kanban/boards/{id}/development-links` lists owner-visible snapshots.
 - `POST` to that route accepts `{ "providerId":"github", "repository":"owner/repo", "number":12, "cardId":null }`. Omit/null `number` for the repository and `cardId` for the whole board.

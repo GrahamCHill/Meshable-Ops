@@ -68,4 +68,30 @@ class SourceControlTest {
             assertThatThrownBy { SourceControlPlugin.repositories(it) }.isInstanceOf(BadRequestException::class.java)
         }
     }
+    @Test fun `all accessible mode discovers provider repositories and selected mode stays local`() {
+        enable("github")
+        val all=mapOf("accessToken" to "private-token","repositoryAccess" to "ALL")
+        `when`(configuration.current("github")).thenReturn(all)
+        response="""[{"full_name":"team/one"},{"full_name":"team/two"}]"""
+        assertThat(service.repositoryOptions("github",2,"USER").repositories).containsExactly("team/one","team/two")
+        assertThat(calls.last()[2] as String).contains("user/repos?","page=2")
+        response="""{"html_url":"https://github.com/team/other","full_name":"team/other"}"""
+        assertThat(service.resource("github","team/other",null,"USER").repository).isEqualTo("team/other")
+    }
+    @Test fun `admin discovery works before activation without bypassing member activation`() {
+        enable("gitlab",repo="group/one")
+        `when`(settings.findById("gitlab")).thenReturn(Optional.empty())
+        response="""[{"path_with_namespace":"group/sub/repo"}]"""
+        assertThat(service.repositoryOptions("gitlab",1).repositories).containsExactly("group/sub/repo")
+        assertThat(calls.last()[2] as String).startsWith("api/v4/projects?membership=true")
+        assertThatThrownBy {service.repositoryOptions("gitlab",1,"USER")}.isInstanceOf(NotFoundException::class.java)
+        assertThatThrownBy {service.repositoryOptions("gitlab",0)}.isInstanceOf(BadRequestException::class.java)
+    }
+    @Test fun `changed credentials invalidate provider responses`() {
+        enable("github")
+        val first=mapOf("accessToken" to "private-token","repositoryAccess" to "ALL")
+        `when`(configuration.current("github")).thenReturn(first,first+("accessToken" to "rotated"))
+        response="""[{"full_name":"team/repo"}]"""
+        assertThatThrownBy {service.repositoryOptions("github",1,"USER")}.isInstanceOf(ConflictException::class.java)
+    }
 }

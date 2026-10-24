@@ -57,11 +57,14 @@ class WebhookTest {
     }
     @Test fun `webhook target validation blocks private addresses unsafe schemes and credential-bearing URLs`() {
         val client = WebhookHttpClient(false)
-        listOf("127.0.0.1", "10.0.0.1", "172.16.0.1", "192.168.1.1", "169.254.169.254", "0.0.0.0", "100.64.0.1", "198.18.0.1", "224.0.0.1", "::1", "fc00::1", "fe80::1").forEach {
-            assertThat(client.blocked(InetAddress.getByName(it))).describedAs(it).isTrue()
+        // Construct private-range fixtures from bytes: this test performs no DNS or external requests.
+        val ipv4 = listOf(listOf(127,0,0,1),listOf(10,0,0,1),listOf(172,16,0,1),listOf(192,168,1,1),listOf(169,254,169,254),listOf(0,0,0,0),listOf(100,64,0,1),listOf(198,18,0,1),listOf(224,0,0,1))
+        val ipv6 = listOf(ByteArray(16).apply {this[15]=1},ByteArray(16).apply {this[0]=0xfc.toByte();this[15]=1},ByteArray(16).apply {this[0]=0xfe.toByte();this[1]=0x80.toByte();this[15]=1})
+        (ipv4.map { bytes -> bytes.map(Int::toByte).toByteArray() } + ipv6).forEach {
+            assertThat(client.blocked(InetAddress.getByAddress(it))).isTrue()
         }
-        assertThat(client.blocked(InetAddress.getByName("8.8.8.8"))).isFalse()
-        assertThatThrownBy { client.resolve("127.0.0.1") }.isInstanceOf(java.net.UnknownHostException::class.java)
+        assertThat(client.blocked(InetAddress.getByAddress(byteArrayOf(203.toByte(),0,113,1)))).isFalse()
+        assertThatThrownBy { client.resolve("127.0.0.1") }.isInstanceOf(java.net.UnknownHostException::class.java) // NOSONAR: deliberate loopback rejection fixture.
         listOf("http://example.com", "file:///tmp/test", "https://user:pass@example.com", "https://example.com?secret=a", "https://example.com#fragment").forEach { url ->
             assertThatThrownBy { client.validate(url) }.isInstanceOf(BadRequestException::class.java)
         }

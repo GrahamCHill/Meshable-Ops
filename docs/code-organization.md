@@ -18,6 +18,8 @@ Files are grouped by feature and responsibility. Page components compose the scr
 
 `backend/.../projects/` separates models, project/team access and SQL predicates, client/project validation, extension contexts, work aggregation, PDF reporting, digests, and opt-in schedules. `frontend/src/api/projects.ts` supplies typed contracts; `components/projects/` contains reusable forms/reports/digest/schedule panels; route pages compose these. Kanban splits card fields, sprint fields, project/team selection, comments, and development links into module components.
 
+Kanban's `KanbanRules` owns saved-state movement policies and epic/tag/subtask validation; both whole-board writes and locked move commands use it. Frontend board configuration, column/epic settings, ticket tiles/dialogs, filters and summaries are separate module files. `ProjectWorkOverview`/`WorkCharts` render permission-scoped aggregates. `usePageDraft` retains dialog fields only within a page/account; `useModalDialog` supplies safe backdrop dismissal. `PluginActivationService` applies revision-checked activation batches in one transaction while preserving other plugin settings.
+
 `plugins/integrations/MemberMessaging*` separates provider identity mapping, private delivery, and explicit shared posts. `MemberIdentityEntities` supplies fixed JPA schemas; credentials remain in encrypted plugin configuration. `weasy-renderer/report.py` renders escaped structured project reports independently of authored document templates. Python's complete service roles are documented in [architecture](architecture.md#why-python-is-present).
 
 ## Frontend

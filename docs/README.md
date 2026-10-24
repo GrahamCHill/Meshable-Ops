@@ -20,6 +20,7 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Add plugin artwork, categories, admin shortcuts, dependencies, and screen panels | [Plugin presentation and lifecycle](plugins/presentation-and-lifecycle.md) |
 | Declare compatible plugin versions and preserve extensions across app updates | [Plugin compatibility and updates](plugins/compatibility-and-updates.md) |
 | Create plugins with pages, submenus, tables, and search | [Plugin authoring](plugins/README.md) |
+| Configure work boards, ticket movement, epics and project visuals | [Kanban boards](plugins/kanban.md) |
 | Upload ZIP plugins and configure third-party extension security | [Runtime ZIP packages](plugins/zip-packages.md) |
 | Install frontend and/or Python/Kotlin backend code from a ZIP | [Uploaded backend runtime and SDKs](plugins/backend-runtime.md) |
 | Link Git repositories/PRs to boards and cards | [Source-control plugins](plugins/source-control.md) |

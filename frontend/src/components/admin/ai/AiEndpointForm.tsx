@@ -5,7 +5,7 @@ const labels: Record<AiProvider, string> = { OPENAI_COMPATIBLE: 'OpenAI-compatib
 const presets = [
   { name: 'OpenAI', provider: 'OPENAI_COMPATIBLE', baseUrl: 'https://api.openai.com/v1' },
   { name: 'Groq', provider: 'OPENAI_COMPATIBLE', baseUrl: 'https://api.groq.com/openai/v1' },
-  { name: 'Ollama', provider: 'OLLAMA', baseUrl: 'http://ollama:11434/v1' },
+  { name: 'Ollama', provider: 'OLLAMA', baseUrl: 'https://ollama.example.com/v1' },
   { name: 'Azure OpenAI', provider: 'AZURE_OPENAI', baseUrl: '' },
   { name: 'Anthropic', provider: 'ANTHROPIC', baseUrl: 'https://api.anthropic.com/v1' },
 ] as const

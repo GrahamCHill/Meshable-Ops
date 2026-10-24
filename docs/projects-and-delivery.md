@@ -18,9 +18,9 @@ Boards can restrict visibility to selected teams linked to their project. Projec
 
 ## Boards and tickets
 
-Enable **Kanban boards** under Plugins. Create boards from a project's **Open project boards** link or attach existing private boards in the editor. Select team restrictions where needed. Optimistic revisions reject stale saves.
+Enable **Kanban boards** under Plugins. Open boards from the card directory or a project's **Open project boards** link. Managers configure columns, permissions and project/team access separately from everyday tickets. Drag tickets between columns, or open a ticket and choose its column. Changes save immediately; optimistic revisions reject stale saves. See [Kanban 1.2.0](plugins/kanban.md).
 
-Tickets support stable server-assigned references, titles, descriptions, assignees, reviewers, start/due/completion dates, sprints, story points, blocked flags, and Todo/In progress/Done status. Columns can supply the status used when moving a card. Completing a ticket fills an omitted completion date; reopening clears it. Assignees/reviewers must be active internal members with board access. Project leaders manage sprint definitions.
+Tickets support stable references, types/priorities, descriptions, assignees, reviewers, dates, sprints, points, blocked flags, tags, epics and subtasks. Columns supply reporting status and independent entry/exit permissions. Completing fills an omitted completion date; reopening clears it. Assignees/reviewers and selected transition members must have internal board access. Project Overview charts current tickets by actual column/stage, assignee, epic and tag across only visible boards.
 
 Saved tickets support comments and explicit @mention selections. Recipients are checked against board access; after commit, notifications use each member's preferences. Private mentions never fall back to shared chat channels. Unavailable delivery does not remove the comment. Removing a ticket removes its comments and development links.
 

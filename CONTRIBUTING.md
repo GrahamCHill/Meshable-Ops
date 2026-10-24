@@ -15,7 +15,7 @@ Run checks appropriate to your change:
 mvn --batch-mode --no-transfer-progress verify
 
 # Node.js 22, from frontend/
-npm ci
+npm ci --ignore-scripts
 npm run build
 ```
 
@@ -28,3 +28,5 @@ The public project license is [AGPL-3.0-only](LICENSE), with a [separate commerc
 Original plugin functionality submitted for inclusion follows the app's community license. Independently authored service-integration components may retain an AGPL-compatible license with appropriate notices; independent external services retain their own terms. Identify those portions explicitly and follow the [plugin licensing policy](LICENSING.md#plugins-and-external-service-integrations). The allowance does not exempt covered plugin functionality merely because it calls an external API.
 
 Maintainers must retain a record of explicit acceptance for the covered revisions. Existing work without that grant cannot simply be included in a proprietary release. See [licensing](LICENSING.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
+
+Community plugin developers may sell copies, offer paid subscriptions, or charge for hosting/support and keep their revenue. Covered plugins retain AGPL source and recipient rights. Publishing an independent plugin does not automatically accept the CLA or transfer relicensing rights. See the [paid-plugin allowance](CLA.md#paid-community-plugins).

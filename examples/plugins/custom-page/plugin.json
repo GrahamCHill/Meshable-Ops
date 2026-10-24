@@ -1,0 +1,15 @@
+{
+  "manifest": {
+    "id": "custom-page", "name": "Custom page", "navigationLabel": "Custom page", "version": "1.0.0",
+    "description": "A reference frontend page calling backend code installed from the same ZIP.",
+    "apiVersion": 1, "compatibleVersions": ["1.0.0"],
+    "extensions": ["PAGE", "API", "SETTINGS"], "runtimes": ["PYTHON"],
+    "categories": ["Examples"], "menuItems": [{"path": "guide", "label": "Guide"}],
+    "settingsFields": [{"key": "heading", "label": "Page heading", "maxLength": 100}]
+  },
+  "entrypoint": "frontend/index.html", "pages": {"guide": "frontend/guide.html"},
+  "backend": {
+    "modules": {"greeting": {"runtime": "PYTHON", "entrypoint": "backend/app.py"}},
+    "routes": [{"path": "/greet", "module": "greeting", "methods": ["POST"], "roles": ["ADMIN", "USER"], "permissions": []}]
+  }
+}

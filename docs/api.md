@@ -12,6 +12,7 @@ All routes require an active internal account and the Projects feature. Record-l
 | GET / POST | `/projects/clients` | Visible clients / create client |
 | GET / PUT | `/projects/clients/{id}` | Inherited details / owner or admin edit |
 | GET | `/projects/{id}/members`, `/work`, `/sprints`, `/risks` | Membership, visible tickets, sprints, leadership-only indicators |
+| GET | `/projects/{id}/work-summary` | Visible-board ticket totals and column, assignee, epic and tag breakdowns |
 | GET | `/projects/{id}/extensions`, `/projects/clients/{id}/extensions` | Authorized plugin links/panels |
 | GET / POST | `/projects/{id}/reports` | Scoped saved reports / generate PDF; leadership required when emailing |
 | GET | `/projects/{id}/reports/{reportId}/pdf` | Download PDF after current project/board/policy checks |
@@ -31,6 +32,8 @@ Kanban retains `/plugins/kanban/boards`; its list accepts optional `projectId`. 
 `GET /admin/notifications/members` supplies the internal picker for mapped-member sends without requiring delegated plugin administration. See [messaging identities and post APIs](plugins/integrations.md#member-links-and-shared-posts).
 
 Optional modules use the authenticated `/api/plugins` catalogue, administrator-only `/api/admin/plugins` settings, and guarded `/api/plugins/{id}/…` routes. See [Workspace plugins](plugins.md#api) for contracts and Kanban endpoints, [plugin settings](plugins/settings.md) for redacted configuration APIs, and [integration plugins](plugins/integrations.md) for messaging/file-listing endpoints.
+
+Kanban 1.2.0 adds `POST /api/plugins/kanban/boards/{id}/cards/{cardId}/move` with `{columnId, revision, beforeId?}`, server-enforced column entry/exit rules, epics/tags and per-ticket permitted destinations in board views. `PUT /api/admin/plugins/activation` atomically patches enabled flags with expected settings revisions. See [Kanban and bulk activation contracts](plugins/kanban.md).
 
 Super-admin ZIP installation, global extension security, runtime pages, and owner-scoped managed record endpoints are documented in [Runtime ZIP packages](plugins/zip-packages.md#http-endpoints). Packages load frontend and/or backend code dynamically without rebuilding the host. Declared routes run under `/api/plugins/{id}/backend/{path}` with per-method/role/grant checks; backend-only ZIPs need no HTML. `GET /api/admin/plugins/{id}/code` exposes module declarations and grants to plugin administrators. See [worker request/response and SDK contracts](plugins/backend-runtime.md).
 

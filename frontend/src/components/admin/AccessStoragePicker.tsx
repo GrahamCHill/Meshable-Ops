@@ -11,7 +11,7 @@ export function AccessStoragePicker({ roots, onSelect }: { roots: AccessRoot[]; 
   return <div className="page-stack access-picker">
     <label>Storage root<select value={root} onChange={e => { setRoot(e.target.value); setPath('') }}><option value="">Choose a storage root</option>{roots.filter(r => r.accessible).map(r => <option key={r.id} value={r.id}>{r.connection ? `${r.connection} / ` : ''}{r.title}</option>)}</select></label>
     {root && <>
-      <div className="inline-actions"><span className="access-path">/{path}</span>{path && <Button variant="ghost" size="sm" onClick={() => setPath(path.replace(/[^/]+\/$/, ''))}>Up one folder</Button>}<Button variant="secondary" size="sm" onClick={() => onSelect({folderId: root, path, type: 'FOLDER'})}>Select this directory</Button></div>
+      <div className="inline-actions"><span className="access-path">/{path}</span>{path && <Button variant="ghost" size="sm" onClick={() => setPath(path.slice(0, path.lastIndexOf('/', path.length - 2) + 1))}>Up one folder</Button>}<Button variant="secondary" size="sm" onClick={() => onSelect({folderId: root, path, type: 'FOLDER'})}>Select this directory</Button></div>
       {contents.isLoading && <p role="status">Loading files…</p>}
       {contents.isError && <p role="alert">Unable to browse this storage root. Check its connection.</p>}
       <div className="access-file-list">{contents.data?.entries.map(entry => <div className="access-file-row" key={entry.path}>

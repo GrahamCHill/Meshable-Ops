@@ -26,7 +26,8 @@ object Totp {
         return output.toByteArray()
     }
     fun code(secret: String, step: Long, digits: Int = 6): String {
-        val digest = Mac.getInstance("HmacSHA1").run {
+        // RFC 6238 / HOTP interoperability: keyed HMAC-SHA1, not an unkeyed SHA-1 digest.
+        val digest = Mac.getInstance("HmacSHA1").run { // NOSONAR: required by existing authenticator enrollments; RFC 6238 vectors are tested.
             init(SecretKeySpec(decode(secret), "HmacSHA1")); doFinal(ByteBuffer.allocate(8).putLong(step).array())
         }
         val offset = digest.last().toInt() and 15

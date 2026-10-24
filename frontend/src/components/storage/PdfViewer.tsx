@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import {useEffect,useState} from 'react'
+import {usePageDraft} from '../../hooks/usePageDraft'
+import {useModalDialog} from '../../hooks/useModalDialog'
 import { useQuery } from '@tanstack/react-query'
 import { canDownload, documentAccessApi, type DocumentAccessPolicy } from '../../api/documentAccess'
 import { getErrorMessage } from '../admin/adminUtils'
@@ -21,10 +23,9 @@ export function PdfViewer({ folderId, path, policy, onClose, onDownload, downloa
   folderId: string; path: string; policy: DocumentAccessPolicy; onClose: () => void
   onDownload: (path: string, archive: boolean, filename: string) => void; downloading: boolean
 }) {
-  const dialog = useRef<HTMLDialogElement>(null)
-  const [page, setPage] = useState(1)
+  const dialog = useModalDialog(onClose)
+  const [page, setPage] = usePageDraft('pdf-page:'+folderId+':'+path, 1)
   const preview = useQuery({ queryKey: ['pdf-preview', folderId, path], queryFn: () => documentAccessApi.preview(folderId, path), gcTime: 0, staleTime: 0, retry: false })
-  useEffect(() => { dialog.current?.showModal() }, [])
   return <dialog ref={dialog} className="pdf-viewer" aria-labelledby="pdf-title" onCancel={event => { event.preventDefault(); onClose() }}>
     <div className="pdf-toolbar"><h2 id="pdf-title">{preview.data?.filename ?? path.split('/').pop()}</h2><div className="inline-actions">
       {canDownload(policy) && <Button variant="secondary" size="sm" disabled={downloading} onClick={() => onDownload(path, false, preview.data?.filename ?? path.split('/').pop()!)}>{policy.downloadMode === 'WATERMARKED' ? 'Download with watermark' : 'Download'}</Button>}

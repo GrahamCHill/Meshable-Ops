@@ -20,7 +20,7 @@ import java.util.UUID
 class ProjectService(private val projects: ProjectRepository, private val clients: ClientRepository, private val groups: WorkGroupRepository,
     private val users: UserRepository, private val items: ItemRepository, private val policy: ProjectAccess,
     private val access: AccessControlService, private val settings: ProjectSettingsService, private val branding: BrandingPreferencesService,
-    private val mapper: ObjectMapper, private val jdbc: JdbcTemplate) {
+    private val mapper: ObjectMapper, private val jdbc: JdbcTemplate, private val artwork: com.starter.service.WorkspaceArtworkService? = null) {
     fun people(email: String): List<ProjectPerson> { policy.actor(email); return users.findAll().filter { it.active && it.role != "EXTERNAL" }.sortedBy { it.name ?: it.username }.map { ProjectPerson(it.id, it.name ?: it.username, it.email) } }
     fun options(email: String): Map<String, Any> { policy.actor(email); return mapOf("tags" to settings.current().settings.tags, "groups" to groups.findAll().map { mapOf("id" to it.id, "name" to it.name, "description" to it.description, "kind" to it.kind, "projectRole" to it.projectRole) }, "identityName" to branding.current().applicationName) }
     fun list(email: String, query: String = "", category: ProjectCategory? = null, tags: Set<UUID> = emptySet()): List<ProjectSummary> {
@@ -32,9 +32,11 @@ class ProjectService(private val projects: ProjectRepository, private val client
         if (query.isNotBlank()) { conditions += "(p.name ILIKE ? ESCAPE '\\' OR COALESCE(c.name, '') ILIKE ? ESCAPE '\\' OR CAST(p.details_json AS jsonb)->>'description' ILIKE ? ESCAPE '\\')"; val term = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"; repeat(3) { args += term } }
         tags.forEach { conditions += "jsonb_exists(COALESCE(CAST(p.details_json AS jsonb)->'tagIds','[]'::jsonb), ?)"; args += it.toString() }
         val identity = branding.current().applicationName
-        return jdbc.query("SELECT p.id, p.name, p.client_id, c.name AS client_name, p.category, p.details_json, p.updated_at FROM workspace_projects p LEFT JOIN workspace_clients c ON c.id = p.client_id WHERE ${conditions.joinToString(" AND ")} ORDER BY p.updated_at DESC, p.id LIMIT 200",
+        val found = jdbc.query("SELECT p.id, p.name, p.client_id, c.name AS client_name, p.category, p.details_json, p.updated_at FROM workspace_projects p LEFT JOIN workspace_clients c ON c.id = p.client_id WHERE ${conditions.joinToString(" AND ")} ORDER BY p.updated_at DESC, p.id LIMIT 200",
             { rs, _ -> ProjectSummary(rs.getObject("id", UUID::class.java), rs.getString("name"), rs.getObject("client_id", UUID::class.java), rs.getString("client_name") ?: identity,
                 ProjectCategory.valueOf(rs.getString("category")), mapper.readValue(rs.getString("details_json"), ProjectDetails::class.java).tagIds, rs.getTimestamp("updated_at").toInstant()) }, *args.toTypedArray())
+        val icons = artwork?.many(found.map { "project:${it.id}" }).orEmpty()
+        return found.map { it.copy(artwork = icons["project:${it.id}"] ?: com.starter.service.ArtworkView()) }
     }
     fun get(email: String, id: UUID): ProjectView = view(policy.require(id, policy.actor(email)), policy.actor(email))
     @Transactional

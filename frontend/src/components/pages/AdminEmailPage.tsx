@@ -1,3 +1,4 @@
+import {trimTrailingSlashes} from '../../lib/url'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -35,7 +36,7 @@ export function AdminEmailPage() {
   const value = environment && view ? emailInput(view, 'ENVIRONMENT') : draft
   const active = settings?.source === 'ADMIN' ? settings.admin : settings?.environment
   const sameSmtp = environment || (!!draft && !!view && draft.provider === view.provider && draft.smtpHost.trim().toLowerCase() === view.smtpHost.toLowerCase() && draft.smtpPort === view.smtpPort && draft.smtpSecurity === view.smtpSecurity && draft.smtpAuth === view.smtpAuth)
-  const sameApi = environment || (!!draft && !!view && draft.provider === view.provider && draft.apiBaseUrl.trim().replace(/\/+$/, '') === view.apiBaseUrl && draft.mailgunDomain.trim() === view.mailgunDomain)
+  const sameApi = environment || (!!draft && !!view && draft.provider === view.provider && trimTrailingSlashes(draft.apiBaseUrl.trim()) === view.apiBaseUrl && draft.mailgunDomain.trim() === view.mailgunDomain)
   return <div className="page-stack" style={{ maxWidth: 900 }}>
     <AdminPageHeader title="Email delivery" description="Connect an SMTP account, app password, or transactional email service." actions={<Link to="/admin/notifications">Back to Notifications</Link>} />
     {query.isLoading && <Spinner />}

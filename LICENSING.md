@@ -47,6 +47,8 @@ For plugins accepted into this repository, original Meshable Ops plugin function
 
 ### Allowance for service-integration components
 
+Community plugin developers may charge for plugin copies, subscriptions, hosted access, and services, and retain the proceeds without an automatic royalty to the maintainer. A paywall does not remove applicable AGPL source, network-source-offer, or recipient redistribution rights. Independent plugin publication does not accept the CLA or grant commercial relicensing rights. See [CLA version 1.1](CLA.md#paid-community-plugins). AGPL likewise permits commercial forks; it requires compliance with its source/license terms rather than donations or upstream contributions.
+
 Independently authored, separable code whose role is communicating with an external service may retain another license **compatible with AGPL-3.0-only for the actual combination and distribution**. This can include a reusable protocol client, an external-service adapter, or an upstream SDK under compatible terms such as MIT, BSD-3-Clause, or Apache-2.0. Preserve its own license, copyright and required notices, and include its source where the applicable Corresponding Source requirements call for it. The covered application/plugin combination remains subject to the AGPL.
 
 This allowance does not relicense copied or modified Meshable Ops code, or exempt the plugin's covered pages, business logic, permissions, persistence, or workflow functionality just because they communicate with a service. It does not permit combining an incompatible proprietary SDK with covered code without the necessary separate permissions from all relevant rights holders. A Meshable Ops commercial agreement cannot waive an upstream owner's terms.

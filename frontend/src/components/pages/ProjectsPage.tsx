@@ -8,6 +8,7 @@ import { ClientsPanel } from '../projects/ClientsPanel'
 import { WorkDigestPanel } from '../projects/WorkDigestPanel'
 import { WorkSchedulesPanel } from '../projects/WorkSchedulesPanel'
 import { Button } from '../ui'
+import {ProjectCards} from '../projects/ProjectCards'
 import '../../styles/projects.css'
 
 export default function ProjectsPage() {
@@ -21,7 +22,7 @@ export default function ProjectsPage() {
       <div className="project-fields"><label className="form-field">Find projects<input type="search" value={query} maxLength={200} onChange={event => setQuery(event.target.value)} /></label><label className="form-field">Category<select value={category} onChange={event => setCategory(event.target.value)}><option value="">All categories</option><option value="ACTIVE">Active</option><option value="PROPOSAL">Proposals</option><option value="ARCHIVED">Archived</option></select></label></div>
       <div className="project-choices" aria-label="Filter by tags">{options.data?.tags.map(tag => <label key={tag.id}><input type="checkbox" checked={tags.includes(tag.id)} onChange={event => setTags(event.target.checked ? [...tags, tag.id] : tags.filter(id => id !== tag.id))} />{tag.name}</label>)}</div>
       {client && <p>Showing this client's projects. <Link to="/projects">Clear client filter</Link></p>}{projects.isLoading && <p role="status">Loading projects…</p>}{projects.isError && <p role="alert">Unable to load projects. <Button variant="ghost" onClick={() => void projects.refetch()}>Retry</Button></p>}
-      <div className="project-table-wrap"><table className="project-table"><thead><tr><th>Project</th><th>Client / identity</th><th>Category</th><th>Tags</th><th>Updated</th></tr></thead><tbody>{projects.data?.filter(project => !client || project.clientId === client).map(project => <tr key={project.id}><td><Link to={`/projects/${project.id}`}>{project.name}</Link></td><td>{project.clientName}</td><td>{project.category.toLowerCase()}</td><td>{project.tagIds.map(id => options.data?.tags.find(tag => tag.id === id)?.name).filter(Boolean).join(', ')}</td><td>{new Date(project.updatedAt).toLocaleDateString()}</td></tr>)}</tbody></table></div>{projects.data?.length === 0 && <p>No projects match these filters.</p>}
+      <ProjectCards projects={projects.data?.filter(project=>!client||project.clientId===client)??[]} tags={options.data?.tags??[]}/>{projects.isSuccess&&!projects.data?.some(project=>!client||project.clientId===client)&&<p>No projects match these filters.</p>}
     </>}
   </div>
 }

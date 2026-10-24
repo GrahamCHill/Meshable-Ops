@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import {useState} from 'react'
+import {usePageDraft} from '../../hooks/usePageDraft'
+import {useModalDialog} from '../../hooks/useModalDialog'
 import { useQueryClient } from '@tanstack/react-query'
 import { adminUsersApi } from '../../api/users'
 import type { AccountRole } from '../../api/access'
@@ -6,20 +8,20 @@ import { getErrorMessage } from './adminUtils'
 import { Button } from '../ui'
 
 export function CreateUserDialog({ superAdmin, close }: { superAdmin: boolean; close: () => void }) {
-  const dialog = useRef<HTMLDialogElement>(null)
   const qc = useQueryClient()
-  const [form, setForm] = useState({email: '', username: '', name: '', contactNumber: '', password: '', role: 'USER' as AccountRole, canUploadDocuments: false})
-  useEffect(() => { const element = dialog.current; element?.showModal(); return () => element?.close() }, [])
+  const [form, setForm, clearDraft] = usePageDraft('create-user', {email: '', username: '', name: '', contactNumber: '', password: '', role: 'USER' as AccountRole, canUploadDocuments: false})
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
+  const dismiss = () => {setForm(current=>({...current,password:''}));close()}
+  const dialog = useModalDialog(dismiss, pending)
   const submit = async () => {
     setPending(true); setError('')
     try {
       await adminUsersApi.create({...form, email: form.email.trim(), username: form.username.trim(), name: form.name.trim() || undefined, contactNumber: form.contactNumber.trim() || undefined})
-      setForm({...form, password: ''}); qc.invalidateQueries({queryKey: ['admin-users']}); close()
+      clearDraft(); qc.invalidateQueries({queryKey: ['admin-users']}); close()
     } catch (failure) { setError(getErrorMessage(failure)) } finally { setPending(false) }
   }
-  return <dialog ref={dialog} className="user-dialog" aria-labelledby="create-user-title" onCancel={event => { if (pending) event.preventDefault(); else close() }}>
+  return <dialog ref={dialog} className="user-dialog" aria-labelledby="create-user-title" onCancel={event => { if (pending) event.preventDefault(); else dismiss() }}>
     <form onSubmit={event => { event.preventDefault(); void submit() }}>
       <h2 id="create-user-title">Add new user</h2>
       <div className="user-dialog-grid">
@@ -33,7 +35,7 @@ export function CreateUserDialog({ superAdmin, close }: { superAdmin: boolean; c
       <label className="check-label"><input type="checkbox" disabled={form.role === 'EXTERNAL'} checked={form.canUploadDocuments} onChange={e => setForm({...form, canUploadDocuments: e.target.checked})} />Allow storage uploads</label>
       {form.role === 'EXTERNAL' && <p className="field-help">New external members have no storage access. Grant their directories in Access controls → External sharing. No invitation email is sent.</p>}
       {error && <p className="feedback error" role="alert">{error}</p>}
-      <div className="inline-actions"><Button type="submit" loading={pending}>Create user</Button><Button type="button" variant="ghost" disabled={pending} onClick={close}>Cancel</Button></div>
+      <div className="inline-actions"><Button type="submit" loading={pending}>Create user</Button><Button type="button" variant="ghost" disabled={pending} onClick={dismiss}>Cancel</Button></div>
     </form>
   </dialog>
 }

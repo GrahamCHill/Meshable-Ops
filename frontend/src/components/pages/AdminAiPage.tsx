@@ -1,3 +1,4 @@
+import {trimTrailingSlashes} from '../../lib/url'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -42,7 +43,7 @@ export function AdminAiPage() {
   const view = environment ? settings?.environment : settings?.admin
   const aiEnabled = environment ? view?.enabled : draft?.enabled
   const searchEnabled = environment ? view?.searchEnabled : draft?.searchEnabled
-  const boundKey = (kind: 'chat' | 'embeddings') => !!view?.[kind].apiKeyConfigured && (environment || (draft?.[kind].provider === view[kind].provider && draft[kind].baseUrl.replace(/\/+$/, '') === view[kind].baseUrl))
+  const boundKey = (kind: 'chat' | 'embeddings') => !!view?.[kind].apiKeyConfigured && (environment || (draft?.[kind].provider === view[kind].provider && trimTrailingSlashes(draft[kind].baseUrl) === view[kind].baseUrl))
 
   return <div className="page-stack" style={{ maxWidth: 1000 }}>
     <AdminPageHeader title="AI & search" description="Connect answer generation to the documents your team can access in Storage." />

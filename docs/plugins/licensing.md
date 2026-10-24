@@ -21,6 +21,8 @@ For example, a source-control plugin's covered project/board integration follows
 
 ## Author and maintainer responsibilities
 
+Paid/paywalled community plugins and developer profit are expressly permitted by [CLA 1.1](../../CLA.md#paid-community-plugins). Developers retain their revenue and ownership; independent publication does not accept the CLA. Covered plugins still provide required source and preserve recipients' AGPL rights. AGPL also allows commercial forks: the project cannot promise to prevent all paid forks or require upstream maintenance payments under that license.
+
 Identify the license and copyright holder for each independently licensed portion using file/directory notices and the relevant third-party inventory. Supply applicable license texts, attribution/NOTICE files and Corresponding Source. Review the exact license versions and dependency relationships; a programming-language package or container image is not proof of compatibility.
 
 Original community contributions accepted into this repository need explicit [CLA acceptance](../../CLA.md). That agreement does not relicense upstream material or unrelated plugins. A premium/commercial license applies only to material and rights expressly covered by its executed agreement; preserve third-party obligations in either licensing path.

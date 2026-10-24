@@ -1,8 +1,7 @@
 import type {CSSProperties} from 'react'
+import type {WorkBreakdown,WorkSummary} from '../../api/projects'
 import './work-charts.css'
 
-export interface WorkBreakdown {id:string;label:string;count:number;completed?:number}
-export interface WorkSummary {total:number;completed:number;overdue:number;storyPoints:number;stages:WorkBreakdown[];assignees:WorkBreakdown[];epics:WorkBreakdown[];tags:WorkBreakdown[]}
 export function WorkCharts({value}: {value:WorkSummary}) {
   const colors=['#4c9aff','#6554c0','#36b37e','#ffab00','#00a3bf','#e774bb']
   let offset=0

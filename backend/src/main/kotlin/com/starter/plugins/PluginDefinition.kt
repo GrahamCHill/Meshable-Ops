@@ -13,7 +13,7 @@ data class PluginTable(val name: String, val label: String,
 data class PluginTableAccess(val readRoles: Set<String>, val writeRoles: Set<String>)
 data class PluginFeature(val id: String, val label: String, val requires: Set<String>)
 data class PluginFeatureView(val id: String, val label: String, val available: Boolean, val providers: Set<String>, val missing: Set<String>)
-data class PluginAdminMenu(val category: String, val categoryLabel: String = "", val label: String = "")
+data class PluginAdminMenu(val category: String, val categoryLabel: String = "", val label: String = "", val icon: String? = null)
 enum class PluginPlacementMode { LINK, PANEL }
 data class PluginPlacement(val slot: String, val label: String, val section: String = "", val mode: PluginPlacementMode = PluginPlacementMode.LINK)
 

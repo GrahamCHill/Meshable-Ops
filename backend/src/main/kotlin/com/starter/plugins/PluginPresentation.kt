@@ -7,7 +7,7 @@ object PluginPresentation {
             value.id.startsWith("calendar") -> "Calendars"
             value.id in setOf("github", "gitlab", "gitea") -> "Development"
             value.id in setOf("discord", "telegram", "teams", "whatsapp") -> "Communications"
-            value.id in setOf("sharepoint", "onedrive") -> "Files"
+            value.id in setOf("sharepoint", "onedrive", "google-drive") -> "Files"
             else -> "Productivity"
         }
         val admin = when (category) { "Communications" -> "communications"; "Files" -> "storage-sharing"; "Development" -> "development"; else -> "calendars" }

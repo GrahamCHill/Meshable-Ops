@@ -2,6 +2,9 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 spec = importlib.util.spec_from_file_location("provision_secrets", Path(__file__).resolve().parents[1] / "provision-secrets.py")
 module = importlib.util.module_from_spec(spec)
@@ -11,7 +14,7 @@ spec.loader.exec_module(module)
 class ProvisionSecretsTests(unittest.TestCase):
     def test_missing_runtime_fields_are_generated_once(self):
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "settings"
+            path = Path(directory) / ".env.production"
             path.write_text("APP_DOMAIN=example.com\n")
             module.complete(path)
             first = path.read_text()
@@ -23,7 +26,7 @@ class ProvisionSecretsTests(unittest.TestCase):
 
     def test_existing_values_including_blank_keys_are_never_rotated(self):
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "settings"
+            path = Path(directory) / ".env.production"
             path.write_text("APP_SECRETS_ENCRYPTION_KEY=''\nPOSTGRES_PASSWORD='retained-value'\n")
             module.complete(path)
             content = path.read_text()

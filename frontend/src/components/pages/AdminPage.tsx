@@ -7,6 +7,7 @@ import { Badge, Card, Spinner } from '../ui'
 import { AdminPageHeader } from '../admin/AdminPageHeader'
 
 import { useAdminGroups } from '../admin/useAdminGroups'
+import {AdminSectionIcon} from '../admin/AdminSectionIcons'
 
 export function AdminPage() {
   const access = useAccess()
@@ -27,7 +28,7 @@ export function AdminPage() {
 
       <nav className="page-stack" aria-label="Administration menu">
         <div className="admin-cards">{adminGroups.filter(group => group.items.some(item => access.canPath(item.to))).map(group =>
-          <Link className="admin-area-link" key={group.id} to={`/admin/sections/${group.id}`}><h3>{group.label}</h3><p>{group.description}</p></Link>
+          <Link className="admin-area-link" key={group.id} to={`/admin/sections/${group.id}`}><AdminSectionIcon id={group.id}/><h3>{group.label}</h3><p>{group.description}</p></Link>
         )}</div>
       </nav>
 

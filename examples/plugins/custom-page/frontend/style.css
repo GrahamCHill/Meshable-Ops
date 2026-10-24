@@ -1,0 +1,4 @@
+body { font: 16px system-ui, sans-serif; margin: 24px; }
+form { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+input, button { font: inherit; padding: 8px; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; }

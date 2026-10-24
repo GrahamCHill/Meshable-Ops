@@ -119,7 +119,7 @@ export function useDashboardEmbed({ dashboardId, guestTokenResourceId, title = '
       }
     }
 
-    mount()
+    void mount()
     return () => {
       destroyed = true
       window.clearTimeout(timeout)

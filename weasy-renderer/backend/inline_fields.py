@@ -49,13 +49,13 @@ def inline_entries(template, source):
                         continue
                     add(f"content:{key}", value, ["paragraphs", i])
                     if i < len(children) and isinstance(children[i], list):
-                        for j, value in enumerate(children[i]):
-                            add(f"content:{key}", value, ["subparagraphs", i, j])
+                        for j, child_value in enumerate(children[i]):
+                            add(f"content:{key}", child_value, ["subparagraphs", i, j])
                     if i < len(leaves) and isinstance(leaves[i], list):
                         for j, row in enumerate(leaves[i]):
                             if isinstance(row, list):
-                                for k, value in enumerate(row):
-                                    add(f"content:{key}", value, ["subsubparagraphs", i, j, k])
+                                for k, leaf_value in enumerate(row):
+                                    add(f"content:{key}", leaf_value, ["subsubparagraphs", i, j, k])
             if not bindings.get("heading") and len(content) > 1:
                 headings = text.get("sectionHeadings") or {}
                 if isinstance(headings, dict):

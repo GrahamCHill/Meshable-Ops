@@ -8,6 +8,8 @@ export function useModalDialog(close: () => void, busy = false) {
     const element = dialog.current
     if (!element) return
     element.showModal()
+    Array.from(element.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input:not([disabled]), textarea:not([disabled]), select:not([disabled])'))
+      .find(field=>field.getClientRects().length>0&&!('readOnly' in field&&field.readOnly))?.focus()
     let beganOutside = false
     const outside = (event: PointerEvent) => {
       const rect = element.getBoundingClientRect()

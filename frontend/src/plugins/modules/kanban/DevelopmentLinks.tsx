@@ -7,6 +7,7 @@ import { Button } from '../../../components/ui'
 import { getErrorMessage } from '../../../components/admin/adminUtils'
 import { createPluginApi } from '../../sdk'
 import type { BoardCard } from './api'
+import {RepositorySelect} from '../../../components/projects/RepositorySelect'
 
 interface DevelopmentLink {id: string; providerId: string; repository: string | null; number: number | null; cardId: string | null; title: string; url: string | null; state: string | null; checkedAt: string | null; available: boolean}
 interface Pull {number: number; title: string}
@@ -29,11 +30,10 @@ function DevelopmentLinkEditor({boardId,cards,locked,providers}: {boardId: strin
   const [cardId, setCardId] = useState('')
   const selected = providers.find(item => item.id === provider)
   const source = selected ? createPluginApi(selected.id) : undefined
-  const repositories = useQuery({queryKey:['development-repositories',scope,provider],queryFn:() => source!.get<string[]>('/repositories'),enabled:!!source})
   const pulls = useQuery({queryKey:['development-pulls',scope,provider,repository],queryFn:() => source!.get<Pull[]>('/pulls',{repository}),enabled:!!source && !!repository && kind === 'pull',retry:false})
   const route = `/boards/${boardId}/development-links`
-  const links = useQuery({queryKey:['plugin-kanban-development-links',boardId,scope,providers.map(item => item.id).sort().join(',')],queryFn:() => api.get<DevelopmentLink[]>(route)})
-  const action = useMutation({mutationFn:async ({type,id}: {type: 'add' | 'refresh' | 'remove'; id?: string}) => {
+  const links = useQuery({queryKey:['plugin-kanban-development-links',boardId,scope,providers.map(item => item.id).sort((a,b)=>a.localeCompare(b)).join(',')],queryFn:() => api.get<DevelopmentLink[]>(route)})
+  const action = useMutation({mutationFn:({type,id}: {type: 'add' | 'refresh' | 'remove'; id?: string}) => {
     if (type === 'remove') return api.delete(`${route}/${id}`)
     if (type === 'refresh') return api.post(`${route}/${id}/refresh`,{})
     return api.post(route,{providerId:provider,repository,number:kind === 'pull' ? Number(number) : null,cardId:cardId || null})
@@ -52,12 +52,12 @@ function DevelopmentLinkEditor({boardId,cards,locked,providers}: {boardId: strin
     </article>)}
     {providers.length > 0 ? <fieldset disabled={locked || action.isPending} className="page-stack">
       <label className="form-field">Source control provider<select value={selected?.id ?? ''} onChange={event => {setProvider(event.target.value);setRepository('');setNumber('')}}><option value="">Choose provider</option>{providers.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-      {selected && <><label className="form-field">Approved repository<select value={repository} onChange={event => {setRepository(event.target.value);setNumber('')}}><option value="">Choose repository</option>{repositories.data?.map(repo => <option key={repo}>{repo}</option>)}</select></label>
+      {selected && <><RepositorySelect provider={selected.id} value={repository} onChange={value=>{setRepository(value);setNumber('')}} disabled={locked||action.isPending}/>
       <label className="form-field">Resource<select value={kind} onChange={event => setKind(event.target.value)}><option value="repository">Repository</option><option value="pull">Pull / merge request</option></select></label>
       {kind === 'pull' && <label className="form-field">Request<select value={number} onChange={event => setNumber(event.target.value)}><option value="">Choose an open request</option>{pulls.data?.map(pull => <option key={pull.number} value={pull.number}>#{pull.number} {pull.title}</option>)}</select><span className="field-help">Or enter an existing request number, including closed requests.</span><input aria-label="Request number" type="number" min="1" value={number} onChange={event => setNumber(event.target.value)} /></label>}
       <label className="form-field">Attach to<select value={cardId} onChange={event => setCardId(event.target.value)}><option value="">This board</option>{cards.map(card => <option key={card.id} value={card.id}>{card.title}</option>)}</select></label>
       <Button disabled={!repository || (kind === 'pull' && !(Number(number) > 0))} onClick={() => action.mutate({type:'add'})}>Add link</Button></>}
     </fieldset> : <p className="field-help">An administrator can enable GitHub, GitLab, or Gitea in Plugins to add links.</p>}
-    {(repositories.isError || pulls.isError || action.isError) && <p role="alert">{getErrorMessage(action.error ?? pulls.error ?? repositories.error,'Unable to contact the source control plugin.')}</p>}
+    {(pulls.isError || action.isError) && <p role="alert">{getErrorMessage(action.error ?? pulls.error,'Unable to contact the source control plugin.')}</p>}
   </section>
 }

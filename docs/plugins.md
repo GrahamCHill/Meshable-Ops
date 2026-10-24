@@ -1,6 +1,6 @@
 # Workspace plugins
 
-Plugins add reviewed functionality to the application: pages, submenus, APIs, PostgreSQL tables, and optional workspace search. The included Kanban module is a working example. Start with [Creating a plugin](plugins/README.md).
+Plugins add reviewed functionality: pages, submenus, APIs, PostgreSQL tables and optional workspace search. [Kanban 1.2.0](plugins/kanban.md) demonstrates draggable boards, transition policies, epics, tags and project visuals. Start with [Creating a plugin](plugins/README.md).
 
 In **Administration → Plugins**, open a module's **Settings** to enable it, configure its connection, choose who can open it, set table read/write roles, and choose whether it appears in search. New plugins start disabled and excluded from search. Disabling blocks APIs and hides pages while retaining data.
 
@@ -14,8 +14,8 @@ In **Administration → Plugins**, open a module's **Settings** to enable it, co
 | `GET /api/admin/plugins` | Installed manifests and settings; admin only |
 | `PUT /api/admin/plugins/{id}` | Save `enabled`, `allowedRoles`, `searchEnabled`, and `tableAccess`; admin only |
 | `POST /api/admin/plugins/{id}/clear-data` | `{ "confirmation": "<id>" }`; admin only, returns `deletedRows` per table |
-| `GET /api/plugins/kanban/boards` | Up to 100 most recently updated owner-visible board summaries; admins see all |
-| `GET /api/plugins/kanban/boards/{id}` | Full board; table read role and owner/admin |
+| `GET /api/plugins/kanban/boards` | Up to 200 permitted private/project/team board summaries with ticket/completion counts |
+| `GET /api/plugins/kanban/boards/{id}` | Full permitted board, revision, management flag and current actor's allowed ticket destinations |
 | `POST /api/plugins/kanban/boards` | Create using `name`, `revision`, and `content`; table write role |
 | `PUT /api/plugins/kanban/boards/{id}` | Save with current `revision`; table write role and owner/admin |
 

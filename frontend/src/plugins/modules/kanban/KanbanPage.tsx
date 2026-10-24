@@ -34,7 +34,7 @@ function Boards() {
     if(selected!==value.id)select(value.id)
   }
   const creation=useMutation({mutationFn:(input:Parameters<typeof boardsApi.save>[1])=>boardsApi.save(undefined,input),onSuccess:value=>{setCreate(false);saved(value)}})
-  if(selected)return <div className="page-stack"><div className="inline-actions"><button className="kanban-ticket-link" onClick={()=>select('')}>All boards</button>{projectId&&<Link to={'/projects/'+projectId}>Back to project</Link>}<Button variant="ghost" onClick={()=>void board.refetch()}>Reload board</Button></div>
+  if(selected)return <div className="page-stack"><div className="inline-actions kanban-board-navigation"><button className="kanban-ticket-link" onClick={()=>select('')}>All boards</button>{projectId&&<Link to={'/projects/'+projectId}>Back to project</Link>}<Button variant="ghost" onClick={()=>void board.refetch()}>Reload board</Button></div>
     {board.isLoading?<p role="status">Loading board…</p>:board.isError||!board.data?<p role="alert">This board is unavailable. Reload or return to all boards.</p>:<BoardEditor key={board.data.id} initial={board.data} onSaved={saved} readOnly={!canWrite}/>}
   </div>
   const items=list.data?.filter(item=>item.name.toLowerCase().includes(query.toLowerCase()))
