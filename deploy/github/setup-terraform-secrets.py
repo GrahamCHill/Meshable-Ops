@@ -22,7 +22,9 @@ def configuration(admin_email: str, admin_password: str) -> dict[str, str]:
         "guest_token_jwt_secret": secrets.token_hex(48),
         "superset_admin_password": secrets.token_hex(24),
         "bootstrap_users_json": json.dumps(users, separators=(",", ":")),
-        "postgres_admin_password": secrets.token_hex(32),
+        # Azure's API requires mixed character classes; these characters also
+        # fit the AWS/GCP managed database password constraints.
+        "postgres_admin_password": secrets.token_hex(32) + "aA7!",
         "postgres_password": secrets.token_hex(32),
         "superset_database_password": secrets.token_hex(32),
         "mongo_password": secrets.token_hex(32),

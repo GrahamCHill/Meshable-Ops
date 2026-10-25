@@ -2,7 +2,7 @@ package com.starter.service
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.starter.exception.BadRequestException
-import com.starter.model.mongo.Event
+import com.starter.model.postgres.Event
 import org.assertj.core.api.Assertions.*
 import org.bson.Document
 import org.bson.types.ObjectId

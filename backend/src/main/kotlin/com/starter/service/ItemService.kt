@@ -13,11 +13,11 @@ import com.starter.dto.PageResponse
 import com.starter.dto.StorageContentsResponse
 import com.starter.dto.StorageEntryResponse
 import com.starter.exception.NotFoundException
-import com.starter.model.mongo.Event
+import com.starter.model.postgres.Event
 import com.starter.model.postgres.Item
 import com.starter.model.postgres.StorageDocument
 import com.starter.model.postgres.StorageConnection
-import com.starter.repository.mongo.EventRepository
+import com.starter.repository.postgres.EventRepository
 import com.starter.repository.postgres.ItemRepository
 import com.starter.repository.postgres.StorageDocumentRepository
 import com.starter.repository.postgres.UserRepository

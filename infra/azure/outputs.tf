@@ -33,6 +33,10 @@ output "database_host" {
   value = azurerm_postgresql_flexible_server.app.fqdn
 }
 
+output "services_data_device" {
+  value = "/dev/disk/azure/scsi1/lun10"
+}
+
 output "private_vm_ids" {
   value = { for role, vm in azurerm_linux_virtual_machine.private : role => vm.id }
 }

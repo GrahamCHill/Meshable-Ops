@@ -98,6 +98,7 @@ resource "azurerm_postgresql_flexible_server_configuration" "app" {
   value     = each.value
 }
 resource "azurerm_management_lock" "database" {
+  depends_on = [azurerm_postgresql_flexible_server_configuration.app]
   name       = "protect-postgres"
   scope      = azurerm_postgresql_flexible_server.app.id
   lock_level = "CanNotDelete"

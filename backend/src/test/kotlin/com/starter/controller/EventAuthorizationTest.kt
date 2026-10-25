@@ -1,6 +1,6 @@
 package com.starter.controller
 
-import com.starter.repository.mongo.EventRepository
+import com.starter.repository.postgres.EventRepository
 import com.starter.service.EventHistoryPage
 import com.starter.service.EventHistoryService
 import com.starter.exception.BadRequestException

@@ -1,7 +1,7 @@
 package com.starter.service
 
-import com.starter.repository.mongo.ActivityLogRepository
-import com.starter.repository.mongo.EventRepository
+import com.starter.repository.postgres.ActivityLogRepository
+import com.starter.repository.postgres.EventRepository
 import com.starter.repository.postgres.AppSettingsRepository
 import com.starter.repository.postgres.DashboardEmbedConfigRepository
 import com.starter.repository.postgres.ItemRepository

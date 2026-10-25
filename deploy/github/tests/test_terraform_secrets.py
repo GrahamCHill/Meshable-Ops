@@ -24,6 +24,11 @@ class TerraformSecretsTests(unittest.TestCase):
         self.assertEqual(len(set(service_secrets)), 10)
         self.assertTrue(all(len(value) >= 48 for value in service_secrets))
         self.assertEqual(len(base64.b64decode(first["secrets_encryption_key"])), 32)
+        master = first["postgres_admin_password"]
+        self.assertTrue(any(char.isupper() for char in master))
+        self.assertTrue(any(char.islower() for char in master))
+        self.assertTrue(any(char.isdigit() for char in master))
+        self.assertTrue(any(not char.isalnum() for char in master))
         self.assertEqual(json.loads(first["bootstrap_users_json"]), [{
             "email": "owner@example.com", "username": "admin", "password": secret_password, "role": "SUPER_ADMIN",
         }])

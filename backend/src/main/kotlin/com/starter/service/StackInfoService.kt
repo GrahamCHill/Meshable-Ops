@@ -1,9 +1,7 @@
 package com.starter.service
 
-import org.bson.Document
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.SpringBootVersion
-import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.http.HttpMethod
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Service
@@ -35,13 +33,11 @@ data class StackInfoResponse(
 @Service
 class StackInfoService(
     private val jdbcTemplate: JdbcTemplate,
-    private val mongoTemplate: MongoTemplate,
     private val restTemplate: RestTemplate,
     @Value("\${spring.application.name}") private val applicationName: String,
     @Value("\${server.port}") private val serverPort: String,
     @Value("\${ml.base-url:http://ml-backend:8000}") private val mlBaseUrl: String,
     @Value("\${superset.base-url:http://superset:8088}") private val supersetBaseUrl: String,
-    @Value("\${spring.data.mongodb.uri}") private val mongoUri: String,
     @Value("\${spring.datasource.url}") private val postgresJdbcUrl: String,
     @Value("\${REDIS_HOST:redis}") private val redisHost: String,
     @Value("\${REDIS_PORT:6379}") private val redisPort: Int,
@@ -57,7 +53,6 @@ class StackInfoService(
             "superset:http://superset:8088",
             "ml-backend:http://ml-backend:8000",
             "postgres:postgres:5432",
-            "mongodb:mongodb:27017",
             "redis:redis:6379",
         ),
         services = listOf(
@@ -66,7 +61,6 @@ class StackInfoService(
             supersetServiceInfo(),
             mlBackendServiceInfo(),
             postgresServiceInfo(),
-            mongoServiceInfo(),
             redisServiceInfo(),
         ),
     )
@@ -176,26 +170,6 @@ class StackInfoService(
             internalUrl = postgresJdbcUrl,
             exposedOutsideVm = false,
             notes = listOf(exc.message ?: "PostgreSQL probe failed"),
-        )
-    }
-
-    private fun mongoServiceInfo(): StackServiceInfo = try {
-        val info = mongoTemplate.db.runCommand(Document("buildInfo", 1))
-        StackServiceInfo(
-            name = "MongoDB",
-            status = "UP",
-            version = info.getString("version"),
-            internalUrl = mongoUri.substringBefore("?"),
-            exposedOutsideVm = false,
-            notes = listOf("Event and activity document storage"),
-        )
-    } catch (exc: Exception) {
-        StackServiceInfo(
-            name = "MongoDB",
-            status = "DOWN",
-            internalUrl = mongoUri.substringBefore("?"),
-            exposedOutsideVm = false,
-            notes = listOf(exc.message ?: "MongoDB probe failed"),
         )
     }
 

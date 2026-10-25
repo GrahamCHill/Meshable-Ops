@@ -3,7 +3,7 @@ package com.starter.security
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.starter.model.postgres.*
 import com.starter.repository.postgres.*
-import com.starter.repository.mongo.*
+import com.starter.repository.postgres.*
 import com.starter.service.BackupExportService
 import org.assertj.core.api.Assertions.*
 import org.junit.jupiter.api.Test

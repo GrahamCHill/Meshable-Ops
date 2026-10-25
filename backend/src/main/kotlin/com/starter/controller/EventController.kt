@@ -1,7 +1,7 @@
 package com.starter.controller
 
 import com.starter.dto.*
-import com.starter.repository.mongo.EventRepository
+import com.starter.repository.postgres.EventRepository
 import com.starter.service.*
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort

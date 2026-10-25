@@ -2,8 +2,8 @@ package com.starter.service
 
 import com.starter.dto.AuditLogResponse
 import com.starter.dto.PageResponse
-import com.starter.model.mongo.ActivityLog
-import com.starter.repository.mongo.ActivityLogRepository
+import com.starter.model.postgres.ActivityLog
+import com.starter.repository.postgres.ActivityLogRepository
 import com.starter.repository.postgres.UserRepository
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service

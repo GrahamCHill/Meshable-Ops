@@ -9,7 +9,7 @@ import com.starter.model.postgres.User
 import com.starter.repository.postgres.ItemRepository
 import com.starter.repository.postgres.StorageDocumentRepository
 import com.starter.repository.postgres.UserRepository
-import com.starter.repository.mongo.EventRepository
+import com.starter.repository.postgres.EventRepository
 import com.sun.net.httpserver.HttpServer
 import org.assertj.core.api.Assertions.*
 import org.junit.jupiter.api.Test

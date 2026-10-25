@@ -27,3 +27,7 @@ output "database_host" {
   value = aws_db_instance.app.address
 }
 
+output "services_data_device" {
+  value = "ebs:${aws_ebs_volume.services.id}"
+}
+

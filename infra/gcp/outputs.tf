@@ -29,6 +29,10 @@ output "database_host" {
   value = google_sql_database_instance.app.private_ip_address
 }
 
+output "services_data_device" {
+  value = "/dev/disk/by-id/google-${var.name}-services-data"
+}
+
 output "instance_names" {
   value = merge({ app = google_compute_instance.app.name }, { for role, vm in google_compute_instance.private : role => vm.name })
 }

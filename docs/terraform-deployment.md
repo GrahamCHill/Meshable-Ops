@@ -214,6 +214,8 @@ sudo python3 deploy/terraform/start.py --role services
 
 Replace `services` with that VM's actual role (`services`, `runtime` or `app`). The helper reads the existing private file, validates required role settings, installs the PostgreSQL trust bundle if needed and starts only that role. Rerunning it preserves credentials and named Docker volumes. Bring up services and runtime before checking the app. Inspect `sudo tail -n 100 /var/log/cloud-init-output.log` for a failed package download/checkout/build; keep logs private.
 
+If the services data disk attached late and first boot failed, retrieve its identifier with `terraform output -raw services_data_device` on the operator machine. On the services VM, run `sudo python3 deploy/terraform/mount_data.py --device YOUR_DEVICE_IDENTIFIER`, then rerun `start.py --role services`. The mount helper preserves existing ext4 data and rejects unexpected filesystem layouts; do not bypass its checks to force a restore.
+
 Compose project names are `meshable-app`, `meshable-services` and `meshable-runtime`. To inspect a role directly, use all three files:
 
 ```bash

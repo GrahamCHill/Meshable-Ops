@@ -79,7 +79,7 @@ override_resource {
 }
 
 variables {
-  postgres_admin_password    = "test-only-postgres_admin_password-long-random-value"
+  postgres_admin_password    = "Test-only-managed-postgres-password-1234!"
   postgres_password          = "test-only-postgres_password-long-random-value"
   superset_database_password = "test-only-superset_database_password-long-random-value"
   mongo_password             = "test-only-mongo_password-long-random-value"
@@ -236,4 +236,10 @@ run "reject_worldwide_ssh" {
   command = plan
   variables { admin_cidr = "0.0.0.0/0" }
   expect_failures = [var.admin_cidr]
+}
+
+run "reject_incompatible_database_password" {
+  command = plan
+  variables { postgres_admin_password = "lowercaseonlypasswordwithoutmixedclasses" }
+  expect_failures = [var.postgres_admin_password]
 }
