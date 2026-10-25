@@ -88,6 +88,19 @@ class SupersetAccountServiceTest {
         verify(audit).record(actor.email, "SUPERSET_PASSWORD_CHANGED", "USER", actor.id.toString())
         server.verify()
     }
+    @Test fun `legacy shared service email is freed while retaining the service login password`() {
+        login(); matches(listOf(account(mapOf("username" to "service-admin", "roles" to listOf(mapOf("id" to 1, "name" to "Admin"))))))
+        find("roles", "name", "Alpha", listOf(mapOf("id" to 2, "name" to "Alpha"))); csrf()
+        server.expect(requestTo("$url/api/v1/security/users/42")).andExpect(method(HttpMethod.PUT))
+            .andExpect(content().json("""{"email":"superset-service-42@accounts.invalid","password":"private-service-password"}""", true))
+            .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON))
+        server.expect(requestTo("$url/api/v1/security/users/")).andExpect(method(HttpMethod.POST))
+            .andExpect(jsonPath("$.username").value(actor.email)).andExpect(jsonPath("$.password").value(password))
+            .andExpect(jsonPath("$.roles[0]").value(2))
+            .andRespond(withSuccess("""{"id":43}""", MediaType.APPLICATION_JSON))
+        assertThat(service.setPassword(password).created).isTrue()
+        server.verify()
+    }
     @Test fun `super admins can provision a personal login`() {
         `when`(access.actor()).thenReturn(actor.copy(role = "SUPER_ADMIN"))
         login(); matches(listOf(account())); csrf()

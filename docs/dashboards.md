@@ -39,6 +39,8 @@ The backend uses Superset's Flask-AppBuilder user-management API (`FAB_ADD_SECUR
 
 `POST /api/superset/account/password` accepts only `{ "password": "..." }` for the authenticated admin and returns `{ "username": "admin@example.com", "loginPath": "/login/", "created": true }`. It accepts no target email, role, or user ID. The endpoint requires an active app-admin session and `admin.superset`; dashboard viewers and admins with only Dashboard links access cannot use it.
 
+Older setup helpers assigned the app owner's email to the separate Superset service admin. On that owner's first personal setup, the backend moves only the configured service account's email to `superset-service-<id>@accounts.invalid`, preserving its username, current service password, role, and content ownership. This frees the owner's email for a personal Alpha account. Other conflicting or elevated accounts remain protected.
+
 ## Access boundary
 
 The backend mints guest tokens and synchronizes allowed app origins. The frontend proxy enforces admin access to Superset authoring routes; hiding navigation alone is not authorization. Anonymous browsers have no Superset permissions and are redirected to its login form before authoring. Existing Public permissions copied from Gamma are cleared by initialization; guest JWTs use a separate read-only EmbeddedGuest role with dashboard resource claims. Authoring API requests also require an app-admin session. Guest-token API requests strip ambient analytics cookies and bearer credentials before Superset validates the guest token. The proxy preserves native `/superset/dashboard/...` paths rather than stripping that namespace. Keep Superset's own port private. See [architecture](architecture.md) and [deployment](deployment.md).

@@ -58,7 +58,7 @@ The [Event log](event-log.md) lives under Administration → Operations, with sc
 
 For sidebar ordering, header/account behavior and admin section artwork, see [Navigation & section icons](navigation-and-icons.md). Project portfolios use cards grouped into configurable, ordered sections, with built-in or uploaded icons. [Google Drive](plugins/google-drive.md) adds a separate optional folder browser; [custom-page](../examples/plugins/custom-page/README.md) is a minimal frontend/backend ZIP reference. The [supplied quality report](supplied-quality-findings.md) records this remediation pass and protocol-specific security rationales.
 
-- Storage search is enabled. The launcher preference is on, but the chat button stays hidden until AI answers, content indexing, and a chat model are configured.
+- Storage search and the launcher are enabled. Members with search access can open the assistant for search and setup guidance; AI answers become available once AI answers, content indexing, and a chat model are configured.
 - PDF viewing and normal downloads are enabled; admins can select watermark or disabled download mode.
 - Outbound email is disabled until configured; SMTP and API provider credentials can come from the environment or encrypted admin settings.
 - MFA is optional; the primary admin is prompted at first login. Email enrollment needs a received code and configured delivery; recovery codes work during outages.

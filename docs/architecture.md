@@ -131,7 +131,7 @@ Schedules are disabled by default. Details and operational limits are in [projec
 
 ### Search and optional AI
 
-1. Storage exposes ordinary similarity search, scoped to the current folder/path when browsing. The floating bottom-right launcher opens AI chat only when its features and chat model are configured; `/search` remains a dedicated search route. A Search workspace link is shown when search is available to the member.
+1. Storage exposes ordinary similarity search, scoped to the current folder/path when browsing. The floating bottom-right launcher opens the workspace assistant when search, launcher visibility, and member search access are enabled. It provides search and setup guidance until AI answers, content indexing, and a chat model are configured; `/search` remains a dedicated search route. A Search workspace link is shown when search is available to the member.
 2. The backend checks the search feature switch before vector or keyword queries. Launcher visibility is a separate UI switch; disabling AI answers leaves search enabled.
 3. Default local feature hashing runs within Kotlin and needs no AI provider, model download, API key, or running ML container. PostgreSQL/pgvector still provides persistence and ranking.
 4. Folder, document, and chunk queries join live folder visibility and connection state. If configured embeddings are unavailable, access-checked keyword queries provide ordinary search. Different model identities are never compared as if their vectors were compatible.

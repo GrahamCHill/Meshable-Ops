@@ -125,7 +125,7 @@ Example status shape:
 
 
 
-`enabled` is calculated AI configuration state (search/answer flags and a nonblank chat model), not a live provider-health result. The UI also requires `indexContent` for its Ask AI button. `launcherEnabled` is false whenever search is disabled, even if the saved launcher checkbox is on.
+`enabled` is calculated AI configuration state (search/answer flags and a nonblank chat model), not a live provider-health result. The UI also requires `indexContent` for its Ask AI button. The floating launcher follows `searchEnabled` and `launcherEnabled`, plus the member's search permission; it opens with search and setup guidance while AI answers are not ready. `launcherEnabled` is false whenever search is disabled, even if the saved launcher checkbox is on.
 
 
 

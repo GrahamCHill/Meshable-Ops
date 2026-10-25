@@ -84,7 +84,7 @@ Provider implementations handle cloud operations. Keep application visibility an
 
 Run `npm run build` from `frontend/` and `mvn test` from `backend/` with Java 21. When changing extraction, install `ml-backend/requirements.txt` in a virtual environment and run `python -m unittest discover -s tests -v` from `ml-backend/`.
 
-Check the relevant UI flow after implementation changes: connection draft persistence across tabs, folder browsing/revocation, dashboard switching/reload/expand, and return navigation. Search changes should cover the absent launcher with AI off, hidden/disabled switches, optional sourced answers, and keyword fallback. Schedule changes should cover weekday/timezone calculations, repeated-change coalescing, saved due state, and disabled/manual jobs. Unit/provider mocks and fixture UI checks complement, rather than replace, a live deployment check.
+Check the relevant UI flow after implementation changes: connection draft persistence across tabs, folder browsing/revocation, dashboard switching/reload/expand, and return navigation. Search changes should cover the enabled launcher with AI off (search and setup guidance), hidden/disabled switches, search-permission revocation, optional sourced answers, and keyword fallback. Schedule changes should cover weekday/timezone calculations, repeated-change coalescing, saved due state, and disabled/manual jobs. Unit/provider mocks and fixture UI checks complement, rather than replace, a live deployment check.
 
 For documentation-only changes, validate relative links, headings/fences, API paths, and configuration names against the checked-in sources. See the [documentation index](README.md) and [API reference](api.md).
 

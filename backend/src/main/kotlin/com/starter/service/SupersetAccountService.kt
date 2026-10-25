@@ -62,8 +62,14 @@ class SupersetAccountService(
             // Search both unique identity fields before touching an existing account.
             val matches = (find("users", "username", email, headers) + find("users", "email", email, headers))
                 .distinctBy { it.path("id").asInt() }
-            val existing = matches.singleOrNull()
-            if (matches.isNotEmpty() && (existing == null ||
+            // Older installations used the app owner's email for the separate service login.
+            val serviceAccount = matches.singleOrNull()?.takeIf {
+                it.path("username").asText() == adminUser && it.path("email").asText() == email &&
+                    it.path("active").asBoolean() && it.path("roles").any { role -> role.path("name").asText() == "Admin" }
+            }
+            val personalMatches = if (serviceAccount == null) matches else emptyList()
+            val existing = personalMatches.singleOrNull()
+            if (personalMatches.isNotEmpty() && (existing == null ||
                     existing.path("username").asText() != email || existing.path("email").asText() != email ||
                     !existing.path("active").asBoolean() ||
                     existing.path("roles").map { it.path("name").asText() } != listOf("Alpha"))) {
@@ -74,6 +80,14 @@ class SupersetAccountService(
             val csrf = request("/api/v1/security/csrf_token/", HttpMethod.GET, headers).path("result").asText()
             headers.set("X-CSRFToken", csrf)
 
+            if (serviceAccount != null) {
+                val serviceId = serviceAccount.path("id").asInt()
+                // FAB 4 rehashes a user's password even on profile-only updates, so explicitly
+                // retain the authenticated service password rather than hashing its stored hash.
+                request("/api/v1/security/users/$serviceId", HttpMethod.PUT, headers, mapOf(
+                    "email" to "superset-service-$serviceId@accounts.invalid", "password" to adminPassword,
+                ))
+            }
             if (existing == null) {
                 val name = actor.name?.trim().orEmpty().ifBlank { actor.username }.ifBlank { email.substringBefore('@') }
                 request("/api/v1/security/users/", HttpMethod.POST, headers, mapOf(

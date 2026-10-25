@@ -44,6 +44,7 @@ class MetaAnalyticsReports(private val http: IntegrationHttpClient,private val m
             ?: throw IntegrationUnavailable("Meta returned no Page insights")
         if(result.has("error"))throw IntegrationUnavailable("Meta Page insights are unavailable for these permissions, metrics or dates")
         val rows=array(result.path("data"),10)
+        val coverage=mutableListOf<String>()
         val metrics=requested.mapIndexed {index,key->
             val matches=rows.filter {it.path("name").asText()==key}
             if(matches.size>1)throw IntegrationUnavailable("Meta returned duplicate Page metrics")
@@ -58,10 +59,11 @@ class MetaAnalyticsReports(private val http: IntegrationHttpClient,private val m
                     if(date in from..to && !seen.add(date))throw IntegrationUnavailable("Meta returned duplicate daily Page values")
                     date in from..to
                 }
+                coverage+="${listOf("Media views","Post engagements")[index]}: ${values.size} returned daily values across ${java.time.temporal.ChronoUnit.DAYS.between(from,to)+1} requested days. Omitted days are not assumed to be zero."
                 if(values.isEmpty())null else total(values) {it.path("value")}
             }
             AnalyticsMetric(key,listOf("Media views","Post engagements")[index],value)
         }
-        return AnalyticsSnapshot(from,to,metrics,notes=listOf("Totals sum the returned daily Page counts, using Meta's reporting dates. Missing or withheld metrics are unavailable, not zero. Page eligibility and API-version restrictions may limit results. No personal audience data is imported."))
+        return AnalyticsSnapshot(from,to,metrics,notes=listOf("Totals sum the returned daily Page counts, using Meta's reporting dates. Missing or withheld metrics are unavailable, not zero. Page eligibility and API-version restrictions may limit results. No personal audience data is imported.")+coverage)
     }
 }
