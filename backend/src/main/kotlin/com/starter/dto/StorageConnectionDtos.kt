@@ -5,12 +5,12 @@ import com.fasterxml.jackson.annotation.JsonProperty
 
 data class StorageConnectionRequest(
     @field:NotBlank @field:Size(max = 100) val nickname: String,
-    @field:Pattern(regexp = "S3|AZURE_BLOB") val provider: String,
+    @field:Pattern(regexp = "S3|AZURE_BLOB|GCS") val provider: String,
     @field:NotBlank @field:Size(max = 255) val bucket: String,
     @field:Size(max = 255) val region: String? = null,
     @field:Size(max = 512) val endpoint: String? = null,
     @get:JsonProperty(access = JsonProperty.Access.WRITE_ONLY) @field:Size(max = 255) val accessKey: String? = null,
-    @get:JsonProperty(access = JsonProperty.Access.WRITE_ONLY) @field:Size(max = 512) val secretKey: String? = null,
+    @get:JsonProperty(access = JsonProperty.Access.WRITE_ONLY) @field:Size(max = 32768) val secretKey: String? = null,
     val useServerIdentity: Boolean = false,
     @field:Size(max = 512) val basePath: String = "",
     val enabled: Boolean = true,

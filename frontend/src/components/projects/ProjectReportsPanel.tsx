@@ -5,8 +5,11 @@ import { getErrorMessage } from '../admin/adminUtils'
 import { Button } from '../ui'
 import { boardsApi } from '../../plugins/modules/kanban/api'
 import { useAvailablePlugins } from '../../api/plugins'
+import { Link } from 'react-router-dom'
+import { useAccess } from '../../api/access'
 
 export function ProjectReportsPanel({project}: {project: Project}) {
+  const access = useAccess()
   const today = new Date().toISOString().slice(0, 10); const client = useQueryClient()
   const [input, setInput] = useState<ReportInput>({kind: 'MONTHLY', from: today.slice(0, 8) + '01', to: today, sprintId: null, boardId: null, sendEmail: false, recipientIds: []})
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [notice, setNotice] = useState('')
@@ -17,6 +20,7 @@ export function ProjectReportsPanel({project}: {project: Project}) {
   const boards = useQuery({queryKey: ['project-report-boards', project.id], queryFn: () => boardsApi.list(project.id), enabled: plugins.data?.some(plugin => plugin.manifest.id === 'kanban') === true})
   const run = async (action: () => Promise<void>) => {setBusy(true); setError(''); setNotice(''); try {await action()} catch (failure) {setError(getErrorMessage(failure, 'Unable to generate or download this report.'))} finally {setBusy(false)}}
   return <section className="page-stack"><h2>Project reports</h2><p>Generate a report for a sprint, month, or selected period. The shared cover and index come first, followed by LLM-summarised insights when enabled in Administration, then Kanban summary, additional insights, sprint monitor, ticket lead times and the ticket export. Reports use current ticket data and bounded table excerpts. Delivery-risk scores and private calendars are excluded.</p>
+    {access.can('admin.projects') && <p><Link to="/admin/projects/report-covers">Redesign report covers</Link></p>}
     <p className="field-help">Reporting project: <strong>{project.name}</strong>. Reports include only this project's boards and tickets.</p>
     <form className="page-stack" onSubmit={event => {event.preventDefault(); void run(async () => {const result = await projectsApi.report(project.id, input); await client.invalidateQueries({queryKey: ['project-reports', project.id]}); setNotice(`Report generated.${input.sendEmail ? ' Email: ' + Object.values(result.deliveries).map(item => item.status).join(', ') : ''}`)})}}><fieldset disabled={busy} className="page-stack">
       <div className="project-fields"><label className="form-field">Report type<select value={input.kind} onChange={event => setInput({...input, kind: event.target.value as ReportInput['kind'], sprintId: null, boardId: null})}><option value="MONTHLY">Monthly</option><option value="SPRINT">Sprint</option><option value="PERIOD">Specific period</option></select></label>{input.kind === 'SPRINT' && <label className="form-field">Sprint<select required value={input.sprintId ?? ''} onChange={event => {const selected = sprints.data?.find(item => item.sprint.id === event.target.value); setInput({...input, sprintId: selected?.sprint.id ?? null, boardId: selected?.boardId ?? null, from: selected?.sprint.startDate ?? input.from, to: selected?.sprint.endDate ?? input.to})}}><option value="">Choose a sprint</option>{sprints.data?.map(item => <option key={`${item.boardId}-${item.sprint.id}`} value={item.sprint.id}>{item.boardName} · {item.sprint.name}</option>)}</select></label>}<label className="form-field">From<input type="date" required value={input.from} onChange={event => setInput({...input, from: event.target.value})} /></label><label className="form-field">Through<input type="date" required min={input.from} value={input.to} onChange={event => setInput({...input, to: event.target.value})} /></label></div>

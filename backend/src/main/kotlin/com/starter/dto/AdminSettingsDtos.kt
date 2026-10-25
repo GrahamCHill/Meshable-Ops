@@ -4,12 +4,12 @@ import jakarta.validation.constraints.*
 import com.fasterxml.jackson.annotation.JsonProperty
 
 data class AdminSettingsRequest(
-    @field:Pattern(regexp = "NONE|S3|AZURE_BLOB") val storageProvider: String = "NONE",
+    @field:Pattern(regexp = "NONE|S3|AZURE_BLOB|GCS") val storageProvider: String = "NONE",
     @field:Size(max = 255) val storageBucket: String? = null,
     @field:Size(max = 255) val storageRegion: String? = null,
     @field:Size(max = 512) val storageEndpoint: String? = null,
     @get:JsonProperty(access = JsonProperty.Access.WRITE_ONLY) @field:Size(max = 255) val storageAccessKey: String? = null,
-    @get:JsonProperty(access = JsonProperty.Access.WRITE_ONLY) @field:Size(max = 512) val storageSecretKey: String? = null,
+    @get:JsonProperty(access = JsonProperty.Access.WRITE_ONLY) @field:Size(max = 32768) val storageSecretKey: String? = null,
     @field:NotBlank @field:Size(max = 512) val storageRootPath: String = "folders",
     val vectorReindexEnabled: Boolean = false,
     @field:Min(15) @field:Max(10080) val vectorReindexIntervalMinutes: Int = 1440,

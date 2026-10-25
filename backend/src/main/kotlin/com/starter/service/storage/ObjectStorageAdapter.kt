@@ -19,6 +19,7 @@ internal fun objectStorageAdapter(settings: AppSettings, viewPrefix: String = se
     "NONE" -> NoStorageAdapter
     "S3" -> S3StorageAdapter(settings, viewPrefix)
     "AZURE_BLOB" -> AzureBlobStorageAdapter(settings, viewPrefix)
+    "GCS" -> GcsStorageAdapter(settings, viewPrefix)
     else -> throw BadRequestException("Unsupported storage provider")
 }
 

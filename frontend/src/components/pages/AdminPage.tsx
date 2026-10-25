@@ -23,7 +23,7 @@ export function AdminPage() {
       <AdminPageHeader
         title="Administration"
         description="Choose a section to manage your workspace."
-        actions={<Badge color="accent">Admin only</Badge>}
+        actions={<div className="inline-actions">{access.canPath('/admin/projects/report-covers') && <Link className="button button-secondary button-sm" to="/admin/projects/report-covers">Report covers</Link>}<Badge color="accent">Admin only</Badge></div>}
       />
 
       <nav className="page-stack" aria-label="Administration menu">

@@ -12,6 +12,8 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | License plugins and compatible external-service integration components | [Plugin licensing](plugins/licensing.md) |
 | Contribute changes and understand the contributor grant | [Contributing](../CONTRIBUTING.md) · [CLA](../CLA.md) |
 | Start the development stack with MinIO or Azurite | [Development setup](getting-started.md) |
+| Deploy to an existing Linux VM, step by step | [Manual Linux deployment](linux-vm-deployment.md) |
+| Find required environment variables and where to save credentials | [Deployment settings and secrets](deployment-environment.md) |
 | Understand empty databases, initial access, required secrets, and upgrades | [Initialization and security](initialization-and-security.md) |
 | Keep the workspace out of compliant search and AI crawlers | [Crawler exclusion](crawler-exclusion.md) |
 | Create a versioned template copy and deploy automatically over SSH | [GitHub Actions deployment](github-deployment.md) |
@@ -51,7 +53,7 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Deploy, upgrade, verify, or troubleshoot the stack | [Deployment](deployment.md) |
 | Work on the frontend/backend or run relevant checks | [Code organization](code-organization.md) |
 | Integrate with search, storage, or admin APIs | [API reference](api.md) |
-| Provision AWS/Azure networking, VM, HTTPS ingress, and object storage | [Terraform deployment](terraform-deployment.md) · [Modules](../infra/README.md) |
+| Provision split AWS/Azure/GCP tiers, managed PostgreSQL and private networking | [Step-by-step Terraform deployment](terraform-deployment.md) · [Modules](../infra/README.md) |
 
 ## Current operational defaults
 

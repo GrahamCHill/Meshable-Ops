@@ -10,6 +10,7 @@ Related settings are consolidated into seven card groups: **Workspace**, **Peopl
 | --- | --- | --- |
 | Users | `/admin/users` | Row-based roster, role assignment, activation, upload permissions, and Add user dialog |
 | Project settings | `/admin/projects` | Ordered project sections/default, tags, described team/department groups, scoped project roles, and memberships |
+| Report covers | `/admin/projects/report-covers` | Shared report cover HTML and images, PDF preview, insights, and scheduled delivery; also linked directly from the admin overview and project reports |
 | Access controls | `/admin/access-controls` | Super admin role features, member views, external sharing, and protected cloud paths |
 | Security | `/admin/security` | Super admin global third-party extension switch; links to access controls and personal MFA |
 | Branding | `/admin/branding` | Business name, separate light/dark or fixed custom palettes, logo/favicon, and sign-in backgrounds |
@@ -31,6 +32,10 @@ Related settings are consolidated into seven card groups: **Workspace**, **Peopl
 | Audit & backup | `/admin/audit` | Audit history and application metadata export |
 
 Users open shared storage at `/storage`, insights at `/dashboards`, their generated PDF library at `/documents`, and guided workflows at `/workflows`. Search and chat controls follow the admin feature switches. Admins manage workflow designs and generated documents. Each workflow run and its progress are private to the member who started it, including against other admins. Published workflows grant access to their PDFs through the run as document/email steps are reached.
+
+To redesign project report covers, open **Administration → Documents & workflows → Report covers**, or use the **Report covers** shortcut at the top of Administration. This uses the existing Project settings permission. The original **Project settings → Reports & cover** tab remains available.
+
+The workspace assistant opens a chat with suggested questions, message history, expandable document sources, and a reply composer. Closing and reopening it keeps the current conversation; **New chat** clears it. Follow-ups include up to six recent answered questions as context, while each answer retrieves fresh excerpts under the current user's permissions. Generated answers and old excerpts are not resubmitted as evidence. When AI answers or content indexing are disabled, messages return document search results instead. Chat history stays in memory for the current session.
 
 ## User access management
 

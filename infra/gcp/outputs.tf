@@ -29,3 +29,13 @@ output "database_host" {
   value = google_sql_database_instance.app.private_ip_address
 }
 
+output "instance_names" {
+  value = merge({ app = google_compute_instance.app.name }, { for role, vm in google_compute_instance.private : role => vm.name })
+}
+
+output "database_ca_certificate" {
+  description = "Public instance CA for verifying Cloud SQL during certificate rotation."
+  value       = google_sql_database_instance.app.server_ca_cert[0].cert
+  sensitive   = true
+}
+

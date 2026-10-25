@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.net.URI
 import com.starter.security.SecretEncryption
+import com.starter.service.storage.gcsServiceAccountCredentials
 
 @Service
 class AdminSettingsService(
@@ -53,7 +54,7 @@ class AdminSettingsService(
     // Validate a detached configuration so checking a draft never changes saved settings.
     fun validatedStorageSettings(req: AdminSettingsRequest, saved: AppSettings? = null): AppSettings {
         val provider = req.storageProvider.trim().uppercase()
-        if (provider !in setOf("NONE", "S3", "AZURE_BLOB")) throw BadRequestException("Choose a supported storage provider")
+        if (provider !in setOf("NONE", "S3", "AZURE_BLOB", "GCS")) throw BadRequestException("Choose a supported storage provider")
         val bucket = req.storageBucket?.trim()?.ifBlank { null }
         val endpoint = req.storageEndpoint?.trim()?.ifBlank { null }
         val sameLocation = saved != null && provider == saved.storageProvider && bucket == saved.storageBucket && endpoint == saved.storageEndpoint
@@ -64,9 +65,21 @@ class AdminSettingsService(
             throw BadRequestException("Enter a new secret when changing the account or access key")
         }
         if (provider != "NONE") {
-            if (bucket == null) throw BadRequestException(if (provider == "S3") "Enter an S3 bucket name" else "Enter an Azure container name")
-            if ((accessKey == null) != (secretKey == null)) throw BadRequestException("Provide both credential fields, or leave both blank to use the server identity")
-            if (req.useServerIdentity == false && accessKey == null) throw BadRequestException("Enter credentials for this location or select server identity")
+            if (bucket == null) throw BadRequestException(when (provider) {
+                "AZURE_BLOB" -> "Enter an Azure container name"
+                "GCS" -> "Enter a Google Cloud Storage bucket name"
+                else -> "Enter an S3 bucket name"
+            })
+            if (provider == "GCS") {
+                if (accessKey != null) throw BadRequestException("Google Cloud Storage uses service account JSON or server identity, not an access key ID")
+                if (endpoint != null) throw BadRequestException("Google Cloud Storage uses the standard Google API endpoint; leave the custom endpoint blank")
+                if (req.useServerIdentity == false && secretKey == null) throw BadRequestException("Enter service account JSON or select server identity")
+                if (secretKey != null) gcsServiceAccountCredentials(secretKey)
+            } else {
+                if (secretKey != null && secretKey.length > 512) throw BadRequestException("Storage secret must be at most 512 characters")
+                if ((accessKey == null) != (secretKey == null)) throw BadRequestException("Provide both credential fields, or leave both blank to use the server identity")
+                if (req.useServerIdentity == false && accessKey == null) throw BadRequestException("Enter credentials for this location or select server identity")
+            }
             if (provider == "AZURE_BLOB" && endpoint == null) throw BadRequestException("Enter the Azure Blob service endpoint")
             if (endpoint != null) {
                 val uri = runCatching { URI(endpoint) }.getOrNull()
@@ -78,14 +91,14 @@ class AdminSettingsService(
         if (req.vectorReindexIntervalMinutes !in 15..10080) throw BadRequestException("Choose a reindex interval between 15 and 10080 minutes")
         return AppSettings(
             storageProvider = provider, storageBucket = bucket,
-            storageRegion = req.storageRegion?.trim()?.ifBlank { null }, storageEndpoint = endpoint,
+            storageRegion = if (provider == "GCS") null else req.storageRegion?.trim()?.ifBlank { null }, storageEndpoint = endpoint,
             storageAccessKey = accessKey, storageSecretKey = secretKey,
             storageRootPath = normalizeRootPath(req.storageRootPath.trim()),
         )
     }
 
     fun storageSettingsForTest(req: AdminSettingsRequest) = validatedStorageSettings(req,
-        if (req.useServerIdentity == false && (req.storageAccessKey.isNullOrBlank() || req.storageSecretKey.isNullOrBlank())) currentEntity() else null)
+        if (req.useServerIdentity == false && (req.storageSecretKey.isNullOrBlank() || (req.storageProvider != "GCS" && req.storageAccessKey.isNullOrBlank()))) currentEntity() else null)
 
     @Transactional
     fun currentEntity(): AppSettings = loadOrCreate()

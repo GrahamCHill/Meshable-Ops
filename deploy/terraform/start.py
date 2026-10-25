@@ -24,6 +24,7 @@ def compose_environment(values: dict[str, str], role: str) -> dict[str, str]:
     result = dict(values)
     for key in set().union(*ROLES.values()):
         result.setdefault(key, "inactive-profile")
+    result["COMPOSE_PROFILES"] = role
     return result
 
 

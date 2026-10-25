@@ -1,0 +1,3 @@
+# Create private state storage with versioning first; use cloud identity, not keys.
+bucket = "YOUR_PRIVATE_STATE_BUCKET"
+prefix = "meshable-ops/production"

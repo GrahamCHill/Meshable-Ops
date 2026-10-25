@@ -1,0 +1,6 @@
+# Create private state storage with versioning first; use cloud identity, not keys.
+resource_group_name  = "YOUR_STATE_RESOURCE_GROUP"
+storage_account_name = "YOUR_STATE_STORAGE_ACCOUNT"
+container_name       = "tfstate"
+key                  = "meshable-ops/production/terraform.tfstate"
+use_azuread_auth     = true

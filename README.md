@@ -21,7 +21,6 @@ Meshable Ops is an extensible business workspace for teams that want control ove
 | **Processes and insight** | Optional visual workflow design and guided member runs, multiple Apache Superset dashboards, and permission-aware search with optional AI. [Workflows](docs/plugins/documents-and-workflows.md) · [Search](docs/search-and-indexing.md) |
 | **Connected teams** | SMTP/API email, notification templates and preferences, webhooks, personal calendar sync, and separate Git, Discord, Telegram, Teams, WhatsApp, Microsoft file and Google Drive plugins. [Plugins](docs/plugins/README.md) |
 | **Time, billing and service operations** | Optional project timesheets, ActivityWatch/TimeCamp imports, developer rates, invoices/quotes, billing replies, cloud costs and on-call escalation. [Operations plugins](docs/plugins/operations.md) |
-| **Time, billing and service operations** | Optional project timesheets, ActivityWatch/TimeCamp imports, developer rates, invoices/quotes, billing replies, cloud costs and on-call escalation. [Operations plugins](docs/plugins/operations.md) |
 | **Your workspace** | Business branding, ordered navigation, project/section icons, optional MFA, delegated administration, restricted external file access, encrypted secrets, and sandboxed ZIP extensions. [Access](docs/access-controls.md) · [Branding](docs/branding.md) · [Navigation](docs/navigation-and-icons.md) |
 
 ## Quick start
@@ -41,11 +40,12 @@ Open [localhost:3000](http://localhost:3000) and sign in with the credentials yo
 
 | Destination | Provisioning |
 | --- | --- |
-| **Existing Linux VM** | [GitHub Actions over SSH](docs/github-deployment.md), with Caddy HTTPS and the production Docker Compose stack. |
-| **AWS with Terraform** | [Dedicated VPC, routed subnet, firewall, EC2, Elastic IP, and private S3 storage](docs/terraform-deployment.md#aws). |
-| **Azure with Terraform** | [VNet, private VM, HTTP/HTTPS load balancer, explicit outbound access, private Blob container, and optional Bastion](docs/terraform-deployment.md#azure). |
+| **Existing Linux VM** | [Manual walkthrough](docs/linux-vm-deployment.md) or [GitHub Actions over SSH](docs/github-deployment.md), with Caddy HTTPS and production Compose. |
+| **AWS with Terraform** | [Private RDS PostgreSQL, separate app/services/runtime hosts, VPC routing/NAT, and S3](docs/terraform-deployment.md#aws). |
+| **Azure with Terraform** | [Private PostgreSQL Flexible Server, separate VM tiers, web load balancer, NAT, Blob, and optional Bastion](docs/terraform-deployment.md#azure). |
+| **GCP with Terraform** | [Private Cloud SQL, separate VM tiers, custom VPC/Cloud NAT, static web IP, and IAP administration](docs/terraform-deployment.md#gcp). |
 
-The cloud templates provision networking as well as compute/storage and bootstrap the same application stack. Supply your domain, credentials, and SSH key; follow the [Terraform deployment guide](docs/terraform-deployment.md) for DNS, private administration, and upgrades.
+The cloud templates provision networking and managed PostgreSQL, separating the application from private analytics/history and Python/plugin execution. Follow the [step-by-step Terraform guide](docs/terraform-deployment.md) for cloud access, DNS, verification and upgrades, and [environment settings](docs/deployment-environment.md) for exactly where credentials belong.
 
 ## Architecture
 
@@ -58,7 +58,7 @@ flowchart TB
     python["Private Python document services<br/>WeasyCanvas / WeasyPrint: documents and reports<br/>Content helper: bounded PDF, DOCX and text extraction"]
     plugins["Plugin host and optional providers<br/>Documents, workflows, boards, Git, calendars and chat<br/>ZIP frontend bundles + isolated Python / Kotlin workers"]
     analytics["Python: Apache Superset<br/>Embedded dashboards and admin authoring<br/>Separate metadata, Redis, Celery worker and beat"]
-    ci["GitHub Actions, Terraform and Python setup helpers<br/>Checks, releases, VM deployment on AWS / Azure"]
+    ci["GitHub Actions, Terraform and Python setup helpers<br/>Checks, releases, split deployments on AWS / Azure / GCP"]
     users --> web --> api
     web --> analytics
     api --> state & python & plugins

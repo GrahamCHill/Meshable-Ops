@@ -6,11 +6,10 @@ Uploaded Python/Kotlin backend plugins use the private `plugin-runner` service a
 
 For independent template copies deploying automatically to an existing Linux VM, follow [GitHub Actions deployment](github-deployment.md). It includes fresh-instance credentials, an initializer without development users, verified SSH, and persisted release/data directories.
 
-For a new cloud installation, use the [AWS or Azure Terraform guide](terraform-deployment.md).
-The modules provision their network, VM, restricted ingress, outbound connectivity, and object storage,
-then bootstrap the production Compose stack. AWS uses a dedicated VPC and EC2 instance role;
-Azure uses a private VM behind a load balancer, managed identity, and optional Bastion for administration.
-Neither option needs long-lived object-storage keys. The module entrypoints are under [`infra/`](../infra/README.md).
+For a new cloud installation, use the [AWS, Azure or GCP Terraform walkthrough](terraform-deployment.md).
+The modules provision managed PostgreSQL and separate application, private analytics/history, and private Python/plugin runtime hosts, with restricted ingress and explicit outbound connectivity.
+AWS/Azure also provision private object storage accessed by the app's cloud identity; GCP uses a separately configured S3/Blob connection.
+See [`infra/`](../infra/README.md), [environment file locations](deployment-environment.md), or the [manual Linux VM walkthrough](linux-vm-deployment.md).
 
 This guide explains the practical deployment shapes supported by this repository and how the built-in reverse-proxy setup is intended to be used.
 
@@ -167,10 +166,12 @@ The production override expects `.env.production` to provide at least:
 - `APP_DOMAIN`
 - `ACME_EMAIL`
 - `JWT_SECRET`
+- `POSTGRES_PASSWORD` and `MONGO_PASSWORD`
 - `APP_SECRETS_ENCRYPTION_KEY` before storing API/storage credentials or upgrading rows that already contain them
 - `SUPERSET_SECRET_KEY`
 - `GUEST_TOKEN_JWT_SECRET`
 - `SUPERSET_ADMIN_PASSWORD`
+- `APP_DOCUMENT_RENDER_TOKEN` and `APP_PLUGIN_RUNNER_TOKEN`
 - `APP_BOOTSTRAP_USERS_JSON`
 
 If you offload services, also override any relevant connection settings for:
@@ -194,11 +195,13 @@ All profiles start without implicit accounts or sample content. `APP_BOOTSTRAP_U
 
 ## Recommended Rollout Steps
 
+These are single-host Compose steps. Use the complete [manual Linux walkthrough](linux-vm-deployment.md), [GitHub release guide](github-deployment.md), or [split Terraform deployment](terraform-deployment.md) for the matching layout and exact credential locations.
+
 1. Provision the VM.
 2. Install Docker Engine and the Docker Compose plugin.
 3. Clone the repository.
-4. Copy `.env.production.example` to `.env.production`.
-5. Replace placeholder secrets and configure the persistent wrapping key; review database credentials and seeded accounts as described above.
+4. Run `deploy/github/setup-instance.py` with your hostname/admin/ACME email and `--output .env.production` to generate private fresh-instance settings.
+5. Preserve the generated secrets and persistent wrapping key; review database credentials and initial accounts as described above.
 6. Set `APP_DOMAIN`, `ACME_EMAIL`, and `APP_BOOTSTRAP_USERS_JSON`.
 7. Confirm nothing else is binding `80/443`.
 8. Point DNS at the VM.

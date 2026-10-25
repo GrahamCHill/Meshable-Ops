@@ -1,37 +1,40 @@
 # Terraform deployments
 
-Provision Meshable Ops on AWS or Azure, including its network, Linux VM, web ingress, and object storage. Cloud-init installs the production Docker Compose stack. Use the [deployment guide](../docs/terraform-deployment.md) for credentials, DNS/TLS, administration, backups, and upgrades.
+Provision Meshable Ops on **AWS, Azure or GCP** with managed PostgreSQL and separate app, private services and private runtime hosts. Follow the [step-by-step deployment guide](../docs/terraform-deployment.md) and [environment-file guide](../docs/deployment-environment.md).
 
-| Module | Network and services |
+| Module | Provisioned services |
 | --- | --- |
-| [AWS](aws/) | Dedicated DNS-enabled VPC, app subnet, internet gateway, route table/association, security group, EC2, managed Elastic IP, and private S3 buckets. No default VPC is required. SSH is restricted to `admin_cidr`. |
-| [Azure](azure/) | VNet, private app subnet/NIC, NSG, private Linux VM, Standard public load balancer for TCP 80/443, explicit outbound SNAT, and private Blob container. Optional Standard Bastion supplies private administration without an existing VPN. |
+| [AWS](aws/) | Dedicated VPC, explicit public/private/isolated database routing, app EC2/Elastic IP, two private EC2 hosts, NAT, private Multi-AZ RDS PostgreSQL, scoped instance identity and private S3 buckets |
+| [Azure](azure/) | VNet/subnets, three private VMs, web-only Standard load balancer, explicit outbound connectivity, NAT for private services, delegated/private-DNS PostgreSQL Flexible Server, managed-identity Blob access and optional Bastion |
+| [GCP](gcp/) | Custom VPC/subnets, app VM/static IP, two private VMs, Cloud NAT, private-service-access Cloud SQL, OS Login/IAP administration and dedicated service accounts |
 
-These are single-VM deployments. PostgreSQL/pgvector, MongoDB, Redis, Superset, and the private Python document services run in Compose; they are not publicly exposed or replaced with managed database services. Object access uses an EC2 instance role or Azure managed identity, with no stored storage keys.
+The app host runs Caddy, React/nginx and Kotlin. Superset/Celery/Redis/MongoDB run on the private services host. Python extraction, PDF rendering and isolated Python/Kotlin plugin execution run on the private runtime host. PostgreSQL/pgvector and Superset metadata use separate managed databases/accounts. GCP original-file storage is configured separately through the existing S3/Blob adapters.
 
 ## Start
 
-Authenticate to your chosen cloud and install Terraform **1.7+**. From the repository root:
+Authenticate your cloud CLI/SDK and install Terraform **1.10+**, Python 3 and Git. From the repository root, using Bash:
 
 ```bash
-cd infra/aws # or infra/azure
+cd infra/gcp # or infra/aws or infra/azure
 cp terraform.tfvars.example terraform.tfvars
-# Edit the copied inputs: repository, domain, SSH key, initial super admin, and secrets.
-terraform init
+# Edit cloud/project, repository/ref, domain, network/admin access and sizing.
+python3 ../../deploy/github/setup-terraform-secrets.py --admin-email owner@example.com
+# Configure backend.tf/state.tfbackend from the supplied examples first.
+terraform init -backend-config=state.tfbackend
 terraform fmt -check -recursive
 terraform validate
 terraform plan -out=deployment.tfplan
 terraform apply deployment.tfplan
 ```
 
-The Azure example opts into billed Bastion resources; the module default is off. Alternatively supply `admin_cidr` and actual existing private connectivity. Setting a CIDR alone does not provision a VPN or peering connection. Application DNS is owner-managed: point your hostname's A record at `terraform output -raw public_ip` so Caddy can obtain its certificate.
+Read the guide's provider-specific permissions, HA/region requirements, DNS and administration steps before applying. Inputs/state/bootstrap metadata contain secrets. Protect them and configure an encrypted remote state backend with locking. Defaults include billed managed database HA and private-host outbound networking.
 
-Protect Terraform state, saved plans, and the generated server `.env.production`; all can contain credentials. Use an encrypted remote backend with access controls and locking for shared environments. Database/object backups and the persistent wrapping key remain necessary.
+Cloud-init writes private role settings to `/opt/contract-app/.env.production`. Run `sudo python3 deploy/terraform/start.py --role ROLE` on that host to apply its existing settings. Do not start the ordinary single-host Compose stack on these machines.
 
-## Checks
+## Organization and checks
 
-After initialization, run `terraform test` in either module. Mocked providers check routing, ingress restrictions, outbound access, optional Bastion, identity, and storage protection without cloud credentials or resources. GitHub Actions runs these checks for both providers; cloud provisioning remains an explicit owner action.
+Each cloud directory is a root module. Networking, firewalls, managed databases, compute, identity and storage are split by responsibility. Shared [role environments](modules/split-stack/) and [cloud-init generation](modules/host-bootstrap/) avoid three independent bootstrap implementations. [Split Compose](../deploy/terraform/compose.split.yml) selects the services for each host.
 
-Each directory is one root module. `networking.tf`, `network-security.tf`, `compute.tf`, `identity.tf`, and `storage.tf` separate responsibilities. Azure adds `load-balancer.tf`, `bastion.tf`, and `resource-group.tf`; `cloud-init.tftpl` bootstraps Compose. Inputs and outputs live in `variables.tf` and `outputs.tf`.
+Run `terraform test` after initialization in each cloud directory. All provider resources are mocked; tests create no real cloud resources. GitHub Actions validates AWS/Azure/GCP and checks the split Compose roles without starting them.
 
-Before applying updated modules to an existing installation, read the [migration notes](../docs/terraform-deployment.md#existing-installations). Moving AWS from its former default VPC to the dedicated VPC replaces the VM; Terraform does not migrate Docker volume data.
+The old all-in-one Terraform layouts require a [planned migration](../docs/terraform-deployment.md#existing-installations). Applying updated user data/custom data can replace VMs and does not migrate Docker volumes. Managed PostgreSQL backups are not a backup of MongoDB, original files or wrapping keys.

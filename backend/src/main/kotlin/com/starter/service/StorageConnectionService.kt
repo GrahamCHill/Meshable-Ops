@@ -41,7 +41,9 @@ class StorageConnectionService(
         val sameService = existing?.provider == req.provider && existing.endpoint == req.endpoint?.trim()?.ifBlank { null }
         val access = if (req.useServerIdentity) null else req.accessKey?.trim()?.ifBlank { null } ?: existing?.accessKey?.takeIf { sameService }
         val secret = if (req.useServerIdentity) null else req.secretKey?.trim()?.ifBlank { null } ?: existing?.secretKey?.takeIf { sameService }
-        if (!req.useServerIdentity && (access == null || secret == null)) throw BadRequestException("Enter both credentials or use server identity")
+        if (!req.useServerIdentity && (secret == null || (req.provider != "GCS" && access == null))) {
+            throw BadRequestException(if (req.provider == "GCS") "Enter service account JSON or use server identity" else "Enter both credentials or use server identity")
+        }
         if (!req.useServerIdentity && existing?.secretKey != null && access != existing.accessKey && req.secretKey.isNullOrBlank()) {
             throw BadRequestException("Enter a new secret when changing the account or access key")
         }
@@ -51,7 +53,7 @@ class StorageConnectionService(
             storageEndpoint = req.endpoint, storageAccessKey = access, storageSecretKey = secret,
             storageRootPath = base.ifBlank { "folders" },
         ))
-        if (validated.storageProvider == "NONE") throw BadRequestException("Choose S3 or Azure Blob")
+        if (validated.storageProvider == "NONE") throw BadRequestException("Choose S3, Azure Blob, or Google Cloud Storage")
         if (!validated.storageAccessKey.isNullOrBlank() || !validated.storageSecretKey.isNullOrBlank()) encryption.requireConfigured()
         if (existing != null && items.findAllByStorageConnectionIdOrderByTitleAsc(existing.id).isNotEmpty() &&
             (existing.provider != validated.storageProvider || existing.bucket != validated.storageBucket || existing.endpoint != validated.storageEndpoint || existing.basePath != base)) {

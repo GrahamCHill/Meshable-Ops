@@ -1,4 +1,5 @@
-repository_url = "https://github.com/example/Contract-Management-Tool.git"
+repository_url = "https://github.com/YOUR-ORG/YOUR-REPO.git"
+repository_ref = "main" # Prefer a tested release tag in production.
 app_domain = "contracts.example.com"
 acme_email = "admin@example.com"
 ssh_public_key = "ssh-ed25519 AAAA..."
@@ -7,8 +8,11 @@ enable_bastion = true
 # Alternatively disable Bastion and provide a CIDR with actual private VPN/peering connectivity.
 # admin_cidr = "10.50.0.0/24"
 vnet_cidr = "10.40.0.0/16"
-jwt_secret = "replace-with-a-long-random-value"
-superset_secret_key = "replace-with-a-long-random-value"
-guest_token_jwt_secret = "replace-with-a-long-random-value"
-superset_admin_password = "replace-with-a-strong-password"
-bootstrap_users_json = "[{\"email\":\"admin@example.com\",\"username\":\"admin\",\"password\":\"replace-me\",\"role\":\"SUPER_ADMIN\"}]"
+vm_size                    = "Standard_D4s_v5"
+service_vm_size            = "Standard_D4s_v5"
+database_sku               = "GP_Standard_D2ds_v5"
+database_high_availability = true
+database_zone              = "1"
+database_standby_zone      = "2"
+# Run: python3 ../../deploy/github/setup-terraform-secrets.py --admin-email owner@example.com
+# This creates the private, automatically loaded bootstrap.auto.tfvars.json.

@@ -89,6 +89,26 @@ run "private_vm_and_managed_storage" {
   command = apply
 
   assert {
+    condition = (
+      alltrue([for nic in azurerm_network_interface.private : nic.ip_configuration[0].public_ip_address_id == null]) &&
+      alltrue([for subnet in azurerm_subnet.private : !subnet.default_outbound_access_enabled]) &&
+      alltrue([for association in azurerm_subnet_nat_gateway_association.private : association.nat_gateway_id == azurerm_nat_gateway.private.id]) &&
+      alltrue([for nsg in azurerm_network_security_group.private : one([for rule in nsg.security_rule : rule if rule.name == "from-app"]).source_address_prefix == "${local.private_ips.app}/32" && one([for rule in nsg.security_rule : rule if rule.name == "deny-other-inbound"]).access == "Deny"]) &&
+      !azurerm_postgresql_flexible_server.app.public_network_access_enabled &&
+      azurerm_postgresql_flexible_server.app.delegated_subnet_id == azurerm_subnet.database.id &&
+      azurerm_postgresql_flexible_server.app.private_dns_zone_id == azurerm_private_dns_zone.database.id &&
+      azurerm_private_dns_zone_virtual_network_link.database.virtual_network_id == azurerm_virtual_network.app.id &&
+      azurerm_postgresql_flexible_server.app.backup_retention_days == 14 &&
+      azurerm_postgresql_flexible_server.app.high_availability[0].mode == "ZoneRedundant" &&
+      azurerm_postgresql_flexible_server_configuration.app["require_secure_transport"].value == "on" &&
+      azurerm_postgresql_flexible_server_configuration.app["azure.extensions"].value == "VECTOR,UUID-OSSP" &&
+      azurerm_management_lock.database.lock_level == "CanNotDelete" &&
+      !strcontains(base64decode(yamldecode(module.bootstrap.cloud_init["runtime"]).write_files[0].content), "POSTGRES_PASSWORD=")
+    )
+    error_message = "Private roles need explicit NAT/firewalls and a private-DNS, delegated, HA managed PostgreSQL server with TLS and pgvector support."
+  }
+
+  assert {
     condition     = azurerm_network_interface.app.ip_configuration[0].public_ip_address_id == null
     error_message = "The VM NIC must not have a public IP."
   }

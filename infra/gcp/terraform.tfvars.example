@@ -9,6 +9,11 @@ region       = "us-central1"
 zone         = "us-central1-a" # Must belong to region.
 subnet_cidr  = "10.44.1.0/24"
 machine_type = "e2-standard-4"
+private_subnet_cidr        = "10.44.2.0/24"
+database_peering_address   = "10.45.0.0" # A reserved /16; must not overlap either subnet.
+service_machine_type      = "e2-standard-4"
+database_tier             = "db-custom-2-7680"
+database_high_availability = true
 
 # Generate bootstrap.auto.tfvars.json using the deployment guide.
 # Leave deletion protection on; it guards replacement as well as deletion.

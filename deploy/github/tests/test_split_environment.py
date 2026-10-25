@@ -28,3 +28,5 @@ class SplitEnvironmentTests(unittest.TestCase):
         self.assertEqual(result["APP_PLUGIN_RUNNER_TOKEN"], "a-real-token")
         self.assertEqual(result["POSTGRES_PASSWORD"], "inactive-profile")
         self.assertEqual(result["JWT_SECRET"], "inactive-profile")
+        values["COMPOSE_PROFILES"] = "local-database,app,services,runtime"
+        self.assertEqual(module.compose_environment(values, "runtime")["COMPOSE_PROFILES"], "runtime")

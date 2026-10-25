@@ -37,8 +37,43 @@ variables {
   bootstrap_users_json       = "[{\"email\":\"owner@example.com\",\"username\":\"admin\",\"password\":\"test-only-$pass'word\",\"role\":\"SUPER_ADMIN\"}]"
 }
 
+override_resource {
+  target = google_service_account.private["services"]
+  values = {
+    email = "meshable-ops-services@meshable-test-project.iam.gserviceaccount.com"
+    name  = "projects/meshable-test-project/serviceAccounts/meshable-ops-services@meshable-test-project.iam.gserviceaccount.com"
+  }
+}
+override_resource {
+  target = google_service_account.private["runtime"]
+  values = {
+    email = "meshable-ops-runtime@meshable-test-project.iam.gserviceaccount.com"
+    name  = "projects/meshable-test-project/serviceAccounts/meshable-ops-runtime@meshable-test-project.iam.gserviceaccount.com"
+  }
+}
+
 run "explicit_network_and_iap_administration" {
   command = apply
+
+  assert {
+    condition = (
+      alltrue([for host in google_compute_instance.private : length(host.network_interface[0].access_config) == 0 && host.network_interface[0].subnetwork == google_compute_subnetwork.private.id]) &&
+      google_compute_router_nat.private.source_subnetwork_ip_ranges_to_nat == "LIST_OF_SUBNETWORKS" &&
+      one(google_compute_router_nat.private.subnetwork).name == google_compute_subnetwork.private.id &&
+      !google_sql_database_instance.app.settings[0].ip_configuration[0].ipv4_enabled &&
+      google_sql_database_instance.app.settings[0].ip_configuration[0].private_network == google_compute_network.app.id &&
+      google_sql_database_instance.app.settings[0].ip_configuration[0].ssl_mode == "ENCRYPTED_ONLY" &&
+      google_sql_database_instance.app.settings[0].availability_type == "REGIONAL" &&
+      google_sql_database_instance.app.deletion_protection && google_sql_database_instance.app.settings[0].deletion_protection_enabled &&
+      google_sql_database_instance.app.settings[0].backup_configuration[0].point_in_time_recovery_enabled &&
+      google_compute_firewall.database_clients.target_service_accounts == toset([google_service_account.app.email, google_service_account.private["services"].email]) &&
+      !contains(google_compute_firewall.database_clients.target_service_accounts, google_service_account.private["runtime"].email) &&
+      google_compute_firewall.database_clients.priority < google_compute_firewall.database_deny.priority &&
+      google_compute_firewall.database_deny.destination_ranges == google_compute_firewall.database_clients.destination_ranges &&
+      length(google_compute_instance_iam_member.private_admin) == 2 * length(var.admin_members)
+    )
+    error_message = "Keep service VMs and HA Cloud SQL private, supply Cloud NAT, require verified TLS/PITR, exclude runtime database access and grant private-host administration."
+  }
 
   assert {
     condition = (

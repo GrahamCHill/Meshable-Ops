@@ -33,3 +33,7 @@ output "database_host" {
   value = azurerm_postgresql_flexible_server.app.fqdn
 }
 
+output "private_vm_ids" {
+  value = { for role, vm in azurerm_linux_virtual_machine.private : role => vm.id }
+}
+

@@ -1,0 +1,6 @@
+# Create private state storage with versioning first; use cloud identity, not keys.
+bucket       = "YOUR_PRIVATE_STATE_BUCKET"
+key          = "meshable-ops/production/terraform.tfstate"
+region       = "us-east-1" # Region of the state bucket, not necessarily the app.
+encrypt      = true
+use_lockfile = true

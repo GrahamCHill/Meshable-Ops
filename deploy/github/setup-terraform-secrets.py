@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import sys
 
 from instance import email, password
 from private_config import open_terraform_secrets
@@ -46,6 +47,8 @@ def main() -> None:
     admin_email = email(args.admin_email)
     if args.output.exists() or args.output.is_symlink():
         parser.error("Bootstrap inputs already exist; retain them for updates. This helper is for fresh instances.")
+    if not sys.stdin.isatty():
+        parser.error("Use an interactive terminal for the private password prompt; automation should supply protected Terraform inputs directly.")
     admin_password = getpass.getpass("Initial Meshable Ops admin password: ")
     if admin_password != getpass.getpass("Confirm password: "):
         parser.error("Passwords do not match")

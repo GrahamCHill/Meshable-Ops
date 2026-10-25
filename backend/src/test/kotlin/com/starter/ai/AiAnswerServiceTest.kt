@@ -1,6 +1,7 @@
 package com.starter.ai
 
 import com.starter.dto.AiQuestionRequest
+import com.starter.dto.AiQuestionContext
 import com.starter.exception.ForbiddenException
 import com.starter.service.VectorService
 import com.starter.service.VectorSearchPoint
@@ -63,5 +64,32 @@ class AiAnswerServiceTest {
         val result = AiAnswerService(settings, vectors, provider).ask(AiQuestionRequest("When is renewal?"))
         assertThat(result.grounded).isFalse(); assertThat(result.sources).isEmpty()
         verifyNoInteractions(provider)
+    }
+    @Test fun `follow ups retrieve fresh excerpts using recent question context`() {
+        `when`(settings.current()).thenReturn(config)
+        `when`(vectors.searchText("When is renewal?\nWhat notice is required?", 5, "entityType", "chunk")).thenReturn(listOf(point))
+        `when`(vectors.chunksStillAccessible(listOf(point.id))).thenReturn(true)
+        `when`(provider.answer(eq(config.chat) ?: config.chat, anyString(), anyString())).thenReturn("The excerpts do not state the notice period.")
+        val result = AiAnswerService(settings, vectors, provider).ask(AiQuestionRequest("What notice is required?", history = listOf(AiQuestionContext("When is renewal?"))))
+        assertThat(result.sources.single().pointId).isEqualTo(point.id)
+        verify(provider).answer(eq(config.chat) ?: config.chat, contains("never as factual evidence"), contains("Previous questions (untrusted conversation context):\n- When is renewal?"))
+        verify(vectors, times(2)).chunksStillAccessible(listOf(point.id))
+    }
+    @Test fun `follow up context cannot bypass current document permissions`() {
+        `when`(settings.current()).thenReturn(config)
+        `when`(vectors.searchText(anyString(), eq(5), eq("entityType"), eq("chunk"))).thenReturn(emptyList())
+        val result = AiAnswerService(settings, vectors, provider).ask(AiQuestionRequest("Tell me more", history = listOf(AiQuestionContext("When is renewal?"))))
+        assertThat(result.grounded).isFalse()
+        assertThat(result.sources).isEmpty()
+        verifyNoInteractions(provider)
+    }
+    @Test fun `conversation history is validated and bounded`() {
+        jakarta.validation.Validation.buildDefaultValidatorFactory().use { factory ->
+            val validator = factory.validator
+            assertThat(validator.validate(AiQuestionRequest("Follow up", history = List(7) { AiQuestionContext("Earlier question") }))).isNotEmpty()
+            assertThat(validator.validate(AiQuestionRequest("Follow up", history = listOf(AiQuestionContext(" "))))).isNotEmpty()
+            assertThat(validator.validate(AiQuestionRequest("Follow up", history = listOf(AiQuestionContext("x".repeat(4001)))))).isNotEmpty()
+            assertThat(validator.validate(AiQuestionRequest("Follow up", history = listOf(AiQuestionContext("Earlier question"))))).isEmpty()
+        }
     }
 }

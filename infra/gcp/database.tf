@@ -22,7 +22,6 @@ resource "google_service_networking_connection" "database" {
   network                 = google_compute_network.app.id
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.database.name]
-  deletion_policy         = "ABANDON"
 }
 resource "google_sql_database_instance" "app" {
   depends_on          = [google_service_networking_connection.database]

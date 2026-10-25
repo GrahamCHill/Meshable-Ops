@@ -2,7 +2,9 @@
 
 Each copy of Meshable Ops can run its own checks and deploy to an existing Linux VM over SSH. Actions sends the tested source revision and Docker builds it on the VM; no registry account is needed. Deployment stays off until the new repository's owner configures it.
 
-To provision the host and its network first, use [AWS or Azure Terraform](terraform-deployment.md). The bundled Actions deployment expects direct SSH reachability from its runner. For Azure's private VM, use a Linux runner with private connectivity and set `DEPLOY_RUNNER` to its label; the public application load balancer does not forward SSH, and this workflow does not automatically create a Bastion tunnel. AWS's trusted SSH source must also include the deployment runner. Terraform bootstrap deploys the app independently of Actions. The shared checks validate both cloud modules with mocked providers and never apply cloud infrastructure.
+This workflow deploys a single-host Compose installation. The [AWS/Azure/GCP Terraform modules](terraform-deployment.md) now deploy managed PostgreSQL and three separate host roles; the bundled release job does not orchestrate those roles or IAP/Bastion tunnels. Use the Terraform guide's role-aware update commands for those installations. Do not deploy this single-host stack onto a split-tier host unchanged. Shared checks validate all three cloud modules with mocked providers and never apply cloud infrastructure.
+
+The runner needs verified direct SSH reachability to its single-host target. Use a dedicated Linux runner with private connectivity or a trusted fixed outbound IP as appropriate and set `DEPLOY_RUNNER` to its label. The [manual Linux walkthrough](linux-vm-deployment.md) covers a fresh host; [settings and secrets](deployment-environment.md) explains runtime versus GitHub credential locations.
 
 ## Create your copy
 

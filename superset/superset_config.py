@@ -1,5 +1,5 @@
 import os
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 from flask_caching.backends.rediscache import RedisCache
 from superset.security import SupersetSecurityManager
 
@@ -16,23 +16,26 @@ CUSTOM_SECURITY_MANAGER = WorkspaceSecurityManager
 
 # ─── Core ─────────────────────────────────────────────────────────────────────
 SECRET_KEY = os.environ["SUPERSET_SECRET_KEY"]
-SQLALCHEMY_DATABASE_URI = (
-    f"postgresql+psycopg2://"
-    f"{quote_plus(os.environ.get('DATABASE_USER', 'superset_user'))}:"
-    f"{quote_plus(os.environ['DATABASE_PASSWORD'])}@"
-    f"{os.environ.get('DATABASE_HOST', 'postgres')}:"
-    f"{os.environ.get('DATABASE_PORT', '5432')}/"
-    f"{os.environ.get('DATABASE_DB', 'superset')}"
-)
+def workspace_database_uri():
+    uri = (
+        f"postgresql+psycopg2://"
+        f"{quote_plus(os.environ.get('DATABASE_USER', 'superset_user'))}:"
+        f"{quote_plus(os.environ['DATABASE_PASSWORD'])}@"
+        f"{os.environ.get('DATABASE_HOST', 'postgres')}:"
+        f"{os.environ.get('DATABASE_PORT', '5432')}/"
+        f"{os.environ.get('DATABASE_DB', 'superset')}"
+    )
+    # Local Compose retains its Docker-network connection; managed PostgreSQL
+    # verifies the provider CA and, where available, the endpoint hostname.
+    if os.environ.get("DATABASE_SSL_MODE"):
+        uri += "?" + urlencode({
+            "sslmode": os.environ["DATABASE_SSL_MODE"],
+            "sslrootcert": os.environ["DATABASE_SSL_ROOT_CERT"],
+        })
+    return uri
 
-# Managed PostgreSQL connections validate the provider CA. Local Compose keeps
-# its original Docker-network connection when no TLS mode is configured.
-if os.environ.get("DATABASE_SSL_MODE"):
-    from urllib.parse import urlencode
-    SQLALCHEMY_DATABASE_URI += "?" + urlencode({
-        "sslmode": os.environ["DATABASE_SSL_MODE"],
-        "sslrootcert": os.environ["DATABASE_SSL_ROOT_CERT"],
-    })
+
+SQLALCHEMY_DATABASE_URI = workspace_database_uri()
 
 # ─── Redis cache + Celery ─────────────────────────────────────────────────────
 REDIS_HOST = os.environ.get("REDIS_HOST", "redis")

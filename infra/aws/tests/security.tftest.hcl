@@ -48,6 +48,26 @@ run "secure_storage_and_explicit_networking" {
 
   assert {
     condition = (
+      alltrue([for host in aws_instance.private : !host.associate_public_ip_address && host.subnet_id == aws_subnet.services.id && host.root_block_device[0].encrypted]) &&
+      aws_route.services_outbound.nat_gateway_id == aws_nat_gateway.services.id &&
+      aws_route_table_association.services.route_table_id == aws_route_table.services.id &&
+      alltrue([for subnet in aws_subnet.database : !subnet.map_public_ip_on_launch]) &&
+      length(toset([for subnet in aws_subnet.database : subnet.availability_zone])) == 2 &&
+      aws_db_instance.app.db_subnet_group_name == aws_db_subnet_group.app.name &&
+      !aws_db_instance.app.publicly_accessible && aws_db_instance.app.storage_encrypted && aws_db_instance.app.multi_az &&
+      aws_db_instance.app.deletion_protection && aws_db_instance.app.backup_retention_period == 14 &&
+      !aws_db_instance.app.skip_final_snapshot && one(aws_db_parameter_group.app.parameter).value == "1" &&
+      aws_vpc_security_group_ingress_rule.private["app_sql"].referenced_security_group_id == aws_security_group.app.id &&
+      aws_vpc_security_group_ingress_rule.private["analytics_sql"].referenced_security_group_id == aws_security_group.private["services"].id &&
+      length([for rule in aws_vpc_security_group_ingress_rule.private : rule if rule.security_group_id == aws_security_group.private["database"].id]) == 2 &&
+      !strcontains(base64decode(yamldecode(module.bootstrap.cloud_init["runtime"]).write_files[0].content), "POSTGRES_PASSWORD=") &&
+      !strcontains(base64decode(yamldecode(module.bootstrap.cloud_init["app"]).write_files[0].content), "POSTGRES_ADMIN_PASSWORD=")
+    )
+    error_message = "Keep service hosts private behind NAT, isolate the managed HA database, enforce encrypted backups/TLS, and keep database secrets off runtime hosts."
+  }
+
+  assert {
+    condition = (
       aws_vpc.app.enable_dns_support && aws_vpc.app.enable_dns_hostnames &&
       aws_subnet.app.vpc_id == aws_vpc.app.id && !aws_subnet.app.map_public_ip_on_launch &&
       aws_instance.app.subnet_id == aws_subnet.app.id && aws_security_group.app.vpc_id == aws_vpc.app.id &&

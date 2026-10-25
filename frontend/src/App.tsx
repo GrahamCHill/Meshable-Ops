@@ -44,6 +44,7 @@ const ProjectsPage = lazy(() => import('./components/pages/ProjectsPage'))
 const ProjectDetailPage = lazy(() => import('./components/pages/ProjectDetailPage'))
 const ClientDetailPage = lazy(() => import('./components/pages/ClientDetailPage'))
 const AdminProjectSettingsPage = lazy(() => import('./components/pages/AdminProjectSettingsPage'))
+const AdminReportCoversPage = lazy(() => import('./components/pages/AdminReportCoversPage'))
 const UserSettingsPage = lazy(() => import('./components/pages/UserSettingsPage'))
 const AdminNavigationPage = lazy(() => import('./components/pages/AdminNavigationPage'))
 const loading = (children: React.ReactNode) => <Suspense fallback={<p role="status">Loading workspace…</p>}>{children}</Suspense>
@@ -88,6 +89,7 @@ function App() {
                     } />
                     <Route path="/admin/access-controls" element={<AdminRoute>{loading(<AdminAccessPage />)}</AdminRoute>} />
                     <Route path="/admin/projects" element={<AdminRoute>{loading(<AdminProjectSettingsPage />)}</AdminRoute>} />
+                    <Route path="/admin/projects/report-covers" element={<AdminRoute>{loading(<AdminReportCoversPage />)}</AdminRoute>} />
                     <Route path="/projects" element={loading(<ProjectsPage />)} />
                     <Route path="/projects/clients/:clientId" element={loading(<ClientDetailPage />)} />
                     <Route path="/projects/:projectId" element={loading(<ProjectDetailPage />)} />

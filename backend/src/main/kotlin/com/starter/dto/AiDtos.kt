@@ -39,6 +39,11 @@ data class AiModelCheckResponse(val status: AiModelCheckStatus, val model: Strin
     val requiredDimensions: Int? = null, val actualDimensions: Int? = null, val suggestedSendDimensions: Boolean? = null)
 data class AiSearchStatus(val enabled: Boolean, val indexContent: Boolean, val embeddingProvider: AiProvider, val dimensions: Int = EmbeddingDimensions.SIZE,
     val searchEnabled: Boolean = true, val launcherEnabled: Boolean = true)
-data class AiQuestionRequest(@field:NotBlank @field:Size(max = 4000) val query: String, @field:Min(1) @field:Max(8) val limit: Int = 5)
+data class AiQuestionContext(@field:NotBlank @field:Size(max = 4000) val query: String)
+data class AiQuestionRequest(
+    @field:NotBlank @field:Size(max = 4000) val query: String,
+    @field:Min(1) @field:Max(8) val limit: Int = 5,
+    @field:Valid @field:Size(max = 6) val history: List<AiQuestionContext> = emptyList(),
+)
 data class AiSource(val number: Int, val pointId: String, val documentId: String, val folderId: String, val title: String, val path: String, val excerpt: String, val score: Float)
 data class AiAnswerResponse(val answer: String, val sources: List<AiSource>, val model: String?, val grounded: Boolean)

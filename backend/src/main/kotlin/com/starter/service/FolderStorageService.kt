@@ -88,6 +88,11 @@ class FolderStorageService(
                     404 -> "Container not found. Check the container name and Blob service endpoint."
                     else -> "Azure rejected the request. Check the container, endpoint, and credentials."
                 }
+                is com.google.cloud.storage.StorageException -> when (ex.code) {
+                    401, 403 -> "Access denied. Check the Google service account or server identity and its storage.objects.list permission on this bucket."
+                    404 -> "Bucket not found. Check the Google Cloud Storage bucket name."
+                    else -> "Google Cloud Storage rejected the request. Check the bucket and authentication settings."
+                }
                 else -> "Could not reach storage or resolve credentials. Check the service endpoint, server network access, and authentication settings."
             }
             throw BadRequestException(hint)
