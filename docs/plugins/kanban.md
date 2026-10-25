@@ -1,6 +1,6 @@
 # Kanban boards 1.6.0
 
-The optional Kanban plugin provides a board-card directory and Jira-style **Board**, **Backlog**, **List**, and **Summary** views. The separate [Jira, Figma and Mermaid project plugins](project-integrations.md) start at **1.0.0**. Plugin versions are separate from the host release used by `compatibleVersions`.
+The optional Kanban plugin provides a board-card directory with **Summary**, **Board**, **Backlog**, and **List** views, in that order. Boards open on **Summary** by default. The separate [Jira, Figma and Mermaid project plugins](project-integrations.md) start at **1.0.0**. Plugin versions are separate from the host release used by `compatibleVersions`.
 
 ## Boards and columns
 

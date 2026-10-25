@@ -29,7 +29,7 @@ export function BoardEditor({initial, onSaved, readOnly = false}: Readonly<{init
   const [editing, setEditing] = useState<BoardCard>()
   const [deleting,setDeleting] = useState<BoardCard>()
   const [configure, setConfigure] = useState(false)
-  const [tab, setTab] = useState('board')
+  const [tab, setTab] = useState('summary')
   const [filters, setFilters] = useState<BoardFilters>(emptyFilters)
   const [group, setGroup] = useState<BoardGroup>('none')
   const [sprintDialog, setSprintDialog] = useState<SprintDialogAction>()
@@ -112,7 +112,7 @@ export function BoardEditor({initial, onSaved, readOnly = false}: Readonly<{init
       <Button variant={active ? 'secondary' : 'primary'} disabled={!canCreate} onClick={() => add(draft.content.columns[0].id)}><Plus size={15}/> Create ticket</Button>
     </div></div>
     {draft.projectId&&<ProjectRepositoryShortcuts projectId={draft.projectId}/>}
-    <nav className="workspace-tabs kanban-view-tabs" aria-label="Board views">{[['board', 'Board'], ['backlog', 'Backlog'], ['list', 'List'], ['summary', 'Summary']].map(([key, label]) => <button key={key} aria-current={tab === key ? 'page' : undefined} onClick={() => setTab(key)}>{label}</button>)}</nav>
+    <nav className="workspace-tabs kanban-view-tabs" aria-label="Board views">{[['summary', 'Summary'], ['board', 'Board'], ['backlog', 'Backlog'], ['list', 'List']].map(([key, label]) => <button key={key} aria-current={tab === key ? 'page' : undefined} onClick={() => setTab(key)}>{label}</button>)}</nav>
     {readOnly && <p className="field-help">Read-only board. You can inspect tickets and comments.</p>}
     {tab !== 'summary' && <BoardToolbar content={draft.content} people={people} filters={filters} onChange={setFilters} group={group} onGroup={setGroup} count={parents.length} showGrouping={tab === 'board'}/>}
     {busy && <p role="status" className="kanban-save-state">Saving changes…</p>}

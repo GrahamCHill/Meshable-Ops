@@ -25,6 +25,15 @@ SQLALCHEMY_DATABASE_URI = (
     f"{os.environ.get('DATABASE_DB', 'superset')}"
 )
 
+# Managed PostgreSQL connections validate the provider CA. Local Compose keeps
+# its original Docker-network connection when no TLS mode is configured.
+if os.environ.get("DATABASE_SSL_MODE"):
+    from urllib.parse import urlencode
+    SQLALCHEMY_DATABASE_URI += "?" + urlencode({
+        "sslmode": os.environ["DATABASE_SSL_MODE"],
+        "sslrootcert": os.environ["DATABASE_SSL_ROOT_CERT"],
+    })
+
 # ─── Redis cache + Celery ─────────────────────────────────────────────────────
 REDIS_HOST = os.environ.get("REDIS_HOST", "redis")
 REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))

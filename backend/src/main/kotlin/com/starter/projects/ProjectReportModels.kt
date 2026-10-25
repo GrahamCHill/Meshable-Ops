@@ -15,7 +15,7 @@ data class ProjectReportDocument(val title: String, val organization: String, va
     val summary: List<String>, val sections: List<ProjectReportSection>, val kanban: ProjectWorkSummary? = null,
     val insights: ReportInsights = ReportInsights(),val leadTime: ReportLeadTime = ReportLeadTime(),val coverHtml: String? = null,
     val coverAssets: Map<String,String> = emptyMap(),val siteName: String = "",val companyName: String = "",val siteLogo: String = "",
-    val sprintMonitor: ReportSprintMonitor = ReportSprintMonitor())
+    val sprintMonitor: ReportSprintMonitor = ReportSprintMonitor(),val projectName: String = "",val clientLogo: String = "",val aiSummary: String? = null)
 @Entity @Table(name = "workspace_project_reports", indexes = [Index(columnList = "project_id,created_at")])
 class ProjectReportRecord(@Id val id: UUID = UUID.randomUUID(), val projectId: UUID = UUID.randomUUID(), val createdBy: UUID = UUID.randomUUID(),
     @Enumerated(EnumType.STRING) val kind: ProjectReportKind = ProjectReportKind.PERIOD, val fromDate: LocalDate = LocalDate.now(), val toDate: LocalDate = LocalDate.now(),

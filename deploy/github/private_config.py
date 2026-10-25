@@ -5,8 +5,16 @@ import stat
 
 
 def open_private(path: Path, *, create: bool = False) -> int:
-    if path.name not in {'.env', '.env.production'} or '..' in path.parts or any(ord(char) < 32 for char in str(path)):
-        raise ValueError('Use a .env or .env.production file without parent traversal')
+    return _open_private(path, create=create, names={'.env', '.env.production'})
+
+
+def open_terraform_secrets(path: Path) -> int:
+    return _open_private(path, create=True, names={'bootstrap.auto.tfvars.json'})
+
+
+def _open_private(path: Path, *, create: bool, names: set[str]) -> int:
+    if path.name not in names or '..' in path.parts or any(ord(char) < 32 for char in str(path)):
+        raise ValueError('Use an allowed private configuration filename without parent traversal')
     target = Path(os.path.abspath(path))
     flags = os.O_RDWR | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_CLOEXEC', 0)
     if create:

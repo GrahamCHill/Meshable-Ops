@@ -1,0 +1,6 @@
+# Read a private --env-file using Compose's parser without rendering the stack.
+services:
+  environment:
+    image: scratch
+    env_file:
+      - ${SPLIT_ENV_FILE:-/opt/contract-app/.env.production}

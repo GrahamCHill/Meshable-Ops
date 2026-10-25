@@ -19,16 +19,16 @@ class AnalyticsService(private val store: AnalyticsStore,private val configurati
     fun options(email: String,p: AnalyticsProvider,kind: AnalyticsContext,context: UUID): AnalyticsOptions {
         store.authorize(email,p,kind,context)
         val config=configuration.current(p.id)
-        return AnalyticsOptions(p.resourceLabel,approved(p,config),p.scopes,registry.missingConfiguration(p.id,config).isEmpty())
+        return AnalyticsOptions(p.resourceLabel,allowed(email,p,kind,context,config),p.scopes,registry.missingConfiguration(p.id,config).isEmpty())
     }
     fun list(email: String,p: AnalyticsProvider,kind: AnalyticsContext,context: UUID): List<AnalyticsLink> {
-        val rows=store.list(email,p,kind,context);val allowed=approved(p,configuration.current(p.id))
+        val rows=store.list(email,p,kind,context);val allowed=allowed(email,p,kind,context,configuration.current(p.id))
         return rows.filter {it.payload.selection.resourceId in allowed}.map {view(p,it)}
     }
     fun link(email: String,p: AnalyticsProvider,kind: AnalyticsContext,context: UUID,input: AnalyticsLinkInput): AnalyticsLink {
         val actor=store.authorize(email,p,kind,context,true)
         rates.check("${p.id}-link",actor.id.toString(),40,3600)
-        val selection=validateSelection(p,input.selection);val config=configured(p,selection)
+        val selection=validateSelection(p,input.selection);val config=configured(email,p,kind,context,selection)
         unchanged(p,config)
         return view(p,store.save(email,p,kind,context,null,input.label,AnalyticsPayload(selection),-1))
     }
@@ -39,7 +39,7 @@ class AnalyticsService(private val store: AnalyticsStore,private val configurati
             throw BadRequestException("Choose up to 31 completed calendar days. Cloudflare also requires a start within the last 30 days; provider plans may impose shorter retention.")
         val row=store.get(email,p,kind,context,id)
         if(row.revision!=input.revision)throw ConflictException("This analytics link changed. Reload before refreshing.")
-        val selection=validateSelection(p,row.payload.selection);val config=configured(p,selection)
+        val selection=validateSelection(p,row.payload.selection);val config=configured(email,p,kind,context,selection)
         rates.check("${p.id}-refresh",actor.id.toString(),30,3600)
         val snapshot=providers.fetch(p,config,selection,input.from,input.to)
         unchanged(p,config)
@@ -47,10 +47,15 @@ class AnalyticsService(private val store: AnalyticsStore,private val configurati
     }
     fun remove(email: String,p: AnalyticsProvider,kind: AnalyticsContext,context: UUID,id: UUID,revision: Long)=store.remove(email,p,kind,context,id,revision)
     private fun approved(p: AnalyticsProvider,config: Map<String,String>)=config["approvedResources"]?.takeIf {it.isNotBlank()}?.let(p::resources).orEmpty()
-    private fun configured(p: AnalyticsProvider,selection: AnalyticsSelection): Map<String,String> {
+    private fun allowed(email: String,p: AnalyticsProvider,kind: AnalyticsContext,context: UUID,config: Map<String,String>): Set<String> {
+        val assignments=AnalyticsResourcePolicy.parse(p,config["resourceAssignments"].orEmpty())
+        val parent=if(kind==AnalyticsContext.PROJECT && assignments.any {it.kind==AnalyticsContext.CLIENT})store.parentClient(email,kind,context) else null
+        return approved(p,config).intersect(AnalyticsResourcePolicy.allowed(assignments,kind,context,parent))
+    }
+    private fun configured(email: String,p: AnalyticsProvider,kind: AnalyticsContext,context: UUID,selection: AnalyticsSelection): Map<String,String> {
         val values=configuration.current(p.id);registry.validateConfiguration(p.id,values)
         if(registry.missingConfiguration(p.id,values).isNotEmpty())throw BadRequestException("Complete the ${p.title} connector settings first")
-        if(selection.resourceId !in approved(p,values))throw ForbiddenException("An administrator must approve this analytics resource first")
+        if(selection.resourceId !in allowed(email,p,kind,context,values))throw ForbiddenException("An administrator must approve and assign this analytics resource to this client or project first")
         return values
     }
     private fun unchanged(p: AnalyticsProvider,config: Map<String,String>) {if(configuration.current(p.id)!=config)throw ConflictException("Connector settings changed. Retry with the current connection.")}

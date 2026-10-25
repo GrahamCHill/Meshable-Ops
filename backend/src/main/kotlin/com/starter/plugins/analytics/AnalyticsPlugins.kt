@@ -36,6 +36,7 @@ abstract class AnalyticsPlugin(private val provider: AnalyticsProvider): Workspa
         adminMenu=PluginAdminMenu("analytics","Analytics"),tables=listOf(PluginTable(provider.table,"Scoped analytics links and snapshots")),
         settingsFields=buildList {
             add(PluginSettingField("approvedResources","Approved ${provider.resourceLabel.lowercase()} values",required=true,help="Comma-separated IDs local client owners and project managers may link. Restrict the provider credentials to these resources too. Google IDs use digits without hyphens.",maxLength=4000))
+            add(PluginSettingField("resourceAssignments","Resource assignments",required=true,help="Semicolon-separated RESOURCE_ID=CLIENT:UUID or RESOURCE_ID=PROJECT:UUID entries. A client assignment includes that client's projects. Use RESOURCE_ID=GLOBAL only to share with all authorized local managers. Unassigned resources are unavailable.",maxLength=4096))
             if(provider.google) {
                 add(PluginSettingField("clientId","Google OAuth client ID",required=true,maxLength=1000))
                 add(PluginSettingField("clientSecret","Google OAuth client secret",PluginFieldType.SECRET,true,maxLength=4096))
@@ -53,6 +54,10 @@ abstract class AnalyticsPlugin(private val provider: AnalyticsProvider): Workspa
         })
     override fun validateConfiguration(values: Map<String,String>) {
         values["approvedResources"]?.let(provider::resources)
+        values["resourceAssignments"]?.let {raw->
+            val assignments=AnalyticsResourcePolicy.parse(provider,raw)
+            values["approvedResources"]?.let {ids->if(assignments.any {it.resource !in provider.resources(ids)})throw BadRequestException("Resource assignments must use approved resource IDs")}
+        }
         values["managerCustomerId"]?.let {if(!it.matches(Regex("[0-9]{10}")))throw BadRequestException("Use a 10-digit manager customer ID")}
         values["apiVersion"]?.let {if(!it.matches(if(provider==AnalyticsProvider.GOOGLE_ADS)Regex("v[0-9]{2,3}") else Regex("v[0-9]{2,3}\\.0")))throw BadRequestException("Use a supported provider API version")}
     }

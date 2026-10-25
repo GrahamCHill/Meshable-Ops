@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate, Link } from 'react-router-dom'
 import { authApi, type AuthResponse } from '../../api/auth'
 import { mfaApi, type MfaChallenge, type MfaMethod } from '../../api/mfa'
@@ -35,14 +36,33 @@ function AuthCard({ children, title, subtitle }: { children: React.ReactNode; ti
 export function LoginPage() {
   const navigate = useNavigate()
   const { login, logout } = useAuthStore()
+  const providers = useQuery({queryKey:['auth-providers'],queryFn:authApi.providers})
+  const external = new URLSearchParams(window.location.search).get('external')
+  const completingExternal = useRef(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(external === 'failed' ? 'External sign-in was cancelled or could not be verified. Please try again.' : '')
+  const [busy, setBusy] = useState(external === 'complete')
   const [challenge, setChallenge] = useState<MfaChallenge>()
   const [method, setMethod] = useState<MfaMethod>('TOTP')
   const [code, setCode] = useState('')
   const [notice, setNotice] = useState('')
+  useEffect(() => {
+    if (external !== 'complete' || completingExternal.current) return
+    completingExternal.current = true
+    // Consume the server-held result once, including React StrictMode's repeated effect setup.
+    window.history.replaceState(window.history.state, '', '/login')
+    void authApi.completeExternal().then(result => {
+      if (result.linked) { navigate('/account/settings?tab=security&identity=connected', {replace:true}); return }
+      if (!result.auth) throw new Error('Missing sign-in result')
+      if ('mfaRequired' in result.auth) {
+        logout(); setChallenge(result.auth); setMethod(result.auth.methods[0] ?? 'RECOVERY')
+      } else {
+        login(result.auth.token, result.auth)
+        navigate(result.auth.suggestMfaSetup ? '/account/security?setup=1' : '/', {replace:true})
+      }
+    }).catch(failure => setError(getAuthErrorMessage(failure))).finally(() => setBusy(false))
+  }, [external, login, logout, navigate])
   const complete = (data: AuthResponse) => { login(data.token, data); navigate(data.suggestMfaSetup ? '/account/security?setup=1' : '/') }
   const submit = async () => {
     setBusy(true); setError(''); setNotice('')
@@ -68,6 +88,10 @@ export function LoginPage() {
     <AuthCard title={challenge ? 'Verify your sign-in' : 'Sign in'} subtitle={challenge ? 'Complete multi-factor authentication' : 'Your business workspace'}>
       <form onSubmit={event => {event.preventDefault(); void submit()}} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         {!challenge ? <>
+        {!!providers.data?.length && <div className="page-stack">
+          {providers.data.map(provider => <Button key={provider.id} type="button" variant="secondary" disabled={busy} onClick={() => {setBusy(true); window.location.assign(provider.authorizationUrl)}}>Continue with {provider.name}</Button>)}
+          <p className="field-help">Or sign in with your workspace password. Connect an external identity in Security &amp; MFA before using it here.</p>
+        </div>}
         <div>
           <label style={{ fontSize: '0.8rem', fontWeight: 500, display: 'block', marginBottom: 4 }}>Email</label>
           <input type="email" placeholder="you@example.com" value={email} onChange={e => { setEmail(e.target.value); setError('') }} />
@@ -86,7 +110,7 @@ export function LoginPage() {
         </>}
         {error && <p style={{ color: 'var(--color-danger)', fontSize: '0.8rem' }}>{error}</p>}
         {notice && <p role="status">{notice}</p>}
-        <Button type="submit" loading={busy} disabled={challenge ? !code.trim() || !challenge.methods.length : !email || !password} style={{ width: '100%', marginTop: 4 }}>{challenge ? 'Verify and sign in' : 'Sign in'}</Button>
+        <Button type="submit" loading={busy} disabled={busy || (challenge ? !code.trim() || !challenge.methods.length : !email || !password)} style={{ width: '100%', marginTop: 4 }}>{challenge ? 'Verify and sign in' : 'Sign in'}</Button>
         <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
           Need access? Contact an administrator for an invite.
         </p>

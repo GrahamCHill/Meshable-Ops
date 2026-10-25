@@ -2,6 +2,8 @@
 
 Open **Administration > Branding** (`/admin/branding`) to set the business name, colours, logo/favicon, and sign-in background. Changes are workspace-wide and administrator-only. Branding metadata and images are public so sign-in works before authentication.
 
+These built-in customization features are permitted by the [community license](../LICENSE), including when configured by a paid deployment provider. Branding or white-label changes outside the exposed customization features, such as editing application source or replacing bundled brand assets, require a separate written agreement. See [licensing examples](../LICENSING.md).
+
 ## Name and colours
 
 Set **Application name** to the business name (1–80 characters). It appears in navigation, above the sign-in form, and in the browser tab title. The default is Meshable Ops.

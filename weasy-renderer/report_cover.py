@@ -6,8 +6,8 @@ from html.parser import HTMLParser
 from urllib.parse import unquote, urlsplit
 import base64
 
-TOKENS = {"title", "organization", "project", "period", "ticketCount", "generatedAt", "siteName", "companyName"}
-IMAGE_TOKEN = re.compile(r"\{\{\s*siteLogo\s*\}\}")
+TOKENS = {"title", "organization", "project", "projectName", "period", "ticketCount", "generatedAt", "siteName", "companyName"}
+IMAGE_TOKEN = re.compile(r"\{\{\s*(siteLogo|clientLogo)\s*\}\}")
 TEXT_TOKEN = re.compile(r"\{\{\s*(\w+)\s*\}\}")
 CSS_URL = re.compile(r'''url\s*\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\s*\)''', re.I)
 EMPTY_IMAGE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
@@ -19,7 +19,7 @@ h1 {font-size:36pt;line-height:1.16;margin:0 0 12mm;overflow-wrap:anywhere}
 .project {font-size:18pt;line-height:1.4;overflow-wrap:anywhere}.period {font-size:13pt;color:#526579}
 .rule {height:2mm;width:24mm;background:#2367c9;margin:20mm 0 12mm}.foot {font-size:9pt;color:#526579}
 </style></head><body><main class="cover"><div class="brand"><img class="logo" src="{{siteLogo}}" alt="Site logo"><p>{{siteName}}</p><p class="company">{{companyName}}</p></div><h1>{{title}}</h1>
-<p class="project">{{project}}</p><p class="period">{{period}}</p><div class="rule"></div>
+<img class="logo" src="{{clientLogo}}" alt="Client logo"><p class="project">{{projectName}}</p><p class="period">{{period}}</p><div class="rule"></div>
 <p class="foot">{{ticketCount}} tickets in scope<br>Generated {{generatedAt}}<br>Internal project report</p></main></body></html>"""
 
 
@@ -64,11 +64,12 @@ def cover_assets(images):
     return result
 
 
-def resolve_image(reference, assets, logo, render):
-    if IMAGE_TOKEN.fullmatch(reference.strip()):
-        return raster_image(logo or EMPTY_IMAGE) if render else reference
+def resolve_image(reference, assets, logos, render):
+    token = IMAGE_TOKEN.fullmatch(reference.strip())
+    if token:
+        return raster_image(logos.get(token[1], '') or EMPTY_IMAGE) if render else reference
     if '{{' in reference:
-        raise ValueError('Only siteLogo can be used as an image token')
+        raise ValueError('Only siteLogo and clientLogo can be used as image tokens')
     if reference.startswith('data:'):
         return raster_image(reference)
     name = image_name(reference)
@@ -77,7 +78,7 @@ def resolve_image(reference, assets, logo, render):
     return assets[name] if render else reference
 
 
-def validate_css(css, assets=None, logo='', render=False):
+def validate_css(css, assets=None, logos=None, render=False):
     cleaned = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
     if re.search(r"@(?:import|font-face|namespace|document)|image-set\s*\(|attr\s*\(|[\\]", cleaned, re.I):
         raise ValueError("Unsupported cover CSS resource or template token")
@@ -86,7 +87,7 @@ def validate_css(css, assets=None, logo='', render=False):
         raise ValueError('Invalid cover CSS resource')
     def replace(match):
         source = (match[1] if match[1] is not None else match[2] if match[2] is not None else match[3]).strip()
-        return 'url("' + resolve_image(source, assets or {}, logo, render) + '")'
+        return 'url("' + resolve_image(source, assets or {}, logos or {}, render) + '")'
     return CSS_URL.sub(replace, cleaned)
 
 
@@ -94,10 +95,10 @@ class CoverParser(HTMLParser):
     tags = set("html head body meta title style div section header footer main article h1 h2 h3 h4 p span strong em b i br hr ul ol li table thead tbody tr th td img".split())
     attrs = set("class id style width height alt colspan rowspan charset".split())
 
-    def __init__(self, values=None, assets=None, logo='', render=False):
+    def __init__(self, values=None, assets=None, logos=None, render=False):
         super().__init__(convert_charrefs=True)
         self.styling = False
-        self.values, self.assets, self.logo, self.render = values or {}, assets or {}, logo, render
+        self.values, self.assets, self.logos, self.render = values or {}, assets or {}, logos or {}, render
         self.output = []
 
     def handle_starttag(self, tag, attrs):
@@ -108,11 +109,11 @@ class CoverParser(HTMLParser):
         for key, value in attrs:
             value = value or ""
             if key == "src" and tag == "img":
-                value = resolve_image(value, self.assets, self.logo, self.render)
+                value = resolve_image(value, self.assets, self.logos, self.render)
             elif key not in self.attrs:
                 raise ValueError("Unsupported cover HTML attribute")
             elif key == "style":
-                value = validate_css(value, self.assets, self.logo, self.render)
+                value = validate_css(value, self.assets, self.logos, self.render)
             elif '{{' in value:
                 raise ValueError('Text tokens belong in visible text')
             if key == "charset" and value.lower() != "utf-8":
@@ -134,7 +135,7 @@ class CoverParser(HTMLParser):
 
     def handle_data(self, data):
         if self.styling:
-            self.output.append(validate_css(data, self.assets, self.logo, self.render))
+            self.output.append(validate_css(data, self.assets, self.logos, self.render))
         else:
             if any(token not in TOKENS for token in TEXT_TOKEN.findall(data)):
                 raise ValueError('Unknown visible-text cover token')
@@ -162,14 +163,17 @@ def cover_html(value):
     html = validate_cover_html(value.get("html") or DEFAULT_COVER)
     values = {key: str(value.get(key, "")) for key in TOKENS}
     values['siteName'] = values['siteName'] or values['organization']
+    values['projectName'] = values['projectName'] or values['project']
+    values['project'] = values['project'] or values['projectName']
     values["generatedAt"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     if any(len(text) > 1000 for text in values.values()):
         raise ValueError("Cover context exceeds its limits")
     assets = cover_assets(value.get('assets', {}))
-    logo = value.get('siteLogo', '')
-    if logo:
-        raster_image(logo)
-    parser = CoverParser(values, assets, logo, True)
+    logos = {key: value.get(key, '') for key in ('siteLogo', 'clientLogo')}
+    for logo in logos.values():
+        if logo:
+            raster_image(logo)
+    parser = CoverParser(values, assets, logos, True)
     parser.feed(html)
     parser.close()
     return ''.join(parser.output)

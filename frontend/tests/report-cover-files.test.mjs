@@ -7,7 +7,7 @@ const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.
 const {coverImageName,coverImageReferences,readCoverHtml}=await import('data:text/javascript;base64,'+Buffer.from(compiled).toString('base64'))
 
 test('relative image and CSS references match uploaded filenames without replacing branding tokens',()=>{
-  const html='<img src="images/Banner.PNG"><img src="{{siteLogo}}"><img src="data:image/png;base64,abc"><div style="background:url(\'art/my%20cover.webp\')"></div>'
+  const html='<img src="images/Banner.PNG"><img src="{{siteLogo}}"><img src="{{clientLogo}}"><img src="data:image/png;base64,abc"><div style="background:url(\'art/my%20cover.webp\')"></div>'
   assert.deepEqual(coverImageReferences(html),['banner.png','my cover.webp'])
   assert.equal(coverImageName('Banner.PNG'),'banner.png')
   assert.throws(()=>coverImageName('../banner.png'))

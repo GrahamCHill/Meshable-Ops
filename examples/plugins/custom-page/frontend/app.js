@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-Meshable-Ops-Community-1.0
+// SPDX-License-Identifier: LicenseRef-Meshable-Ops-Community-1.1
 const result = document.getElementById('result')
 const send = document.getElementById('send')
 meshableOps.context().then(context => {

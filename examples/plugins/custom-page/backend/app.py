@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-Meshable-Ops-Community-1.0
+# SPDX-License-Identifier: LicenseRef-Meshable-Ops-Community-1.1
 from meshable import serve, Response
 
 

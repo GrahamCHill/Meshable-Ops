@@ -1,4 +1,7 @@
 mock_provider "aws" {
+  mock_data "aws_availability_zones" {
+    defaults = { names = ["af-south-1a", "af-south-1b"] }
+  }
   # Mock JSON rendering only; the assertions inspect the actual policy inputs.
   mock_data "aws_iam_policy_document" {
     defaults = { json = "{}" }
@@ -21,16 +24,23 @@ override_resource {
 }
 
 variables {
-  repository_url          = "https://github.com/example/contracts.git"
-  app_domain              = "contracts.example.com"
-  acme_email              = "admin@example.com"
-  ssh_public_key          = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKBceIFK1+s42pZpC4FAAEILfHWFgHQ0qN0omgnCiVGk terraform-mock-test"
-  admin_cidr              = "203.0.113.10/32"
-  jwt_secret              = "test-only"
-  superset_secret_key     = "test-only"
-  guest_token_jwt_secret  = "test-only"
-  superset_admin_password = "test-only"
-  bootstrap_users_json    = "[]"
+  postgres_admin_password    = "test-only-postgres_admin_password-long-random-value"
+  postgres_password          = "test-only-postgres_password-long-random-value"
+  superset_database_password = "test-only-superset_database_password-long-random-value"
+  mongo_password             = "test-only-mongo_password-long-random-value"
+  secrets_encryption_key     = "dGVzdC1vbmx5LXdyYXBwaW5nLWtleS0zMi1ieXRlcyEh"
+  document_render_token      = "test-only-document_render_token-long-random-value"
+  plugin_runner_token        = "test-only-plugin_runner_token-long-random-value"
+  repository_url             = "https://github.com/example/contracts.git"
+  app_domain                 = "contracts.example.com"
+  acme_email                 = "admin@example.com"
+  ssh_public_key             = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKBceIFK1+s42pZpC4FAAEILfHWFgHQ0qN0omgnCiVGk terraform-mock-test"
+  admin_cidr                 = "203.0.113.10/32"
+  jwt_secret                 = "test-only"
+  superset_secret_key        = "test-only"
+  guest_token_jwt_secret     = "test-only"
+  superset_admin_password    = "test-only"
+  bootstrap_users_json       = "[{\"email\":\"owner@example.com\",\"password\":\"test-only-password-1234\",\"role\":\"SUPER_ADMIN\"}]"
 }
 
 run "secure_storage_and_explicit_networking" {
@@ -52,9 +62,9 @@ run "secure_storage_and_explicit_networking" {
 
   assert {
     condition = (
-      length(aws_security_group.app.ingress) == 3 && alltrue([
+      length(aws_security_group.app.ingress) == 4 && alltrue([
         for rule in aws_security_group.app.ingress : rule.protocol == "tcp" && rule.from_port == rule.to_port &&
-        (contains([80, 443], rule.from_port) ? rule.cidr_blocks == tolist(["0.0.0.0/0"]) : rule.from_port == 22 && rule.cidr_blocks == tolist([var.admin_cidr]))
+        (contains([80, 443], rule.from_port) ? rule.cidr_blocks == tolist(["0.0.0.0/0"]) : rule.from_port == 22 ? rule.cidr_blocks == tolist([var.admin_cidr]) : rule.from_port == 8080 && rule.security_groups == toset([aws_security_group.private["runtime"].id]) && try(length(rule.cidr_blocks), 0) == 0)
       ])
     )
     error_message = "Only web ports may be public; SSH must be limited to the configured trusted CIDR."

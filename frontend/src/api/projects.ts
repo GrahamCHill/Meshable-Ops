@@ -26,7 +26,7 @@ export interface ReportInput {kind: 'SPRINT' | 'MONTHLY' | 'PERIOD'; from: strin
 export interface DigestInput {from: string; to: string; timeZone: string; includeAi: boolean; recipientIds: string[]}
 export interface DigestPreview {recipientId: string; text: string; aiSummary: string | null; calendarAvailable: boolean}
 export interface Risk {userId: string; name: string; score: number; overdue: number; blocked: number; inProgress: number; dueSoon: number; explanation: string}
-export interface ScheduleInput {enabled: boolean; kind: 'REPORT' | 'DIGEST'; cadence: 'DAILY' | 'WEEKLY' | 'MONTHLY'; time: string; timeZone: string; dayOfWeek: number; dayOfMonth: number; reportKind: 'SPRINT' | 'MONTHLY' | 'PERIOD'; recipientIds: string[]; includeAi: boolean; revision: number}
+export interface ScheduleInput {enabled: boolean; kind: 'REPORT' | 'DIGEST'; cadence: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'SPRINT_END'; time: string; timeZone: string; dayOfWeek: number; dayOfMonth: number; reportKind: 'SPRINT' | 'MONTHLY' | 'PERIOD'; recipientIds: string[]; includeAi: boolean; revision: number}
 export interface WorkSchedule {id: string; projectId: string | null; configuration: ScheduleInput; nextRunAt: string | null; lastRunAt: string | null; lastStatus: string | null}
 export const emptyDetails = (): ProjectDetails => ({description: '', members: [], groupIds: [], tagIds: [], contacts: [], contactSource: 'CLIENT', links: [], storage: []})
 export const projectsApi = {

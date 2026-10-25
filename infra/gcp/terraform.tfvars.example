@@ -1,0 +1,15 @@
+project_id     = "your-google-cloud-project-id"
+repository_url = "https://github.com/YOUR-ORG/YOUR-REPO.git"
+repository_ref = "main" # Prefer an immutable release tag for production.
+app_domain     = "workspace.example.com"
+acme_email     = "ops@example.com"
+admin_members  = ["user:owner@example.com"]
+
+region       = "us-central1"
+zone         = "us-central1-a" # Must belong to region.
+subnet_cidr  = "10.44.1.0/24"
+machine_type = "e2-standard-4"
+
+# Generate bootstrap.auto.tfvars.json using the deployment guide.
+# Leave deletion protection on; it guards replacement as well as deletion.
+deletion_protection = true

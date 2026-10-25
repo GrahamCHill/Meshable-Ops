@@ -1,4 +1,19 @@
 mock_provider "azurerm" {
+  mock_resource "azurerm_virtual_network" {
+    defaults = { id = "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/test/providers/Microsoft.Network/virtualNetworks/app" }
+  }
+  mock_resource "azurerm_private_dns_zone" {
+    defaults = { id = "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/test/providers/Microsoft.Network/privateDnsZones/test.postgres.database.azure.com" }
+  }
+  mock_resource "azurerm_postgresql_flexible_server" {
+    defaults = {
+      id   = "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/test/providers/Microsoft.DBforPostgreSQL/flexibleServers/test-postgres"
+      fqdn = "test-postgres.postgres.database.azure.com"
+    }
+  }
+  mock_resource "azurerm_nat_gateway" {
+    defaults = { id = "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/test/providers/Microsoft.Network/natGateways/private" }
+  }
   mock_resource "azurerm_subnet" {
     defaults = {
       id = "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/test/providers/Microsoft.Network/virtualNetworks/test/subnets/app"
@@ -51,16 +66,23 @@ mock_provider "azurerm" {
 mock_provider "random" {}
 
 variables {
-  repository_url          = "https://github.com/example/contracts.git"
-  app_domain              = "contracts.example.com"
-  acme_email              = "admin@example.com"
-  ssh_public_key          = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKBceIFK1+s42pZpC4FAAEILfHWFgHQ0qN0omgnCiVGk terraform-mock-test"
-  admin_cidr              = "10.50.0.0/24"
-  jwt_secret              = "test-only"
-  superset_secret_key     = "test-only"
-  guest_token_jwt_secret  = "test-only"
-  superset_admin_password = "test-only"
-  bootstrap_users_json    = "[]"
+  postgres_admin_password    = "test-only-postgres_admin_password-long-random-value"
+  postgres_password          = "test-only-postgres_password-long-random-value"
+  superset_database_password = "test-only-superset_database_password-long-random-value"
+  mongo_password             = "test-only-mongo_password-long-random-value"
+  secrets_encryption_key     = "dGVzdC1vbmx5LXdyYXBwaW5nLWtleS0zMi1ieXRlcyEh"
+  document_render_token      = "test-only-document_render_token-long-random-value"
+  plugin_runner_token        = "test-only-plugin_runner_token-long-random-value"
+  repository_url             = "https://github.com/example/contracts.git"
+  app_domain                 = "contracts.example.com"
+  acme_email                 = "admin@example.com"
+  ssh_public_key             = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKBceIFK1+s42pZpC4FAAEILfHWFgHQ0qN0omgnCiVGk terraform-mock-test"
+  admin_cidr                 = "10.50.0.0/24"
+  jwt_secret                 = "test-only"
+  superset_secret_key        = "test-only"
+  guest_token_jwt_secret     = "test-only"
+  superset_admin_password    = "test-only"
+  bootstrap_users_json       = "[{\"email\":\"owner@example.com\",\"password\":\"test-only-password-1234\",\"role\":\"SUPER_ADMIN\"}]"
 }
 
 run "private_vm_and_managed_storage" {
@@ -88,7 +110,7 @@ run "private_vm_and_managed_storage" {
       one([for rule in azurerm_network_security_group.app.security_rule : rule if rule.name == "load-balancer-probe"]).source_address_prefix == "AzureLoadBalancer" &&
       one([for rule in azurerm_network_security_group.app.security_rule : rule if rule.name == "deny-other-inbound"]).priority == 200 &&
       one([for rule in azurerm_network_security_group.app.security_rule : rule if rule.name == "deny-other-inbound"]).access == "Deny" &&
-      alltrue([for rule in azurerm_network_security_group.app.security_rule : contains(["80", "443", "22"], rule.destination_port_range) || rule.access == "Deny"])
+      alltrue([for rule in azurerm_network_security_group.app.security_rule : contains(["80", "443", "22"], rule.destination_port_range) || rule.access == "Deny" || (rule.destination_port_range == "8080" && rule.source_address_prefix == "${local.private_ips.runtime}/32")])
     )
     error_message = "Allow only web, trusted private SSH and health probes, and override Azure's broad default VNet ingress."
   }

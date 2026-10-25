@@ -7,6 +7,7 @@ import { mfaApi, type MfaComplete, type MfaEnrollment, type MfaMethod } from '..
 import { useAuthStore } from '../../hooks/useAuthStore'
 import { getErrorMessage } from '../admin/adminUtils'
 import { Button, Spinner } from '../ui'
+import { ExternalIdentitySettings } from './ExternalIdentitySettings'
 
 export function AccountSecurityPage({embedded=false}: {embedded?: boolean} = {}) {
   const client = useQueryClient(); const navigate = useNavigate()
@@ -29,6 +30,7 @@ export function AccountSecurityPage({embedded=false}: {embedded?: boolean} = {})
   return <div className="page-stack" style={{maxWidth:850}}>
     {!embedded&&<div className="inline-actions"><Link to="/">Back to workspace</Link>{access.canPath('/admin')&&<Link to="/admin">Back to admin menu</Link>}</div>}
     <div>{embedded?<h2>Security & MFA</h2>:<h1>Security & MFA</h1>}<p>Protect your account with an authenticator app or verified email codes.</p></div>
+    <ExternalIdentitySettings />
     {status.isLoading&&<Spinner/>}{status.isError&&<p role="alert">Unable to load security settings.</p>}
     {status.data&&<>
       {status.data.setupRecommended&&<div className="page-stack"><p role="status">Set up MFA for your primary administrator account. An authenticator works without email delivery.</p><Button variant="ghost" disabled={busy} onClick={()=>void run(async()=>{await mfaApi.dismiss();await client.invalidateQueries({queryKey:['account-mfa']});navigate('/')})}>Skip setup for now</Button></div>}

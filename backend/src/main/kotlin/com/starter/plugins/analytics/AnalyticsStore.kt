@@ -26,6 +26,8 @@ class AnalyticsStore(private val jdbc: JdbcTemplate,private val mapper: ObjectMa
         authorize(email,provider,kind,contextId)
         return rows(provider,kind,contextId)
     }
+    fun parentClient(email: String,kind: AnalyticsContext,contextId: UUID): UUID? =
+        if(kind==AnalyticsContext.CLIENT)contextId else projects.require(contextId,projects.actor(email)).clientId
     private fun rows(provider: AnalyticsProvider,kind: AnalyticsContext,contextId: UUID)=jdbc.query(
         "SELECT id,label,payload_json,revision FROM ${provider.table} WHERE context_kind=? AND context_id=? ORDER BY label,id LIMIT 101",
         {rs,_->AnalyticsRow(rs.getObject("id",UUID::class.java),rs.getString("label"),mapper.readValue(rs.getString("payload_json"),AnalyticsPayload::class.java),rs.getLong("revision"))},kind.name,contextId)

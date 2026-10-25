@@ -25,3 +25,11 @@ output "storage_account" {
 output "storage_container" {
   value = azurerm_storage_container.documents.name
 }
+output "private_hosts" {
+  value = local.private_ips
+}
+
+output "database_host" {
+  value = azurerm_postgresql_flexible_server.app.fqdn
+}
+

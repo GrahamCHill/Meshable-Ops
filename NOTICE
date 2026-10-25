@@ -2,9 +2,13 @@ Meshable Ops
 Copyright (C) 2026 Graham Hill and the Meshable Ops contributors.
 
 Original Meshable Ops code and the project owner's imported WeasyCanvas snapshot
-are source available under the Meshable Ops Community License 1.0, or a separate commercial
+are source available under the Meshable Ops Community License 1.1, or a separate commercial
 agreement where the relevant copyright holder has granted one.
 See LICENSE, LICENSING.md, and COMMERCIAL-LICENSE.md.
+
+Community forks and modifications are subject to same-license source sharing
+and LICENSE section 3.1's upstream grant-back for fork changes. Authors retain
+ownership while permitting project reuse under community and commercial terms.
 
 Covered plugins inherit the application's community license. Independently
 authored service-integration components may retain compatible licenses;

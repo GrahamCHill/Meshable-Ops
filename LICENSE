@@ -1,155 +1,358 @@
-Meshable Ops Community License 1.0
-24 October 2026
-SPDX-License-Identifier: LicenseRef-Meshable-Ops-Community-1.0
+Meshable Ops Community License 1.1
+25 October 2026
+SPDX-License-Identifier: LicenseRef-Meshable-Ops-Community-1.1
 Copyright (C) 2026 Graham Hill and the Meshable Ops contributors.
 
-This is a source-available license, not the GNU AGPL or an OSI-approved
-open source license. It restricts commercial application offerings.
+This is a source-available license, not the GNU AGPL or an OSI-approved open
+source license. Community modifications and forks are permitted under strong
+same-license, network source-sharing and upstream grant-back conditions.
+Application paywalls, closed-source offerings and branding beyond exposed
+customization require a separate written agreement. Hosting and deployment
+services remain permitted.
 
 1. Scope and definitions
 
-"Application" means original Meshable Ops code, documentation, deployment tools,
-original bundled plugins and the owner's imported WeasyCanvas source supplied
-under this notice, including modified, renamed, rebranded, source and compiled
-versions. Identified third-party material retains its separate terms.
+"Application" means original Meshable Ops code, documentation, deployment
+tools, original bundled plugins and the owner's imported WeasyCanvas source
+supplied under this notice, including modified, renamed, rebranded, source and
+compiled versions. Identified third-party material retains its separate terms.
 
-"Licensor" means Graham Hill as original creator and any lawful successor holding
-the relevant rights. A "Licensing Maintainer" is a current maintainer expressly
-appointed in writing by the Licensor to grant commercial permissions within that
-appointment's scope. Fork maintainers, repository administrators, commit access
-and contributor status alone do not confer licensing authority.
+"Licensor" means Graham Hill as original creator and any lawful successor
+holding the relevant rights. A "Licensing Maintainer" is a current maintainer
+expressly appointed in writing by the Licensor to enter agreements under
+section 2 within that appointment's scope. Fork maintainers, repository
+administrators, commit access and contributor status alone do not confer
+licensing authority.
 
 "Internal Use" means conducting a person's or organization's own operations,
-including commercial operations and private modifications. Staff, contractors
-acting solely on its behalf and customers/suppliers accessing its business
-records/processes may participate. It excludes selling/licensing the Application
-and providing its functionality as a hosted software product to third parties.
+including commercial operations. Staff, contractors acting on its behalf and
+customers/suppliers accessing its business records/processes may participate.
+Ordinary revenue from those goods/services is permitted.
 
-"Commercial Offering" means selling, licensing, renting, sublicensing for payment,
-commercially distributing or otherwise monetizing copies of the Application,
-or offering its functionality as a commercial hosted, managed, SaaS or similar
-service to third parties. It includes direct, bundled, advertising-supported and
-indirect commercial consideration, whether modified or unmodified. Ordinary
-revenue from a business's own goods/services does not make its Internal Use a
-Commercial Offering merely because the Application supports those operations.
+"Supported Configuration" means using settings, configuration files,
+environment variables, administrative screens, templates and extension
+interfaces that the Application exposes for customization. It includes the
+built-in business name, logo, favicon, colours, themes and sign-in images. It
+does not include editing Application source or replacing bundled assets
+outside those exposed features.
 
-"Plugin" means a separately identifiable extension installed through the plugin
-interfaces. Repackaging or moving core Application functionality into an extension
-does not qualify it for the exception in section 4.
+"Deployment Changes" means changes to installation/deployment scripts,
+manifests, container or infrastructure definitions and runtime configuration
+reasonably necessary to install, build, connect, secure and run the
+Application on the chosen infrastructure. Examples include paths, domains,
+ports, TLS, databases, storage, secrets and resource settings. This permission
+does not extend to changes to Application features, runtime source code or
+bundled branding/assets, or to deployment changes beyond those reasonably
+necessary to deploy the Application.
 
-"Complete Source" means the preferred form for modifying covered code, including
-modifications and scripts/material needed to build, install and run it, excluding
-credentials, business records and independent system components. A link to an
-unrelated or outdated source tree is insufficient.
+"Permitted Services" means providing infrastructure, hosting, easy installers,
+automated setup, installation, Supported Configuration, Deployment Changes,
+deployment management, monitoring, backups, support, training and maintenance
+of an otherwise permitted deployment. Maintenance includes installing official
+updates and maintaining infrastructure; it does not authorize other
+Application changes. Providers may charge for these services, including a
+profit margin.
 
-2. Community permissions and commercial restriction
+"Paywalled Offering" means selling, licensing, renting or otherwise
+conditioning receipt, use of, or access to the Application or its
+functionality on payment for the Application itself. It includes
+software-license fees, paid Application subscriptions and paid access to
+Application features, whether charged directly or hidden in a bundle, and
+applies to unmodified copies and derivatives alike. Charges for Permitted
+Services are excluded, even when recurring, bundled or required to operate or
+access a hosted deployment. Ordinary sign-in, account controls and access
+permissions are not paywalls. The substance of a charge, rather than its
+label, determines whether it pays for services or the Application itself.
+
+"Plugin" means a separately identifiable extension installed through the
+plugin interfaces. Repackaging or moving core Application functionality into
+an extension does not qualify it for the exception in section 4.
+
+"Covered Work" means the Application, its modifications and derivative works,
+and Plugins covered by section 4. Covered features remain covered when
+renamed, split into modules, moved into another package/process or presented
+as premium add-ons. Independent third-party material retains its own terms as
+described in sections 4 and 5.
+
+"Fork Changes" means copyrightable modifications and additions made to the
+Application while exercising this license's modification/fork permission,
+including changes to bundled plugins and covered features or Plugins
+originally developed as part of that fork or modified Application. Ordinary
+configuration values, uploaded branding assets, business content, unchanged
+third-party code and independently developed Plugins merely installed
+unchanged are excluded.
+
+"Branding Changes" means rebranding, white-labeling or changing the
+Application's product identity, logos or branding assets outside Supported
+Configuration. Using the customization features already exposed by the
+Application is not a Branding Change. Identifying a modified version and its
+author without changing product branding does not require separate permission
+or imply endorsement.
+
+"Closed-Source Offering" means distributing a Covered Work or providing users
+network access to it while withholding its required Complete Source, licensing
+covered changes or features on proprietary terms, or otherwise restricting the
+community rights required by section 3. An enterprise or premium edition,
+covered Plugin or add-on does not escape these conditions because of its name,
+packaging or placement behind a service boundary.
+
+"Complete Source" means the preferred form for modifying covered code,
+including all covered changes, features and Plugins, interface definitions,
+dependency manifests and scripts/material needed to build, install and run the
+exact version supplied or operated. It includes covered premium/enterprise
+features; only publishing the base or community edition is insufficient.
+Minified, obfuscated or compiled output alone is not Complete Source.
+Credentials, business records and independent system components are excluded.
+Supply usable configuration examples/placeholders instead of secrets. A link
+to an unrelated or outdated source tree is insufficient.
+
+2. Community permissions, hosting and restrictions
 
 Subject to this license, the Licensor grants a worldwide, nonexclusive,
-royalty-free copyright license to inspect, run, copy and modify the Application
-for Internal Use, evaluation, education and noncommercial purposes; to develop
-Plugins; and to distribute or provide remote access for noncommercial purposes
-under section 3. Paid installation, training, consulting, customization and
-maintenance on systems owned or controlled by the customer are permitted unless
-they include an unauthorized Commercial Offering. No copyright ownership or
-trademark rights are transferred.
+royalty-free copyright license to inspect, run, copy, modify, fork, install,
+build, package and distribute Covered Works and provide remote access under
+section 3; to use Supported Configuration and make Deployment Changes; to
+provide Permitted Services; and to develop Plugins under section 4. These
+permissions apply to individuals, businesses, hosting providers and service
+providers. No copyright ownership or trademark rights are transferred.
 
-You may not make a Commercial Offering of the Application without separate
-written commercial permission from the Licensor or a Licensing Maintainer acting
-within their authority. This applies to forks, derivatives and unmodified copies.
-Preserving notices, providing source, donating or contributing upstream does not
-itself grant commercial permission. A written agreement may specify fees,
-development/maintenance contributions, covered versions and other terms.
+Hosting on AWS, Google Cloud Platform (GCP), Microsoft Azure or any other
+cloud, hosting provider or on-premises infrastructure is expressly permitted.
+Paying or charging for compute, storage, networking, other infrastructure or
+Permitted Services does not violate this license. A provider may supply easy
+or one-click installers, automate setup, package an installation and manage
+and maintain a deployment for a customer, on infrastructure controlled by
+either party. These services may be paid and do not by themselves require a
+separate agreement. Service charges do not excuse withholding required source
+or other violations.
+
+Easy installers and installation automation may make Supported Configuration
+and Deployment Changes without a separate agreement, including edits to
+covered deployment tools where reasonably necessary to deploy the Application.
+This installer permission is limited to deployment needs. Any other
+Application changes made by an installer must independently satisfy the
+community modification and source-sharing conditions below or a separate
+written agreement. Building or packaging unchanged Application code,
+installing official updates and using the built-in customization features are
+permitted.
+
+Community modifications, bug fixes, new features and forks, including changes
+to bundled plugins, do not require a separate agreement if you comply with
+this license, including section 3's source-sharing and upstream grant-back
+conditions. This permission applies to individuals and companies of every
+size. It does not authorize Branding Changes or an exception to source
+sharing. Private changes that are neither distributed nor made available to
+users over a network do not require public disclosure solely because they were
+made; the upstream grant and source-delivery duty in section 3.1 still apply.
+
+You may not make a Paywalled Offering, a Closed-Source Offering or Branding
+Changes without a separate written agreement from the Licensor or a Licensing
+Maintainer acting within their authority. Service payments and the paid-Plugin
+allowance do not grant an exception to these restrictions. A premium
+Application edition must not withhold covered features or their source from
+the community license merely because its author wrote those additions
+independently.
+
+An agreement must expressly identify each exception it grants. Permission for
+paid Application access does not waive source-sharing obligations, and
+permission for Branding Changes does not authorize a closed-source or
+paywalled offering. Only an agreement expressly permitting proprietary
+licensing or identified exceptions to section 3 may waive those conditions for
+the rights, versions and uses it covers. Preserving notices, providing source,
+donating or contributing upstream does not itself grant an exception. An
+agreement may specify fees, development/maintenance contributions, covered
+versions and other terms.
+
+A separately executed agreement may establish alternative licensing terms for
+identified Covered Works, modifications and derivative versions, including
+their permitted use, distribution and sublicensing. To the extent expressly
+stated in that agreement, its terms replace or supplement the corresponding
+community conditions for the parties, rights, versions and uses it identifies.
+All other applicable conditions continue. Such terms are effective only as
+agreed by the Licensor or a Licensing Maintainer whose written appointment
+covers the grant; no rights beyond that party's authority are supplied.
 
 3. Source, notices and downstream terms
 
-When distributing covered code, include this license and applicable copyright,
-attribution and third-party notices; identify material modifications; and provide
-its Complete Source to recipients at no additional charge. License your covered
-modifications under these same community terms. Do not withdraw these community
-permissions or purport to grant commercial Application rights you do not own.
+When distributing a Covered Work in source, binary, container, installer or
+any other form, include this license and applicable copyright, attribution and
+third-party notices, identify material modifications and provide its Complete
+Source to recipients at no additional charge. License the entire covered
+version, including your covered modifications, features and Plugins, under
+these same community terms. An accessible download of the exact Complete
+Source alongside the distribution is sufficient; an incomplete tree or a
+future promise is not.
 
-If you operate a modified covered version over a network, prominently offer its
-users the Complete Source of that version at no additional charge. The offer may
-require the deployment's normal account access. This requirement does not permit
-an otherwise prohibited Commercial Offering. Internal modifications need not be
-published to the general public solely because of Internal Use, but this network
-source requirement still applies to users of a modified deployment.
+If you operate a Covered Work over a network, prominently offer every user
+interacting with it the Complete Source of the exact version they use, at no
+additional charge, through a customary download mechanism. This includes
+hosted, managed and SaaS deployments, internal users and users of covered
+Plugins and premium features, whether or not the deployed code has been
+modified. Normal deployment account access may be required; no separate source
+fee, NDA or additional contractual restrictions may be imposed. Keep the
+source offer usable while operating that version. Source need not be published
+to the general public solely because of Internal Use, but it must be available
+to those users.
+
+Recipients and network users receive the same community permissions to
+inspect, copy, modify, fork and redistribute Covered Works, subject to this
+license's branding and commercial restrictions. Do not replace these terms
+with a proprietary EULA, impose confidentiality or non-redistribution
+conditions on covered code, or use legal or technical restrictions to prevent
+exercising those permissions. Do not purport to grant rights you do not hold.
+
+Providing only the base edition's source while withholding covered extensions,
+patches, backend changes or premium features does not satisfy this section.
+Renaming a fork, separating a feature into a Plugin/service or requiring a
+paid account does not remove source obligations for covered code. The express
+exceptions in sections 4 and 5 for independent third-party material still
+apply. Nothing here authorizes an otherwise prohibited paywall or Branding
+Changes. Only an express written exception under section 2 can authorize a
+Closed-Source Offering for the covered rights and uses.
 
 Ordinary business records, generated documents, uploaded files, personal data
-and secrets do not become covered code merely because the Application processes
-them. Do not include private data or credentials in source offers.
+and secrets do not become covered code merely because the Application
+processes them. Do not include private data or credentials in source offers.
+
+3.1. Upstream grant-back for fork changes
+
+As a condition of making Fork Changes under this license, you grant the
+Licensor a worldwide, nonexclusive, perpetual, irrevocable, royalty-free
+copyright license over all such Fork Changes you own or are authorized to
+license. The Licensor may copy, use, adapt, combine, merge, publish,
+distribute and sublicense them as part of Meshable Ops and its derivatives
+under this community license or terms established under section 2, including
+the right to authorize others to exercise those rights and to transfer the
+grant with lawful project ownership. No royalty, fee, exclusivity or
+obligation to merge or maintain your changes is created. You retain copyright
+and your own permitted uses of your original code.
+
+The grant takes effect when you make the Fork Changes using the permission in
+this license; it is not conditional on submitting a pull request, publishing
+the fork, signing a separate CLA or the project accepting your changes. You
+must have authority from the relevant rights holders, including employers,
+clients and contributors, to supply this grant for all incorporated Fork
+Changes. Identify third-party material and do not purport to grant rights you
+do not control. Unchanged third-party dependencies retain their own terms.
+
+Within 30 days of the Licensor's written request, provide the Complete Source
+of your Fork Changes and the covered build/integration material needed to use
+them, at no charge and without additional restrictions. A usable link to the
+exact source is sufficient. This applies to private/internal Fork Changes as
+well as published forks; it does not require publishing to the general public
+or disclosing credentials, business records, personal data or other excluded
+material. The normal recipient/network-user source duties in section 3 also
+continue to apply.
+
+For patent claims you control that would necessarily be infringed by your Fork
+Changes alone or by their combination with the Application, you also grant the
+Licensor and its sublicensees a worldwide, royalty-free, perpetual patent
+license to make, use, distribute and otherwise exercise the above copyright
+grant. The patent-litigation termination rule in section 5 applies to a
+recipient initiating such litigation. Copyright grants already made under this
+section survive later termination of your community permissions or removal of
+the fork.
+
+This grant-back does not accept the separate CLA, transfer ownership or reach
+independently developed Plugins outside the definition of Fork Changes. The
+CLA may separately document identified contributions and additional authority.
+An exception to the grant-back condition itself requires an express written
+agreement from the Licensor or an authorized Licensing Maintainer.
 
 4. Paid community plugins and integration components
 
-Plugin authors may charge for copies, paywalled access, subscriptions, hosting,
-support and services for their separately identifiable Plugins and retain the
-proceeds without an automatic royalty/revenue share to the Licensor. This express
-exception applies to the Plugin itself. It does not permit selling, bundling for
-a commercial charge or commercially hosting the Application, or a substitute
-hosted offering of its core functionality, as a device to evade section 2.
+Plugin authors may charge for copies, paywalled access, subscriptions,
+hosting, support and services for their separately identifiable Plugins and
+retain the proceeds without an automatic royalty/revenue share to the
+Licensor. This express exception permits developing and modifying the
+separately identifiable Plugin itself through the exposed plugin interfaces.
+It does not authorize Branding Changes, a Closed-Source Offering or a
+Paywalled Offering of the Application. Permitted Services and compliant
+community modifications remain allowed alongside paid Plugins. Repackaging
+core functionality as a Plugin or bundling Application access into a paid
+Plugin cannot evade section 2.
 
-Application-derived code and covered Plugin extensions inherit this license,
-including this exception and section 3's source/notice conditions. Authors retain
-ownership of their original Plugin code. A paywall cannot withdraw recipients'
-permitted rights or charge extra for required source. Publishing or selling an
-independent Plugin does not accept a CLA or grant the Licensor relicensing rights
-over that Plugin. An identified contribution expressly accepted under the CLA
-is governed by that agreement to its stated extent.
+As a condition of this Plugin permission, Application-derived extensions and
+Plugins using the Application-specific plugin interfaces must be supplied
+under this license, including their original code, this paid-Plugin exception
+and section 3's source/notice conditions. They are Covered Works even if
+separately packaged or described as premium features. Identified third-party
+dependencies retain their own terms. Authors retain ownership of their
+original Plugin code. A Plugin paywall cannot withdraw recipients' community
+rights, charge extra for required source or withhold source from its network
+users. Publishing or selling an independently developed Plugin outside the
+definition of Fork Changes does not accept a CLA or grant the Licensor
+relicensing rights over that Plugin. Section 3.1 applies to Plugins originally
+developed as part of a fork and other Fork Changes. An identified contribution
+expressly accepted under the CLA is governed by that agreement to its stated
+extent.
 
 Independently authored, separable external-service clients/adapters may retain
 another license where it permits the actual combination and distribution.
-Preserve its notices, source and other requirements. Independent remote services
-retain their own terms. An API, ZIP, language or process boundary alone does not
-exempt Application-derived code or eliminate third-party obligations.
+Preserve its notices, source and other requirements. Independent remote
+services retain their own terms. An API, ZIP, language or process boundary
+alone does not exempt Application-derived code or eliminate third-party
+obligations.
 
 5. Ownership, patents and upstream material
 
-Each author retains copyright. Each Licensor grants a nonexclusive, royalty-free
-patent license, limited to claims they control necessarily infringed by their
-covered contribution, to exercise the above permissions. This patent permission
-terminates if you initiate patent litigation alleging the covered work infringes
-a patent. Only rights owned or authorized for grant are supplied by this license.
+Each author retains copyright. Each Licensor grants a nonexclusive,
+royalty-free patent license, limited to claims they control necessarily
+infringed by their covered contribution, to exercise the above permissions.
+This patent permission terminates if you initiate patent litigation alleging
+the covered work infringes a patent. Only rights owned or authorized for grant
+are supplied by this license.
 
-Upstream packages, services, images, fonts and trademarks retain their own terms.
-No removal of their notices or claim of official endorsement is authorized.
-A commercial agreement cannot waive third-party rights.
+Upstream packages, services, images, fonts and trademarks retain their own
+terms. No removal of their notices or claim of official endorsement is
+authorized. A commercial agreement cannot waive third-party rights. A
+proprietary exception for a combination requires sufficient rights over every
+covered contribution included. Section 3.1 supplies a grant for covered Fork
+Changes from their authorized rights holders. Independent Plugins and other
+code outside that grant need their own adequate licensing or contributor
+permission before proprietary relicensing.
 
 6. Earlier versions and existing rights
 
-For code controlled by the Licensor, this notice covers the current version and
-earlier unreleased versions, branches and snapshots first supplied under this
-notice, and later copies bearing it. A separately executed license governs its
-identified versions/uses to its stated extent.
+For code controlled by the Licensor, this notice covers the current version
+and earlier unreleased versions, branches and snapshots first supplied under
+this notice, and later copies bearing it. A separately executed license
+governs its identified versions/uses to its stated extent.
 
 This notice does not retroactively revoke, narrow or replace a valid license
-already granted to another recipient, including an earlier AGPL grant. A recipient
-may retain rights in a legitimately received earlier copy under its original
-terms. Repository privacy alone does not establish that no grant/disclosure
-occurred. This notice cannot be imposed on independent third-party code without
-the necessary rights or relicensing authority.
+already granted to another recipient, including an earlier community license
+1.0 or AGPL grant. A recipient may retain rights in a legitimately received
+earlier copy under its original terms. Repository privacy alone does not
+establish that no grant/disclosure occurred. This notice cannot be imposed on
+independent third-party code without the necessary rights or relicensing
+authority.
 
 7. Termination and reinstatement
 
 Permissions terminate upon material violation. They reinstate automatically if
 a first violation is cured within 30 days of written notice by the relevant
 Licensor, unless that Licensor has already permanently terminated your rights
-for a prior violation. Other reinstatement requires written permission. Compliant
-downstream recipients retain their independent permissions. Termination does
-not require return of ordinary business data.
+for a prior violation. Other reinstatement requires written permission.
+Compliant downstream recipients retain their independent permissions.
+Termination does not require return of ordinary business data.
 
 8. No warranty or liability
 
-TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE APPLICATION IS PROVIDED "AS IS",
-WITHOUT WARRANTY OF ANY KIND, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE, TITLE OR NON-INFRINGEMENT. COPYRIGHT HOLDERS AND CONTRIBUTORS ARE NOT
-LIABLE FOR DAMAGES, CLAIMS OR OTHER LIABILITY ARISING FROM IT OR ITS USE, WHETHER
-IN CONTRACT, TORT OR OTHERWISE. MANDATORY RIGHTS THAT CANNOT LAWFULLY BE EXCLUDED
-REMAIN UNAFFECTED.
+TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE APPLICATION IS PROVIDED "AS
+IS", WITHOUT WARRANTY OF ANY KIND, INCLUDING MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE, TITLE OR NON-INFRINGEMENT. COPYRIGHT HOLDERS AND
+CONTRIBUTORS ARE NOT LIABLE FOR DAMAGES, CLAIMS OR OTHER LIABILITY ARISING
+FROM IT OR ITS USE, WHETHER IN CONTRACT, TORT OR OTHERWISE. MANDATORY RIGHTS
+THAT CANNOT LAWFULLY BE EXCLUDED REMAIN UNAFFECTED.
 
-9. Commercial authority
+9. Agreement authority
 
 Contact the Licensor or an expressly authorized Licensing Maintainer recorded
-in MAINTAINERS.md. Appointments and commercial grants must be in writing. No
-response, repository access, support payment, contribution or Plugin purchase
-implies commercial Application permission. Changes to a maintainer list do not
-revoke executed licenses or enlarge authority beyond the underlying appointment.
+in MAINTAINERS.md. Appointments and grants for application paywalls,
+alternative licensing terms, proprietary exceptions, Branding Changes or
+grant-back exceptions must be in writing. No response, repository access,
+support payment, contribution or Plugin purchase implies such an exception.
+Community modifications do not by themselves confer authority to grant
+commercial or branding exceptions for the Application or other authors'
+covered code. Changes to a maintainer list do not revoke executed licenses or
+enlarge authority beyond the underlying appointment.

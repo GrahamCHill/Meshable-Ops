@@ -137,6 +137,9 @@ class ReportDocument(BaseModel):
     siteName: str = Field(default='', max_length=80)
     companyName: str = Field(default='', max_length=120)
     siteLogo: str = Field(default='', max_length=350000)
+    projectName: str = Field(default='', max_length=200)
+    clientLogo: str = Field(default='', max_length=350000)
+    aiSummary: str | None = Field(default=None, max_length=3000)
 
     @model_validator(mode="after")
     def bounded_report(self):
@@ -212,6 +215,7 @@ body {font:9pt 'Liberation Sans',sans-serif;color:#132842;line-height:1.4;margin
 h1 {font-size:24pt;line-height:1.15;margin:3mm 0 4mm}h2 {font-size:15pt;margin:6mm 0 3mm;break-after:avoid}h3 {font-size:10pt;margin:0 0 3mm;break-after:avoid}
 p {margin:2mm 0}.eyebrow {font-size:9pt;text-transform:uppercase;letter-spacing:1px;color:#2367c9}.muted {color:#617186;font-size:8pt}.period {font-size:9pt;border-bottom:1px solid #dce4ed;padding-bottom:4mm;margin-bottom:5mm}
 .report-page {break-after:page}.metrics {display:table;width:100%;table-layout:fixed;margin:4mm 0 6mm}.metric {display:table-cell;padding:4mm 2mm;background:#f0f5fc;border-right:2mm solid white;vertical-align:top}.metric strong {display:block;font-size:22pt;font-weight:700;line-height:1.2;overflow-wrap:anywhere}.metric span {display:block;font-size:8pt;color:#526579;margin-top:2mm}
+.ai-summary {font-size:11pt;line-height:1.6;overflow-wrap:anywhere;white-space:pre-line;margin-top:7mm}
 .chart-grid:after {content:'';display:block;clear:both}.chart {float:left;box-sizing:border-box;width:49%;height:65mm;padding:4mm;border:1px solid #dce4ed;margin:0 1% 4mm 0;overflow:hidden}
 table {width:100%;border-collapse:collapse;table-layout:fixed}td,th {vertical-align:top}.bars td {padding:1mm 0}.bar-label {font-size:8pt;overflow-wrap:anywhere}.bar-label b {float:right;margin-left:2mm}.bar-bg {height:2mm;background:#edf1f7;margin-top:1mm}.bar-bg div {height:2mm}.donut td {font-size:7.5pt;padding:1mm 0;overflow-wrap:anywhere}.donut .ring {width:33mm;vertical-align:middle}.swatch {display:inline-block;width:2mm;height:2mm;margin-right:1mm}
 .insight-grid {display:table;width:100%;table-layout:fixed}.insight-column {display:table-cell;width:50%;padding-right:4mm}.insight {padding:3mm 0;border-bottom:1px solid #dce4ed}.insight b {float:right}.observations {clear:both;background:#f0f5fc;padding:4mm;margin-top:5mm}.observations p {margin:2mm 0}
@@ -258,13 +262,15 @@ def report_html(value):
         rows = ''.join('<tr>' + ''.join(f'<td>{escape(excerpt(cell, limits[index] if len(section.columns) == 5 else 240))}</td>' for index, cell in enumerate(row)) + '</tr>' for row in section.rows)
         sections.append(f'<section class="ticket-section"><h2>{escape(section.title)}</h2><table class="tickets">{columns}<thead><tr>{headers}</tr></thead><tbody>{rows}</tbody></table></section>')
     export = f'<section id="ticket-export">{heading}<h1>Ticket export</h1>{period}<p class="muted">All scoped tickets are listed. Long fields are excerpts: task 160, people 140, status 90, dates 180 and description 240 characters; up to eight lines per cell. N/A durations lack eligible dates. Full details remain in the workspace.</p>{"".join(sections)}</section>'
-    return f'<!doctype html><html lang="en"><head><meta charset="utf-8"><style>{CSS}</style></head><body>{overview}{insights}{sprint_page(report, heading, period)}{lead_page}{export}</body></html>'
+    ai_page = f'<section class="report-page" id="report-ai-insights">{heading}<h1>LLM-summarised insights</h1>{period}<p class="muted">AI-generated from this project report. Verify against the factual pages that follow. Suggestions are not recorded outcomes.</p><div class="ai-summary">{escape(report.aiSummary)}</div></section>' if report.aiSummary else ''
+    return f'<!doctype html><html lang="en"><head><meta charset="utf-8"><style>{CSS}</style></head><body>{ai_page}{overview}{insights}{sprint_page(report, heading, period)}{lead_page}{export}</body></html>'
 
 
 def index_html(report, pages):
-    rows = ''.join(f'<tr><td>{title}</td><td>{page}</td></tr>' for title, page in [("Kanban summary", 1), ("Additional insights", 2), ("Sprint monitor", 3), ("Average ticket lead time", 4), ("Ticket export", 5)])
+    contents = (["LLM-summarised insights"] if report.aiSummary else []) + ["Kanban summary", "Additional insights", "Sprint monitor", "Average ticket lead time", "Ticket export"]
+    rows = ''.join(f'<tr><td>{title}</td><td>{page}</td></tr>' for page, title in enumerate(contents, 1))
     scope = ''.join(f'<li>{escape(short(line, 160))}</li>' for line in report.summary[:6])
-    return f'<!doctype html><html><head><meta charset="utf-8"><style>@page{{size:A4;margin:22mm}}body{{font:11pt "Liberation Sans",sans-serif;color:#132842;line-height:1.6}}h1{{font-size:30pt;margin-top:20mm}}table{{width:100%;border-collapse:collapse;margin-top:12mm}}td,th{{padding:5mm 0;border-bottom:1px solid #dce4ed}}th{{text-align:left;font-size:10pt;background:#f0f5fc}}td:last-child,th:last-child{{text-align:right}}.muted{{font-size:9pt;color:#617186}}ul{{padding-left:5mm}}</style></head><body><p>{escape(report.organization)}</p><h1>Report index</h1><p>{escape(report.subtitle)}</p><p>{escape(report.period)}</p><table><thead><tr><th scope="col">Content</th><th scope="col">Page</th></tr></thead><tbody>{rows}</tbody></table><p class="muted">Page numbers start at the Kanban summary. This cover and index precede numbered page 1. The report contains {pages} numbered pages.</p><h2>Scope</h2><ul>{scope}</ul></body></html>'
+    return f'<!doctype html><html><head><meta charset="utf-8"><style>@page{{size:A4;margin:22mm}}body{{font:11pt "Liberation Sans",sans-serif;color:#132842;line-height:1.6}}h1{{font-size:30pt;margin-top:15mm}}table{{width:100%;border-collapse:collapse;margin-top:10mm}}td,th{{padding:4mm 0;border-bottom:1px solid #dce4ed}}th{{text-align:left;font-size:10pt;background:#f0f5fc}}td:last-child,th:last-child{{text-align:right}}.muted{{font-size:9pt;color:#617186}}ul{{padding-left:5mm}}</style></head><body><p>{escape(report.organization)}</p><h1>Report index</h1><p>{escape(report.subtitle)}</p><p>{escape(report.period)}</p><table><thead><tr><th scope="col">Content</th><th scope="col">Page</th></tr></thead><tbody>{rows}</tbody></table><p class="muted">The cover and index precede numbered page 1 ({contents[0]}). The report contains {pages} numbered pages.</p><h2>Scope</h2><ul>{scope}</ul></body></html>'
 
 
 def render_report(value):
@@ -273,11 +279,11 @@ def render_report(value):
     from report_cover import render_cover_document
     report = ReportDocument.model_validate(value)
     body = HTML(string=report_html(value), url_fetcher=inline_only).render()
-    expected = ["report-summary", "report-insights", "report-sprints", "report-leadtime", "ticket-export"]
+    expected = (["report-ai-insights"] if report.aiSummary else []) + ["report-summary", "report-insights", "report-sprints", "report-leadtime", "ticket-export"]
     for index, anchor in enumerate(expected):
         if index >= len(body.pages) or anchor not in body.pages[index].anchors:
             raise ValueError("Analytical report pages exceed their fixed layout")
-    cover = render_cover_document({"html": report.coverHtml, "title": report.title, "organization": report.organization, "project": report.subtitle, "period": report.period, "ticketCount": (report.kanban.total if report.kanban else sum(len(section.rows) for section in report.sections)), 'assets': report.coverAssets, 'siteName': report.siteName, 'companyName': report.companyName, 'siteLogo': report.siteLogo})
+    cover = render_cover_document({"html": report.coverHtml, "title": report.title, "organization": report.organization, "project": report.projectName or report.subtitle, "projectName": report.projectName or report.subtitle, "period": report.period, "ticketCount": (report.kanban.total if report.kanban else sum(len(section.rows) for section in report.sections)), 'assets': report.coverAssets, 'siteName': report.siteName, 'companyName': report.companyName, 'siteLogo': report.siteLogo, 'clientLogo': report.clientLogo})
     index = HTML(string=index_html(report, len(body.pages)), url_fetcher=inline_only).render()
     if len(index.pages) != 1 or not 5 <= len(body.pages) <= 198:
         raise ValueError("Report must have a cover, index and 5-198 numbered pages")

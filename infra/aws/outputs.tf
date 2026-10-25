@@ -19,3 +19,11 @@ output "document_bucket" {
 output "access_log_bucket" {
   value = aws_s3_bucket.access_logs.id
 }
+output "private_hosts" {
+  value = local.private_ips
+}
+
+output "database_host" {
+  value = aws_db_instance.app.address
+}
+

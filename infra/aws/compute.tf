@@ -23,6 +23,7 @@ resource "aws_instance" "app" {
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.instance_type
   subnet_id                   = aws_subnet.app.id
+  private_ip                  = local.private_ips.app
   associate_public_ip_address = false
   vpc_security_group_ids      = [aws_security_group.app.id]
   iam_instance_profile        = aws_iam_instance_profile.app.name
@@ -32,24 +33,38 @@ resource "aws_instance" "app" {
     volume_size = 80
     encrypted   = true
   }
-  user_data = templatefile("${path.module}/cloud-init.tftpl", {
-    repository_url          = var.repository_url
-    repository_ref          = var.repository_ref
-    app_domain              = var.app_domain
-    acme_email              = var.acme_email
-    jwt_secret              = var.jwt_secret
-    superset_secret_key     = var.superset_secret_key
-    guest_token_jwt_secret  = var.guest_token_jwt_secret
-    superset_admin_password = var.superset_admin_password
-    bootstrap_users_json    = replace(jsonencode(jsondecode(var.bootstrap_users_json)), "'", "\\'")
-    storage_bucket          = aws_s3_bucket.documents.id
-    storage_region          = var.aws_region
-    storage_root_path       = var.storage_root_path
-  })
+  user_data                   = module.bootstrap.cloud_init["app"]
+  user_data_replace_on_change = true
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
     http_put_response_hop_limit = 2
   }
   tags = { Name = var.name }
+}
+
+resource "aws_instance" "private" {
+  for_each                    = toset(["services", "runtime"])
+  depends_on                  = [aws_route.services_outbound, aws_route_table_association.services]
+  ami                         = data.aws_ami.ubuntu.id
+  instance_type               = var.service_instance_type
+  subnet_id                   = aws_subnet.services.id
+  private_ip                  = local.private_ips[each.key]
+  associate_public_ip_address = false
+  vpc_security_group_ids      = [aws_security_group.private[each.key].id]
+  key_name                    = aws_key_pair.app.key_name
+  user_data                   = module.bootstrap.cloud_init[each.key]
+  user_data_replace_on_change = true
+  root_block_device {
+    volume_type           = "gp3"
+    volume_size           = 100
+    encrypted             = true
+    delete_on_termination = false
+  }
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
+  tags = { Name = "${var.name}-${each.key}" }
 }

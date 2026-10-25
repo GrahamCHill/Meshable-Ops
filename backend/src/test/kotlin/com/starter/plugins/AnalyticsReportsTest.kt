@@ -33,6 +33,30 @@ class AnalyticsReportsTest {
             assertThat(it.manifest.settingsFields.filter {field->field.key in setOf("accessToken","clientSecret","refreshToken","developerToken")}).allMatch {field->field.type==PluginFieldType.SECRET}}
         assertThat(definitions.map {it.manifest.tables.single().name}.toSet()).hasSize(5)
     }
+    @Test fun `each analytics connector activates alone while every other connector is disabled`() {
+        val definitions=listOf(GoogleAdsPlugin(),MetaAdsPlugin(),GoogleAnalyticsPlugin(),MetaPageAnalyticsPlugin(),CloudflareAnalyticsPlugin())
+        definitions.forEach {enabled->
+            val settings=mock(com.starter.repository.postgres.PluginSettingsRepository::class.java)
+            `when`(settings.findAll()).thenReturn(listOf(com.starter.model.postgres.PluginSettings(enabled.manifest.id,true)))
+            val registry=PluginRegistry(definitions,settings)
+            assertThat(registry.available("ADMIN").map {it.manifest.id}).containsExactly(enabled.manifest.id)
+            assertThat(enabled.manifest.requires).isEmpty();assertThat(enabled.manifest.requiresCapabilities).isEmpty()
+        }
+    }
+    @Test fun `a Google reporting failure does not block Meta and a Meta failure does not block Google`() {
+        val googleReports=mock(GoogleAnalyticsReports::class.java);val metaReports=mock(MetaAnalyticsReports::class.java);val cf=mock(CloudflareAnalyticsReports::class.java)
+        val dispatcher=AnalyticsProviders(googleReports,metaReports,cf);val selection=AnalyticsSelection("123")
+        val snapshot=AnalyticsSnapshot(from,to,emptyList())
+        `when`(googleReports.ads(emptyMap(),selection,from,to)).thenThrow(IntegrationUnavailable("Google unavailable"))
+        `when`(metaReports.ads(emptyMap(),selection,from,to)).thenReturn(snapshot)
+        assertThatThrownBy {dispatcher.fetch(AnalyticsProvider.GOOGLE_ADS,emptyMap(),selection,from,to)}.isInstanceOf(IntegrationUnavailable::class.java)
+        assertThat(dispatcher.fetch(AnalyticsProvider.META_ADS,emptyMap(),selection,from,to)).isEqualTo(snapshot)
+        `when`(metaReports.page(emptyMap(),selection,from,to)).thenThrow(IntegrationUnavailable("Meta unavailable"))
+        `when`(googleReports.analytics(emptyMap(),selection,from,to)).thenReturn(snapshot)
+        assertThatThrownBy {dispatcher.fetch(AnalyticsProvider.META_PAGE,emptyMap(),selection,from,to)}.isInstanceOf(IntegrationUnavailable::class.java)
+        assertThat(dispatcher.fetch(AnalyticsProvider.GOOGLE_ANALYTICS,emptyMap(),selection,from,to)).isEqualTo(snapshot)
+        verifyNoInteractions(cf)
+    }
     @Test fun `Google Ads uses server token exchange safe campaign query and micros conversion`() {
         response="""{"results":[{"customer":{"currencyCode":"ZAR"},"metrics":{"impressions":"100","clicks":"10","costMicros":"25000000","conversions":2.5,"conversionsValue":100}}]}"""
         val value=google.ads(googleConfig,AnalyticsSelection("1234567890",AnalyticsFilter.CAMPAIGN,"987"),from,to)

@@ -25,7 +25,7 @@ class ProjectReportService(private val access: ProjectAccess, private val projec
     private val branding: BrandingPreferencesService, private val notifications: NotificationService, private val boards: com.starter.plugins.kanban.KanbanRepository,
     private val boardAccess: ProjectBoardAccess, private val mapper: com.fasterxml.jackson.databind.ObjectMapper,
     private val downloadPolicy: com.starter.service.DocumentAccessService, private val pdfService: com.starter.service.PdfService,
-    private val covers: ProjectReportCoverService? = null) {
+    private val covers: ProjectReportCoverService? = null,private val aiInsights: ProjectReportAiInsights? = null) {
     fun list(email: String, id: UUID): List<ProjectReportView> { val actor = access.actor(email); access.require(id, actor); return reports.findTop100ByProjectIdOrderByCreatedAtDesc(id).filter { allowedBoards(actor, it.boardIdsJson) }.map { ProjectReportView(it.id, it.projectId, it.kind, it.fromDate, it.toDate, it.createdAt) } }
     fun generate(email: String, id: UUID, request: ProjectReportInput, deliveryKey: String? = null): ProjectReportView {
         val actor = access.actor(email); val project = access.require(id, actor, request.sendEmail)
@@ -54,14 +54,15 @@ class ProjectReportService(private val access: ProjectAccess, private val projec
                 ProjectReportAnalytics.dates(item,LocalDate.now(java.time.ZoneOffset.UTC)), card.description).mapIndexed {index,cell->ProjectReportAnalytics.excerpt(cell,ProjectReportAnalytics.cellLimits[index])}
         }) }.ifEmpty { listOf(ProjectReportSection("Project activity", listOf("Result"), listOf(listOf("No tickets matched the selected period or sprint.")))) }
         val context = projects.get(email, id)
-        val cover=covers?.context(id)
+        val cover=covers?.context(project)
+        val aiSummary=aiInsights?.summarize(project.name,request,cards)
         val pdf = renderer.report(ProjectReportDocument("${request.kind.name.lowercase().replaceFirstChar { it.titlecase() }} report", branding.current().applicationName,
             "${project.name} · ${context.clientName}", "${request.from} — ${request.to}", listOf("${cards.size} tickets in scope", "${cards.count { it.card.status == CardStatus.DONE }} completed; ${cards.count { it.card.status == CardStatus.IN_PROGRESS }} in progress",
                 "${cards.sumOf { it.card.storyPoints ?: 0.0 }} story points", "Project lead: ${users.findById(project.leadId).orElse(null)?.let { it.name ?: it.username } ?: "Member"}", "Confidential delivery-risk scores and personal calendars are excluded."), sections,
             ProjectWorkService.summarize(cards,names.mapKeys {it.key.toString()},LocalDate.now(java.time.ZoneOffset.UTC)),
             ProjectReportAnalytics.insights(cards,LocalDate.now(java.time.ZoneOffset.UTC)),ProjectReportAnalytics.leadTime(cards),cover?.html,
             cover?.assets.orEmpty(),cover?.siteName ?: branding.current().applicationName,cover?.companyName.orEmpty(),cover?.siteLogo.orEmpty(),
-            ProjectSprintMonitor.summarize(cards,LocalDate.now(java.time.ZoneOffset.UTC))))
+            ProjectSprintMonitor.summarize(cards,LocalDate.now(java.time.ZoneOffset.UTC)),project.name,cover?.clientLogo.orEmpty(),aiSummary))
         access.require(id, access.actor(email), request.sendEmail)
         val saved = reports.saveAndFlush(ProjectReportRecord(projectId = id, createdBy = actor.id, kind = request.kind, fromDate = request.from, toDate = request.to, pdf = pdf, boardIdsJson = mapper.writeValueAsString(boardIds)))
         val deliveries = recipients.associate { recipient ->

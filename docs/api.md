@@ -1,5 +1,21 @@
 # Application API reference
 
+## External sign-in
+
+Entra ID and Google are optional environment-configured OIDC providers. Existing accounts explicitly connect identities; no email matching or self-registration occurs. See [provider setup, callbacks, MFA, and lifecycle](external-login.md).
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| GET | `/api/auth/providers` | Public enabled-provider IDs, names and authorization URLs; no credentials |
+| GET | `/api/auth/oidc/authorize/{provider}` | Begin a browser authorization-code flow for `entra` or `google` |
+| GET | `/api/auth/oidc/callback/{provider}` | Provider callback with code/state; redirects to login with a server-held pending result |
+| POST | `/api/auth/oidc/complete` | Consume the temporary result once; return `{auth, linked}` where `auth` is the existing auth response or local MFA challenge |
+| GET | `/api/account/identities` | Authenticated member's connected provider IDs |
+| POST | `/api/account/identities/{provider}/connect` | Require the current application session/CSRF proof, prepare a five-minute link intent, and return `{authorizationUrl}` |
+| DELETE | `/api/account/identities/{provider}` | Disconnect the current member's provider identity, including a disabled provider |
+
+The connection callback and completion must use the original application session. An OIDC handshake session cannot authorize application APIs. Completion requires a same-origin POST and retains the existing local MFA gate. Unknown identities return `403` with connection guidance. Provider failures/cancellation return to `/login?external=failed`; no tokens or raw provider errors appear in redirect URLs.
+
 ## Operations plugin APIs
 
 All paths below require authentication, an active permitted plugin, plugin-table access and applicable project membership. `EXTERNAL` accounts are excluded. Mutations use optimistic `revision`; stale writes return `409`. New plugins start disabled. [Operations guide](plugins/operations.md) documents dependencies, safeguards and provider setup.
@@ -35,8 +51,8 @@ All routes require an active internal account and the Projects feature. Record-l
 | GET | `/projects/{id}/work-summary` | Visible-board ticket totals and column, assignee, epic and tag breakdowns |
 | GET | `/projects/{id}/extensions`, `/projects/clients/{id}/extensions` | Authorized plugin links/panels |
 | GET / POST | `/projects/{id}/reports` | Scoped saved reports / generate PDF; leadership required when emailing |
-| GET / PUT | `/projects/{id}/reports/design` | Read/save `{html, revision, assets?}` cover design; leadership required for saves |
-| POST | `/projects/{id}/reports/design/preview` | Leadership: render draft `{html, title, period, assets?}` as a one-page cover PDF |
+| GET / PUT | `/admin/projects/report-cover` | Administrator: shared report design and AI switch (`html`, `revision`, `assets?`, `aiInsightsEnabled`) |
+| POST | `/admin/projects/report-cover/preview` | Administrator: render draft `{html, title?, period?, assets?, projectId?}` with the chosen project's name and client logo |
 | GET | `/projects/{id}/reports/{reportId}/pdf` | Download PDF after current project/board/policy checks |
 | POST | `/projects/digests/preview`, `/projects/digests/send` | Own preview/email |
 | POST | `/projects/{id}/digests` | Leadership send of recipient-specific work/calendar emails; statuses only |

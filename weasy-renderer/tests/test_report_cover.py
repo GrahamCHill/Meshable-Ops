@@ -30,6 +30,18 @@ class ReportCoverTest(unittest.TestCase):
         self.assertIn("&lt;script&gt;stolen&lt;/script&gt;", value)
         self.assertNotIn("<script>", value)
 
+    def test_project_name_and_client_logo_are_resolved_for_each_report(self):
+        from report_cover import EMPTY_IMAGE
+        source='<h1>{{projectName}}</h1><p>{{project}}</p><img src="{{clientLogo}}"><style>aside{background:url("{{clientLogo}}")}</style>'
+        html=cover_html({'html':source,'projectName':'Delivery & rollout','clientLogo':EMPTY_IMAGE})
+        self.assertEqual(html.count('Delivery &amp; rollout'),2)
+        self.assertEqual(html.count(EMPTY_IMAGE),2)
+        missing=cover_html({'html':source,'projectName':'Another project'})
+        self.assertIn('Another project',missing)
+        self.assertEqual(missing.count(EMPTY_IMAGE),2)
+        with self.assertRaises(ValueError):
+            cover_html({'html':source,'clientLogo':'https://example.test/logo.png'})
+
     def test_designs_cannot_fetch_resources_execute_content_or_move_tokens_into_attributes(self):
         examples = ['<script>alert(1)</script>', '<img src="https://example.test/image.png">', '<div onclick="alert(1)">X</div>',
                     '<style>@import "https://example.test/theme.css";</style>', '<p style="background:url(file:///etc/passwd)">X</p>',

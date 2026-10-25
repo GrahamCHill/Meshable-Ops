@@ -49,3 +49,7 @@ Search/AI crawling is disallowed globally by robots.txt, HTML metadata, and resp
 Regression checks cover empty bootstrap behavior, salted hashes, unchanged existing accounts, invalid configuration redaction, Superset account preservation, required Compose secrets, and generated environment settings. Configuration tests generate temporary credentials and never use a real `.env`.
 
 The duplicated SQL definitions were removed rather than excluded from analysis. Run SonarCloud again after publishing the changes to verify its updated duplication and security findings. Local tests do not establish a new Sonar rating or a successful live database/cloud deployment.
+
+## Optional external sign-in
+
+Microsoft Entra ID and Google can be enabled independently through backend environment variables. Existing invite-only users connect their provider identity from Security & MFA after signing in; matching email claims never grant access automatically. See [external login setup and account lifecycle](external-login.md).

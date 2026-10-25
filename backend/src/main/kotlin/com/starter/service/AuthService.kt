@@ -51,6 +51,12 @@ class AuthService(
             user.password = passwordEncoder.encode(req.password)
             userRepository.save(user)
         }
+        return loginExternal(user, response)
+    }
+
+    // Every primary authentication method passes through the same local MFA gate.
+    fun loginExternal(user: User, response: HttpServletResponse): com.starter.dto.LoginResponse {
+        if (!user.active) throw org.springframework.security.authentication.DisabledException("Account is disabled")
         if (mfa.enabled(user.id)) { clearAuthCookie(response); return mfa.login(user) }
         return issueSession(user, false, response)
     }

@@ -19,6 +19,20 @@ class ProjectReportsTest(unittest.TestCase):
         html=index_html(ReportDocument.model_validate(self.value()),4)
         self.assertIn('<thead><tr><th scope="col">Content</th><th scope="col">Page</th></tr></thead>',html)
 
+    def test_optional_llm_insights_are_first_after_the_index_and_shift_page_numbers(self):
+        from report import index_html, render_report
+        value=self.value()
+        self.assertNotIn('id="report-ai-insights"',report_html(value))
+        value['aiSummary']='Delivery is progressing. <script>unsafe</script> Suggested next step: review blockers.'
+        html=report_html(value)
+        self.assertLess(html.index('id="report-ai-insights"'),html.index('id="report-summary"'))
+        self.assertIn('&lt;script&gt;unsafe&lt;/script&gt;',html)
+        index=index_html(ReportDocument.model_validate(value),6)
+        self.assertIn('<td>LLM-summarised insights</td><td>1</td>',index)
+        self.assertIn('<td>Kanban summary</td><td>2</td>',index)
+        self.assertIn('<td>Ticket export</td><td>6</td>',index)
+        self.assertTrue(render_report(value).startswith(b'%PDF-'))
+
     def test_rejects_oversized_or_ragged_tables(self):
         value = self.value(); value["sections"][0]["rows"] = [["one", "two"]]
         with self.assertRaises(ValueError):

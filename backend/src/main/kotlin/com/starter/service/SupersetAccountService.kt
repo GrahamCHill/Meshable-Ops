@@ -57,7 +57,11 @@ class SupersetAccountService(
                 "username" to adminUser, "password" to adminPassword, "provider" to "db", "refresh" to false,
             )).path("access_token").asText().takeIf { it.isNotBlank() }
                 ?: throw BadRequestException("Could not authenticate the Superset service account. Contact your administrator.")
-            val headers = HttpHeaders().apply { setBearerAuth(token); set("Referer", baseUrl) }
+            val headers = HttpHeaders().apply {
+                setBearerAuth(token); set("Referer", baseUrl)
+                accept = listOf(MediaType.APPLICATION_JSON)
+                set(HttpHeaders.ACCEPT_ENCODING, "identity")
+            }
 
             // Search both unique identity fields before touching an existing account.
             val matches = (find("users", "username", email, headers) + find("users", "email", email, headers))
@@ -130,7 +134,12 @@ class SupersetAccountService(
     }
 
     private fun request(path: String, method: HttpMethod, headers: HttpHeaders, body: Any? = null): JsonNode {
-        val jsonHeaders = HttpHeaders().apply { putAll(headers); contentType = MediaType.APPLICATION_JSON; accept = listOf(MediaType.APPLICATION_JSON) }
+        val jsonHeaders = HttpHeaders().apply {
+            putAll(headers); contentType = MediaType.APPLICATION_JSON; accept = listOf(MediaType.APPLICATION_JSON)
+            // Superset compresses larger FAB responses with Brotli, which the selected Java
+            // HTTP transport may advertise without decoding. These small internal calls need JSON.
+            set(HttpHeaders.ACCEPT_ENCODING, "identity")
+        }
         val response = rest.exchange(baseUrl.trimEnd('/') + path, method,
             HttpEntity(body?.let(mapper::writeValueAsString), jsonHeaders), String::class.java)
         return mapper.readTree(response.body)

@@ -1,0 +1,117 @@
+# Use with docker-compose.yml and docker-compose.prod.yml through start.py.
+# Profiles are host roles, not optional features. No database container is used.
+x-remote-postgres: &remote-postgres
+  DATABASE_HOST: ${POSTGRES_HOST}
+  DATABASE_PASSWORD: ${SUPERSET_DATABASE_PASSWORD:-}
+  POSTGRES_PASSWORD: ${SUPERSET_DATABASE_PASSWORD:-}
+  DATABASE_SSL_MODE: ${POSTGRES_SSL_MODE:-verify-full}
+  DATABASE_SSL_ROOT_CERT: /run/secrets/postgres-ca.pem
+
+services:
+  postgres:
+    profiles: [local-database]
+
+  caddy:
+    profiles: [app]
+
+  frontend:
+    profiles: [app]
+    depends_on: !override
+      backend:
+        condition: service_healthy
+    extra_hosts:
+      - superset:${SERVICES_PRIVATE_IP}
+      - ml-backend:${RUNTIME_PRIVATE_IP}
+
+  backend:
+    profiles: [app]
+    depends_on: !reset {}
+    ports:
+      - ${HOST_PRIVATE_IP}:8080:8080
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_USER: app_user
+      POSTGRES_JDBC_PARAMETERS: ?sslmode=${POSTGRES_SSL_MODE:-verify-full}&sslrootcert=/run/secrets/postgres-ca.pem
+      MONGO_URI: mongodb://app_user:${MONGO_PASSWORD:-}@${SERVICES_PRIVATE_IP}:27017/app_db?authSource=admin
+      SUPERSET_BASE_URL: http://${SERVICES_PRIVATE_IP}:8088
+      ML_BASE_URL: http://${RUNTIME_PRIVATE_IP}:8000
+      APP_DOCUMENT_RENDER_URL: http://${RUNTIME_PRIVATE_IP}:8001
+      APP_PLUGIN_RUNNER_URL: http://${RUNTIME_PRIVATE_IP}:8090
+    volumes:
+      - /etc/meshable-ops/postgres-ca.pem:/run/secrets/postgres-ca.pem:ro
+
+  postgres-init:
+    profiles: [services]
+    image: postgres:17-bookworm
+    restart: "no"
+    entrypoint: [/bin/bash, /bootstrap/init-postgres.sh]
+    environment:
+      PGHOST: ${POSTGRES_HOST}
+      PGUSER: ${POSTGRES_ADMIN_USER}
+      PGPASSWORD: ${POSTGRES_ADMIN_PASSWORD:-}
+      PGDATABASE: postgres
+      PGSSLMODE: ${POSTGRES_SSL_MODE:-verify-full}
+      PGSSLROOTCERT: /run/secrets/postgres-ca.pem
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      SUPERSET_DATABASE_PASSWORD: ${SUPERSET_DATABASE_PASSWORD:-}
+    volumes:
+      - ./deploy/terraform:/bootstrap:ro
+      - /etc/meshable-ops/postgres-ca.pem:/run/secrets/postgres-ca.pem:ro
+
+  mongodb:
+    profiles: [services]
+    ports:
+      - ${HOST_PRIVATE_IP}:27017:27017
+
+  redis:
+    profiles: [services]
+
+  superset-init:
+    profiles: [services]
+    environment: *remote-postgres
+    depends_on: !override
+      postgres-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    volumes:
+      - /etc/meshable-ops/postgres-ca.pem:/run/secrets/postgres-ca.pem:ro
+
+  superset:
+    profiles: [services]
+    environment: *remote-postgres
+    ports:
+      - ${HOST_PRIVATE_IP}:8088:8088
+    volumes:
+      - /etc/meshable-ops/postgres-ca.pem:/run/secrets/postgres-ca.pem:ro
+
+  superset-worker:
+    profiles: [services]
+    environment: *remote-postgres
+    volumes:
+      - /etc/meshable-ops/postgres-ca.pem:/run/secrets/postgres-ca.pem:ro
+
+  superset-beat:
+    profiles: [services]
+    environment: *remote-postgres
+    volumes:
+      - /etc/meshable-ops/postgres-ca.pem:/run/secrets/postgres-ca.pem:ro
+
+  plugin-python-worker:
+    profiles: [runtime]
+  plugin-kotlin-worker:
+    profiles: [runtime]
+  plugin-runner:
+    profiles: [runtime]
+    ports:
+      - ${HOST_PRIVATE_IP}:8090:8090
+    environment:
+      PLUGIN_HOST_CALLBACK: http://${APP_PRIVATE_IP}:8080/internal/plugins/host-call
+  weasy-renderer:
+    profiles: [runtime]
+    ports:
+      - ${HOST_PRIVATE_IP}:8001:8000
+  ml-backend:
+    profiles: [runtime]
+    ports:
+      - ${HOST_PRIVATE_IP}:8000:8000

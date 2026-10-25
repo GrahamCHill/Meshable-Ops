@@ -1,6 +1,7 @@
 package com.starter.projects
 
 import com.starter.exception.*
+import com.starter.access.Roles
 import com.starter.rendering.WeasyRendererClient
 import com.starter.service.branding.BrandingPreferencesService
 import jakarta.persistence.*
@@ -15,56 +16,60 @@ import org.springframework.web.bind.annotation.*
 import org.springframework.http.*
 import java.util.UUID
 
-@Entity @Table(name="workspace_project_report_designs")
-class ProjectReportCoverRecord(@Id val projectId: UUID = UUID.randomUUID(), @Column(columnDefinition="TEXT") var html: String = "", @Version var revision: Long = 0,
-    @Column(columnDefinition="TEXT",nullable=false) @org.hibernate.annotations.ColumnDefault("'{}'") var assetsJson: String = "{}")
-interface ProjectReportCoverRepository: JpaRepository<ProjectReportCoverRecord,UUID>
-data class ReportCoverInput(val html: String,val revision: Long = -1,val assets: Map<String,String>? = null)
-data class ReportCoverView(val html: String,val revision: Long,val canManage: Boolean,val defaultHtml: String = ProjectReportCoverService.DEFAULT_HTML,val assets: Map<String,String> = emptyMap())
-data class ReportCoverPreviewInput(val html: String,val title: String = "Project work report",val period: String = "Reporting period",val assets: Map<String,String>? = null)
-data class ReportCoverContext(val html: String,val assets: Map<String,String>,val siteName: String,val companyName: String,val siteLogo: String)
+@Entity @Table(name="workspace_report_designs")
+class ProjectReportCoverRecord(@Id val id: Int = 1, @Column(columnDefinition="TEXT") var html: String = "", @Version var revision: Long = 0,
+    @Column(columnDefinition="TEXT",nullable=false) @org.hibernate.annotations.ColumnDefault("'{}'") var assetsJson: String = "{}",
+    @Column(nullable=false) @org.hibernate.annotations.ColumnDefault("false") var aiInsightsEnabled: Boolean = false)
+interface ProjectReportCoverRepository: JpaRepository<ProjectReportCoverRecord,Int>
+data class ReportCoverInput(val html: String,val revision: Long = -1,val assets: Map<String,String>? = null,val aiInsightsEnabled: Boolean = false)
+data class ReportCoverView(val html: String,val revision: Long,val canManage: Boolean,val defaultHtml: String = ProjectReportCoverService.DEFAULT_HTML,val assets: Map<String,String> = emptyMap(),val aiInsightsEnabled: Boolean = false)
+data class ReportCoverPreviewInput(val html: String,val title: String = "Project work report",val period: String = "Reporting period",val assets: Map<String,String>? = null,val projectId: UUID? = null)
+data class ReportCoverContext(val html: String,val assets: Map<String,String>,val siteName: String,val companyName: String,val siteLogo: String,val clientLogo: String = "")
 
 @Service
 class ProjectReportCoverService(private val rows: ProjectReportCoverRepository,private val access: ProjectAccess,private val renderer: WeasyRendererClient,
     private val branding: BrandingPreferencesService,private val jdbc: JdbcTemplate,
-    private val brandAssets: com.starter.repository.postgres.BrandingAssetRepository? = null) {
+    private val brandAssets: com.starter.repository.postgres.BrandingAssetRepository? = null,
+    private val artwork: com.starter.repository.postgres.WorkspaceArtworkRepository? = null) {
     private val mapper=com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
     private fun assets(row: ProjectReportCoverRecord?)=row?.let {mapper.readValue(it.assetsJson,object:com.fasterxml.jackson.core.type.TypeReference<Map<String,String>>() {})} ?: emptyMap()
-    fun context(projectId: UUID): ReportCoverContext {
+    fun context(project: ProjectRecord? = null): ReportCoverContext {
         val settings=branding.current()
-        val row=rows.findById(projectId).orElse(null)
+        val row=rows.findById(1).orElse(null)
         val logo=brandAssets?.findById(com.starter.model.postgres.BrandingKind.LOGO)?.orElse(null)?.png?.let {ReportCoverImages.encode(it)}.orEmpty()
-        return ReportCoverContext(row?.html?.takeIf {it.isNotBlank()} ?: DEFAULT_HTML,assets(row),settings.applicationName,settings.companyName,logo)
+        val clientLogo=project?.clientId?.let {artwork?.findById("client:$it")?.orElse(null)?.image}?.let {ReportCoverImages.encode(it)}.orEmpty()
+        return ReportCoverContext(row?.html?.takeIf {it.isNotBlank()} ?: DEFAULT_HTML,assets(row),settings.applicationName,settings.companyName,logo,clientLogo)
     }
-    fun currentHtml(projectId: UUID)=rows.findById(projectId).orElse(null)?.html?.takeIf {it.isNotBlank()} ?: DEFAULT_HTML
-    fun view(email: String,id: UUID): ReportCoverView {
-        val actor=access.actor(email);val project=access.require(id,actor);val row=rows.findById(id).orElse(null)
-        return ReportCoverView(row?.html?.takeIf {it.isNotBlank()} ?: DEFAULT_HTML,row?.revision ?: -1,access.role(actor,project)!=ProjectRole.MEMBER,assets=assets(row))
+    fun aiInsightsEnabled()=rows.findById(1).orElse(null)?.aiInsightsEnabled == true
+    private fun requireAdmin(email: String) = access.actor(email).also {if(!Roles.admin(it.role))throw ForbiddenException("Only administrators can manage report settings")}
+    fun view(email: String): ReportCoverView {
+        requireAdmin(email);val row=rows.findById(1).orElse(null)
+        return ReportCoverView(row?.html?.takeIf {it.isNotBlank()} ?: DEFAULT_HTML,row?.revision ?: -1,true,assets=assets(row),aiInsightsEnabled=row?.aiInsightsEnabled ?: false)
     }
-    @Transactional fun save(email: String,id: UUID,input: ReportCoverInput): ReportCoverView {
-        access.require(id,access.actor(email),true);validate(input.html)
-        val savedImages=assets(rows.findById(id).orElse(null))
+    @Transactional fun save(email: String,input: ReportCoverInput): ReportCoverView {
+        requireAdmin(email);validate(input.html)
+        val savedImages=assets(rows.findById(1).orElse(null))
         val images=input.assets?.let {ReportCoverImages.normalize(it,savedImages)} ?: savedImages
-        render(email,id,ReportCoverPreviewInput(input.html),images) // Validate real layout in the bounded worker before saving.
-        access.require(id,access.actor(email),true)
-        jdbc.query("SELECT pg_advisory_xact_lock(hashtext(?))",RowCallbackHandler {},"project-report-cover:$id")
-        val old=rows.findById(id).orElse(null)
+        render(email,ReportCoverPreviewInput(input.html),images) // Validate real layout in the bounded worker before saving.
+        requireAdmin(email)
+        jdbc.query("SELECT pg_advisory_xact_lock(hashtext(?))",RowCallbackHandler {},"shared-report-cover")
+        val old=rows.findById(1).orElse(null)
         if((old?.revision ?: -1)!=input.revision)throw ConflictException("The cover design changed. Reload before saving.")
-        val row=old ?: ProjectReportCoverRecord(id);row.html=input.html;row.assetsJson=mapper.writeValueAsString(images);rows.saveAndFlush(row)
-        return view(email,id)
+        val row=old ?: ProjectReportCoverRecord();row.html=input.html;row.assetsJson=mapper.writeValueAsString(images);row.aiInsightsEnabled=input.aiInsightsEnabled;rows.saveAndFlush(row)
+        return view(email)
     }
-    fun preview(email: String,id: UUID,input: ReportCoverPreviewInput): ByteArray {
-        access.require(id,access.actor(email),true)
-        val savedImages=assets(rows.findById(id).orElse(null))
-        return render(email,id,input,input.assets?.let {ReportCoverImages.normalize(it,savedImages)} ?: savedImages)
+    fun preview(email: String,input: ReportCoverPreviewInput): ByteArray {
+        requireAdmin(email)
+        val savedImages=assets(rows.findById(1).orElse(null))
+        return render(email,input,input.assets?.let {ReportCoverImages.normalize(it,savedImages)} ?: savedImages)
     }
-    private fun render(email: String,id: UUID,input: ReportCoverPreviewInput,images: Map<String,String>): ByteArray {
-        val actor=access.actor(email);val project=access.require(id,actor,true);validate(input.html)
+    private fun render(email: String,input: ReportCoverPreviewInput,images: Map<String,String>): ByteArray {
+        val actor=requireAdmin(email);val project=input.projectId?.let {access.require(it,actor)};validate(input.html)
         if(input.title.isBlank() || input.title.length>200 || input.period.length>100)throw BadRequestException("Use a short report title and period")
-        val context=context(id)
+        val context=context(project)
         val result=renderer.reportCover(mapOf("html" to input.html,"title" to input.title,"organization" to context.siteName,
-            "project" to project.name,"period" to input.period,"ticketCount" to "Preview","assets" to images,"siteName" to context.siteName,"companyName" to context.companyName,"siteLogo" to context.siteLogo))
-        access.require(id,access.actor(email),true);return result
+            "project" to (project?.name ?: "Example project"),"projectName" to (project?.name ?: "Example project"),"period" to input.period,"ticketCount" to "Preview","assets" to images,"siteName" to context.siteName,"companyName" to context.companyName,"siteLogo" to context.siteLogo,"clientLogo" to context.clientLogo))
+        requireAdmin(email);input.projectId?.let {access.require(it,access.actor(email))};return result
     }
     private fun validate(html: String) {if(html.isBlank() || html.length>30000)throw BadRequestException("Enter an HTML cover design of up to 30,000 characters")}
     companion object {
@@ -76,16 +81,16 @@ class ProjectReportCoverService(private val rows: ProjectReportCoverRepository,p
             .project {font-size:18pt;line-height:1.4;overflow-wrap:anywhere}.period {font-size:13pt;color:#526579}
             .rule {height:2mm;width:24mm;background:#2367c9;margin:20mm 0 12mm}.foot {font-size:9pt;color:#526579}
             </style></head><body><main class="cover"><div class="brand"><img class="logo" src="{{siteLogo}}" alt="Site logo"><p>{{siteName}}</p><p class="company">{{companyName}}</p></div><h1>{{title}}</h1>
-            <p class="project">{{project}}</p><p class="period">{{period}}</p><div class="rule"></div>
+            <img class="logo" src="{{clientLogo}}" alt="Client logo"><p class="project">{{projectName}}</p><p class="period">{{period}}</p><div class="rule"></div>
             <p class="foot">{{ticketCount}} tickets in scope<br>Generated {{generatedAt}}<br>Internal project report</p></main></body></html>""".trimIndent()
     }
 }
-@RestController @RequestMapping("/api/projects/{id}/reports/design")
+@RestController @RequestMapping("/api/admin/projects/report-cover") @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
 class ProjectReportCoverController(private val service: ProjectReportCoverService,private val rates: com.starter.security.RateLimits) {
-    @GetMapping fun view(@AuthenticationPrincipal user: UserDetails,@PathVariable id: UUID)=service.view(user.username,id)
-    @PutMapping fun save(@AuthenticationPrincipal user: UserDetails,@PathVariable id: UUID,@RequestBody input: ReportCoverInput): ReportCoverView {rates.check("report-cover",user.username,10,60);return service.save(user.username,id,input)}
-    @PostMapping("/preview") fun preview(@AuthenticationPrincipal user: UserDetails,@PathVariable id: UUID,@RequestBody input: ReportCoverPreviewInput): ResponseEntity<ByteArray> {
+    @GetMapping fun view(@AuthenticationPrincipal user: UserDetails)=service.view(user.username)
+    @PutMapping fun save(@AuthenticationPrincipal user: UserDetails,@RequestBody input: ReportCoverInput): ReportCoverView {rates.check("report-cover",user.username,10,60);return service.save(user.username,input)}
+    @PostMapping("/preview") fun preview(@AuthenticationPrincipal user: UserDetails,@RequestBody input: ReportCoverPreviewInput): ResponseEntity<ByteArray> {
         rates.check("report-cover",user.username,10,60)
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).header(HttpHeaders.CACHE_CONTROL,"no-store").header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=report-cover-preview.pdf").body(service.preview(user.username,id,input))
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).header(HttpHeaders.CACHE_CONTROL,"no-store").header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=report-cover-preview.pdf").body(service.preview(user.username,input))
     }
 }

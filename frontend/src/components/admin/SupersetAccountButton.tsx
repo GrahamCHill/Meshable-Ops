@@ -4,6 +4,7 @@ import { supersetApi, type SupersetAccount } from '../../api/superset'
 import { useAuthStore } from '../../hooks/useAuthStore'
 import { Button } from '../ui'
 import { Modal } from '../ui/Modal'
+import '../../styles/superset-account.css'
 
 function PasswordDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const email = useAuthStore(state => state.user?.email)
@@ -26,10 +27,11 @@ function PasswordDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
       setError(typeof message === 'string' ? message : 'Could not save your Superset password. Try again.')
     } finally { setBusy(false) }
   }
-  return <Modal title="Set or reset Superset password" onClose={onClose} busy={busy}>
+  return <Modal title="Set or reset Superset password" onClose={onClose} busy={busy} className="superset-account-dialog">
     {account ? <div className="page-stack">
       <p role="status">Your Superset account {account.created ? 'is ready' : 'password has been updated'}.</p>
       <p>Sign in to the workspace with <strong>{account.username}</strong> and the password you just chose.</p>
+      <p>If you are already signed in to Superset, sign out there first.</p>
       <Button onClick={onClose}>Return to workspace</Button>
     </div> : <form className="page-stack" onSubmit={submit}>
       <p>Create your personal Superset login or replace its password. Your Superset username is your email address.</p>

@@ -20,6 +20,7 @@ resource "azurerm_network_interface" "app" {
   ip_configuration {
     name                          = "primary"
     subnet_id                     = azurerm_subnet.app.id
-    private_ip_address_allocation = "Dynamic"
+    private_ip_address_allocation = "Static"
+    private_ip_address            = local.private_ips.app
   }
 }

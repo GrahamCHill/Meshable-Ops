@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        provider: [aws, azure]
+        provider: [aws, azure, gcp]
     defaults:
       run:
         working-directory: infra/${{ matrix.provider }}
@@ -125,3 +125,4 @@ jobs:
       - run: bash -n deploy/github/deploy.sh deploy/github/send-release.sh superset/docker-init.sh
       - run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
       - run: python3 deploy/github/check-config.py
+      - run: python3 deploy/terraform/check-config.py

@@ -6,7 +6,7 @@ export function coverImageName(name:string) {
 export function coverImageReferences(html:string) {
   const references=[...html.matchAll(/<img\b[^>]*\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)].map(match=>match[1]??match[2]??match[3])
   references.push(...[...html.matchAll(/url\s*\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\s*\)/gi)].map(match=>match[1]??match[2]??match[3]))
-  return [...new Set(references.map(value=>value.trim()).filter(value=>value&&!value.startsWith('data:')&&!/^\{\{\s*siteLogo\s*\}\}$/.test(value)).map(value=>{
+  return [...new Set(references.map(value=>value.trim()).filter(value=>value&&!value.startsWith('data:')&&!/^\{\{\s*(?:siteLogo|clientLogo)\s*\}\}$/.test(value)).map(value=>{
     try {return decodeURIComponent(value.split('/').pop()??value).toLowerCase()}catch{return value.toLowerCase()}
   }))]
 }

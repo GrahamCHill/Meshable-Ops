@@ -9,3 +9,4 @@
 .analytics-notes { font-size:.78rem;color:var(--color-text-secondary);position:relative;z-index:1; }.analytics-notes summary { cursor:pointer; }.analytics-notes p { max-width:85ch;line-height:1.6; }
 .analytics-text-button { color:var(--color-accent);background:none;border:0;text-align:left;padding:0;cursor:pointer; }
 .analytics-link-form .form-field small { max-width:35ch; }
+.analytics-export-heading { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;padding:16px 0; }.analytics-export-heading>div:first-child { display:flex;flex-direction:column;gap:6px;flex:1;min-width:220px; }.analytics-export-heading small { color:var(--color-text-secondary);font-size:.76rem;line-height:1.5; }.analytics-exports { position:relative;z-index:1; }.analytics-exports>span { display:block;font-size:.75rem;color:var(--color-text-secondary);margin-top:6px; }

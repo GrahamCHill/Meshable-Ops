@@ -1,0 +1,45 @@
+# Meshable Ops contributor license agreement
+
+Version 2.0 — 24 October 2026
+
+This agreement supports the Meshable Ops source-available community license and separate commercial licensing. It applies only when a rights holder expressly accepts it for identified contributions. Visiting the repository, opening an issue, committing, submitting a PR or publishing a plugin does not automatically accept it.
+
+## Parties and identified contributions
+
+“You” means the individual copyright holder or organization whose authorized representative accepts this agreement. “Project licensor” means Graham Hill, the original creator, and any lawful successor holding the relevant project rights. “Contribution” means original copyrightable material/revisions expressly identified in your acceptance for inclusion in Meshable Ops.
+
+You retain ownership. This is a nonexclusive grant, not an assignment. You remain free to use/license your original contribution elsewhere, subject to third-party rights and any Application code it incorporates.
+
+## Copyright permission and commercial authority
+
+You grant the project licensor a worldwide, perpetual, irrevocable, nonexclusive, royalty-free license to use, reproduce, modify, prepare derivatives of, display, perform, distribute and sublicense the identified Contribution as part of Meshable Ops and its derivatives. This includes the **Meshable Ops Community License 1.0** and separate commercial/proprietary terms, and transfer of this grant with lawful project ownership. No royalty is due to you from that licensing.
+
+The licensor may delegate commercial grant authority to current maintainers expressly appointed in writing within their appointment's scope, as recorded in [MAINTAINERS.md](MAINTAINERS.md). Ordinary maintainer, contributor, repository-admin or fork status does not confer it. This agreement does not allow other recipients to create unauthorized commercial application offerings.
+
+Accepted community Contributions published under this agreement will remain available under the Meshable Ops Community License 1.0 for those released copies. Later commercial licensing does not withdraw that grant. The community license is custom source-available software, not AGPL or OSI-approved open source, and restricts commercial application distribution/hosting while allowing internal business use and customization.
+
+## Paid community plugins
+
+Independent community plugin developers may charge for plugin copies, subscriptions, paywalled access, hosting, support and services and retain revenue without automatic maintainer royalties or ownership claims. The [LICENSE section 4](LICENSE) exception governs. Covered plugins retain the app's community source/notice conditions. This permission does not authorize selling or commercially hosting the Application or disguising core functionality as a paid plugin.
+
+Publishing, selling, operating or installing an independent plugin does not accept this CLA or grant the licensor commercial relicensing rights to it. If an author later expressly contributes identified code under this agreement, the stated grants apply only to that contribution. Authors retain ownership and their own permitted commercial activity. Independent external services/separable integration components retain their own terms where compatible with the actual combination; see [LICENSING.md](LICENSING.md#plugins-and-external-service-integrations).
+
+## Patent permission
+
+You grant the project licensor and recipients a perpetual, worldwide, nonexclusive, royalty-free patent license to make, use, offer, import, transfer and otherwise exercise granted copyright permissions over your Contribution, limited to patent claims you control necessarily infringed by it alone or its combination with the project as submitted. Commercial sublicensing is included within the copyright authority above. Patent permission to a recipient terminates if that recipient initiates patent litigation alleging the Contribution/project infringes a patent.
+
+## Authority and third-party material
+
+You represent that you own the identified Contribution or have the necessary rights, including employer/client permission, to grant these terms. Identify all third-party material, licenses, notices, limitations and organizational authorization before acceptance. Do not purport to relicense upstream material you do not control.
+
+The Contribution is supplied as is without warranty/support obligations, except your express representations of authority. The project need not accept or use it. Mandatory legal rights remain unaffected.
+
+## Explicit acceptance and records
+
+Record this statement for an identified PR/contribution and covered revisions:
+
+> I agree to the Meshable Ops contributor license agreement, version 2.0 dated 24 October 2026, for my contributions identified in this pull request. I have authority to grant these rights and have identified third-party material and required organizational permissions.
+
+Before merging, retain accepting account/legal entity, agreement version/date, covered revisions and authorization. Materially changed contributions need confirmed coverage. Organizations need acceptance by an authorized representative. Do not publish confidential authorization documents. DCO sign-off and ordinary PR submission are insufficient.
+
+This version does not retroactively replace earlier accepted CLAs or third-party licenses. Prior AGPL commitments/grants require their own review; do not assume their relicensing authority permits withdrawal of promised community terms. Earlier work needs established permission or fresh express acceptance. The owner reports that the present private repository has no external recipients; verify that history before release.

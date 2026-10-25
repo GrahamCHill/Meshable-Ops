@@ -19,7 +19,7 @@ import java.util.UUID
 class AnalyticsAccessTest {
     private val actor=User(email="owner@example.test")
     private val context=UUID.randomUUID();private val id=UUID.randomUUID();private val p=AnalyticsProvider.GOOGLE_ADS
-    private val config=mapOf("approvedResources" to "1234567890","clientId" to "test-client","clientSecret" to "test-secret","refreshToken" to "test-refresh","developerToken" to "test-developer")
+    private val config=mapOf("approvedResources" to "1234567890","resourceAssignments" to "1234567890=GLOBAL","clientId" to "test-client","clientSecret" to "test-secret","refreshToken" to "test-refresh","developerToken" to "test-developer")
     private val store=mock(AnalyticsStore::class.java);private val configuration=mock(PluginConfigurationService::class.java)
     private val registry=mock(PluginRegistry::class.java);private val providers=mock(AnalyticsProviders::class.java)
     private val service=AnalyticsService(store,configuration,registry,providers,mock(RateLimits::class.java))
@@ -72,5 +72,21 @@ class AnalyticsAccessTest {
         secured.authorize(actor.email,p,AnalyticsContext.PROJECT,context,true)
         verify(projects).require(context,actor,true)
         verify(registry).requireTable(p.id,p.table,actor.role,true,false)
+    }
+    @Test fun `an approved account cannot be linked to another client or project`() {
+        val client=UUID.randomUUID();val otherClient=UUID.randomUUID()
+        val scoped=config+("resourceAssignments" to "1234567890=CLIENT:$client")
+        `when`(configuration.current(p.id)).thenReturn(scoped)
+        `when`(registry.missingConfiguration(p.id,scoped)).thenReturn(emptyList())
+        `when`(store.parentClient(actor.email,AnalyticsContext.PROJECT,context)).thenReturn(otherClient)
+        assertThatThrownBy {service.sync(actor.email,p,AnalyticsContext.PROJECT,context,id,input)}.isInstanceOf(ForbiddenException::class.java)
+        `when`(store.list(actor.email,p,AnalyticsContext.PROJECT,context)).thenReturn(listOf(row))
+        assertThat(service.list(actor.email,p,AnalyticsContext.PROJECT,context)).isEmpty()
+        `when`(store.parentClient(actor.email,AnalyticsContext.PROJECT,context)).thenReturn(client)
+        assertThat(service.list(actor.email,p,AnalyticsContext.PROJECT,context).map {it.id}).containsExactly(id)
+        `when`(store.authorize(actor.email,p,AnalyticsContext.CLIENT,otherClient,true)).thenReturn(actor)
+        assertThatThrownBy {service.link(actor.email,p,AnalyticsContext.CLIENT,otherClient,AnalyticsLinkInput("Other client",selection))}.isInstanceOf(ForbiddenException::class.java)
+        verifyNoInteractions(providers)
+        assertThat(AnalyticsResourcePolicy.allowed(emptySet(),AnalyticsContext.PROJECT,context,client)).isEmpty()
     }
 }

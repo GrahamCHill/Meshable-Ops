@@ -13,6 +13,20 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.test.util.ReflectionTestUtils
 
 class AuthBrowserSessionTest {
+    @Test fun `external authentication still requires local MFA and issues no session before verification`() {
+        val actor = User(email="member@example.test", username="member", password="hash")
+        val mfa = mock(MfaService::class.java)
+        val sessions = mock(BrowserSessions::class.java)
+        val challenge = com.starter.mfa.MfaChallengeResponse(challengeToken="one-use-challenge", methods=listOf(com.starter.mfa.MfaMethod.TOTP), expiresAt=java.time.Instant.now().plusSeconds(300).toString())
+        `when`(mfa.enabled(actor.id)).thenReturn(true)
+        `when`(mfa.login(actor)).thenReturn(challenge)
+        val auth = AuthService(mock(UserRepository::class.java),mock(PasswordEncoder::class.java),mock(JwtService::class.java),mock(AuthenticationManager::class.java),mock(UserDetailsServiceImpl::class.java),mfa,sessions)
+        val response = MockHttpServletResponse()
+        assertThat(auth.loginExternal(actor, response)).isSameAs(challenge)
+        verify(sessions).clear(response, true)
+        verifyNoMoreInteractions(sessions)
+    }
+
     @Test fun `issuing a session exposes no JWT in JSON and sends only protected authentication cookies`() {
         val signingKey="test-signing-key-with-at-least-thirty-two-bytes"
         val jwt=JwtService().also {ReflectionTestUtils.setField(it,"secret",signingKey)}

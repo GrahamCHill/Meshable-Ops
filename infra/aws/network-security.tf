@@ -23,6 +23,13 @@ resource "aws_security_group" "app" {
     protocol    = "tcp"
     cidr_blocks = [var.admin_cidr]
   }
+  ingress {
+    description     = "Plugin callbacks from the private execution tier"
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
+    security_groups = [aws_security_group.private["runtime"].id]
+  }
   egress {
     from_port   = 0
     to_port     = 0

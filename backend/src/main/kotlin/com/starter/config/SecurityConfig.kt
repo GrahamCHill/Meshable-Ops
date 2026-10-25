@@ -36,17 +36,21 @@ private val log = LoggerFactory.getLogger(SecurityConfig::class.java)
 @EnableMethodSecurity
 class SecurityConfig(
     private val jwtAuthFilter: JwtAuthFilter,
-    private val userDetailsService: UserDetailsServiceImpl
+    private val userDetailsService: UserDetailsServiceImpl,
+    private val externalSettings: com.starter.security.oidc.ExternalLoginSettings,
 ) {
     @Value("\${cors.allowed-origins}") private lateinit var allowedOrigins: String
 
     @Bean
-    fun securityFilterChain(http: HttpSecurity): SecurityFilterChain = http
+    fun securityFilterChain(http: HttpSecurity, externalFlow: com.starter.security.oidc.ExternalLoginFlow): SecurityFilterChain {
+        http
         .csrf { it.disable() }
         .cors { it.configurationSource(corsConfigurationSource()) }
         .headers { it.addHeaderWriter(StaticHeadersWriter("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet, noimageindex")) }
         .headers { it.addHeaderWriter(StaticHeadersWriter("Referrer-Policy","no-referrer")) }
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+        .securityContext { it.securityContextRepository(org.springframework.security.web.context.NullSecurityContextRepository()) }
+        .requestCache { it.requestCache(org.springframework.security.web.savedrequest.NullRequestCache()) }
         .authorizeHttpRequests { auth ->
             auth.requestMatchers("/api/health", "/api/auth/**").permitAll()
             auth.requestMatchers(HttpMethod.POST, "/internal/plugins/host-call").permitAll() // Short-lived, hashed invocation credential is checked by the host broker.
@@ -58,7 +62,20 @@ class SecurityConfig(
             auth.anyRequest().authenticated()
         }
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter::class.java)
-        .build()
+        externalSettings.repository?.let { registrations ->
+            http.exceptionHandling { it.authenticationEntryPoint(org.springframework.security.web.authentication.Http403ForbiddenEntryPoint()) }
+            http.oauth2Login { oauth ->
+                oauth.clientRegistrationRepository(registrations)
+                    .authorizedClientRepository(DiscardExternalTokens())
+                    .loginPage("/login")
+                    .authorizationEndpoint { it.authorizationRequestResolver(externalFlow.resolver()) }
+                    .redirectionEndpoint { it.baseUri("/api/auth/oidc/callback/*") }
+                    .successHandler(externalFlow::success)
+                    .failureHandler { request, response, _ -> externalFlow.failure(request, response) }
+            }
+        }
+        return http.build()
+    }
 
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
@@ -78,6 +95,15 @@ class SecurityConfig(
 
     @Bean
     fun passwordEncoder() = SaltedPasswordEncoder()
+}
+
+/** Provider tokens are used only to authenticate this request, never stored as API credentials. */
+private class DiscardExternalTokens : org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository {
+    override fun <T : org.springframework.security.oauth2.client.OAuth2AuthorizedClient?> loadAuthorizedClient(
+        clientRegistrationId: String, principal: org.springframework.security.core.Authentication?, request: HttpServletRequest,
+    ): T? = null
+    override fun saveAuthorizedClient(client: org.springframework.security.oauth2.client.OAuth2AuthorizedClient, principal: org.springframework.security.core.Authentication?, request: HttpServletRequest, response: HttpServletResponse) = Unit
+    override fun removeAuthorizedClient(clientRegistrationId: String, principal: org.springframework.security.core.Authentication?, request: HttpServletRequest, response: HttpServletResponse) = Unit
 }
 
 @Component

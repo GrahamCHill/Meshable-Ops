@@ -39,6 +39,7 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Control PDF viewing, downloads, and watermarks | [Document access](document-access.md) |
 | Configure SMTP/app passwords or transactional email services | [Email delivery](email-delivery.md) |
 | Enroll an authenticator, verify email MFA, or use recovery codes | [Optional MFA](mfa.md) |
+| Enable Microsoft Entra ID or Google sign-in and connect existing accounts | [External login](external-login.md) |
 | Send or receive authenticated JSON webhooks | [Webhooks](webhooks.md) |
 | Email password-protected, watermarked PDF attachments | [Protected PDF sharing](file-sharing.md) |
 | Configure notification methods, messages, and member preferences | [Notifications](notifications.md) |

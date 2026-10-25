@@ -1,4 +1,5 @@
 import {createPluginApi} from '../sdk'
+import http from '../../api/http'
 export type AnalyticsContext = 'PROJECT' | 'CLIENT'
 export type AnalyticsFilter = 'ALL' | 'CAMPAIGN' | 'PAGE'
 export interface AnalyticsSelection {resourceId:string;filter:AnalyticsFilter;selector:string}
@@ -13,5 +14,6 @@ export function analyticsApi(plugin:string,kind:AnalyticsContext,context:string)
     link:(label:string,selection:AnalyticsSelection)=>api.post<AnalyticsLink>(base,{label,selection}),
     sync:(link:AnalyticsLink,from:string,to:string)=>api.post<AnalyticsLink>(`${base}/${link.id}/sync`,{revision:link.revision,from,to}),
     remove:(link:AnalyticsLink)=>api.delete(`${base}/${link.id}`,{revision:link.revision}),
+    export:(format:'csv'|'pdf',linkId?:string)=>http.get<Blob>(`/plugins/${plugin}${base}/export/${format}`,{params:{linkId},responseType:'blob'}).then(response=>response.data),
   }
 }
