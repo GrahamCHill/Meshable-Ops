@@ -4,6 +4,8 @@
 
 **Storage** has an ordinary search field, independent of AI answers. At the root it searches all accessible shared folders; inside a folder it searches that folder and its current subfolder tree. It uses the selected embedding model and cosine similarity, with access-checked keyword fallback when embeddings are unavailable or the index is empty. The default local matcher is deterministic text matching; configure external embeddings for semantic model embeddings.
 
+Enabling AI answers does not change the Storage search path. Ordinary file browser search (`POST /api/search`) never invokes the chat model for query rewriting, ranking, or answer generation. It may call the separately selected embedding model to generate a query vector; the internal matcher needs no model or external API call. The chatbot uses the separate `POST /api/search/ask` endpoint for generated answers.
+
 **Administration > AI & search** controls these features independently:
 
 | Control | Default | Effect |

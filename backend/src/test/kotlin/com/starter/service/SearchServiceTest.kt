@@ -6,6 +6,8 @@ import com.starter.dto.VectorSearchRequest
 import com.starter.exception.ForbiddenException
 import org.assertj.core.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.mockito.Answers
 import org.mockito.Mockito.*
 import org.springframework.jdbc.core.JdbcTemplate
@@ -51,6 +53,42 @@ class SearchServiceTest {
         assertThat(result.results.single().pointId).isEqualTo("document")
         verifyNoInteractions(keywords)
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["LOCAL", "EXTERNAL", "UNAVAILABLE"])
+    fun `enabling chat never makes storage search call answer generation`(embeddingMode: String) {
+        val provider = mock(AiProviderClient::class.java)
+        val chat = AiEndpoint(AiProvider.ANTHROPIC, "https://chat.example.test/v1", "chat-model")
+        val embedding = if (embeddingMode == "LOCAL") endpoint
+            else AiEndpoint(AiProvider.OPENAI_COMPATIBLE, "https://embeddings.example.test/v1", "embedding-model")
+        `when`(settings.current()).thenReturn(config.copy(enabled = true, indexContent = true, chat = chat, embeddings = embedding))
+        if (embeddingMode == "UNAVAILABLE") {
+            `when`(provider.embed(embedding, listOf("contract"), EmbeddingDimensions.SIZE))
+                .thenThrow(AiUnavailableException("Embedding provider offline"))
+            `when`(keywords.search("contract", 10, true, SearchScope())).thenReturn(listOf(point))
+        } else if (embeddingMode == "EXTERNAL") {
+            `when`(provider.embed(embedding, listOf("contract"), EmbeddingDimensions.SIZE))
+                .thenReturn(listOf(List(EmbeddingDimensions.SIZE) { if (it == 0) 1f else 0f }))
+        }
+        val jdbc = mock(JdbcTemplate::class.java) { call ->
+            if (call.method.name == "query") listOf(point) else Answers.RETURNS_DEFAULTS.answer(call)
+        }
+        val retrieval = VectorService(jdbc, jacksonObjectMapper(), EmbeddingService(settings, provider))
+        val search = SearchService(retrieval, keywords, settings, SearchScopeResolver(mock(ItemRepository::class.java)))
+
+        val result = search.search(VectorSearchRequest("contract"))
+
+        assertThat(result.results.single().pointId).isEqualTo("document")
+        assertThat(result.mode).isEqualTo(if (embeddingMode == "UNAVAILABLE") "KEYWORD" else "VECTOR")
+        if (embeddingMode == "LOCAL") {
+            verifyNoInteractions(provider)
+        } else {
+            verify(provider).embed(embedding, listOf("contract"), EmbeddingDimensions.SIZE)
+            verifyNoMoreInteractions(provider)
+        }
+        if (embeddingMode != "UNAVAILABLE") verifyNoInteractions(keywords)
+    }
+
     @Test fun `an unavailable embedding provider falls back to access checked keywords`() {
         `when`(settings.current()).thenReturn(config)
         `when`(vectors.searchText("contract", 10, null, null)).thenThrow(AiUnavailableException("Provider offline"))
