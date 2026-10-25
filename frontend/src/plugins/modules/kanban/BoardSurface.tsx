@@ -42,7 +42,7 @@ export function BoardSurface({board, cards, people, group, busy, readOnly, onOpe
               <h2>{column.title}{column.startsWork&&<small className="kanban-completed-column" title="Entering this column records a missing start date">Work started</small>}{column.status==='DONE'&&<small className="kanban-completed-column" title="Tickets in this column are automatically completed">Completed</small>}</h2><span aria-label="Ticket count">{columnCards.length}</span>{canManage && <GripVertical size={13} className="kanban-column-grip" aria-hidden="true"/>}
             </header>
             <div className="kanban-column-tickets">
-              {columnCards.map((card, index) => <TicketTile key={card.id} card={card} columns={board.content.columns} epic={board.content.epics?.find(epic => epic.id === card.epicId)} person={people.find(person => person.id === card.assigneeId)}
+              {columnCards.map((card, index) => <TicketTile key={card.id} card={card} columns={board.content.columns} epic={board.content.epics?.find(epic => epic.id === card.epicId)} people={people}
                 storyPoints={board.estimation?.storyPoints??true} tshirtSizes={board.estimation?.tshirtSizes??false}
                 subtasks={board.content.cards.filter(item => item.parentId === card.id)} expanded={expanded.includes(card.id)} onToggle={() => toggle(card.id)} onOpenCard={onOpen}
                 onCreateSubtask={board.canCreateTickets && !readOnly && board.content.cards.length < 200 ? () => {setExpanded(value => [...new Set([...value, card.id])]); onSubtask(card)} : undefined}

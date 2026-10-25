@@ -27,7 +27,7 @@ class DocumentIndexServiceTest {
         `when`(settings.current()).thenReturn(ActiveAiConfiguration(false, false, endpoint, endpoint))
         `when`(embeddings.fingerprint(endpoint)).thenReturn("local-model")
         `when`(documents.saveAndFlush(any(StorageDocument::class.java))).thenReturn(persisted)
-        `when`(embeddings.embed(anyList(), eq(endpoint) ?: endpoint)).thenReturn(listOf(List(384) { 0.1f }))
+        `when`(embeddings.embed(anyList(), eq(endpoint) ?: endpoint)).thenReturn(listOf(List(EmbeddingDimensions.SIZE) { 0.1f }))
         val result = service.sync(folder, listOf(StorageEntry("file.txt", "file.txt", "OBJECT", size = 4))).getValue("file.txt")
         assertThat(result.id).isEqualTo(persisted.id)
         verify(vectors).upsertDocument(eq(persisted.id) ?: persisted.id, anyList(), anyMap(), anyString(), eq("local-model") ?: "local-model")
@@ -40,7 +40,7 @@ class DocumentIndexServiceTest {
         `when`(text.supports("contract.txt")).thenReturn(true)
         `when`(storage.downloadForIndex(folder, "contract.txt", 5 * 1024 * 1024)).thenReturn(StorageObjectDownload("contract.txt", "text/plain", "body".toByteArray()))
         `when`(text.extract(eq("contract.txt") ?: "contract.txt", any(ByteArray::class.java) ?: byteArrayOf())).thenThrow(AiUnavailableException("Extraction offline"))
-        `when`(embeddings.embed(anyList(), eq(endpoint) ?: endpoint)).thenReturn(listOf(List(384) { 0.1f }))
+        `when`(embeddings.embed(anyList(), eq(endpoint) ?: endpoint)).thenReturn(listOf(List(EmbeddingDimensions.SIZE) { 0.1f }))
         val document = service.sync(folder, listOf(StorageEntry("contract.txt", "contract.txt", "OBJECT", size = 4))).getValue("contract.txt")
         assertThat(document.processingStatus).isEqualTo("CONTENT_UNAVAILABLE")
         assertThat(document.vectorizedAt).isNotNull()
@@ -56,7 +56,7 @@ class DocumentIndexServiceTest {
         `when`(text.supports("contract.txt")).thenReturn(true)
         `when`(storage.downloadForIndex(folder, "contract.txt", 5 * 1024 * 1024)).thenReturn(StorageObjectDownload("contract.txt", "text/plain", body.toByteArray()))
         `when`(text.extract(eq("contract.txt") ?: "contract.txt", any(ByteArray::class.java) ?: byteArrayOf())).thenReturn(ExtractedDocumentText(body, false))
-        `when`(embeddings.embed(anyList(), eq(endpoint) ?: endpoint)).thenAnswer { call -> List((call.arguments[0] as List<*>).size) { List(384) { 0.1f } } }
+        `when`(embeddings.embed(anyList(), eq(endpoint) ?: endpoint)).thenAnswer { call -> List((call.arguments[0] as List<*>).size) { List(EmbeddingDimensions.SIZE) { 0.1f } } }
         val result = service.sync(folder, listOf(StorageEntry("contract.txt", "contract.txt", "OBJECT", size = body.length.toLong())))
         val document = result.getValue("contract.txt")
         assertThat(document.processingStatus).isEqualTo("CONTENT_INDEXED")

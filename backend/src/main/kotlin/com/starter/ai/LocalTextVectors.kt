@@ -9,18 +9,18 @@ import kotlin.math.sqrt
 
 /** Deterministic text matching needs neither model credentials nor another running service. */
 object LocalTextVectors {
-    const val MODEL = "local-feature-hash-v2"
+    const val MODEL = "local-feature-hash-v3"
     private val words = Regex("[\\p{L}\\p{N}]+")
 
     fun embed(text: String): List<Float> {
         val tokens = words.findAll(Normalizer.normalize(text, Normalizer.Form.NFKC).lowercase(Locale.ROOT))
             .map { it.value }.toList().ifEmpty { listOf("empty") }
         val features = (tokens.map { "word:$it" } + tokens.zipWithNext { a, b -> "pair:$a $b" }).groupingBy { it }.eachCount()
-        val vector = DoubleArray(384)
+        val vector = DoubleArray(EmbeddingDimensions.SIZE)
         val digest = MessageDigest.getInstance("SHA-256")
         features.forEach { (feature, count) ->
             val hash = digest.digest(feature.toByteArray(Charsets.UTF_8))
-            val index = (ByteBuffer.wrap(hash).int.toLong() and 0xffffffffL).rem(384).toInt()
+            val index = (ByteBuffer.wrap(hash).int.toLong() and 0xffffffffL).rem(EmbeddingDimensions.SIZE).toInt()
             val sign = if ((hash[4].toInt() and 1) == 0) 1 else -1
             vector[index] += sign * (1.0 + ln(1.0 + count))
         }

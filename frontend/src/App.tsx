@@ -36,6 +36,7 @@ import './styles/global.css'
 const AdminUsersPage = lazy(() => import('./components/pages/AdminUsersPage').then(module => ({default: module.AdminUsersPage})))
 const AdminPluginsPage = lazy(() => import('./components/pages/AdminPluginsPage').then(module => ({default: module.AdminPluginsPage})))
 const AdminPluginSettingsPage = lazy(() => import('./components/pages/AdminPluginSettingsPage'))
+const SharedSettingsPage = lazy(() => import('./components/pages/SharedSettingsPage'))
 const AdminAccessPage = lazy(() => import('./components/pages/AdminAccessPage'))
 const PluginPage = lazy(() => import('./plugins/PluginPage'))
 const AdminNotificationsPage = lazy(() => import('./components/pages/AdminNotificationsPage'))
@@ -93,6 +94,8 @@ function App() {
                     <Route path="/admin/security" element={<AdminRoute><AdminSecurityPage /></AdminRoute>} />
                     <Route path="/admin/sections/:sectionId" element={<AdminRoute><AdminSectionPage /></AdminRoute>} />
                     <Route path="/admin/sections/:sectionId/plugins/:pluginId" element={<AdminRoute>{loading(<AdminPluginSettingsPage />)}</AdminRoute>} />
+                    <Route path="/admin/sections/:sectionId/plugins/:pluginId/:settingsId" element={<AdminRoute>{loading(<AdminPluginSettingsPage />)}</AdminRoute>} />
+                    <Route path="/admin/sections/:sectionId/shared-settings/:schemaId" element={<AdminRoute>{loading(<SharedSettingsPage />)}</AdminRoute>} />
                     <Route path="/admin/users" element={<AdminRoute>{loading(<AdminUsersPage />)}</AdminRoute>} />
                     <Route path="/admin/branding" element={<AdminRoute><AdminBrandingPage /></AdminRoute>} />
                     <Route path="/admin/navigation" element={<AdminRoute>{loading(<AdminNavigationPage />)}</AdminRoute>} />
@@ -102,6 +105,7 @@ function App() {
                     <Route path="/admin/ai" element={<AdminRoute><AdminAiPage /></AdminRoute>} />
                     <Route path="/admin/documents" element={<AdminRoute><AdminDocumentAccessPage /></AdminRoute>} />
                     <Route path="/admin/email" element={<AdminRoute><AdminEmailPage /></AdminRoute>} />
+                    <Route path="/admin/email/inbox" element={<AdminRoute>{loading(<SharedSettingsPage incomingEmail />)}</AdminRoute>} />
                     <Route path="/admin/notifications" element={<AdminRoute>{loading(<AdminNotificationsPage />)}</AdminRoute>} />
                     <Route path="/account/settings" element={loading(<UserSettingsPage />)} />
                     <Route path="/account/notifications" element={<Navigate to="/account/settings?tab=notifications" replace />} />

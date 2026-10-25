@@ -1,6 +1,7 @@
 package com.starter.plugins.packages
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.starter.ai.EmbeddingDimensions
 import com.starter.exception.BadRequestException
 import com.starter.exception.ConflictException
 import com.starter.exception.ForbiddenException
@@ -44,7 +45,7 @@ class PluginPackageService(private val records: PluginPackageRepository, private
             jdbc.execute("""CREATE TABLE IF NOT EXISTS "${table.name}" (
                 id uuid PRIMARY KEY, owner_id uuid NOT NULL, data jsonb NOT NULL,
                 revision bigint NOT NULL DEFAULT 0, created_at timestamptz NOT NULL DEFAULT now(),
-                updated_at timestamptz NOT NULL DEFAULT now(), search_text text NOT NULL DEFAULT '', search_embedding vector(384))""")
+                updated_at timestamptz NOT NULL DEFAULT now(), search_text text NOT NULL DEFAULT '', search_embedding vector(${EmbeddingDimensions.SIZE}))""")
             jdbc.execute("CREATE INDEX IF NOT EXISTS \"${table.name.take(45)}_owner_updated\" ON \"${table.name}\" (owner_id, updated_at)")
         }
         records.saveAndFlush(PluginPackageRecord(manifest.id, mapper.writeValueAsString(parsed.descriptor),

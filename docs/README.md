@@ -76,6 +76,6 @@ For sidebar ordering, header/account behavior and admin section artwork, see [Na
 
 ## Upgrading an existing checkout
 
-Preserve the existing wrapping key, follow the [upgrade procedure](deployment.md#upgrading-an-existing-installation), and reindex once after the local matcher changes to `local-feature-hash-v2`. JSON export v2 is not a complete disaster-recovery backup; preserve database backups, original objects, and wrapping keys separately.
+Preserve the existing wrapping key, follow the [upgrade procedure](deployment.md#upgrading-an-existing-installation), and reindex once after the local matcher changes to `local-feature-hash-v3`. JSON export v2 is not a complete disaster-recovery backup; preserve database backups, original objects, and wrapping keys separately.
 
 These guides describe checked-in behavior. Unit tests and sample UI checks do not establish that a deployment's cloud credentials, provider models, or scheduled jobs have been verified against live services.

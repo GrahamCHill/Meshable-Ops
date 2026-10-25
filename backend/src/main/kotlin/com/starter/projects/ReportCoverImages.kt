@@ -21,7 +21,7 @@ object ReportCoverImages {
         if(!filename.matches(value) || value!=value.trim() || value in setOf(".",".."))throw BadRequestException("Use image filenames of up to 120 letters, numbers, spaces, dots, underscores or hyphens")
         return value.lowercase(Locale.ROOT)
     }
-    fun normalize(images: Map<String,String>): Map<String,String> {
+    fun normalize(images: Map<String,String>,saved: Map<String,String> = emptyMap()): Map<String,String> {
         if(images.size>8 || images.values.sumOf {it.length.toLong()}>1_400_000)throw BadRequestException("Use up to eight cover images totalling at most 1 MiB")
         if(images.keys.map(::name).distinct().size!=images.size)throw BadRequestException("Cover image filenames must be unique, ignoring case")
         var total=0
@@ -30,7 +30,8 @@ object ReportCoverImages {
             val raw=try {Base64.getDecoder().decode(value.substringAfter(','))}catch (_:IllegalArgumentException){throw BadRequestException("Invalid cover image")}
             total+=raw.size
             if(total>MAX_TOTAL)throw BadRequestException("Cover images must total at most 1 MiB")
-            name(key) to encode(raw)
+            val name=name(key)
+            name to if(saved[name]==value)value else encode(raw)
         }.toMap().also {result->if(result.values.sumOf {Base64.getDecoder().decode(it.substringAfter(',')).size.toLong()} > MAX_TOTAL)throw BadRequestException("Optimise the cover images to total at most 1 MiB")}
     }
     fun encode(raw: ByteArray): String {

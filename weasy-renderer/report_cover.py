@@ -35,10 +35,10 @@ def image_name(reference):
 
 
 def raster_image(value):
-    from resources import inline_only
+    from resources import embedded_image
     from io import BytesIO
     from PIL import Image
-    image = Image.open(BytesIO(inline_only(value)['string']))
+    image = Image.open(BytesIO(embedded_image(value)['string']))
     if image.format not in {'PNG', 'JPEG', 'WEBP'} or image.width * image.height > 8000000:
         raise ValueError('Use a bounded raster cover image')
     image.verify()

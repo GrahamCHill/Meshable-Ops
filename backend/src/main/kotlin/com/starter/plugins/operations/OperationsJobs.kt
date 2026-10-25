@@ -41,7 +41,7 @@ class BillingSchedules(private val store:OperationsStore,private val profiles:Bi
         validate(s)
         val old=id?.let {store.get("billing",it).also {row->if(row.kind!="SCHEDULE"||row.projectId!=s.projectId)throw NotFoundException("Schedule unavailable")}}
         if(old==null&&store.list("billing","kind='SCHEDULE' AND project_id=?",s.projectId).isNotEmpty())throw ConflictException("Edit the existing project schedule")
-        val value=s.copy(nextRunAt=if(s.enabled)next(s,Instant.now())else null,lastStatus=old?.let {store.decode(it,BillingSchedule::class.java).lastStatus} ?: "NEVER",lastRunAt=old?.let {store.decode(it,BillingSchedule::class.java).lastRunAt})
+        val value=s.copy(autoSend=false,nextRunAt=if(s.enabled)next(s,Instant.now())else null,lastStatus=old?.let {store.decode(it,BillingSchedule::class.java).lastStatus} ?: "NEVER",lastRunAt=old?.let {store.decode(it,BillingSchedule::class.java).lastRunAt})
         return store.save("billing",old?.ownerId ?: actor.id,s.projectId,"SCHEDULE",value,id ?: UUID.randomUUID(),if(id==null)-1 else input.revision)
     }
     @Transactional fun claim(id:UUID):OpsRow? {
@@ -55,11 +55,8 @@ class BillingSchedules(private val store:OperationsStore,private val profiles:Bi
         val month=YearMonth.from((s.lastRunAt ?: Instant.now()).atZone(ZoneId.of(s.timeZone))).minusMonths(1)
         val profile=profiles.profile(profiles.authorize(owner.email,s.projectId).second.clientId!!)
         val request=BillingGenerate(s.projectId,month.atDay(1),month.atEndOfMonth(),currency=profile.currency,chargeTax=s.chargeTax,taxPercent=s.taxPercent,includeCloudCosts=s.includeCloudCosts,requestId=store.stable("billing-schedule:${row.id}:$month"))
-        val document=billing.generate(owner.email,request)
-        if(!s.autoSend)return "DRAFT_GENERATED"
-        val latest=store.get("billing",row.id);if(latest.revision!=row.revision||!store.decode(latest,BillingSchedule::class.java).enabled)return "DRAFT_SETTINGS_CHANGED"
-        val response=delivery.send(owner.email,document.id,BillingSend(document.revision))
-        return (response["delivery"] as com.starter.dto.EmailDeliveryResult).status
+        billing.generate(owner.email,request)
+        return "DRAFT_AWAITING_SIGN_OFF"
     }
     @Transactional fun finish(row:OpsRow,status:String) {
         val current=store.get("billing",row.id);if(current.revision!=row.revision)return

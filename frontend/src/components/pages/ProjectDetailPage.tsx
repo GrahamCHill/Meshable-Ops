@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
+import {useAuthStore} from '../../hooks/useAuthStore'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { projectsApi } from '../../api/projects'
@@ -17,9 +18,12 @@ import {ProjectDevelopment,ProjectRepositoryShortcuts} from '../projects/Project
 import { Button } from '../ui'
 import '../../styles/projects.css'
 
+const ProjectBilling=lazy(()=>import('../../plugins/operations/ProjectBilling'))
+
 export default function ProjectDetailPage() {
   const {projectId = ''} = useParams(); const client = useQueryClient(); const [edit, setEdit] = useState(false); const [tab, setTab] = useState('overview')
   const plugins = useAvailablePlugins()
+  const user=useAuthStore(s=>s.user)
   const project = useQuery({queryKey: ['project', projectId], queryFn: () => projectsApi.get(projectId)})
   const members = useQuery({queryKey: ['project-members', projectId], queryFn: () => projectsApi.members(projectId)})
   const options = useQuery({queryKey: ['project-options'], queryFn: projectsApi.options})
@@ -30,7 +34,7 @@ export default function ProjectDetailPage() {
   return <div className="page-stack project-details"><Link to="/projects">Back to projects</Link><div className="page-heading"><div><h1>{value.name}</h1><p>{value.clientId?<Link to={`/projects/clients/${value.clientId}`}>{value.clientName}</Link>:value.clientName} · {value.categoryName} · {value.details.tagIds.map(id => options.data?.tags.find(tag => tag.id === id)?.name).filter(Boolean).join(', ')}</p></div>{value.canManage && <Button disabled={edit} onClick={() => setEdit(true)}>Edit project</Button>}</div>
     <ProjectArtwork id={value.id} canManage={value.canManage}/>
     {edit ? <ProjectEditor id={value.id} initial={value} onCancel={() => setEdit(false)} onSave={saved => {client.setQueryData(['project', projectId], saved); void client.invalidateQueries({queryKey: ['projects']}); void client.invalidateQueries({queryKey: ['project-members', projectId]}); setEdit(false)}} /> : <>
-      <nav className="inline-actions" aria-label="Project detail sections">{[['overview', 'Overview'], ['reports', 'Reports'], ...(value.canManage ? [['risk', 'Delivery risk'], ['digest', 'Team digests'], ['schedules', 'Schedules']] : [])].map(([key, label]) => <Button key={key} variant={tab === key ? 'secondary' : 'ghost'} onClick={() => setTab(key)}>{label}</Button>)}</nav>
+      <nav className="inline-actions" aria-label="Project detail sections">{[['overview', 'Overview'], ['reports', 'Reports'], ...(plugins.data?.some(p=>p.manifest.id==='billing')&&(value.canManage||user?.role==='BUSINESS_MANAGER')?[['billing','Billing']]:[]), ...(value.canManage ? [['risk', 'Delivery risk'], ['digest', 'Team digests'], ['schedules', 'Schedules']] : [])].map(([key, label]) => <Button key={key} variant={tab === key ? 'secondary' : 'ghost'} onClick={() => setTab(key)}>{label}</Button>)}</nav>
       {tab === 'overview' && <><p className="project-note">{value.details.description}</p><ProjectBoardLinks projectId={value.id} canManage={value.canManage}/><ProjectRepositoryShortcuts projectId={value.id}/>
         {plugins.data?.some(plugin => plugin.manifest.id === 'kanban') && <ProjectWorkOverview projectId={value.id}/>}
         <ProjectRepositories projectId={value.id} canManage={value.canManage}/><ProjectDevelopment projectId={value.id} canManage={value.canManage}/>
@@ -38,6 +42,7 @@ export default function ProjectDetailPage() {
         <section className="page-stack"><h2>{value.details.contactSource === 'CLIENT' && value.clientId ? `Client contacts · ${value.clientName}` : 'Project contacts'}</h2><Contacts contacts={value.effectiveContacts} /></section>
         <section className="page-stack"><h2>Documents & folders</h2>{value.details.storage.map(link => {const parent = link.path.includes('/') ? link.path.slice(0, link.path.lastIndexOf('/') + 1) : ''; return <Link key={link.id} to={`/storage?folder=${link.folderId}&path=${encodeURIComponent(link.directory ? link.path : parent)}${!link.directory ? '&file=' + encodeURIComponent(link.path) : ''}`}>{link.label} · {link.directory ? 'Folder' : 'File'}</Link>})}{!value.details.storage.length && <p>No accessible storage references.</p>}</section>
         <section className="page-stack"><h2>Web links</h2>{value.details.links.map((link, index) => <a href={link.url} target="_blank" rel="noreferrer" key={index}>{link.label}</a>)}</section><ContextExtensions kind="PROJECT" id={value.id} /></>}
+      {tab==='billing'&&<Suspense fallback={<p role="status">Loading billing…</p>}><ProjectBilling projectId={value.id}/></Suspense>}
       {tab === 'reports' && <ProjectReportsPanel project={value} />}{tab === 'digest' && value.canManage && <WorkDigestPanel projectId={value.id} />}{tab === 'schedules' && value.canManage && <WorkSchedulesPanel projectId={value.id} />}
       {tab === 'risk' && value.canManage && <section className="page-stack"><h2>Delivery risk by assignee</h2><p>Visible only to project managers, team leads, and administrators. Scores describe current delivery conditions, not employee performance.</p>{risks.isLoading && <p role="status">Calculating delivery indicators…</p>}{risks.isError && <p role="alert">Unable to load delivery indicators.</p>}<div className="project-table-wrap"><table className="project-table"><thead><tr><th>Member</th><th>Score / 100</th><th>Overdue</th><th>Blocked</th><th>In progress</th><th>Unstarted due soon</th></tr></thead><tbody>{risks.data?.map(risk => <tr key={risk.userId}><td>{risk.name}</td><td>{risk.score}</td><td>{risk.overdue}</td><td>{risk.blocked}</td><td>{risk.inProgress}</td><td>{risk.dueSoon}</td></tr>)}</tbody></table></div><p className="field-help">{risks.data?.[0]?.explanation}</p></section>}
     </>}

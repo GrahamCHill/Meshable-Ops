@@ -29,3 +29,5 @@ Server-side code can call `PluginConfigurationService.current(id)` to read crede
 | `PUT /api/admin/plugins/{id}/configuration` | `{ "values": { "accountId": "...", "apiToken": "replacement" }, "clearSecrets": [], "revision": -1 }`; admin only |
 
 The PUT is a partial update: omitted fields remain; blank non-secret values clear them. Use the revision returned by GET (`-1` before the first save). On `409`, reload and reapply edits. Credentials are not included in the public plugin catalogue, metadata export, or search.
+
+Plugins can [split settings across admin categories and share named connection profiles](shared-settings.md). The host renders both from manifest metadata for bundled and ZIP plugins; no hardcoded settings page is required. Billing demonstrates business settings in Operations and inbox selection in Communications.

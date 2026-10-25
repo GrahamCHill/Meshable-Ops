@@ -24,6 +24,15 @@ class BillingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             BillingPdf.model_validate(value)
 
+    def test_payment_details_are_escaped_and_only_shown_for_invoices(self):
+        value = self.value()
+        value["paymentInstructions"] = 'Bank <example>\nhttps://pay.example/?ref="invoice"'
+        html = billing_html(value)
+        self.assertIn("Payment details", html)
+        self.assertIn("Bank &lt;example&gt;", html)
+        value["kind"] = "QUOTE"
+        self.assertNotIn("Payment details", billing_html(value))
+
 
 if __name__ == "__main__":
     unittest.main()

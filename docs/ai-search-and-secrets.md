@@ -25,10 +25,15 @@ Generate a new key only for a new deployment or deliberate rotation. An existing
 
 1. Open **Administration > AI & search** and choose **Server environment** or **Admin settings**. The environment view is read-only; select Admin settings to edit a separate saved configuration. Switching sources does not copy credentials or borrow the other source's keys.
 2. Configure chat and embeddings separately. A chat provider can use local text matching or a different external embedding provider for retrieval. Anthropic/Groq chat does not require using the same service for embeddings.
+   Enter an API URL and key (or retain a saved key) to load available models automatically. Select a model from the list, or enter a custom model/deployment name if discovery is unavailable. Local Ollama can list installed models without a key. **Refresh models** queries the provider again.
 3. Enable **Index document content** and **Enable AI answers**. Save and test the saved chat/embedding configuration; these checks send fixed test text, not documents.
 4. Reindex after enabling content indexing or changing the embedding provider/model. **Ask AI** retrieves relevant accessible excerpts and returns numbered source links into Storage.
 
 No AI configuration or an unavailable provider leaves ordinary search available. Chat failures return a non-grounded guidance response; embedding failures use access-checked keyword matches for ordinary search. Disabling search explicitly rejects search and chat requests. See [feature controls and indexing jobs](search-and-indexing.md).
+
+**App Intelligence** checks the selected model automatically before saving, using only short fixed test text. Chat is verified against the app's chat adapter. Embeddings are confirmed by the returned vector's actual length and validity, rather than by the model name or its presence in a provider catalogue. If the current dimensions setting fails or returns a different length, the check tries the other setting once. **Apply suggested dimensions setting** enables or disables the request parameter when that produces 1536 values. Models returning another size are marked incompatible; authentication, quota, and provider outages leave compatibility unverified. **Check selected model** retries the check. A successful check confirms the tested request at that time, not future provider availability.
+
+OpenAI-compatible providers, Groq, Ollama, and Azure use their `/models` endpoint; Anthropic uses its authenticated Models API with bounded pagination. Model catalogues may include models for other tasks. Azure model IDs can differ from deployment names: enter the deployed name and check it before saving. Providers without model discovery still support manual entry. Discovery and checks use the selected configuration source and reuse a saved key only for the same provider/URL; they never persist a draft key or expose it in a response.
 
 API calls always go through the backend. Browser API keys are not persisted in local/session storage, included in settings responses, or prefilled after saving. The forms show only configured/not-configured state. A blank key preserves a saved key for the same provider and endpoint; changing either requires a new key or an explicitly keyless provider. Use **Clear saved key** to remove a saved AI key, or **Server identity** to clear saved storage credentials.
 
@@ -45,7 +50,11 @@ Credential forms also avoid the shared frontend mutation cache, including reques
 | Anthropic | `https://api.anthropic.com/v1` | Uses Messages, `x-api-key`, and the pinned `2023-06-01` version. Configure a different embedding provider or the internal matcher. |
 | Internal text matcher | No external endpoint | Feature hashing inside the backend, requiring no ML service, model download, or API key. It is not a semantic language-model embedding. |
 
-The current PostgreSQL schema uses `vector(384)`. External embedding models must return 384 finite, nonzero values. Enable the dimensions parameter for models that support it. For Ollama, select a model with native 384-dimensional embeddings or one that supports requesting 384 dimensions. Incompatible responses fail explicitly; vectors are never silently truncated or replaced by random vectors.
+The current PostgreSQL schema uses `vector(1536)`. External embedding models must return 1536 finite, nonzero values. Enable the dimensions parameter for models that support it. For Ollama, select a model with native 1536-dimensional embeddings or one that supports requesting 1536 dimensions. Incompatible responses fail explicitly; vectors are never silently truncated or replaced by random vectors.
+
+1536 matches the native output of OpenAI's `text-embedding-3-small`; `text-embedding-3-large` can also request 1536 dimensions ([embedding dimensions](https://developers.openai.com/api/docs/guides/embeddings)). It stays within pgvector's 2000-dimension limit for full-precision HNSW indexes ([pgvector HNSW](https://github.com/pgvector/pgvector#hnsw)). Increasing dimensions alone does not turn the internal feature matcher into a semantic model. Vector storage grows roughly fourfold compared with 384 dimensions, and ranking/index construction may take longer.
+
+When upgrading an existing database, startup migrates the host-owned vector columns to 1536 dimensions in a transaction. Old storage vectors become NULL and receive an incompatible model identity; document metadata, extracted chunks, and originals remain available. Run **Reindex now** to generate new storage vectors. Local Kanban and installed ZIP-plugin vectors are regenerated automatically from their saved search text during the migration.
 
 Provider URLs reject credentials, query parameters, and fragments. Keys require HTTPS except for loopback test servers. Provider redirects are not followed. Raw provider errors, which may contain prompts or credentials, are not returned or logged by the AI adapter. Connection tests use harmless fixed text, not storage documents.
 
@@ -66,7 +75,7 @@ AI_CHAT_API_KEY=your-provider-key
 # Or use OPENAI_COMPATIBLE, OLLAMA, or AZURE_OPENAI for semantic embeddings.
 AI_EMBEDDING_PROVIDER=LOCAL
 AI_EMBEDDING_BASE_URL=
-AI_EMBEDDING_MODEL=local-feature-hash-v2
+AI_EMBEDDING_MODEL=local-feature-hash-v3
 AI_EMBEDDING_API_KEY=
 AI_EMBEDDING_SEND_DIMENSIONS=true
 ```

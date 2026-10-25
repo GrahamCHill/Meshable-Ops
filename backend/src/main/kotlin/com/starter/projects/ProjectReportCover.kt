@@ -32,17 +32,19 @@ class ProjectReportCoverService(private val rows: ProjectReportCoverRepository,p
     private fun assets(row: ProjectReportCoverRecord?)=row?.let {mapper.readValue(it.assetsJson,object:com.fasterxml.jackson.core.type.TypeReference<Map<String,String>>() {})} ?: emptyMap()
     fun context(projectId: UUID): ReportCoverContext {
         val settings=branding.current()
+        val row=rows.findById(projectId).orElse(null)
         val logo=brandAssets?.findById(com.starter.model.postgres.BrandingKind.LOGO)?.orElse(null)?.png?.let {ReportCoverImages.encode(it)}.orEmpty()
-        return ReportCoverContext(currentHtml(projectId),assets(rows.findById(projectId).orElse(null)),settings.applicationName,settings.companyName,logo)
+        return ReportCoverContext(row?.html?.takeIf {it.isNotBlank()} ?: DEFAULT_HTML,assets(row),settings.applicationName,settings.companyName,logo)
     }
     fun currentHtml(projectId: UUID)=rows.findById(projectId).orElse(null)?.html?.takeIf {it.isNotBlank()} ?: DEFAULT_HTML
     fun view(email: String,id: UUID): ReportCoverView {
         val actor=access.actor(email);val project=access.require(id,actor);val row=rows.findById(id).orElse(null)
-        return ReportCoverView(currentHtml(id),row?.revision ?: -1,access.role(actor,project)!=ProjectRole.MEMBER,assets=assets(row))
+        return ReportCoverView(row?.html?.takeIf {it.isNotBlank()} ?: DEFAULT_HTML,row?.revision ?: -1,access.role(actor,project)!=ProjectRole.MEMBER,assets=assets(row))
     }
     @Transactional fun save(email: String,id: UUID,input: ReportCoverInput): ReportCoverView {
         access.require(id,access.actor(email),true);validate(input.html)
-        val images=input.assets?.let {ReportCoverImages.normalize(it)} ?: assets(rows.findById(id).orElse(null))
+        val savedImages=assets(rows.findById(id).orElse(null))
+        val images=input.assets?.let {ReportCoverImages.normalize(it,savedImages)} ?: savedImages
         render(email,id,ReportCoverPreviewInput(input.html),images) // Validate real layout in the bounded worker before saving.
         access.require(id,access.actor(email),true)
         jdbc.query("SELECT pg_advisory_xact_lock(hashtext(?))",RowCallbackHandler {},"project-report-cover:$id")
@@ -53,7 +55,8 @@ class ProjectReportCoverService(private val rows: ProjectReportCoverRepository,p
     }
     fun preview(email: String,id: UUID,input: ReportCoverPreviewInput): ByteArray {
         access.require(id,access.actor(email),true)
-        return render(email,id,input,input.assets?.let {ReportCoverImages.normalize(it)} ?: assets(rows.findById(id).orElse(null)))
+        val savedImages=assets(rows.findById(id).orElse(null))
+        return render(email,id,input,input.assets?.let {ReportCoverImages.normalize(it,savedImages)} ?: savedImages)
     }
     private fun render(email: String,id: UUID,input: ReportCoverPreviewInput,images: Map<String,String>): ByteArray {
         val actor=access.actor(email);val project=access.require(id,actor,true);validate(input.html)

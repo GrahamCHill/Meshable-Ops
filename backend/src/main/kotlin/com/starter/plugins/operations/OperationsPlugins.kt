@@ -41,19 +41,18 @@ private fun manifest(id:String,name:String,description:String,category:String,se
             flag("dailyEnabled","Enable daily refresh"),field("dailyTime","Daily refresh time","HH:mm","01:00"),field("timeZone","Timezone","IANA timezone","UTC")),capabilities=mapOf("cloud.costs" to "Project cloud spend"))
 }
 @Component class BillingItemsPlugin:OperationsPlugin() {
-    override val manifest=manifest("billing-items","Billing items & rates","Recurring flat charges, effective-dated developer rates and approved hours for invoice generation.","Finance",extends=setOf("timesheets","billing"),capabilities=mapOf("billing.items" to "Invoice source items"))
+    override val manifest=manifest("billing-items","Billing items & rates","Enabled billable items, member going rates and approved hours for invoice generation.","Finance",extends=setOf("timesheets","billing"),capabilities=mapOf("billing.items" to "Invoice source items"))
 }
 @Component class BillingPlugin:OperationsPlugin() {
     override val manifest=manifest("billing","Invoices & quotes","Client billing profiles, quotes, invoices, opt-in schedules and routed billing replies. Duplicate source charges require confirmation.","Finance",
         listOf(field("defaultCurrency","Default currency","Three-letter ISO currency","USD"),flag("vatRegistered","Business is VAT registered"),field("vatNumber","VAT registration number"),field("issuerName","Registered business name"),field("issuerAddress","Business address"),field("defaultTaxPercent","Default tax percentage","Used only when VAT is enabled","0"),flag("chargeTax","Include VAT by default"),
-            flag("inboxEnabled","Read billing replies via IMAPS"),field("imapHost","IMAPS server"),field("imapPort","IMAPS port","TLS only","993"),field("imapUsername","IMAPS username"),secret("imapPassword","IMAPS app password"),field("imapFolder","Billing inbox folder","Use a dedicated billing mailbox/folder","INBOX")),
-        requires=setOf("documents"),extends=setOf("billing-items","timesheets","cloud-costs"),menus=listOf(PluginMenuItem("clients","Client billing"),PluginMenuItem("schedules","Schedules"),PluginMenuItem("replies","Billing replies")),notify=true)
+            flag("inboxEnabled","Process invoice replies","Read matching replies from the shared incoming email connection selected below. Sending uses Communications > Email delivery.")),
+        requires=setOf("documents"),extends=setOf("billing-items","timesheets","cloud-costs"),menus=listOf(PluginMenuItem("payments","Payment providers"),PluginMenuItem("clients","Client billing"),PluginMenuItem("schedules","Schedules"),PluginMenuItem("replies","Billing replies")),notify=true).copy(settingsSections=listOf(PluginSettingsSection("email-replies","Invoice email replies","communications",setOf("inboxEnabled"),"Communications","Read invoice replies using a shared IMAPS inbox. SMTP or an email API sends invoices; IMAPS reads replies.")),
+            sharedSettings=listOf(PluginSharedSettingsReference("incoming-email","communications.imaps","Incoming email connection",setOf("host","port","username","password","folder"),"email-replies")))
     override fun validateConfiguration(values:Map<String,String>) {
         super.validateConfiguration(values)
         values["defaultCurrency"]?.let(OperationsValidation::currency)
         values["defaultTaxPercent"]?.let {if(it.toBigDecimalOrNull()?.let {n->n.signum()>=0 && n<=java.math.BigDecimal(100)}!=true) throw BadRequestException("Use a tax percentage from 0 to 100")}
-        values["imapPort"]?.let {if(it.toIntOrNull() !in 1..65535) throw BadRequestException("Choose a valid IMAPS port")}
-        values["imapHost"]?.let {if(!it.matches(Regex("[A-Za-z0-9][A-Za-z0-9.-]{0,252}"))) throw BadRequestException("Use a mail server hostname")}
     }
 }
 @Component class OnCallPlugin:OperationsPlugin() {

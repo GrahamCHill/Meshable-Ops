@@ -40,6 +40,7 @@ class BillingCatalog(private val store:OperationsStore,private val access:Operat
     @Transactional fun link(email:String,input:BillingLinkInput):OpsRow {
         val actor=scope(email,input.projectId,input.clientId,true);val item=store.get("billing-items",input.itemId)
         if(item.kind!="ITEM")throw NotFoundException("Catalog item unavailable")
+        if(!store.decode(item,CatalogItem::class.java).enabled)throw BadRequestException("Enable this catalog item before linking it")
         val id=store.stable("billing-link:${input.itemId}:${input.projectId ?: input.clientId}")
         store.lock("billing-link:$id")
         if(store.list("billing-items","id=?",id).isNotEmpty())throw ConflictException("This item is already linked to this scope")
@@ -75,18 +76,20 @@ class BillingCatalog(private val store:OperationsStore,private val access:Operat
         return store.save("billing-items",row.ownerId,row.projectId,"LINK",value,row.id,input.revision)
     }
     fun effective(project:ProjectRecord):List<EffectiveBillingItem> {
+        val disabled=store.list("billing-items","kind='ITEM'").filter {!store.decode(it,CatalogItem::class.java).enabled}.map {it.id}.toSet()
         val rows=store.list("billing-items","kind='LINK' AND project_id=?",project.id)+project.clientId?.let(::linksForClient).orEmpty()
         val grouped=rows.groupBy {store.decode(it,BillingItemLink::class.java).itemId}
         return grouped.map {(itemId,records)->
             val projectRow=records.firstOrNull {it.projectId==project.id};val clientRow=records.firstOrNull {it.projectId==null}
             val selected=projectRow ?: clientRow!!;val l=store.decode(selected,BillingItemLink::class.java)
-            EffectiveBillingItem(clientRow?.id ?: selected.id,itemId,l.approvedOverrides[project.id] ?: l.baseItem,selected.id,l.proposedItem!=null&&l.approvals[project.id]!=l.proposalVersion)
+            val agreed=l.approvedOverrides[project.id] ?: l.baseItem
+            EffectiveBillingItem(clientRow?.id ?: selected.id,itemId,agreed.copy(enabled=agreed.enabled&&itemId !in disabled),selected.id,l.proposedItem!=null&&l.approvals[project.id]!=l.proposalVersion)
         }+store.list("billing-items","kind='ITEM' AND project_id=?",project.id).map {EffectiveBillingItem(it.id,it.id,store.decode(it,CatalogItem::class.java),it.id,false)}
     }
     private fun linksForClient(id:UUID)=store.list("billing-items","kind='LINK' AND project_id IS NULL AND CAST(data_json AS jsonb)->>'clientId'=?",id.toString())
     private fun canApprove(actor:User,p:ProjectRecord)=Roles.admin(actor.role)||access.projects.role(actor,p)==ProjectRole.MANAGER||access.projects.details(p).members.any {it.userId==actor.id&&it.role==ProjectRole.MANAGER}
     companion object {fun validate(item:CatalogItem) {
         OperationsValidation.text(item.name,"item name",200);OperationsValidation.currency(item.currency)
-        if(item.amount.signum()<0||item.amount>BigDecimal("1000000000")||item.amount.scale()>6||item.quantity.signum()<=0||item.quantity>BigDecimal("100000000")||item.quantity.scale()>6||item.activeTo?.isBefore(item.activeFrom)==true)throw BadRequestException("Choose valid item prices, quantities and effective dates")
+        if(item.amount.signum()<0||item.amount>BigDecimal("1000000000")||item.amount.scale()>6||item.quantity.signum()<=0||item.quantity>BigDecimal("100000000")||item.quantity.scale()>6)throw BadRequestException("Choose valid item prices and quantities")
     }}
 }

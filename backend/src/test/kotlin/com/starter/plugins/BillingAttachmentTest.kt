@@ -20,7 +20,7 @@ class BillingAttachmentTest {
         val mapper=jacksonObjectMapper().findAndRegisterModules();val id=UUID.randomUUID();val user=User(email="manager@example.test",password="unused");val project=ProjectRecord()
         val profile=BillingProfile(UUID.randomUUID(),"billing@example.test","Client address",user.id)
         val totals=BillingMath.calculate(listOf(BillingLine("item","Services",BigDecimal.ONE,BigDecimal(100))),"USD",false,BigDecimal.ZERO)
-        val d=BillingSnapshot("INV-TEST",BillingKind.INVOICE,project.id,profile.clientId,"Client","Project",LocalDate.parse("2026-01-01"),LocalDate.parse("2026-01-31"),Instant.now(),LocalDate.now().plusDays(30),profile,"Issuer","Issuer address","",totals)
+        val d=BillingSnapshot("INV-TEST",BillingKind.INVOICE,project.id,profile.clientId,"Client","Project",LocalDate.parse("2026-01-01"),LocalDate.parse("2026-01-31"),Instant.now(),LocalDate.now().plusDays(30),profile,"Issuer","Issuer address","",totals,signedOffBy=user.id,signedOffAt=Instant.now(),status="ISSUED")
         val row=OpsRow(id,user.id,project.id,"DOCUMENT",mapper.writeValueAsString(d),0,Instant.now())
         val store=mock(OperationsStore::class.java);`when`(store.decode(row,BillingSnapshot::class.java)).thenReturn(d)
         val billing=mock(BillingService::class.java);`when`(billing.get(user.email,id)).thenReturn(row)

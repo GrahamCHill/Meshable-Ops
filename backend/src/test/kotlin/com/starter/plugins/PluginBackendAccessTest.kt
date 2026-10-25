@@ -31,7 +31,8 @@ class PluginBackendAccessTest {
     private val backend = PluginBackendService(catalogue, registry, controls, users, config, tickets, worker, json, mock(RateLimits::class.java))
     private val records = mock(PluginRecordService::class.java)
     private val http = mock(IntegrationHttpClient::class.java)
-    private val broker = PluginHostBroker(backend, records, config, http, json)
+    private val shared = mock(com.starter.plugins.shared.PluginSharedSettingsService::class.java)
+    private val broker = PluginHostBroker(backend, records, config, http, json, shared)
     private val user = User(email = "member@example.test")
     private val record = PluginPackageRecord("zip-code", sha256 = "immutable-package")
     private val policy = AccessPolicy()
@@ -129,5 +130,25 @@ class PluginBackendAccessTest {
         assertThat(response.statusCode.value()).isEqualTo(401)
         assertThat(response.headers.getFirst("X-Meshable-Plugin-Response")).isEqualTo("1")
         assertThat(response.headers.cacheControl).isEqualTo("no-store")
+    }
+    @Test fun `shared settings callback requires permission and returns only the service public view`() {
+        val call=PluginHostCall("settings.shared",json.readTree("""{"reference":"account"}"""))
+        configure()
+        assertThatThrownBy {broker.call("ticket",call)}.isInstanceOf(ForbiddenException::class.java)
+        verifyNoInteractions(shared)
+        configure(setOf("settings.read"))
+        `when`(shared.publicCurrent("zip-code","account")).thenReturn(mapOf("origin" to "https://example.com"))
+        assertThat(broker.call("ticket",call)).isEqualTo(mapOf("origin" to "https://example.com"))
+        verify(config,never()).current("zip-code")
+        verify(shared,never()).current("zip-code","account")
+    }
+    @Test fun `shared HTTP credentials are injected by the host without being given to worker configuration`() {
+        configure(setOf("http"))
+        `when`(shared.httpCredential("zip-code","account","token","https://example.com")).thenReturn("private-shared-canary")
+        `when`(http.scoped("GET","https://example.com","/jobs",mapOf("Authorization" to "Bearer private-shared-canary"),null)).thenReturn(IntegrationResponse(200,json.readTree("{\"ok\":true}")))
+        val result=broker.call("ticket",PluginHostCall("http",json.readTree("""{"url":"https://example.com/jobs","credential":{"sharedReference":"account","key":"token"}}""")))
+        assertThat(json.writeValueAsString(result)).contains("ok").doesNotContain("private-shared-canary")
+        verify(shared).httpCredential("zip-code","account","token","https://example.com")
+        verify(config,never()).current("zip-code")
     }
 }

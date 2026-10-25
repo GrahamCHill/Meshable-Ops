@@ -4,7 +4,7 @@ import { useAuthStore } from '../hooks/useAuthStore'
 
 export interface PluginView {
   manifest: { id: string; name: string; navigationLabel: string; version: string; apiVersion: number; description: string; extensions: ('PAGE' | 'API' | 'DATABASE' | 'SEARCH' | 'SETTINGS' | 'NOTIFICATIONS')[]; menuItems: {path: string; label: string; roles: string[]}[]; tables: {name: string; label: string}[]; settingsFields: PluginSettingField[]; supportedRoles: string[]; capabilities: Record<string,string>; requiresCapabilities: string[]; contextTargets: ('PROJECT' | 'CLIENT')[];
-    showPageBanner: boolean; categories: string[]; icon?: string; banner?: string; requires: string[]; extends: string[]; incompatibleWith: Record<string,string>; hasAdminSettings: boolean; adminMenu?: {category: string; categoryLabel: string; label: string}; providesSms: boolean; placements: {slot: string; label: string; section: string; mode: 'LINK'|'PANEL'}[]; compatibleVersions: string[]; runtimes: ('REACT'|'KOTLIN'|'PYTHON')[] }
+    showPageBanner: boolean; categories: string[]; icon?: string; banner?: string; requires: string[]; extends: string[]; incompatibleWith: Record<string,string>; hasAdminSettings: boolean; adminMenu?: PluginAdminMenu; providesSms: boolean; placements: {slot: string; label: string; section: string; mode: 'LINK'|'PANEL'}[]; compatibleVersions: string[]; runtimes: ('REACT'|'KOTLIN'|'PYTHON')[]; settingsSections?: PluginSettingsSection[]; sharedSettings?: PluginSharedSettingsReference[]; sharedSettingsSchemas?: PluginSharedSettingsSchema[] }
   enabled: boolean
   active: boolean
   missingDependencies: string[]
@@ -23,6 +23,10 @@ export interface PluginView {
   author?: { name: string; organization: string; email: string; website: string }
 }
 export interface PluginSettingField {key: string; label: string; type: 'TEXT' | 'SECRET' | 'BOOLEAN'; required: boolean; help: string; maxLength: number; defaultValue?: string}
+export interface PluginAdminMenu {category:string;categoryLabel:string;label:string;icon?:string}
+export interface PluginSettingsSection {id:string;label:string;category:string;categoryLabel:string;description:string;fields:string[]}
+export interface PluginSharedSettingsReference {id:string;schemaId:string;label:string;fields:string[];sectionId:string}
+export interface PluginSharedSettingsSchema {id:string;label:string;description:string;fields:PluginSettingField[];adminMenu:PluginAdminMenu;identityFields:string[];httpOriginField?:string}
 export interface PluginConfiguration {values: Record<string, string>; configuredSecrets: string[]; missingRequired: string[]; revision: number; encryptionConfigured: boolean}
 export type PluginSettings = Pick<PluginView, 'enabled' | 'allowedRoles' | 'searchEnabled' | 'tableAccess'>
 export const pluginsApi = {

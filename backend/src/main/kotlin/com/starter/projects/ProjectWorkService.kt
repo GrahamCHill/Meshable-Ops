@@ -14,7 +14,7 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.UUID
 
-data class ProjectWorkItem(val boardId: UUID, val boardName: String, val card: KanbanCard, val columnName: String = "", val epicName: String? = null)
+data class ProjectWorkItem(val boardId: UUID, val boardName: String, val card: KanbanCard, val columnName: String = "", val epicName: String? = null,val sprint: KanbanSprint? = null)
 data class WorkBreakdown(val id: String, val label: String, val count: Int, val completed: Int = 0)
 data class ProjectWorkSummary(val total: Int, val completed: Int, val overdue: Int, val storyPoints: Double,
     val stages: List<WorkBreakdown>, val assignees: List<WorkBreakdown>, val epics: List<WorkBreakdown>, val tags: List<WorkBreakdown>)
@@ -38,7 +38,7 @@ class ProjectWorkService(private val boards: KanbanRepository, private val mappe
         return rows.filter { boardAccess.readable(actor, it) }.flatMap { board ->
             val content = KanbanCompletion.read(mapper.readValue(board.contentJson, KanbanContent::class.java))
             content.cards.map { ProjectWorkItem(board.id, board.name, it, content.columns.find { column -> column.id == it.columnId }?.title ?: it.status.name,
-                content.epics.find { epic -> epic.id == it.epicId }?.name) }
+                content.epics.find { epic -> epic.id == it.epicId }?.name,content.sprints.find {sprint->sprint.id==it.sprintId}) }
         }
     }
     fun summary(email: String, projectId: UUID): ProjectWorkSummary {

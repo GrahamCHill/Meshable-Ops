@@ -18,7 +18,8 @@ export const adminGroups = [
   ] },
   { id: 'communications', label: 'Communications', description: 'Notifications, delivery accounts, message templates, and webhooks.', items: [
     { to: '/admin/notifications', label: 'Notifications & delivery', description: 'Delivery methods, message templates, member choices, and workflow alerts.' },
-    { to: '/admin/email', label: 'Email account', description: 'SMTP and provider credentials used by notifications and sharing.' },
+    { to: '/admin/email', label: 'Outgoing email (SMTP / API)', description: 'Send notifications, invoices, and attachments through one shared delivery account.' },
+    { to: '/admin/email/inbox', label: 'Incoming email (IMAPS)', description: 'Shared inbox connections for plugins that read and process email replies.' },
     { to: '/admin/webhooks', label: 'Webhooks', description: 'Send JSON, receive signed requests, and review deliveries.' },
   ] },
   { id: 'documents-workflows', label: 'Documents & workflows', description: 'Reusable documents and the processes that use them.', items: [

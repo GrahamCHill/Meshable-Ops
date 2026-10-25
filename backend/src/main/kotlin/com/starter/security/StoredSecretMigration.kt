@@ -24,6 +24,7 @@ class StoredSecretMigration(private val jdbc: JdbcTemplate, private val encrypti
             "webhook_endpoints" to listOf("secret"),
             "webhook_deliveries" to listOf("payload"),
             "workspace_plugin_configuration" to listOf("data_json"),
+            "workspace_shared_settings" to listOf("data_json"),
             "plugin_calendar_connections" to listOf("credentials_json"),
         )) {
             jdbc.queryForList("SELECT id, ${columns.joinToString()} FROM $table").forEach { row ->

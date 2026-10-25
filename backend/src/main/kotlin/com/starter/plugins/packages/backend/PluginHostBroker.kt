@@ -17,13 +17,15 @@ data class PluginHostCall(val operation: String, val params: JsonNode)
 /** The worker has no network or database socket. Each requested host operation is checked here. */
 @Service
 class PluginHostBroker(private val backend: PluginBackendService, private val records: PluginRecordService,
-    private val configuration: PluginConfigurationService, private val http: IntegrationHttpClient, private val mapper: ObjectMapper) {
+    private val configuration: PluginConfigurationService, private val http: IntegrationHttpClient, private val mapper: ObjectMapper,
+    private val shared:com.starter.plugins.shared.PluginSharedSettingsService?=null) {
     fun call(token: String, call: PluginHostCall): Any? = backend.callback(token) { auth ->
         val input = call.params
         if (!input.isObject || mapper.writeValueAsBytes(input).size > 1_048_576) throw BadRequestException("Invalid plugin host call")
-        val permission = when (call.operation) { "data.list", "data.get" -> "data.read"; "data.create", "data.update", "data.remove" -> "data.write"; "http" -> "http"; else -> throw BadRequestException("Unsupported host operation") }
+        val permission = when (call.operation) { "data.list", "data.get" -> "data.read"; "data.create", "data.update", "data.remove" -> "data.write"; "http" -> "http"; "settings.shared" -> "settings.read"; else -> throw BadRequestException("Unsupported host operation") }
         if (permission !in auth.route.permissions) throw ForbiddenException("This backend route has not declared that permission")
         val id = auth.record.id
+        if(permission=="settings.read")return@callback shared?.publicCurrent(id,input.path("reference").asText()) ?: throw BadRequestException("Shared settings unavailable")
         if (permission == "http") return@callback outbound(auth, input)
         val table = input.path("table").asText()
         val record = input.path("id").asText()
@@ -50,9 +52,11 @@ class PluginHostBroker(private val backend: PluginBackendService, private val re
             !key.matches(Regex("[A-Za-z][A-Za-z0-9-]{0,79}")) || key.lowercase() in forbidden || value.length > 4096 || value.any(Char::isISOControl) }) throw BadRequestException("Unsupported HTTP headers")
         input.path("credential").takeIf { it.isObject }?.let { credential ->
             val key = credential.path("key").asText(); val header = credential.path("header").asText("Authorization"); val prefix = credential.path("prefix").asText("Bearer ")
-            if (auth.descriptor.manifest.settingsFields.none { it.key == key && it.type == PluginFieldType.SECRET } ||
+            val reference=credential.path("sharedReference").asText()
+            if ((reference.isEmpty()&&auth.descriptor.manifest.settingsFields.none { it.key == key && it.type == PluginFieldType.SECRET }) ||
                 !header.matches(Regex("[A-Za-z][A-Za-z0-9-]{0,79}")) || header.lowercase() in forbidden || prefix.length > 40 || prefix.any(Char::isISOControl)) throw BadRequestException("Choose a declared secret and supported credential header")
-            val secret = configuration.current(auth.record.id)[key]?.takeIf { it.isNotBlank() } ?: throw BadRequestException("Configure the plugin credential first")
+            val secret = if(reference.isNotEmpty()) shared?.httpCredential(auth.record.id,reference,key,origin) ?: throw BadRequestException("Shared connections unavailable")
+                else configuration.current(auth.record.id)[key]?.takeIf { it.isNotBlank() } ?: throw BadRequestException("Configure the plugin credential first")
             headers.keys.filter { it.equals(header, true) }.toList().forEach(headers::remove)
             headers[header] = prefix + secret // Credentials are injected by the host, never given to page/worker code.
         }

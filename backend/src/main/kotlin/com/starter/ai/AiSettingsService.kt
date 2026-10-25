@@ -58,6 +58,22 @@ class AiSettingsService(
     fun status(): AiSearchStatus = current().let { AiSearchStatus(it.searchEnabled && it.enabled && it.chat.model.isNotBlank(), it.indexContent, it.embeddings.provider,
         searchEnabled = it.searchEnabled, launcherEnabled = it.searchEnabled && it.launcherEnabled) }
 
+    @Transactional(readOnly = true)
+    fun endpointForCheck(kind: String, request: AiEndpointCheckRequest): AiEndpoint {
+        if (kind !in setOf("chat", "embeddings")) throw BadRequestException("Choose chat or embeddings")
+        val config = when (request.source) {
+            "ENVIRONMENT" -> environment.active()
+            "ADMIN" -> (repository.findById(1L).orElse(null) ?: AiSettings()).active()
+            else -> throw BadRequestException("Choose environment or admin settings")
+        }
+        val previous = if (kind == "chat") config.chat else config.embeddings
+        // Draft checks never save credentials or borrow from the other configuration source.
+        val endpoint = if (request.source == "ENVIRONMENT") previous else resolve(request.endpoint, previous)
+        if (kind == "chat" && endpoint.provider == AiProvider.LOCAL) throw BadRequestException("Choose a chat provider")
+        if (kind == "embeddings" && endpoint.provider == AiProvider.ANTHROPIC) throw BadRequestException("Choose an embedding provider; Anthropic supplies chat models here")
+        return endpoint
+    }
+
     private fun resolve(req: AiEndpointRequest, previous: AiEndpoint): AiEndpoint {
         if (req.provider == AiProvider.LOCAL) return AiEndpoint(AiProvider.LOCAL, "", LocalTextVectors.MODEL)
         val url = req.baseUrl.trim().trimEnd('/')
@@ -72,8 +88,12 @@ class AiSettingsService(
 }
 
 internal fun validateEndpoint(endpoint: AiEndpoint) {
-    validateEndpointUrl(endpoint)
+    validateEndpointConnection(endpoint)
     if (endpoint.model.isBlank()) throw BadRequestException("Enter the AI model or Azure deployment name")
+}
+
+internal fun validateEndpointConnection(endpoint: AiEndpoint) {
+    validateEndpointUrl(endpoint)
     if (endpoint.provider in setOf(AiProvider.AZURE_OPENAI, AiProvider.ANTHROPIC) && endpoint.apiKey.isNullOrBlank()) {
         throw BadRequestException("Configure an API key for this provider")
     }

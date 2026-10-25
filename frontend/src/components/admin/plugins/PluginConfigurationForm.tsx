@@ -6,31 +6,35 @@ import { Button } from '../../ui'
 import {RepositoryScopeSettings} from './RepositoryScopeSettings'
 import {TimeZoneSelect} from '../../ui/TimeZoneSelect'
 
-export function PluginConfigurationForm({plugin}: {plugin: PluginView}) {
+export function PluginConfigurationForm({plugin,fieldKeys,title}: {plugin: PluginView;fieldKeys?:string[];title?:string}) {
   const id = plugin.manifest.id
   const git=['github','gitlab','gitea'].includes(id)
+  const fields=plugin.manifest.settingsFields.filter(f=>!fieldKeys||fieldKeys.includes(f.key))
   const client = useQueryClient()
   const configuration = useQuery({queryKey:['plugin-configuration', id], queryFn: () => pluginsApi.configuration(id), refetchOnWindowFocus:false})
   const [values, setValues] = useState<Record<string, string>>({})
   const [clearSecrets, setClearSecrets] = useState<string[]>([])
   const [dirty, setDirty] = useState(false)
-  useEffect(() => {setValues(configuration.data?.values ?? {}); setClearSecrets([]); setDirty(false)}, [configuration.data])
-  const save = useMutation({mutationFn: () => pluginsApi.saveConfiguration(id, values, clearSecrets, configuration.data?.revision ?? 0), onSuccess: data => {
+  useEffect(() => {if(!dirty){setValues(configuration.data?.values ?? {}); setClearSecrets([])}}, [configuration.data,dirty])
+  const save = useMutation({mutationFn: async () => {
+    try{return await pluginsApi.saveConfiguration(id, Object.fromEntries(Object.entries(values).filter(([key])=>fields.some(f=>f.key===key))), clearSecrets.filter(key=>fields.some(f=>f.key===key)), configuration.data?.revision ?? 0)}
+    catch(failure){throw new Error(getErrorMessage(failure))} // Do not retain Axios request credentials in mutation errors.
+  }, onSuccess: data => {
     client.setQueryData(['plugin-configuration', id], data)
     setValues(data.values); setClearSecrets([]); setDirty(false)
     void client.invalidateQueries({queryKey:['operations','cloud']})
   }})
-  if (!plugin.manifest.settingsFields.length) return <p>This plugin has no additional configuration. Use General for access and search settings.</p>
+  if (!fields.length) return null
   if (configuration.isLoading) return <p role="status">Loading configuration…</p>
   if (configuration.isError) return <p role="alert">Unable to load configuration. <button onClick={() => void configuration.refetch()}>Retry</button></p>
   const current = configuration.data!
   return <form className="page-stack" onSubmit={event => {event.preventDefault(); save.mutate()}}>
-    <h2>{plugin.manifest.name} configuration</h2>
-    <p className="field-help">Credentials are encrypted on the server and never returned to the browser. Blank credential fields keep existing values. Saving does not contact the provider. Incomplete drafts can be saved; provider actions require the configured fields.</p>
+    <h2>{title??`${plugin.manifest.name} configuration`}</h2>
+    <p className="field-help">{fields.some(f=>f.type==='SECRET')?'Credentials are encrypted on the server and never returned to the browser. Blank credential fields keep existing values. ':''}Saving applies only the settings in this section and does not contact the provider. Incomplete drafts can be saved; provider actions require the configured fields.</p>
     {!current.encryptionConfigured && <p role="alert">Configure the server encryption key before saving plugin configuration.</p>}
     {current.missingRequired.length > 0 && <p className="field-help">Required before use: {current.missingRequired.join(', ')}.</p>}
     <fieldset className="page-stack" disabled={save.isPending || !current.encryptionConfigured}>
-      {plugin.manifest.settingsFields.filter(field=>!git||!['repositoryAccess','repositories'].includes(field.key)).map(field => {
+      {fields.filter(field=>!git||!['repositoryAccess','repositories'].includes(field.key)).map(field => {
         const secret = field.type === 'SECRET'
         const stored = current.configuredSecrets.includes(field.key)
         const cleared = clearSecrets.includes(field.key)

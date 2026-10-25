@@ -1,7 +1,7 @@
 import {Bug, Check, ChevronDown, ChevronRight, ChevronUp, Diamond, GitBranch, Plus, SquareCheck, TriangleAlert} from 'lucide-react'
 import type {BoardCard, BoardColumn, BoardEpic} from './api'
 import type {Person} from '../../../api/projects'
-import {personInitials} from './boardView'
+import {TicketPeople} from './TicketPeople'
 
 export function TicketTypeIcon({type}: Readonly<{type: BoardCard['type']}>) {
   if (type === 'BUG') return <Bug size={15} className="kanban-type-icon type-bug" aria-label="Bug"/>
@@ -10,9 +10,9 @@ export function TicketTypeIcon({type}: Readonly<{type: BoardCard['type']}>) {
   return <SquareCheck size={15} className="kanban-type-icon type-task" aria-label="Task"/>
 }
 
-export function TicketTile({card, epic, person, subtasks, columns, expanded, onToggle, onOpenCard, onCreateSubtask,
+export function TicketTile({card, epic, people, subtasks, columns, expanded, onToggle, onOpenCard, onCreateSubtask,
   disabled, draggable, onOpen, onDragStart, onDragEnd, onDrop, onDragOver, dropPosition, onRank, canRankUp, canRankDown, storyPoints=true, tshirtSizes=false}: Readonly<{
-  card: BoardCard; epic?: BoardEpic; person?: Person; subtasks: BoardCard[]; columns: BoardColumn[];
+  card: BoardCard; epic?: BoardEpic; people: Person[]; subtasks: BoardCard[]; columns: BoardColumn[];
   expanded: boolean; onToggle: () => void; onOpenCard: (card: BoardCard) => void; onCreateSubtask?: () => void;
   disabled: boolean; draggable: boolean; onOpen: () => void; dropPosition?: 'before' | 'after';
   onDragStart: (event: React.DragEvent) => void; onDragEnd: () => void;
@@ -31,7 +31,8 @@ export function TicketTile({card, epic, person, subtasks, columns, expanded, onT
       {(epic || !!card.tags?.length) && <span className="kanban-ticket-labels">{epic && <span className="kanban-epic-label" style={{backgroundColor: epic.color, color: epicText}}>{epic.name}</span>}{card.tags?.slice(0, 3).map(tag => <span className="kanban-tag" key={tag}>{tag}</span>)}{(card.tags?.length ?? 0) > 3 && <span className="kanban-tag">+{card.tags!.length - 3}</span>}</span>}
       {card.dueDate && <span className={overdue ? 'kanban-overdue' : 'kanban-due'}>{new Date(card.dueDate + 'T12:00:00').toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'})}{overdue && <TriangleAlert size={13} aria-label="Overdue"/>}</span>}
       {card.blocked && <span className="kanban-overdue">Flagged · Blocked</span>}
-      <span className="kanban-ticket-footer"><TicketTypeIcon type={card.type}/><span className="kanban-reference">{card.reference || 'Unsaved'}</span><span className="kanban-ticket-spacer"/>{card.priority && card.priority !== 'MEDIUM' && <span className={'kanban-priority priority-' + card.priority.toLowerCase()}>{card.priority.toLowerCase()}</span>}{tshirtSizes && card.tshirtSize && <span className="kanban-points" aria-label={"T-shirt size " + card.tshirtSize}>{card.tshirtSize}</span>}{storyPoints && card.storyPoints != null && <span className="kanban-points" aria-label={`${card.storyPoints} story points`}>{card.storyPoints}</span>}{card.status === 'DONE' && <Check size={14} className="kanban-done-mark" aria-label="Done"/>}<span className="kanban-avatar" title={person?.name ?? 'Unassigned'} aria-label={person?.name ?? 'Unassigned'}>{person ? personInitials(person.name) : '–'}</span></span>
+      <TicketPeople card={card} people={people} compact/>
+      <span className="kanban-ticket-footer"><TicketTypeIcon type={card.type}/><span className="kanban-reference">{card.reference || 'Unsaved'}</span><span className="kanban-ticket-spacer"/>{card.priority && card.priority !== 'MEDIUM' && <span className={'kanban-priority priority-' + card.priority.toLowerCase()}>{card.priority.toLowerCase()}</span>}{tshirtSizes && card.tshirtSize && <span className="kanban-points" aria-label={"T-shirt size " + card.tshirtSize}>{card.tshirtSize}</span>}{storyPoints && card.storyPoints != null && <span className="kanban-points" aria-label={`${card.storyPoints} story points`}>{card.storyPoints}</span>}{card.status === 'DONE' && <Check size={14} className="kanban-done-mark" aria-label="Done"/>}</span>
     </button>
     {!!subtasks.length && <div className="kanban-subtask-footer">
       <button type="button" aria-expanded={expanded} disabled={disabled} onClick={onToggle}><GitBranch size={15}/> Subtasks <span>{subtasks.filter(item => item.status === 'DONE').length}/{subtasks.length}</span>{expanded ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}</button>

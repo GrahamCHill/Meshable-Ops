@@ -39,6 +39,7 @@ export function AdminEmailPage() {
   const sameApi = environment || (!!draft && !!view && draft.provider === view.provider && trimTrailingSlashes(draft.apiBaseUrl.trim()) === view.apiBaseUrl && draft.mailgunDomain.trim() === view.mailgunDomain)
   return <div className="page-stack" style={{ maxWidth: 900 }}>
     <AdminPageHeader title="Email delivery" description="Connect an SMTP account, app password, or transactional email service." actions={<Link to="/admin/notifications">Back to Notifications</Link>} />
+    <p>SMTP or an email API <strong>sends</strong> messages, including invoices and notifications. IMAPS <strong>reads</strong> a mailbox for replies. They have separate server, port, and login details; configuring one does not configure the other. Sending invoices does not require IMAPS. <Link to="/admin/email/inbox">Manage incoming email connections</Link>.</p>
     {query.isLoading && <Spinner />}
     {query.isError && <p role="alert" className="feedback error">Unable to load email settings. <Button variant="ghost" onClick={() => query.refetch()}>Retry</Button></p>}
     {settings && draft && view && value && <>

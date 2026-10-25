@@ -30,11 +30,8 @@ internal object PluginManifests {
         manifest.features.forEach { require(it.id.matches(Regex("[a-z][a-z0-9-]{1,39}")) && it.label.isNotBlank() && it.label.length <= 100 && it.requires.isNotEmpty()) }
         require("ADMIN" in manifest.supportedRoles && roles.containsAll(manifest.supportedRoles)) { "Invalid supported plugin roles" }
         require("ADMIN" in manifest.defaultRoles && manifest.supportedRoles.containsAll(manifest.defaultRoles)) { "Invalid default plugin roles" }
-        require(manifest.settingsFields.size <= 30 && manifest.settingsFields.map { it.key }.distinct().size == manifest.settingsFields.size)
-        manifest.settingsFields.forEach {
-            require(it.key.matches(Regex("[a-z][A-Za-z0-9]{0,39}")) && it.label.isNotBlank() && it.label.length <= 100 && it.help.length <= 600 && it.maxLength in 1..4096) { "Invalid plugin settings field" }
-            require(it.defaultValue.length <= it.maxLength && (it.type != PluginFieldType.BOOLEAN || it.defaultValue in setOf("","true","false")) && (it.type != PluginFieldType.SECRET || it.defaultValue.isBlank())) { "Use bounded non-secret defaults and true/false for Boolean fields" }
-        }
+        validateFields(manifest.settingsFields)
+        PluginSharedSettingsValidation.validate(manifest)
         require(manifest.settingsFields.isEmpty() || PluginExtension.SETTINGS in manifest.extensions)
         require(manifest.menuItems.size <= 20 && manifest.menuItems.map { it.path }.distinct().size == manifest.menuItems.size)
         manifest.menuItems.forEach {
@@ -48,6 +45,13 @@ internal object PluginManifests {
         }
         require(manifest.tables.isEmpty() || PluginExtension.DATABASE in manifest.extensions)
         require(PluginExtension.SEARCH !in manifest.extensions || manifest.tables.isNotEmpty())
+    }
+    internal fun validateFields(fields:List<PluginSettingField>) {
+        require(fields.size <= 30 && fields.map { it.key }.distinct().size == fields.size)
+        fields.forEach {
+            require(it.key.matches(Regex("[a-z][A-Za-z0-9]{0,39}")) && it.label.isNotBlank() && it.label.length <= 100 && it.help.length <= 600 && it.maxLength in 1..4096) { "Invalid plugin settings field" }
+            require(it.defaultValue.length <= it.maxLength && (it.type != PluginFieldType.BOOLEAN || it.defaultValue in setOf("","true","false")) && (it.type != PluginFieldType.SECRET || it.defaultValue.isBlank())) { "Use bounded non-secret defaults and true/false for Boolean fields" }
+        }
     }
     fun validateSettings(manifest: PluginManifest, request: PluginSettingsRequest) {
         if (!manifest.supportedRoles.containsAll(request.allowedRoles)) throw BadRequestException("This plugin supports administrator access only")

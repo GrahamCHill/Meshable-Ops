@@ -1,6 +1,8 @@
 package com.starter.controller
 
 import com.starter.ai.*
+import com.starter.dto.AiEndpointCheckRequest
+import com.starter.dto.AiEndpointRequest
 import org.assertj.core.api.Assertions.*
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -27,6 +29,9 @@ class AdminAiAuthorizationTest {
             val controller = context.getBean(AdminAiController::class.java)
             assertThatThrownBy { controller.settings() }.isInstanceOf(AccessDeniedException::class.java)
             assertThatThrownBy { controller.test("chat") }.isInstanceOf(AccessDeniedException::class.java)
+            val check = AiEndpointCheckRequest("ADMIN", AiEndpointRequest(AiProvider.OPENAI_COMPATIBLE))
+            assertThatThrownBy { controller.models("chat", check) }.isInstanceOf(AccessDeniedException::class.java)
+            assertThatThrownBy { controller.check("embeddings", check) }.isInstanceOf(AccessDeniedException::class.java)
             verifyNoInteractions(context.getBean(AiSettingsService::class.java), context.getBean(AiProviderClient::class.java))
         }
     }

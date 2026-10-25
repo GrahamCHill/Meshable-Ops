@@ -40,9 +40,9 @@ class ProjectReportService(private val access: ProjectAccess, private val projec
         val names = users.findAllById(cards.flatMap { it.card.reviewerIds + listOfNotNull(it.card.assigneeId) }.toSet()).associate { it.id to (it.name ?: it.username) }
         val sections = cards.groupBy { it.boardId }.values.map { entries -> ProjectReportSection(entries.first().boardName, listOf("ID / task", "Owner / reviewers", "Status / estimates", "Dates", "Description"), entries.map { item ->
             val card = item.card
-            listOf("${card.reference.ifBlank { card.id.toString() }}\n${card.title}", "${card.assigneeId?.let { names[it] } ?: "Unassigned"}\nReview: ${card.reviewerIds.mapNotNull { names[it] }.joinToString().ifBlank { "—" }}",
+            listOf("${card.reference.ifBlank { card.id.toString() }}\n${card.title}", ProjectReportAnalytics.people(card,names),
                 "${card.status.name.replace('_', ' ')}\n${card.storyPoints?.toString() ?: "—"} points${card.tshirtSize?.let {"\nSize: $it"}.orEmpty()}${if (card.blocked) "\nBlocked" else ""}",
-                "Start: ${card.startDate ?: "—"}\nDue: ${card.dueDate ?: "—"}\nDone: ${card.completionDate ?: "—"}", card.description).mapIndexed {index,cell->ProjectReportAnalytics.excerpt(cell,ProjectReportAnalytics.cellLimits[index])}
+                ProjectReportAnalytics.dates(item,LocalDate.now(java.time.ZoneOffset.UTC)), card.description).mapIndexed {index,cell->ProjectReportAnalytics.excerpt(cell,ProjectReportAnalytics.cellLimits[index])}
         }) }.ifEmpty { listOf(ProjectReportSection("Project activity", listOf("Result"), listOf(listOf("No tickets matched the selected period or sprint.")))) }
         val context = projects.get(email, id)
         val cover=covers?.context(id)
@@ -51,7 +51,8 @@ class ProjectReportService(private val access: ProjectAccess, private val projec
                 "${cards.sumOf { it.card.storyPoints ?: 0.0 }} story points", "Project lead: ${users.findById(project.leadId).orElse(null)?.let { it.name ?: it.username } ?: "Member"}", "Confidential delivery-risk scores and personal calendars are excluded."), sections,
             ProjectWorkService.summarize(cards,names.mapKeys {it.key.toString()},LocalDate.now(java.time.ZoneOffset.UTC)),
             ProjectReportAnalytics.insights(cards,LocalDate.now(java.time.ZoneOffset.UTC)),ProjectReportAnalytics.leadTime(cards),cover?.html,
-            cover?.assets.orEmpty(),cover?.siteName ?: branding.current().applicationName,cover?.companyName.orEmpty(),cover?.siteLogo.orEmpty()))
+            cover?.assets.orEmpty(),cover?.siteName ?: branding.current().applicationName,cover?.companyName.orEmpty(),cover?.siteLogo.orEmpty(),
+            ProjectSprintMonitor.summarize(cards,LocalDate.now(java.time.ZoneOffset.UTC))))
         access.require(id, access.actor(email), request.sendEmail)
         val saved = reports.saveAndFlush(ProjectReportRecord(projectId = id, createdBy = actor.id, kind = request.kind, fromDate = request.from, toDate = request.to, pdf = pdf, boardIdsJson = mapper.writeValueAsString(boardIds)))
         val deliveries = recipients.associate { recipient ->

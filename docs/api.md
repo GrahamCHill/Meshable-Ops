@@ -35,6 +35,8 @@ All routes require an active internal account and the Projects feature. Record-l
 | GET | `/projects/{id}/work-summary` | Visible-board ticket totals and column, assignee, epic and tag breakdowns |
 | GET | `/projects/{id}/extensions`, `/projects/clients/{id}/extensions` | Authorized plugin links/panels |
 | GET / POST | `/projects/{id}/reports` | Scoped saved reports / generate PDF; leadership required when emailing |
+| GET / PUT | `/projects/{id}/reports/design` | Read/save `{html, revision, assets?}` cover design; leadership required for saves |
+| POST | `/projects/{id}/reports/design/preview` | Leadership: render draft `{html, title, period, assets?}` as a one-page cover PDF |
 | GET | `/projects/{id}/reports/{reportId}/pdf` | Download PDF after current project/board/policy checks |
 | POST | `/projects/digests/preview`, `/projects/digests/send` | Own preview/email |
 | POST | `/projects/{id}/digests` | Leadership send of recipient-specific work/calendar emails; statuses only |
@@ -111,7 +113,7 @@ Example status shape:
 
   "embeddingProvider": "LOCAL",
 
-  "dimensions": 384,
+  "dimensions": 1536,
 
   "searchEnabled": true,
 
@@ -311,13 +313,23 @@ Modes are `INTERVAL`, `DAILY`, `WEEKLY`, and `ON_CHANGE`. Interval must be 15–
 
 | `POST /api/admin/ai/test/embeddings` | Test saved/active embeddings using harmless fixed text |
 
+| `POST /api/admin/ai/models/{kind}` | Discover models using draft/admin or environment credentials; `kind` is `chat` or `embeddings` |
+
+| `POST /api/admin/ai/check/{kind}` | Verify draft/admin or environment model compatibility with fixed test text |
+
 
 
 The request contains `source` (`ENVIRONMENT` or `ADMIN`), `searchEnabled`, `launcherEnabled`, `enabled` (AI answers), `indexContent`, and `chat`/`embeddings`. Each endpoint input has `provider`, `baseUrl`, `model`, optional write-only `apiKey`, `clearApiKey`, and `sendDimensions`.
 
 
 
-Supported provider identifiers are `OPENAI_COMPATIBLE`, `OLLAMA`, `AZURE_OPENAI`, `ANTHROPIC`, and `LOCAL`. Chat cannot use `LOCAL`; embeddings cannot use `ANTHROPIC`. Groq uses the OpenAI-compatible adapter. LOCAL needs no endpoint or key. External embeddings must return 384 finite, nonzero dimensions; `sendDimensions` controls the optional dimensions request parameter for providers that support it.
+Supported provider identifiers are `OPENAI_COMPATIBLE`, `OLLAMA`, `AZURE_OPENAI`, `ANTHROPIC`, and `LOCAL`. Chat cannot use `LOCAL`; embeddings cannot use `ANTHROPIC`. Groq uses the OpenAI-compatible adapter. LOCAL needs no endpoint or key. External embeddings must return 1536 finite, nonzero dimensions; `sendDimensions` controls the optional dimensions request parameter for providers that support it.
+
+Model discovery/check requests contain `{ "source": "ADMIN", "endpoint": { "provider": "OPENAI_COMPATIBLE", "baseUrl": "https://api.openai.com/v1", "model": "", "sendDimensions": true } }` plus the optional write-only `apiKey` and `clearApiKey`. Discovery does not require a model name. An `ADMIN` request can use an unsaved key, or the saved admin key bound to the same provider and base URL; it never falls back to environment credentials. For `ENVIRONMENT`, the endpoint body is ignored and the server's environment endpoint/key is used. Neither operation saves a draft.
+
+Discovery returns `{ "models": [{ "id": "model-id", "name": "Model display name" }], "message": "...", "truncated": false }`. Responses contain at most 500 unique models. Anthropic pagination is limited to five requests. A model catalogue is not proof of chat/embedding compatibility; Azure model IDs are not guaranteed deployment names.
+
+Checks return `{ "status": "COMPATIBLE", "model": "model-id", "message": "...", "requiredDimensions": 1536, "actualDimensions": 1536, "suggestedSendDimensions": null }` for a verified embedding. `SETTING_CHANGE_REQUIRED` includes the boolean `suggestedSendDimensions` when the opposite parameter setting returns 1536 values. `INCOMPATIBLE` reports the observed wrong size. At most two embedding probes run, and vectors must be finite and nonzero. Authentication, quota, transport, or server failures return safe errors rather than claiming the model is incompatible. Chat checks omit dimension fields and verify the app's chat route. All endpoints remain administrator-only.
 
 
 
@@ -368,6 +380,8 @@ PDF processing accepts unencrypted PDFs up to 25 MB and 200 pages. Invalid pages
 Search requests also accept optional `folderId` and `path` (a relative subfolder). A nonempty path requires a folder. Both vector and keyword fallback queries enforce this scope before ranking/limiting and retain live sharing checks.
 
 ## Email delivery
+
+Outgoing SMTP/API delivery sends messages; incoming IMAPS reads replies. Incoming profiles live under Communications rather than Billing. For shared connection schemas, encrypted profile CRUD, and per-plugin profile bindings, see [shared settings API](plugins/shared-settings.md#apis-and-persistence). Saving either kind of connection does not contact the provider.
 
 All email endpoints require the existing `ADMIN` role.
 

@@ -10,7 +10,7 @@ The responsibility boundaries are:
 - `DocumentTextService` plus `ml-backend/app/document_text.py`: isolated extraction with size, time, and Linux resource limits.
 - `DocumentIndexService`: discovery/checksums, processing status, changed document/chunk indexing, and missing-document cleanup.
 - `EmbeddingService`: internal text matching or external embedding providers, fixed dimension validation, normalization, and model identity.
-- `LocalTextVectors`: deterministic 384-dimensional feature hashing inside the backend, with no model download or provider/ML dependency.
+- `LocalTextVectors`: deterministic 1536-dimensional feature hashing inside the backend, with no model download or provider/ML dependency.
 - `VectorService`: PostgreSQL vector persistence and queries with live visibility joins.
 - `SearchService`/`KeywordSearchService`: feature gating and access-checked keyword fallback when configured vector retrieval is unavailable or the index awaits rebuilding.
 - `AiAnswerService`: relevant accessible excerpts, source attribution, provider generation, and access rechecks before returning answers.

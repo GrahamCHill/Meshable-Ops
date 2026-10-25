@@ -33,6 +33,7 @@ class PluginHost {
     fun create(table: String, data: Any) = call("data.create", mapOf("table" to table, "data" to data))
     fun update(table: String, id: String, data: Any, revision: Long) = call("data.update", mapOf("table" to table, "id" to id, "data" to data, "revision" to revision))
     fun remove(table: String, id: String, revision: Long) = call("data.remove", mapOf("table" to table, "id" to id, "revision" to revision))
+    fun sharedSettings(reference: String) = call("settings.shared", mapOf("reference" to reference))
     fun http(method: String, url: String, options: Map<String, Any?> = emptyMap()) = call("http", options + mapOf("method" to method, "url" to url))
 }
 

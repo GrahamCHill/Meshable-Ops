@@ -55,10 +55,11 @@ class OperationsDomainTest {
         assertThat(BillingSchedules.next(s,Instant.parse("2026-03-15T12:00:00Z"))).isEqualTo(Instant.parse("2026-04-01T07:00:00Z"))
         assertThat(BillingSchedules.next(s,Instant.parse("2026-04-01T07:00:00Z"))).isEqualTo(Instant.parse("2026-05-01T07:00:00Z"))
     }
-    @Test fun `billing role effective dates include boundaries and detect overlap`() {
-        val d=LocalDate.parse("2026-01-01")
-        assertThat(BillingRates.contains(d,d,d)).isTrue();assertThat(BillingRates.overlaps(d,d,d,d.plusDays(1))).isTrue()
-        assertThat(BillingRates.overlaps(d,d,d.plusDays(1),null)).isFalse()
+    @Test fun `billing roles use enabled state and bounded amounts`() {
+        val rate=DeveloperRate("Developer",BigDecimal("450"))
+        assertThat(rate.enabled).isTrue()
+        BillingRates.validateAmount(rate.amount,"ZAR")
+        assertThatThrownBy {BillingRates.validateAmount(BigDecimal("-1"),"ZAR")}.isInstanceOf(BadRequestException::class.java)
     }
     @Test fun `cloud scopes reject path and query injection`() {
         assertThatThrownBy {CloudCosts.validate(CloudConnection(CloudProvider.AWS,"AWS","123456789012/../"))}.isInstanceOf(BadRequestException::class.java)

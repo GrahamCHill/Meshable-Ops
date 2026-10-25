@@ -31,6 +31,7 @@ class BillingPdf(BaseModel):
     net: str = Field(max_length=40)
     tax: str = Field(max_length=40)
     total: str = Field(max_length=40)
+    paymentInstructions: str = Field(default="", max_length=6000)
     lines: list[BillingLine] = Field(min_length=1, max_length=500)
 
     @model_validator(mode="after")
@@ -46,6 +47,7 @@ def billing_html(value):
     pdf = BillingPdf.model_validate(value)
     e = escape
     title = {"INVOICE": "Invoice", "QUOTE": "Quote", "PROVISIONAL": "Provisional statement — not payable"}[pdf.kind]
+    payment = f'<h2>Payment details</h2><p class="address">{e(pdf.paymentInstructions)}</p>' if pdf.paymentInstructions and pdf.kind == "INVOICE" else ""
     rows = "".join(f"<tr><td>{e(row.description)}</td><td>{e(row.quantity)}</td><td>{e(row.unit)}</td><td>{e(row.net)}</td><td>{e(row.tax)}</td><td>{e(row.total)}</td></tr>" for row in pdf.lines)
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><style>
     @page {{size:A4;margin:18mm 14mm;@bottom-right {{content:counter(page) ' / ' counter(pages);font-size:8pt}}}}
@@ -59,6 +61,7 @@ def billing_html(value):
     <p>Project: {e(pdf.project)}<br>Service period: {e(pdf.period)}<br>Issued: {e(pdf.issued)} · Due: {e(pdf.due)}</p>
     <table><thead><tr><th>Description</th><th>Quantity</th><th>Unit excl. tax</th><th>Net</th><th>VAT</th><th>Total</th></tr></thead><tbody>{rows}</tbody></table>
     <div class="totals"><p>Subtotal excluding tax: {e(pdf.currency)} {e(pdf.net)}<br>VAT ({e(pdf.taxPercent)}%): {e(pdf.tax)}<br><strong>Total: {e(pdf.currency)} {e(pdf.total)}</strong></p></div>
+    {payment}
     <p class="muted">{'For review only. This document is not a request for payment and does not reserve billable work.' if pdf.kind != 'INVOICE' else 'Reply to the billing email with the reference in its subject for billing queries.'}</p></body></html>"""
 
 

@@ -7,7 +7,7 @@ import java.net.URI
 
 object PluginBackendValidation {
     val methods = setOf("GET", "POST", "PUT", "PATCH", "DELETE")
-    val permissions = setOf("data.read", "data.write", "http")
+    val permissions = setOf("data.read", "data.write", "http", "settings.read")
     fun check(descriptor: PluginPackageDescriptor, files: Map<String, String>) {
         val backend = descriptor.backend
         if ((PluginExtension.API in descriptor.manifest.extensions) != (backend != null)) invalid("API extensions must declare backend modules and routes")

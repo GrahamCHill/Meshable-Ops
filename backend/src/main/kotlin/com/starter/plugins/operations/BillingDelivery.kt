@@ -14,10 +14,14 @@ class BillingDeliveryClaims(private val store:OperationsStore,private val billin
         val row=billing.get(email,id);profiles.authorize(email,row.projectId!!,true);store.lock("billing-send:$id")
         val current=store.get("billing",id);val d=store.decode(current,BillingSnapshot::class.java)
         if(current.revision!=input.revision)throw ConflictException("Invoice changed. Reload before sending")
+        requireSignOff(d)
         if(d.status !in setOf("DRAFT","ISSUED","DELIVERY_UNCERTAIN"))throw ConflictException("This document was sent, is sending, paid or void")
         if(d.status=="DELIVERY_UNCERTAIN"&&input.retryConfirmation!="RETRY DELIVERY")throw ConflictException("Check the mail provider before retrying; type RETRY DELIVERY if the earlier message was not accepted")
         if(profiles.profile(d.clientId).billingEmail!=d.profile.billingEmail)throw ConflictException("The registered billing email changed. Generate a new document with the current billing details")
         return store.save("billing",current.ownerId,current.projectId,"DOCUMENT",d.copy(status="SENDING"),id,current.revision)
+    }
+    companion object {
+        fun requireSignOff(d:BillingSnapshot) {if(d.signedOffBy==null||d.signedOffAt==null)throw ConflictException("Review the PDF and sign off this document before sending it to the client")}
     }
     @Transactional fun finish(row:OpsRow,status:String):BillingDocumentView {
         val d=store.decode(row,BillingSnapshot::class.java)
@@ -29,6 +33,7 @@ class BillingDelivery(private val store:OperationsStore,private val billing:Bill
     private val claims:BillingDeliveryClaims,private val notifications:NotificationService,private val pdf:PdfService) {
     fun send(email:String,id:UUID,input:BillingSend):Map<String,Any> {
         val row=billing.get(email,id);profiles.authorize(email,row.projectId!!,true);val d=store.decode(row,BillingSnapshot::class.java)
+        BillingDeliveryClaims.requireSignOff(d)
         if(!notifications.availableFor("billing.document","email"))throw BadRequestException("Enable billing email notifications and configure outbound mail first")
         if(input.pdfPassword.isNotBlank()&&(input.pdfPassword.length !in 12..200||input.pdfPassword.any(Char::isISOControl)))throw BadRequestException("Use a PDF password of 12–200 characters")
         var bytes=documents.bytes(email,d)

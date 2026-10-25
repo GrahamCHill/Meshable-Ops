@@ -61,8 +61,8 @@ export function AdminAiPage() {
         <p className="field-help">Storage search works without AI credentials. Switching search off hides its fields and blocks search and chat requests. The chat launcher appears only when search, AI answers, content indexing, and the launcher are enabled, with a chat model configured.</p>
         <label className="checkbox-label"><input type="checkbox" disabled={environment} checked={environment ? view.indexContent : draft.indexContent} onChange={event => change({ indexContent: event.target.checked })} /> Index document content</label>
         <p className="field-help">Supported text, PDF, and DOCX content goes to the configured embedding service. When someone asks a question, retrieved excerpts go to the configured chat provider. Only accessible folders are included.</p>
-        {aiEnabled && <AiEndpointForm kind="chat" value={environment ? endpointInput(view.chat) : draft.chat} configured={boundKey('chat')} readOnly={environment} onChange={chat => change({ chat })} />}
-        {searchEnabled && <AiEndpointForm kind="embeddings" value={environment ? endpointInput(view.embeddings) : draft.embeddings} configured={boundKey('embeddings')} readOnly={environment} onChange={embeddings => change({ embeddings })} />}
+        {aiEnabled && <AiEndpointForm kind="chat" source={draft.source} value={environment ? endpointInput(view.chat) : draft.chat} configured={boundKey('chat')} readOnly={environment} onChange={chat => change({ chat })} />}
+        {searchEnabled && <AiEndpointForm kind="embeddings" source={draft.source} value={environment ? endpointInput(view.embeddings) : draft.embeddings} configured={boundKey('embeddings')} readOnly={environment} onChange={embeddings => change({ embeddings })} />}
       </fieldset>
       {error && <p role="alert" className="feedback error">{error}</p>}
       {notice && <p role="status" className="feedback success">{notice}</p>}

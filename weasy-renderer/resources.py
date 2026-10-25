@@ -4,7 +4,7 @@ import base64
 MAX_PDF_BYTES = 10 * 1024 * 1024
 
 
-def inline_only(url, *args, **kwargs):
+def embedded_image(url):
     # No network, redirects, filesystem URLs, SVG, or embedded PDF attachments.
     if not isinstance(url, str) or len(url) > 350000 or not url.startswith(("data:image/png;base64,", "data:image/jpeg;base64,", "data:image/webp;base64,")):
         raise ValueError("Only embedded raster images are allowed")
@@ -13,5 +13,14 @@ def inline_only(url, *args, **kwargs):
     if len(raw) > 262500:
         raise ValueError("Image exceeds the renderer limit")
     return {"string": raw, "mime_type": prefix[5:].split(";")[0]}
+
+
+def inline_only(url, *args, **kwargs):
+    from weasyprint.urls import URLFetcherResponse
+    value = embedded_image(url)
+    return URLFetcherResponse(url, value['string'], {'Content-Type': value['mime_type']})
+
+
+inline_only._fail_on_errors = True
 
 

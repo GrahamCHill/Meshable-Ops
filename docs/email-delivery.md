@@ -1,8 +1,23 @@
 # Email delivery
 
-Open **Administration > Notifications > Delivery methods > Configure email delivery**. The page links back to Notifications and the admin menu. The existing `ADMIN` role can configure, test, and send email. Regular users cannot use these endpoints.
+Open **Administration > Communications > Outgoing email (SMTP / API)**, or follow **Configure email delivery** from Notifications. Administrators with Communications permission can configure, test, and send email. Regular users cannot use these endpoints.
 
 Email is disabled by default and does not need to be configured for the app to start. Choose **Server environment** or **Admin settings**. The two sources keep separate credentials; switching sources does not copy secrets between them. Environment values are read-only in the app.
+
+## Outgoing SMTP versus incoming IMAPS
+
+| Connection | Purpose | Typical port | Where to configure |
+| --- | --- | --- | --- |
+| SMTP or email API | Sends invoices, notifications, OTPs and attachments | SMTP `587` with STARTTLS or `465` with TLS; APIs use HTTPS | Communications > Outgoing email |
+| IMAPS | Reads a mailbox for incoming replies; cannot send mail | `993`, TLS from connection start | Communications > Incoming email (IMAPS) |
+
+Use your mail provider's separate incoming and outgoing server details. The hostname, username and password/app password may differ. Configuring SMTP does not configure IMAPS, and sending an invoice does not require incoming email.
+
+Create a named incoming connection, enter the IMAPS hostname, port, mailbox login, password/app password and folder, then enable it when complete. Disabled incomplete drafts can be saved. Set the sender's Reply-to address to a mailbox that delivers to that inbox. The Billing plugin's **Invoice email replies** card is also under Communications: select the shared connection and enable **Process invoice replies** there. Incoming email profiles are host-managed and can be reused by other plugins; each consumer must declare the needed schema/fields and have an administrator explicitly select its profile. This is not a general mail client or automatic support for arbitrary reply handlers.
+
+Credentials stay encrypted and write-only. Blank passwords preserve a stored value for the same server/account; changing the hostname, port or username requires re-entering the password. Disable a connection to pause all linked consumers while retaining their selections. Profile changes affect all consumers. SMTP remains the existing shared application sender, independent of incoming profiles. IMAPS currently accepts mailbox/app passwords; it does not acquire or refresh OAuth tokens.
+
+On upgrade, legacy Billing IMAPS fields move once into **Imported invoice inbox**, and Billing retains its processing switch. An explicitly selected profile is preserved. Legacy credential fields are removed from Billing's encrypted configuration. Back up PostgreSQL and wrapping keys before upgrading; avoid mixed old/new backend versions during this migration.
 
 ## Configure a sender
 

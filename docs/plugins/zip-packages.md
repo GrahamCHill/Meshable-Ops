@@ -77,7 +77,7 @@ await weaveops.navigate('guide'); // Empty string returns to the root page.
 const total = await meshableOps.backend.request('/calculate', {values: [1, 2, 3]}, 'POST'); // Requires API and a declared route.
 ```
 
-Records are JSON objects up to 32 KB. The host creates UUIDs, owner IDs, timestamps, revisions, and local 384-dimensional vectors. `list(table, offset)` returns at most 100 rows in deterministic recent-update order. Members can only read/write their own records; administrators can manage all rows, subject to plugin feature and table access. Optimistic revision checks prevent lost updates/deletes (`409`). Table names are checked against the plugin's manifest, and queries use parameterized values. Do not render stored text with `innerHTML`.
+Records are JSON objects up to 32 KB. The host creates UUIDs, owner IDs, timestamps, revisions, and local 1536-dimensional vectors. `list(table, offset)` returns at most 100 rows in deterministic recent-update order. Members can only read/write their own records; administrators can manage all rows, subject to plugin feature and table access. Optimistic revision checks prevent lost updates/deletes (`409`). Table names are checked against the plugin's manifest, and queries use parameterized values. Do not render stored text with `innerHTML`.
 
 Search is opt-in per plugin. Host-managed tables participate in keyword/local similarity search without an AI provider. Ownership and table policies apply before the result limit and permissions are rechecked before returning results. These records are not automatically added to the storage-only AI document retrieval context. Secret settings are encrypted by the host and never supplied to page code; public configuration fields are available through `context()`.
 

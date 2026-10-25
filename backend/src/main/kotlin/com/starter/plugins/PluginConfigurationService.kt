@@ -10,7 +10,8 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class PluginConfigurationService(private val registry: PluginRegistry, private val records: PluginConfigurationRepository,
-    private val mapper: ObjectMapper, private val encryption: SecretEncryption, private val jdbc: org.springframework.jdbc.core.JdbcTemplate? = null) {
+    private val mapper: ObjectMapper, private val encryption: SecretEncryption, private val jdbc: org.springframework.jdbc.core.JdbcTemplate? = null,
+    private val shared:com.starter.plugins.shared.PluginSharedSettingsService?=null) {
     @Transactional(readOnly = true)
     fun view(id: String): PluginConfigurationView {
         val manifest = registry.definition(id)
@@ -31,7 +32,7 @@ class PluginConfigurationService(private val registry: PluginRegistry, private v
         val existing = records.findById(id).orElse(null)
         if ((existing?.revision ?: -1) != request.revision) throw ConflictException("Plugin configuration changed. Reload before saving.")
         val record = existing ?: PluginConfigurationRecord(id)
-        val values = decode(record).filterKeys { it in fields }.toMutableMap()
+        val values = decode(record).filterKeys { it in fields || it.startsWith(com.starter.plugins.shared.PluginSharedSettingsService.PREFIX) }.toMutableMap()
         request.clearSecrets.forEach(values::remove)
         request.values.forEach { (key, raw) ->
             val field = fields.getValue(key)
@@ -53,6 +54,7 @@ class PluginConfigurationService(private val registry: PluginRegistry, private v
         registry.definition(id)
         return decode(records.findById(id).orElse(null))
     }
+    fun shared(id:String,reference:String):Map<String,String> = shared?.current(id,reference) ?: throw BadRequestException("Shared connections are unavailable")
     private fun decode(row: PluginConfigurationRecord?): Map<String, String> = row?.dataJson?.let {
         mapper.readValue(it, object : TypeReference<Map<String, String>>() {})
     } ?: emptyMap()

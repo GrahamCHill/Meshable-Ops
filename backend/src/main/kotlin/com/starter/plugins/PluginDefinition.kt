@@ -14,6 +14,10 @@ data class PluginTableAccess(val readRoles: Set<String>, val writeRoles: Set<Str
 data class PluginFeature(val id: String, val label: String, val requires: Set<String>)
 data class PluginFeatureView(val id: String, val label: String, val available: Boolean, val providers: Set<String>, val missing: Set<String>)
 data class PluginAdminMenu(val category: String, val categoryLabel: String = "", val label: String = "", val icon: String? = null)
+data class PluginSettingsSection(val id:String,val label:String,val category:String,val fields:Set<String> = emptySet(),val categoryLabel:String="",val description:String="")
+data class PluginSharedSettingsReference(val id:String,val schemaId:String,val label:String,val fields:Set<String>,val sectionId:String="")
+data class PluginSharedSettingsSchema(val id:String,val label:String,val description:String="",val fields:List<PluginSettingField>,
+    val adminMenu:PluginAdminMenu,val identityFields:Set<String> = emptySet(),val httpOriginField:String?=null)
 enum class PluginPlacementMode { LINK, PANEL }
 data class PluginPlacement(val slot: String, val label: String, val section: String = "", val mode: PluginPlacementMode = PluginPlacementMode.LINK)
 
@@ -28,7 +32,9 @@ data class PluginManifest(val id: String, val name: String, val version: String,
     val icon: String? = null, val banner: String? = null, val requires: Set<String> = emptySet(), val extends: Set<String> = emptySet(),
     val incompatibleWith: Map<String, String> = emptyMap(), val hasAdminSettings: Boolean = true,
     val adminMenu: PluginAdminMenu? = null, val providesSms: Boolean = false, val placements: List<PluginPlacement> = emptyList(),
-    val compatibleVersions: List<String> = emptyList(), val runtimes: Set<PluginRuntime> = emptySet(), val showPageBanner: Boolean = false)
+    val compatibleVersions: List<String> = emptyList(), val runtimes: Set<PluginRuntime> = emptySet(), val showPageBanner: Boolean = false,
+    val settingsSections:List<PluginSettingsSection> = emptyList(),val sharedSettings:List<PluginSharedSettingsReference> = emptyList(),
+    val sharedSettingsSchemas:List<PluginSharedSettingsSchema> = emptyList())
 
 /** Implement as a Spring bean in a reviewed, compiled-in plugin module. */
 interface WorkspacePlugin {

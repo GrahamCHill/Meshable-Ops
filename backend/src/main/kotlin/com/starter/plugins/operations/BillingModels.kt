@@ -1,13 +1,14 @@
 package com.starter.plugins.operations
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import java.math.BigDecimal
 import java.time.*
 import java.util.UUID
 
-enum class ChargeRecurrence { MONTHLY, ONCE }
+@JsonIgnoreProperties(value=["recurrence","activeFrom","activeTo"])
 data class CatalogItem(val name:String,val amount:BigDecimal,val currency:String="USD",val quantity:BigDecimal=BigDecimal.ONE,
-    val pricesIncludeTax:Boolean=false,val recurrence:ChargeRecurrence=ChargeRecurrence.MONTHLY,val activeFrom:LocalDate,val activeTo:LocalDate?=null,val enabled:Boolean=true)
+    val pricesIncludeTax:Boolean=false,val enabled:Boolean=true)
 data class CatalogInput(val item:CatalogItem,val projectId:UUID?=null,val revision:Long = -1)
 data class BillingItemLink(val itemId:UUID,val projectId:UUID?=null,val clientId:UUID?=null,val baseItem:CatalogItem,val baseRevision:Long,
     val proposedItem:CatalogItem?=null,val proposalVersion:Long=0,val approvedOverrides:Map<UUID,CatalogItem> = emptyMap(),val approvals:Map<UUID,Long> = emptyMap())
@@ -22,10 +23,11 @@ data class CalculatedLine(val source:BillingLine,val netUnitPrice:BigDecimal,val
 data class BillingTotals(val lines:List<CalculatedLine>,val net:BigDecimal,val tax:BigDecimal,val total:BigDecimal,val currency:String,val taxPercent:BigDecimal)
 data class BillingGenerate(val projectId:UUID,val from:LocalDate,val to:LocalDate,val kind:BillingKind=BillingKind.INVOICE,
     val currency:String="USD",val chargeTax:Boolean=false,val taxPercent:BigDecimal=BigDecimal.ZERO,val includeItems:Boolean=true,val includeHours:Boolean=true,
-    val includeCloudCosts:Boolean=false,val manualLines:List<BillingLine> = emptyList(),val duplicateConfirmation:String="",val duplicateReason:String="",val requestId:UUID=UUID.randomUUID(),val templateId:UUID?=null)
+    val includeCloudCosts:Boolean=false,val manualLines:List<BillingLine> = emptyList(),val duplicateConfirmation:String="",val duplicateReason:String="",val requestId:UUID=UUID.randomUUID(),val templateId:UUID?=null,val paymentProviderId:String?=null)
 data class BillingSnapshot(val number:String,val kind:BillingKind,val projectId:UUID,val clientId:UUID,val clientName:String,val projectName:String,
     val from:LocalDate,val to:LocalDate,val createdAt:Instant,val dueDate:LocalDate,val profile:BillingProfile,val issuerName:String,val issuerAddress:String,val vatNumber:String,
-    val totals:BillingTotals,val replyToken:UUID=UUID.randomUUID(),val status:String="DRAFT",val generatedDocumentId:UUID?=null,val duplicateReason:String="",val templateId:UUID?=null)
+    val totals:BillingTotals,val replyToken:UUID=UUID.randomUUID(),val status:String="DRAFT",val generatedDocumentId:UUID?=null,val duplicateReason:String="",val templateId:UUID?=null,
+    val signedOffBy:UUID?=null,val signedOffAt:Instant?=null,val payment:BillingPayment?=null)
 data class BillingDocumentView(val id:UUID,val document:BillingSnapshot,val revision:Long)
 data class BillingSend(val revision:Long,@get:JsonProperty(access=JsonProperty.Access.WRITE_ONLY) val pdfPassword:String="",val retryConfirmation:String="") {override fun toString()="BillingSend(revision=$revision)"}
 data class BillingSchedule(val projectId:UUID,val enabled:Boolean=false,val autoSend:Boolean=false,val dayOfMonth:Int=1,val time:String="08:00",val timeZone:String="UTC",val chargeTax:Boolean=false,val taxPercent:BigDecimal=BigDecimal.ZERO,val includeCloudCosts:Boolean=false,val nextRunAt:Instant?=null,val lastStatus:String="NEVER",val lastRunAt:Instant?=null)

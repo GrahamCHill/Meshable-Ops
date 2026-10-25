@@ -52,6 +52,7 @@ Backend code has no database connection, application JWT, raw setting secrets, D
 | `data.read` | `host.list(table, offset)`, `host.get(table, id)` | Only this plugin's declared managed tables; current table roles and owner scope |
 | `data.write` | `host.create`, `host.update`, `host.remove` | Table write roles, ownership, bounded JSON and optimistic revisions |
 | `http` | `host.http(method, url, headers=..., body=..., credential=...)` | Exact declared HTTPS origins, public DNS, no redirects, bounded responses and safe headers |
+| `settings.read` | Python `host.shared_settings(reference)`, Kotlin `host.sharedSettings(reference)` | Explicitly bound shared profile, declared field allowlist, public values only |
 
 Without a route permission, the corresponding operation is denied even if the current user could otherwise access it. The host does not expose arbitrary SQL, shell commands, filesystem access or arbitrary application service calls. The same tables can be included/excluded from search using normal plugin administration. Business code can define validation, transformations, calculations and external-service integrations without being hardcoded into core modules.
 
@@ -65,6 +66,8 @@ result = host.http('POST', 'https://api.example.com/jobs', body={'title': 'Revie
 ```
 
 Keys saved through admin remain encrypted in PostgreSQL under the persistent app wrapping key. The host injects only this plugin's declared secret into its outbound request; it does not give the raw value to frontend or worker code. Review allowed origins before entering credentials. A provider can return sensitive data, so plugins and their configured services must still be trusted. Private-address targets are rejected by default; the existing deployment-wide `APP_PLUGIN_ALLOW_PRIVATE_TARGETS` setting is a deliberate administrator override.
+
+Plugins can also select [shared connection profiles](shared-settings.md). Add `sharedReference` to an HTTP credential request to use a declared field from that selected profile. The host checks both the consumer's allowed origin and the profile's configured HTTP origin; non-HTTP profiles cannot supply HTTP credentials. Shared values fetched through `settings.read` always omit secrets.
 
 ## Calling code
 

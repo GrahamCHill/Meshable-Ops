@@ -16,15 +16,12 @@ class BillingItems(private val store:OperationsStore,private val access:Operatio
         if(input.includeItems && access.enabled("billing-items")) {
             val (_,project)=access.project(email,"billing-items",input.projectId,false,false)
             catalog.effective(project).forEach {source->val item=source.item
-                if(!item.enabled||!BillingRates.overlaps(item.activeFrom,item.activeTo,input.from,input.to))return@forEach
+                if(!item.enabled)return@forEach
                 if(item.currency!=input.currency)throw BadRequestException("Billing item currencies differ from this invoice; currency conversion is never automatic")
-                if(item.recurrence==ChargeRecurrence.ONCE) {if(item.activeFrom in input.from..input.to)result+=BillingLine("item:${source.keyId}:once",item.name,item.quantity,item.amount,item.pricesIncludeTax,"ITEM",source.itemId)}
-                else {
-                    var month=YearMonth.from(input.from)
-                    while(month<=YearMonth.from(input.to)) {
-                        if(BillingRates.overlaps(item.activeFrom,item.activeTo,month.atDay(1),month.atEndOfMonth()))result+=BillingLine("item:${source.keyId}:$month","${item.name} ($month)",item.quantity,item.amount,item.pricesIncludeTax,"ITEM",source.itemId)
-                        month=month.plusMonths(1)
-                    }
+                var month=YearMonth.from(input.from)
+                while(month<=YearMonth.from(input.to)) {
+                    result+=BillingLine("item:${source.keyId}:$month","${item.name} ($month)",item.quantity,item.amount,item.pricesIncludeTax,"ITEM",source.itemId)
+                    month=month.plusMonths(1)
                 }
             }
         }
@@ -33,7 +30,7 @@ class BillingItems(private val store:OperationsStore,private val access:Operatio
             val rows=store.list("timesheets","kind='ENTRY' AND project_id=? AND CAST(data_json AS jsonb)->>'status'='APPROVED' AND (CAST(data_json AS jsonb)->>'start')::timestamptz>=? AND (CAST(data_json AS jsonb)->>'start')::timestamptz<?",input.projectId,java.sql.Timestamp.from(input.from.atStartOfDay(ZoneOffset.UTC).toInstant()),java.sql.Timestamp.from(input.to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()),limit=5000)
             rows.forEach {row->val e=store.decode(row,TimeEntry::class.java)
                 if(!e.billable)return@forEach
-                if(e.rate==null||e.roleId==null)throw BadRequestException("Approved billable work has no rate snapshot. Assign an effective developer rate, then reject and reapprove that work.")
+                if(e.rate==null||e.roleId==null)throw BadRequestException("Approved billable work has no rate snapshot. Assign an enabled project member rate or billing role, then reject and reapprove that work.")
                 if(e.currency!=input.currency)throw BadRequestException("Approved time uses another currency")
                 result+=BillingLine("time:${row.id}","${e.start.atZone(ZoneOffset.UTC).toLocalDate()}: ${e.description}",BigDecimal(e.seconds).divide(BigDecimal(3600),6,java.math.RoundingMode.HALF_UP),e.rate,false,"TIME",row.id)
             }

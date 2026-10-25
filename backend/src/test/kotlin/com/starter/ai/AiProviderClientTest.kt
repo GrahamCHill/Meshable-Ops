@@ -31,9 +31,20 @@ class AiProviderClientTest {
     }
     @Test fun `embedding responses are ordered by index and requests carry the fixed dimension`() {
         val http = RestTemplate(); val server = MockRestServiceServer.bindTo(http).build()
-        server.expect(requestTo("https://provider.test/v1/embeddings")).andExpect(jsonPath("$.dimensions").value(384))
-            .andRespond(withSuccess("""{"data":[{"index":1,"embedding":[0,1]},{"index":0,"embedding":[1,0]}]}""", MediaType.APPLICATION_JSON))
-        assertThat(AiProviderClient(http).embed(AiEndpoint(AiProvider.OPENAI_COMPATIBLE, "https://provider.test/v1", "model"), listOf("first", "second"), 384)).containsExactly(listOf(1f, 0f), listOf(0f, 1f))
+        val first = List(EmbeddingDimensions.SIZE) { if (it == 0) 1f else 0f }
+        val second = List(EmbeddingDimensions.SIZE) { if (it == 1) 1f else 0f }
+        server.expect(requestTo("https://provider.test/v1/embeddings")).andExpect(jsonPath("$.dimensions").value(1536))
+            .andRespond(withSuccess("""{"data":[{"index":1,"embedding":$second},{"index":0,"embedding":$first}]}""", MediaType.APPLICATION_JSON))
+        assertThat(AiProviderClient(http).embed(AiEndpoint(AiProvider.OPENAI_COMPATIBLE, "https://provider.test/v1", "model"), listOf("first", "second"), EmbeddingDimensions.SIZE)).containsExactly(first, second)
+        server.verify()
+    }
+    @Test fun `models with native dimensions can omit the dimensions request parameter`() {
+        val http = RestTemplate(); val server = MockRestServiceServer.bindTo(http).build()
+        val vector = List(EmbeddingDimensions.SIZE) { if (it == 0) 1f else 0f }
+        server.expect(requestTo("https://provider.test/v1/embeddings")).andExpect(jsonPath("$.dimensions").doesNotExist())
+            .andRespond(withSuccess("""{"data":[{"index":0,"embedding":$vector}]}""", MediaType.APPLICATION_JSON))
+        assertThat(AiProviderClient(http).embed(AiEndpoint(AiProvider.OLLAMA, "https://provider.test/v1", "model", sendDimensions = false), listOf("text"), EmbeddingDimensions.SIZE)).containsExactly(vector)
+        server.verify()
     }
     @Test fun `provider errors and unsafe URLs cannot disclose credentials`() {
         val http = RestTemplate(); val server = MockRestServiceServer.bindTo(http).build()

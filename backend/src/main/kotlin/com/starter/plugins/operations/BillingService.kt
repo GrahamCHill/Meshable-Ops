@@ -47,7 +47,7 @@ class BillingProfiles(private val store:OperationsStore,private val access:Opera
 
 @Service
 class BillingService(private val store:OperationsStore,private val access:OperationsAccess,private val profiles:BillingProfiles,private val sources:BillingItems,
-    private val clients:ClientRepository,private val config:PluginConfigurationService,private val documents:BillingDocuments) {
+    private val clients:ClientRepository,private val config:PluginConfigurationService,private val documents:BillingDocuments,private val payments:BillingPayments) {
     fun list(email:String,project:UUID):List<BillingDocumentView> {profiles.authorize(email,project);return store.list("billing","project_id=? AND kind='DOCUMENT'",project).map(::view)}
     fun get(email:String,id:UUID):OpsRow {
         val row=store.get("billing",id);if(row.kind!="DOCUMENT"||row.projectId==null)throw NotFoundException("Billing document unavailable")
@@ -57,7 +57,7 @@ class BillingService(private val store:OperationsStore,private val access:Operat
         val (_,project)=profiles.authorize(email,input.projectId);val profile=profiles.profile(project.clientId!!)
         validate(input,profile)
         val lines=lines(email,input);val totals=BillingMath.calculate(lines,input.currency,input.chargeTax,input.taxPercent)
-        return mapOf("totals" to totals,"alreadyReserved" to duplicates(lines),"provisional" to (input.kind==BillingKind.PROVISIONAL),"taxRegistered" to (config.current("billing")["vatRegistered"]=="true"))
+        return mapOf("totals" to totals,"payment" to (payments.snapshot(email,input.paymentProviderId) ?: ""),"alreadyReserved" to duplicates(lines),"provisional" to (input.kind==BillingKind.PROVISIONAL),"taxRegistered" to (config.current("billing")["vatRegistered"]=="true"))
     }
     @Transactional fun generate(email:String,input:BillingGenerate):BillingDocumentView {
         val (actor,project)=profiles.authorize(email,input.projectId,true);val profile=profiles.profile(project.clientId!!)
@@ -75,7 +75,7 @@ class BillingService(private val store:OperationsStore,private val access:Operat
         val now=Instant.now();val number="${when(input.kind){BillingKind.INVOICE->"INV";BillingKind.QUOTE->"QUO";BillingKind.PROVISIONAL->"PRO"}}-${LocalDate.now(ZoneOffset.UTC).year}-${id.toString().take(8).uppercase()}"
         val name=clients.findById(project.clientId!!).orElseThrow {NotFoundException("Client unavailable")}.name
         var snapshot=BillingSnapshot(number,input.kind,project.id,project.clientId!!,name,project.name,input.from,input.to,now,LocalDate.now(ZoneOffset.UTC).plusDays(profile.paymentTermsDays.toLong()),profile,
-            settings["issuerName"].orEmpty().ifBlank {"Meshable Ops"},settings["issuerAddress"].orEmpty(),if(input.chargeTax)settings["vatNumber"].orEmpty()else "",totals,duplicateReason=input.duplicateReason.trim(),templateId=input.templateId)
+            settings["issuerName"].orEmpty().ifBlank {"Meshable Ops"},settings["issuerAddress"].orEmpty(),if(input.chargeTax)settings["vatNumber"].orEmpty()else "",totals,duplicateReason=input.duplicateReason.trim(),templateId=input.templateId,payment=payments.snapshot(email,input.paymentProviderId))
         if(input.kind==BillingKind.INVOICE)reserve(id,actor.id,project.id,lines,duplicate.toSet())
         // Both the default structured layout and optional WeasyCanvas template create a real generated PDF.
         val document=documents.render(email,actor.id,snapshot)
@@ -105,10 +105,14 @@ class BillingService(private val store:OperationsStore,private val access:Operat
         }
     }
     @Transactional fun state(email:String,id:UUID,input:BillingState):BillingDocumentView {
-        val row=get(email,id);profiles.authorize(email,row.projectId!!,true);val d=store.decode(row,BillingSnapshot::class.java)
+        val row=get(email,id);val (actor,_)=profiles.authorize(email,row.projectId!!,true);val d=store.decode(row,BillingSnapshot::class.java)
+        if(input.action=="SIGN_OFF") {
+            if(d.status !in setOf("DRAFT","ISSUED")||d.signedOffBy!=null)throw ConflictException("Only a draft document can be signed off")
+            return view(store.save("billing",row.ownerId,row.projectId,"DOCUMENT",d.copy(status="ISSUED",signedOffBy=actor.id,signedOffAt=Instant.now()),row.id,input.revision))
+        }
         val status=when(input.action){"MARK_PAID"->{if(d.kind!=BillingKind.INVOICE||d.status !in setOf("SENT","ISSUED","DELIVERY_UNCERTAIN"))throw ConflictException("Only an issued invoice can be marked paid");"PAID"}
             "VOID"->{if(d.status in setOf("SENDING","PAID","VOID"))throw ConflictException("This document cannot be voided");"VOID"}
-            else->throw BadRequestException("Choose MARK_PAID or VOID")}
+            else->throw BadRequestException("Choose SIGN_OFF, MARK_PAID or VOID")}
         // Voiding never silently frees reserved charges; a reviewed BILL AGAIN action is required.
         return view(store.save("billing",row.ownerId,row.projectId,"DOCUMENT",d.copy(status=status),row.id,input.revision))
     }

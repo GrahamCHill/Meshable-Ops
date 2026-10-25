@@ -23,15 +23,16 @@ class BillingInbox(private val store:OperationsStore,private val access:Operatio
     fun poll(email:String):ImportResult {
         access.admin(email,"billing",true);val c=config.current("billing")
         if(c["inboxEnabled"]!="true")throw BadRequestException("Enable the dedicated billing inbox first")
-        val host=c["imapHost"].orEmpty();val username=c["imapUsername"].orEmpty();val password=c["imapPassword"].orEmpty();val folderName=c["imapFolder"] ?: "INBOX"
-        if(host.isBlank()||username.isBlank()||password.isBlank())throw BadRequestException("Configure the billing IMAPS account")
+        val incoming=config.shared("billing","incoming-email")
+        val host=incoming["host"].orEmpty();val username=incoming["username"].orEmpty();val password=incoming["password"].orEmpty();val folderName=incoming["folder"] ?: "INBOX"
+        if(host.isBlank()||username.isBlank()||password.isBlank())throw BadRequestException("Configure the shared IMAPS account in Communications")
         encryption.requireConfigured()
         // IMAPS only, normal certificate+hostname verification, bounded timeouts, no remote HTML or attachments.
         val properties=Properties().apply {setProperty("mail.store.protocol","imaps");setProperty("mail.imaps.ssl.enable","true");setProperty("mail.imaps.ssl.checkserveridentity","true");setProperty("mail.imaps.connectiontimeout","10000");setProperty("mail.imaps.timeout","10000");setProperty("mail.imaps.writetimeout","10000");setProperty("mail.imaps.peek","true");setProperty("mail.imaps.partialfetch","true")}
         var imported=0;var skipped=0
         try {
             Session.getInstance(properties).getStore("imaps").use {mail->
-                mail.connect(host,c["imapPort"]?.toIntOrNull() ?: 993,username,password)
+                mail.connect(host,incoming["port"]?.toIntOrNull() ?: 993,username,password)
                 val folder=mail.getFolder(folderName);folder.open(Folder.READ_ONLY)
                 try {
                     val uid=folder as? UIDFolder ?: throw BadRequestException("Billing IMAPS requires stable message UIDs")
@@ -41,7 +42,7 @@ class BillingInbox(private val store:OperationsStore,private val access:Operatio
                     // A durable UID cursor drains a backlog in bounded batches, including after downtime.
                     val messages=if(end<=last)emptyArray()else uid.getMessagesByUID(last+1,end).filterNotNull().toTypedArray()
                     for(message in messages) {
-                        if(config.current("billing")!=c)throw ConflictException("Billing inbox settings changed")
+                        if(config.current("billing")!=c||config.shared("billing","incoming-email")!=incoming)throw ConflictException("Billing inbox settings changed")
                         val subject=message.subject.orEmpty().take(500)
                         val token=Regex("\\[MO-BILL-([0-9a-fA-F-]{36})]").find(subject)?.groupValues?.get(1)?.let {runCatching {UUID.fromString(it)}.getOrNull()} ?: continue
                         if(message.size>262144){skipped++;continue}

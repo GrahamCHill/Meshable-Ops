@@ -27,6 +27,7 @@ class AiSettingsServiceTest {
         assertThat(service.status().searchEnabled).isTrue()
         assertThat(service.status().launcherEnabled).isFalse()
         assertThat(service.status().enabled).isFalse()
+        assertThat(service.status().dimensions).isEqualTo(1536)
         service.save(request.copy(searchEnabled = false, launcherEnabled = true), "admin@test.local")
         assertThat(service.status().searchEnabled).isFalse()
         assertThat(service.status().launcherEnabled).isFalse()
@@ -76,5 +77,20 @@ class AiSettingsServiceTest {
         assertThatThrownBy { service.save(request(AiEndpointRequest(AiProvider.OPENAI_COMPATIBLE, "https://provider.test/v1", "model", "new-private-key")), "admin@test.local") }
             .hasMessageContaining("APP_SECRETS_ENCRYPTION_KEY").hasMessageNotContaining("new-private-key")
         verify(repository, never()).saveAndFlush(any(AiSettings::class.java))
+    }
+    @Test fun `draft model checks use only the selected sources endpoint bound key without saving`() {
+        val stored = AiSettings(source = "ENVIRONMENT", chatApiKey = "admin-private-key")
+        `when`(repository.findById(1)).thenReturn(Optional.of(stored))
+        val service = AiSettingsService(repository, environment, testEncryption(), audit)
+        val draft = AiEndpointCheckRequest("ADMIN", AiEndpointRequest(AiProvider.OPENAI_COMPATIBLE, stored.chatBaseUrl))
+        assertThat(service.endpointForCheck("chat", draft).apiKey).isEqualTo("admin-private-key")
+        assertThat(service.endpointForCheck("chat", draft.copy(endpoint = draft.endpoint.copy(baseUrl = "https://other.test/v1"))).apiKey).isNull()
+        assertThat(service.endpointForCheck("chat", draft.copy(endpoint = draft.endpoint.copy(clearApiKey = true))).apiKey).isNull()
+        assertThat(service.endpointForCheck("chat", draft.copy(endpoint = draft.endpoint.copy(apiKey = "new-private-key"))).apiKey).isEqualTo("new-private-key")
+        val fromEnvironment = service.endpointForCheck("chat", draft.copy(source = "ENVIRONMENT", endpoint = draft.endpoint.copy(baseUrl = "https://other.test/v1", apiKey = "ignored-key")))
+        assertThat(fromEnvironment.apiKey).isEqualTo("environment-private-key")
+        assertThat(fromEnvironment.baseUrl).isEqualTo(environment.chat.baseUrl)
+        verify(repository, never()).saveAndFlush(any(AiSettings::class.java))
+        verifyNoInteractions(audit)
     }
 }

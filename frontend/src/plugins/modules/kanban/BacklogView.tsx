@@ -3,7 +3,7 @@ import {ChevronDown, ChevronRight, GripVertical, Plus} from 'lucide-react'
 import {Button} from '../../../components/ui'
 import type {Person} from '../../../api/projects'
 import type {Board, BoardCard} from './api'
-import {personInitials} from './boardView'
+import {TicketPeople} from './TicketPeople'
 import {TicketTypeIcon} from './TicketTile'
 import type {SprintDialogAction} from './SprintDialog'
 
@@ -50,7 +50,7 @@ export function BacklogView({board, cards, people, busy, readOnly, onOpen, onPla
             <select aria-label={`Plan ${card.reference} in sprint`} disabled={!canPlan} value={card.sprintId || ''} onChange={event => onPlan(card.id, event.target.value || null)}><option value="">Backlog</option>{displayed.map(sprint => <option key={sprint.id} value={sprint.id} disabled={sprint.status === 'COMPLETED'}>{sprint.name}</option>)}</select>
             {board.estimation?.tshirtSizes&&card.tshirtSize&&<span className="kanban-points">{card.tshirtSize}</span>}
             {(board.estimation?.storyPoints??true)&&card.storyPoints != null && <span className="kanban-points">{card.storyPoints}</span>}
-            <span className="kanban-avatar" title={people.find(person => person.id === card.assigneeId)?.name ?? 'Unassigned'}>{personInitials(people.find(person => person.id === card.assigneeId)?.name ?? '–')}</span>
+            <TicketPeople card={card} people={people} compact/>
           </div>)}</div>
           {!tickets.length && <p className="kanban-backlog-empty">{section.sprint ? 'Drag tickets here to plan this sprint.' : 'No tickets in the backlog.'}</p>}
           {board.canCreateTickets && !readOnly && section.sprint?.status !== 'COMPLETED' && <button type="button" className="kanban-add-ticket" disabled={busy || board.content.cards.length >= 200} onClick={() => onCreate(section.id || null)}><Plus size={15}/> Create ticket</button>}

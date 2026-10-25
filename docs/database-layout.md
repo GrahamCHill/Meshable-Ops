@@ -14,7 +14,7 @@ Project extensions own `plugin_jira_projects`, `plugin_figma_files` and `plugin_
 
 `workspace_project_repositories` stores approved repository metadata and provider configuration fingerprints. `workspace_project_development_settings` stores per-project feature switches and an optimistic revision. `workspace_project_development_links` stores bounded branch/request/deployment references, optional board/ticket scope, provider snapshots, fingerprints and revisions. Disabled features retain their records. Board-scoped links are filtered by current board membership before display; removed repositories/boards do not grant access through saved links. Jira's existing project payload also retains an optional board ID alongside metric snapshots. Include these tables in database backups.
 
-Runtime extension packages use `workspace_plugin_packages` (descriptor, author metadata, frontend/backend artifacts and normalized artwork, archive SHA-256, install time) and `workspace_extension_security` (global third-party switch, optimistic revision). Binary JAR/image/font artifacts are base64 inside the package file map. `workspace_plugin_invocations` stores short-lived callback token hashes, actor/package/route/method scope, expiry and call counts; completion deletes them and periodic cleanup removes expired rows. Request bodies and raw tokens are not retained. Declared ZIP tables use a fixed host schema: UUID ID/owner, JSONB data, revision, timestamps, search text, and local `vector(384)`. No uploaded SQL executes. Include packages, security state, encrypted plugin configuration, and owned tables in PostgreSQL backups. See [ZIP packages](plugins/zip-packages.md) and [backend execution](plugins/backend-runtime.md).
+Runtime extension packages use `workspace_plugin_packages` (descriptor, author metadata, frontend/backend artifacts and normalized artwork, archive SHA-256, install time) and `workspace_extension_security` (global third-party switch, optimistic revision). Binary JAR/image/font artifacts are base64 inside the package file map. `workspace_plugin_invocations` stores short-lived callback token hashes, actor/package/route/method scope, expiry and call counts; completion deletes them and periodic cleanup removes expired rows. Request bodies and raw tokens are not retained. Declared ZIP tables use a fixed host schema: UUID ID/owner, JSONB data, revision, timestamps, search text, and local `vector(1536)`. No uploaded SQL executes. Include packages, security state, encrypted plugin configuration, and owned tables in PostgreSQL backups. See [ZIP packages](plugins/zip-packages.md) and [backend execution](plugins/backend-runtime.md).
 
 Optional extensions use `plugin_settings` (enabled/removal state, roles, search visibility, table policies) and `plugin_kanban_boards` (owner, name, revision, timestamp, validated JSON, local search text/vector). Include these in PostgreSQL backups; metadata JSON export omits them. Disabling retains data. Plugin search is opt-in, with live role and ownership checks. Admins can empty only declared plugin tables with an explicit confirmation; schema and settings remain. The host-managed `workspace_plugin_configuration` stores encrypted configuration JSON and optimistic revisions; it is retained when clearing owned plugin tables. Include it in backups and wrapping-key rotation. See [Workspace plugins](plugins.md).
 
@@ -162,7 +162,7 @@ erDiagram
     }
 ```
 
-Vector columns are `vector(384)`; the diagram omits timestamps and some descriptive fields for readability. Settings tables hold application-wide configuration rather than per-user preferences.
+Vector columns are `vector(1536)`; the diagram omits timestamps and some descriptive fields for readability. Settings tables hold application-wide configuration rather than per-user preferences.
 
 ## Identity and storage
 
@@ -195,15 +195,17 @@ Vector columns are `vector(384)`; the diagram omits timestamps and some descript
 | `CONTENT_UNAVAILABLE` | Extraction/read failed; metadata indexing can still succeed |
 | `INDEX_ERROR` | Vector/configuration indexing failed; a later reindex retries |
 
-Three derived search tables use 384-dimensional vectors and HNSW cosine indexes:
+Three derived search tables use 1536-dimensional vectors and HNSW cosine indexes:
 
 - `item_vectors`: folder title/description/tags and identifying payload.
 - `document_vectors`: per-object metadata vector and parent folder/path payload.
 - `document_chunks`: ordered extracted content, original-byte SHA-256 checksum, model identity, and vector. `(document_id, chunk_index)` is unique.
 
+Vector columns permit NULL while an upgrade awaits reindexing. `EmbeddingDimensionMigration` transactionally changes legacy column dimensions, clears incompatible vectors/model identities, and marks storage documents for rebuilding without deleting their metadata or extracted text. PostgreSQL rebuilds existing HNSW indexes for the changed column types. Local Kanban and ZIP-plugin vectors are regenerated from saved search text in batches; already-current columns are left alone on later starts.
+
 Document vectors/chunks have cascading foreign keys to their document; documents belong to their selected folder. Full reindexing removes documents missing from storage. Browsing and uploading synchronize discovered objects; normal metadata change detection uses path/name/type/size/modification time. Run a full reindex if bytes changed without changed provider metadata.
 
-Each vector carries an embedding-model fingerprint. Queries only compare matching fingerprints. Default local matching is `local-feature-hash-v2` inside Kotlin; earlier/local or different-provider vectors require reindexing. Keyword fallback can use current metadata and permitted existing chunks without comparing incompatible vectors. Content chunks are excluded immediately when content indexing is disabled.
+Each vector carries an embedding-model fingerprint. Queries only compare matching fingerprints. Default local matching is `local-feature-hash-v3` inside Kotlin; earlier/local or different-provider vectors require reindexing. Keyword fallback can use current metadata and permitted existing chunks without comparing incompatible vectors. Content chunks are excluded immediately when content indexing is disabled.
 
 Both vector and keyword queries join live folder visibility and connection enablement for all result types. AI generation uses content chunks and checks their access before and after the provider call. No event or audit collection is indexed.
 
@@ -267,6 +269,8 @@ The export identifies itself as `superset-docker-app-backup-v2` and `credentials
 `document_access_settings` uses singleton ID `1`: `pdf_preview_enabled` defaults true, `download_mode` defaults `NORMAL` (`NORMAL`, `WATERMARKED`, or `DISABLED`), and `watermark_text` defaults `CONFIDENTIAL`. An absent row uses those defaults; the first admin save persists it. Hibernate creates the table on upgrade. These settings are not included in the existing JSON backup export; use database backups.
 
 ### Email settings
+
+`workspace_shared_settings` stores named, versioned incoming-mail and plugin-defined connection profiles: schema ID, display name, enabled flag, AES-GCM-encrypted `data_json`, historical secret-field names, and optimistic revision. Hibernate creates the table; no connection is seeded. Startup key rotation includes its JSON. Billing's legacy IMAPS fields migrate once into a shared profile; explicit consumer bindings are retained in encrypted `workspace_plugin_configuration` under reserved `@shared:` keys. Shared connections are excluded from search and metadata JSON export and survive plugin removal/data clearing. Preserve PostgreSQL and wrapping keys. See [shared settings](plugins/shared-settings.md).
 
 `email_settings` uses singleton ID `1`. It stores `source` (`ENVIRONMENT` or `ADMIN`), `enabled` (initially false), `provider`, sender/reply-to fields, SMTP host/port/security/authentication, API base URL, and Mailgun domain. `smtp_username`, `smtp_password` (also app password/OAuth2 token), and `api_key` are encrypted TEXT columns, never returned by settings APIs. Startup secret rotation includes all three columns. Environment credentials remain outside the row. Hibernate creates the table; an absent row selects the disabled environment defaults. Message bodies, delivery queues, and sent history are not persisted. The existing JSON export excludes this table; use PostgreSQL backups and preserve wrapping keys. See [email delivery](email-delivery.md).
 

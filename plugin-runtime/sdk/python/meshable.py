@@ -35,6 +35,7 @@ class Host:
     def create(self, table, data): return self.call('data.create', table=table, data=data)
     def update(self, table, record_id, data, revision): return self.call('data.update', table=table, id=record_id, data=data, revision=revision)
     def remove(self, table, record_id, revision): return self.call('data.remove', table=table, id=record_id, revision=revision)
+    def shared_settings(self, reference): return self.call('settings.shared', reference=reference)
     def http(self, method, url, **options): return self.call('http', method=method, url=url, **options)
 
 

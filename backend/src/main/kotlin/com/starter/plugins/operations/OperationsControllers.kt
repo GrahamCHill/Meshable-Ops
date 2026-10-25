@@ -9,7 +9,8 @@ import java.time.LocalDate
 import java.util.UUID
 
 @RestController @RequestMapping("/api/plugins/timesheets")
-class TimesheetController(private val service:TimesheetService,private val visibility:TimeVisibility) {
+class TimesheetController(private val service:TimesheetService,private val visibility:TimeVisibility,private val exports:TimesheetExport) {
+    @GetMapping("/export") fun export(@AuthenticationPrincipal u:UserDetails,@RequestParam projectId:UUID,@RequestParam from:LocalDate,@RequestParam to:LocalDate):ResponseEntity<ByteArray> = ResponseEntity.ok().contentType(MediaType.parseMediaType("text/csv;charset=UTF-8")).header("Content-Disposition","attachment; filename=\"project-timesheets-$from-$to.csv\"").header("Cache-Control","private, no-store").header("X-Content-Type-Options","nosniff").body(exports.csv(u.username,projectId,from,to))
     @GetMapping("/totals") fun totals(@AuthenticationPrincipal u:UserDetails,@RequestParam projectId:UUID,@RequestParam from:LocalDate,@RequestParam to:LocalDate)=visibility.totals(u.username,projectId,from,to)
     @GetMapping fun list(@AuthenticationPrincipal u:UserDetails,@RequestParam from:LocalDate,@RequestParam to:LocalDate,@RequestParam(required=false) projectId:UUID?,@RequestParam(defaultValue="false") team:Boolean)=service.list(u.username,from,to,projectId,team)
     @PostMapping fun create(@AuthenticationPrincipal u:UserDetails,@RequestBody i:TimeEntryInput)=service.save(u.username,null,i)
@@ -45,6 +46,8 @@ class CloudCostController(private val service:CloudCosts) {
 }
 @RestController @RequestMapping("/api/plugins/billing-items")
 class BillingItemsController(private val items:BillingItems,private val rates:BillingRates,private val catalog:BillingCatalog) {
+    @GetMapping("/projects/{projectId}/rates") fun projectRates(@AuthenticationPrincipal u:UserDetails,@PathVariable projectId:UUID)=rates.project(u.username,projectId)
+    @PutMapping("/projects/{projectId}/rates") fun projectRateSave(@AuthenticationPrincipal u:UserDetails,@PathVariable projectId:UUID,@RequestBody i:ProjectMemberRateInput)=rates.projectSave(u.username,projectId,i)
     @GetMapping("/catalog") fun catalog(@AuthenticationPrincipal u:UserDetails)=catalog.catalog(u.username)
     @GetMapping("/links") fun links(@AuthenticationPrincipal u:UserDetails,@RequestParam(required=false) projectId:UUID?,@RequestParam(required=false) clientId:UUID?)=catalog.links(u.username,projectId,clientId)
     @PostMapping("/links") fun link(@AuthenticationPrincipal u:UserDetails,@RequestBody i:BillingLinkInput)=catalog.link(u.username,i)
@@ -60,7 +63,9 @@ class BillingItemsController(private val items:BillingItems,private val rates:Bi
     @PutMapping("/assignments/{id}") fun assignSave(@AuthenticationPrincipal u:UserDetails,@PathVariable id:UUID,@RequestBody i:AssignmentInput)=rates.assignment(u.username,id,i)
 }
 @RestController @RequestMapping("/api/plugins/billing")
-class BillingController(private val service:BillingService,private val profiles:BillingProfiles,private val docs:BillingDocuments,private val delivery:BillingDelivery,private val inbox:BillingInbox,private val schedules:BillingSchedules) {
+class BillingController(private val service:BillingService,private val profiles:BillingProfiles,private val docs:BillingDocuments,private val delivery:BillingDelivery,private val inbox:BillingInbox,private val schedules:BillingSchedules,private val payments:BillingPayments) {
+    @GetMapping("/payment-providers") fun paymentProviders(@AuthenticationPrincipal u:UserDetails)=payments.options(u.username)
+    @PutMapping("/payment-providers/default") fun defaultPayment(@AuthenticationPrincipal u:UserDetails,@RequestBody i:BillingPaymentDefaultInput)=payments.saveDefault(u.username,i)
     @GetMapping("/defaults") fun defaults(@AuthenticationPrincipal u:UserDetails)=profiles.defaults(u.username)
     @GetMapping("/clients/{id}") fun profile(@AuthenticationPrincipal u:UserDetails,@PathVariable id:UUID)=profiles.get(u.username,id)
     @PutMapping("/clients/{id}") fun profileSave(@AuthenticationPrincipal u:UserDetails,@PathVariable id:UUID,@RequestBody i:BillingProfileInput):Map<String,Any?> {if(id!=i.profile.clientId)throw com.starter.exception.BadRequestException("Client ID mismatch");return profiles.save(u.username,i)}

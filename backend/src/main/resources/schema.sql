@@ -1,3 +1,4 @@
+-- Vector columns allow NULL while an existing index awaits dimension migration and reindexing.
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Section IDs remain in category, preserving existing assignments while allowing custom sections.
@@ -8,7 +9,7 @@ ALTER TABLE IF EXISTS plugin_settings ADD COLUMN IF NOT EXISTS table_access_json
 
 -- Compiled Kanban plugin owns this table; vectors are local and need no AI key.
 ALTER TABLE IF EXISTS plugin_kanban_boards ADD COLUMN IF NOT EXISTS search_text TEXT NOT NULL DEFAULT '';
-ALTER TABLE IF EXISTS plugin_kanban_boards ADD COLUMN IF NOT EXISTS search_embedding vector(384);
+ALTER TABLE IF EXISTS plugin_kanban_boards ADD COLUMN IF NOT EXISTS search_embedding vector(1536);
 CREATE INDEX IF NOT EXISTS idx_plugin_kanban_search ON plugin_kanban_boards USING hnsw (search_embedding vector_cosine_ops);
 
 ALTER TABLE IF EXISTS users
@@ -47,7 +48,7 @@ CREATE INDEX IF NOT EXISTS idx_item_tags_item_id ON item_tags (item_id);
 
 CREATE TABLE IF NOT EXISTS item_vectors (
     item_id UUID PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
-    embedding vector(384) NOT NULL,
+    embedding vector(1536),
     payload JSONB NOT NULL DEFAULT '{}'::jsonb,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -79,7 +80,7 @@ CREATE INDEX IF NOT EXISTS idx_storage_documents_item_id
 
 CREATE TABLE IF NOT EXISTS document_vectors (
     document_id UUID PRIMARY KEY REFERENCES storage_documents(id) ON DELETE CASCADE,
-    embedding vector(384) NOT NULL,
+    embedding vector(1536),
     payload JSONB NOT NULL DEFAULT '{}'::jsonb,
     source_checksum VARCHAR(64) NULL,
     embedding_model VARCHAR(255) NULL,
@@ -94,7 +95,7 @@ CREATE TABLE IF NOT EXISTS document_chunks (
     document_id UUID NOT NULL REFERENCES storage_documents(id) ON DELETE CASCADE,
     chunk_index INTEGER NOT NULL,
     content TEXT NOT NULL,
-    embedding vector(384) NOT NULL,
+    embedding vector(1536),
     source_checksum VARCHAR(64) NOT NULL,
     embedding_model VARCHAR(128) NOT NULL,
     UNIQUE(document_id, chunk_index)

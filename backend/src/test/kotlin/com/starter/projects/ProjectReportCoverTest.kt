@@ -15,12 +15,14 @@ import java.util.UUID
 class ProjectReportCoverTest {
     private val rows=mock(ProjectReportCoverRepository::class.java);private val access=mock(ProjectAccess::class.java)
     private val renderer=mock(WeasyRendererClient::class.java);private val branding=mock(BrandingPreferencesService::class.java)
+    private val brandAssets=mock(com.starter.repository.postgres.BrandingAssetRepository::class.java)
     private val actor=User(email="manager@example.test");private val project=ProjectRecord(name="Delivery")
-    private val service=ProjectReportCoverService(rows,access,renderer,branding,mock(JdbcTemplate::class.java))
+    private val service=ProjectReportCoverService(rows,access,renderer,branding,mock(JdbcTemplate::class.java),brandAssets)
     init {
         `when`(access.actor(actor.email)).thenReturn(actor);`when`(access.require(project.id,actor,true)).thenReturn(project)
         `when`(access.require(project.id,actor,false)).thenReturn(project);`when`(access.role(actor,project)).thenReturn(ProjectRole.MANAGER)
         `when`(branding.current()).thenReturn(BrandingPreferences())
+        `when`(brandAssets.findById(com.starter.model.postgres.BrandingKind.LOGO)).thenReturn(Optional.empty())
         `when`(renderer.reportCover(anyMap<String,Any>())).thenReturn("%PDF-preview".toByteArray())
         `when`(rows.findById(project.id)).thenReturn(Optional.empty())
         `when`(rows.saveAndFlush(any(ProjectReportCoverRecord::class.java))).thenAnswer {call->val row=call.arguments[0] as ProjectReportCoverRecord;`when`(rows.findById(project.id)).thenReturn(Optional.of(row));row}
@@ -51,5 +53,14 @@ class ProjectReportCoverTest {
         assertThat(updated.assets).isEqualTo(saved.assets)
         assertThat(service.context(project.id).assets).isEqualTo(saved.assets)
         assertThat(service.save(actor.email,project.id,ReportCoverInput("<h1>Without image</h1>",0,emptyMap())).assets).isEmpty()
+    }
+    @Test fun `report contexts use the configured site identity and an embedded logo`() {
+        val image=java.awt.image.BufferedImage(3,2,java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        val png=java.io.ByteArrayOutputStream().also {javax.imageio.ImageIO.write(image,"png",it)}.toByteArray()
+        `when`(brandAssets.findById(com.starter.model.postgres.BrandingKind.LOGO)).thenReturn(Optional.of(com.starter.model.postgres.BrandingAsset(png=png)))
+        `when`(branding.current()).thenReturn(BrandingPreferences(applicationName="Delivery site",companyName="Example Company"))
+        val value=service.context(project.id)
+        assertThat(value.siteName).isEqualTo("Delivery site");assertThat(value.companyName).isEqualTo("Example Company")
+        assertThat(value.siteLogo).startsWith("data:image/png;base64,")
     }
 }

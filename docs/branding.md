@@ -6,6 +6,8 @@ Open **Administration > Branding** (`/admin/branding`) to set the business name,
 
 Set **Application name** to the business name (1–80 characters). It appears in navigation, above the sign-in form, and in the browser tab title. The default is Meshable Ops.
 
+Set the optional **Company name** separately (up to 120 characters) when the organisation name differs from the site name. Report cover templates resolve `{{siteName}}` from Application name and `{{companyName}}` from Company name. `{{siteLogo}}`, used in an image source, embeds the current configured logo without making a public resource request. The company name is saved with the other branding preferences and follows the same administrator permission and revision checks.
+
 The colour controls accept six-digit hex values for page/surface backgrounds, text, sidebar, content links, the header and table headings. Configure separate Light and Dark palettes or disable switching to use one custom palette. Unchecked fields follow the base appearance. Custom backgrounds choose contrasting automatic text unless an explicit text colour is set.
 
 Members can change their theme with the **Dark mode** sun/moon toggle in the account dropdown or **User settings > Appearance**. The choice is saved in the current browser. When switching is disabled, the switch is hidden and the custom palette applies to everyone. Saved member preferences are retained. The switch supports keyboard input and skips its animation when reduced motion is preferred.
