@@ -4,6 +4,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.starter.plugins.operations.*
 import com.starter.exception.*
 import com.starter.repository.postgres.UserRepository
+import com.starter.model.postgres.User
 import org.assertj.core.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
@@ -66,5 +67,19 @@ class ProjectBillingTest {
         assertThat(TimesheetExport.cell("=HYPERLINK(\"https://example.test\")")).startsWith("\"'=")
         assertThat(TimesheetExport.cell("  +SUM(1,2)")).startsWith("\"'  +")
         assertThat(TimesheetExport.cell("Work, \"quoted\"\nnext line")).isEqualTo("\"Work, \"\"quoted\"\"\nnext line\"")
+    }
+    @Test fun `client export includes only approved billable work and uses team review access`() {
+        val project=UUID.randomUUID();val member=User(email="member@example.test",password="unused",name="Alex")
+        val start=Instant.parse("2026-01-05T08:00:00Z");val from=LocalDate.parse("2026-01-01");val to=LocalDate.parse("2026-01-31")
+        val entry=TimeEntry(member.id,project,start,start.plusSeconds(5400),5400,"Reviewed work",status=TimeStatus.APPROVED,rate=BigDecimal("750"),currency="ZAR")
+        val timesheets=mock(TimesheetService::class.java)
+        `when`(timesheets.list("manager@example.test",from,to,project,true)).thenReturn(listOf(entry,entry.copy(description="Private draft",status=TimeStatus.DRAFT),entry.copy(description="Nonbillable work",billable=false)).map {TimeEntryView(UUID.randomUUID(),it,0)})
+        val users=mock(UserRepository::class.java);`when`(users.findById(member.id)).thenReturn(java.util.Optional.of(member))
+        val exports=TimesheetExport(timesheets,users)
+        val csv=String(exports.csv("manager@example.test",project,from,to),Charsets.UTF_8)
+        assertThat(csv).contains("Alex","Reviewed work","1.500000","1125.00").doesNotContain("Private draft","Nonbillable work")
+        verify(timesheets).list("manager@example.test",from,to,project,true)
+        `when`(timesheets.list("manager@example.test",from,to,project,true)).thenThrow(ForbiddenException("Project time detail requires a leader"))
+        assertThatThrownBy {exports.csv("manager@example.test",project,from,to)}.isInstanceOf(ForbiddenException::class.java)
     }
 }

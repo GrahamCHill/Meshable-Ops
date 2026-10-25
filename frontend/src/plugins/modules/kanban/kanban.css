@@ -61,6 +61,19 @@
 .kanban-ticket-spacer { flex:1; }
 .kanban-points { border-radius:4px;padding:1px 6px;background:var(--color-surface-2);font-size:.73rem;white-space:nowrap;color:var(--color-text-secondary); }
 .kanban-avatar { flex-shrink:0;display:grid;place-items:center;width:27px;height:27px;border-radius:50%;font-size:.65rem;font-weight:600;background:#0c66e4;color:white; }
+.kanban-ticket-people { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%;min-width:0;text-align:left;color:var(--color-text); }
+.kanban-ticket-person { display:flex;align-items:center;gap:8px;min-width:0; }
+.kanban-ticket-person-details { display:flex;flex-direction:column;gap:3px;min-width:0; }
+.kanban-ticket-role { color:var(--color-text-secondary);font-size:.7rem;font-weight:600; }
+.kanban-ticket-person-name { font-size:.8rem;line-height:1.4;overflow-wrap:anywhere; }
+.kanban-ticket-people.is-compact { grid-template-columns:minmax(0,1fr);gap:5px; }
+.kanban-ticket-people.is-compact .kanban-avatar { display:none; }
+.kanban-ticket-people.is-compact .kanban-ticket-person-details { display:grid;grid-template-columns:82px minmax(0,1fr);gap:6px;width:100%;align-items:baseline; }
+.kanban-ticket-people.is-compact .kanban-ticket-person-name { font-size:.74rem;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden; }
+.kanban-ticket-dialog .kanban-ticket-people:not(.is-compact) { padding:12px 14px;margin:0 0 16px;border:1px solid var(--kanban-border);border-radius:6px;background:var(--color-surface-2); }
+.kanban-backlog-row>.kanban-ticket-people { flex:0 1 240px; }
+.project-table .kanban-ticket-people { min-width:210px;max-width:300px; }
+@media(max-width:560px) { .kanban-ticket-people { grid-template-columns:minmax(0,1fr); }.kanban-backlog-row>.kanban-ticket-people { flex-basis:100%; } }
 .kanban-priority { font-size:.65rem; }.priority-urgent,.priority-high,.kanban-overdue { color:var(--color-danger); }
 .kanban-overdue,.kanban-due { display:inline-flex;align-items:center;gap:5px;font-size:.74rem; }
 .kanban-done-mark { color:#57a41e;flex-shrink:0; }

@@ -27,11 +27,17 @@ class BillingTests(unittest.TestCase):
     def test_payment_details_are_escaped_and_only_shown_for_invoices(self):
         value = self.value()
         value["paymentInstructions"] = 'Bank <example>\nhttps://pay.example/?ref="invoice"'
+        value["paymentUrl"] = "https://pay.example/checkout?ref=invoice&client=test"
         html = billing_html(value)
+        self.assertIn('href="https://pay.example/checkout?ref=invoice&amp;client=test"', html)
         self.assertIn("Payment details", html)
         self.assertIn("Bank &lt;example&gt;", html)
         value["kind"] = "QUOTE"
         self.assertNotIn("Payment details", billing_html(value))
+        self.assertNotIn("Open payment page", billing_html(value))
+        value["paymentUrl"] = "javascript:alert(1)"
+        with self.assertRaises(ValueError):
+            BillingPdf.model_validate(value)
 
 
 if __name__ == "__main__":

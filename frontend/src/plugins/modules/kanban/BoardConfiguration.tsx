@@ -12,7 +12,6 @@ import {isAdminRole} from '../../../api/access'
 import {useAuthStore} from '../../../hooks/useAuthStore'
 import {SprintFields} from './SprintFields'
 import {WorkflowGraph,emptyWorkflow} from './WorkflowGraph'
-import {ProjectEstimationPanel} from './ProjectEstimationPanel'
 import type {Person} from '../../../api/projects'
 import {boardsApi,type BoardInput} from './api'
 
@@ -26,12 +25,11 @@ export function BoardConfiguration({id,board,people,busy,error,onSave,onClose}: 
   const allowed=!checkingScope||creationAccess.data?.canCreate===true
   const next={...board,name:draft.name,projectId:draft.projectId,teamIds:draft.teamIds,content:{...board.content,columns:draft.columns,sprints:draft.sprints,epics:draft.epics,workflow:draft.workflow??emptyWorkflow,ticketAccess:draft.ticketAccess??defaultTicketAccess,cards:board.content.cards.map(card=>card.sprintId&&!draft.sprints.some(s=>s.id===card.sprintId)?{...card,sprintId:null}:card)}}
   return <Modal title={id?'Board configuration':'Create board'} className="project-dialog kanban-config-dialog" onClose={onClose} busy={busy}>
-    <nav className="workspace-tabs" aria-label="Board configuration sections">{[['details','Details & access'],['columns','Columns & permissions'],['workflow','Workflow graph'],['epics','Epics'],...(admin?[['tickets','Ticket access']]:[]),['sprints','Sprints'],...(draft.projectId?[['estimation','Estimation']]:[])].map(([key,label])=><button key={key} type="button" aria-current={tab===key?'page':undefined} onClick={()=>setTab(key)}>{label}</button>)}</nav>
+    <nav className="workspace-tabs" aria-label="Board configuration sections">{[['details','Details & access'],['columns','Columns & permissions'],['workflow','Workflow graph'],['epics','Epics'],...(admin?[['tickets','Ticket access']]:[]),['sprints','Sprints']].map(([key,label])=><button key={key} type="button" aria-current={tab===key?'page':undefined} onClick={()=>setTab(key)}>{label}</button>)}</nav>
     <form className="page-stack" onSubmit={e=>{e.preventDefault();if(allowed)onSave(next)}}><fieldset className="page-stack" disabled={busy}>
       {tab==='details'&&<><label className="form-field">Board name<input autoFocus required maxLength={120} value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label><BoardProjectFields draft={next} disabled={busy} onChange={value=>setDraft({...draft,projectId:value.projectId,teamIds:value.teamIds})}/></>}
       {tab==='columns'&&<ColumnSettings columns={draft.columns} cards={board.content.cards} people={projectPeople.data??people} onChange={columns=>{const ids=new Set(columns.map(column=>column.id)),workflow=draft.workflow??emptyWorkflow;setDraft({...draft,columns,workflow:{...workflow,transitions:workflow.transitions.filter(item=>ids.has(item.source)&&ids.has(item.target)),positions:Object.fromEntries(Object.entries(workflow.positions).filter(([id])=>ids.has(id)))}})}}/>}
       {tab==='workflow'&&<WorkflowGraph columns={draft.columns} value={draft.workflow??emptyWorkflow} people={projectPeople.data??people} disabled={busy} onChange={workflow=>setDraft({...draft,workflow})}/>}
-      {tab==='estimation'&&draft.projectId&&<ProjectEstimationPanel projectId={draft.projectId}/>}
       {tab==='epics'&&<EpicSettings epics={draft.epics} cards={board.content.cards} onChange={epics=>setDraft({...draft,epics})}/>}
       {tab==='tickets'&&admin&&<TicketAccessSettings value={draft.ticketAccess} people={projectPeople.data??people} onChange={ticketAccess=>setDraft({...draft,ticketAccess})}/>}
       {tab==='sprints'&&<SprintFields value={draft.sprints} onChange={sprints=>setDraft({...draft,sprints})} disabled={busy}/>}

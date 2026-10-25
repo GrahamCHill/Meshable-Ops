@@ -136,6 +136,18 @@ class AccessControlTest {
         assertThat(details.authorities.map { it.authority }).contains("ROLE_SUPER_ADMIN", "ROLE_ADMIN")
         assertThat(Roles.plugin("SUPER_ADMIN")).isEqualTo("ADMIN")
     }
+    @Test fun `personal Superset password uses authoring access independently of dashboard link management`() {
+        val admin = User(email = "author@example.test", role = "ADMIN")
+        signIn(admin)
+        val guard = AccessRequestGuard(access)
+        val request = MockHttpServletRequest("POST", "/api/superset/account/password")
+        policy(AccessPolicy(roleFeatures = mapOf("ADMIN" to setOf("admin.dashboards"))))
+        assertThatThrownBy { guard.preHandle(request, MockHttpServletResponse(), Any()) }.isInstanceOf(ForbiddenException::class.java)
+        policy(AccessPolicy(roleFeatures = mapOf("ADMIN" to setOf("admin.superset"))))
+        assertThat(guard.preHandle(request, MockHttpServletResponse(), Any())).isTrue()
+        policy(AccessPolicy(members = mapOf(admin.id to MemberAccess(features = emptySet()))))
+        assertThatThrownBy { guard.preHandle(request, MockHttpServletResponse(), Any()) }.isInstanceOf(ForbiddenException::class.java)
+    }
     @Test fun `Business Managers inherit existing member feature restrictions until configured separately`() {
         val manager = User(email = "business@example.test", password = "encoded", role = Roles.BUSINESS_MANAGER)
         assertThat(access.features(manager, AccessPolicy(roleFeatures = mapOf("USER" to setOf("projects"))))).containsExactly("projects")

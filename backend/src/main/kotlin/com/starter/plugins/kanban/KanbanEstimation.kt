@@ -3,6 +3,9 @@ package com.starter.plugins.kanban
 import com.starter.plugins.*
 import com.starter.projects.ProjectAccess
 import com.starter.exception.ConflictException
+import com.starter.exception.ForbiddenException
+import com.starter.access.Roles
+import com.starter.access.AccessControlService
 import jakarta.persistence.*
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.jdbc.core.JdbcTemplate
@@ -23,7 +26,7 @@ data class ProjectEstimationView(val inherit: Boolean, val storyPoints: Boolean,
 
 @Service
 class KanbanEstimationService(private val configuration: PluginConfigurationService, private val records: ProjectEstimationRepository,
-    private val projects: ProjectAccess, private val registry: PluginRegistry, private val jdbc: JdbcTemplate) {
+    private val projects: ProjectAccess, private val registry: PluginRegistry, private val jdbc: JdbcTemplate, private val access: AccessControlService) {
     fun effective(projectId: UUID?): KanbanEstimation {
         val own = projectId?.let { records.findById(it).orElse(null) }
         if (own != null && !own.inherit) return KanbanEstimation(own.storyPoints, own.tshirtSizes)
@@ -31,15 +34,20 @@ class KanbanEstimationService(private val configuration: PluginConfigurationServ
         return KanbanEstimation(values["storyPoints"] != "false", values["tshirtSizes"] == "true")
     }
     fun view(email: String, projectId: UUID): ProjectEstimationView {
-        val actor = projects.actor(email); val project = projects.require(projectId, actor)
+        val actor = projects.actor(email)
+        if (!Roles.admin(actor.role)) throw ForbiddenException("Only administrators can manage project estimation settings")
+        access.requireFeature("admin.plugins")
+        projects.require(projectId, actor)
         registry.requireTable("kanban", "plugin_kanban_estimation", actor.role)
         val record = records.findById(projectId).orElse(null); val current = effective(projectId)
-        return ProjectEstimationView(record?.inherit ?: true, current.storyPoints, current.tshirtSizes, record?.revision ?: -1,
-            projects.role(actor, project) != com.starter.projects.ProjectRole.MEMBER)
+        return ProjectEstimationView(record?.inherit ?: true, current.storyPoints, current.tshirtSizes, record?.revision ?: -1, true)
     }
     @Transactional
     fun save(email: String, projectId: UUID, input: ProjectEstimationInput): ProjectEstimationView {
-        val actor = projects.actor(email); projects.require(projectId, actor, true)
+        val actor = projects.actor(email)
+        if (!Roles.admin(actor.role)) throw ForbiddenException("Only administrators can manage project estimation settings")
+        access.requireFeature("admin.plugins")
+        projects.require(projectId, actor, true)
         registry.requireTable("kanban", "plugin_kanban_estimation", actor.role, true)
         jdbc.query("SELECT pg_advisory_xact_lock(hashtext(?))", org.springframework.jdbc.core.RowCallbackHandler {}, "kanban-estimation:$projectId")
         val row = records.findById(projectId).orElse(null)

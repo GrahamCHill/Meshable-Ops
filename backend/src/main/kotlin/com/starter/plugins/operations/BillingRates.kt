@@ -38,7 +38,7 @@ class BillingRates(private val store:OperationsStore,private val access:Operatio
         return access.projects.members(p).mapNotNull {id->users.findById(id).orElse(null)?.takeIf {it.active&&it.role!="EXTERNAL"}?.let {user->
             val row=rows.firstOrNull {it.ownerId==id}
             val rate=row?.let {store.decode(it,ProjectMemberRate::class.java)}
-            mapOf("userId" to id,"name" to user.name,"rate" to rate,"revision" to (row?.revision ?: -1),"goingRate" to resolve(id,project))
+            mapOf("userId" to id,"name" to (user.name?.takeIf {it.isNotBlank()} ?: user.email),"rate" to rate,"revision" to (row?.revision ?: -1),"goingRate" to resolve(id,project))
         }}
     }
     @Transactional fun projectSave(email:String,project:UUID,input:ProjectMemberRateInput):OpsRow {

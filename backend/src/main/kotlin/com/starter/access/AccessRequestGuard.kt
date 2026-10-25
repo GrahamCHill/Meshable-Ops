@@ -51,6 +51,7 @@ class AccessRequestGuard(private val access: AccessControlService) : HandlerInte
             path.startsWith("/api/notifications") -> "documents"
             path.startsWith("/api/plugins/") -> "plugin." + path.removePrefix("/api/plugins/").substringBefore('/')
             path == "/api/superset/dashboard-embeds" && method == "GET" || path == "/api/superset/guest-token" -> "dashboards"
+            path == "/api/superset/account" || path.startsWith("/api/superset/account/") -> "admin.superset"
             path.startsWith("/api/superset/") -> "admin.dashboards"
             else -> null
         }

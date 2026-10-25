@@ -29,9 +29,15 @@ a return-to-list action, and a shortcut to Dashboard links. Press Escape to leav
 
 ## Superset login
 
-Superset authoring uses an account separate from the application's admin. The setup helper generates its password as `SUPERSET_ADMIN_PASSWORD` in the private server environment. Sign in to the app as an admin, open `/admin/superset-graph-builder`, and sign in with that authoring account before creating or editing reports. The analytics session uses its own HttpOnly cookie.
+Sign in to the app as an admin with **Superset authoring** access and open `/admin/superset-graph-builder`. Choose **Set or reset Superset password**, enter and confirm a password of 14–128 characters, then sign in to the Superset workspace using your email address and that password. The same button replaces a forgotten Superset password without changing your application password. The analytics session uses its own HttpOnly cookie.
 
-On first startup, Superset creates only the explicitly configured admin. Existing accounts and changed passwords are preserved on restarts. No default datasets, charts, dashboard links, or sample dashboards are created. Author your reports and publish app links through the controls above. To rotate an existing Superset password, use its account/security tools and update the backend's API credentials together.
+The existing `admin.superset` feature controls both this button's page and the backend password endpoint. Super admins can grant or narrow it through **Access controls**, including per-member restrictions on admins. Dashboard-link management is a separate permission; no new application role is required.
+
+First use creates a personal Superset account with your email as both username and email and the built-in **Alpha** role. Alpha authors can use all configured data sources and create dashboards, charts, and datasets; they can edit their own objects and cannot administer other users. Subsequent resets preserve the account ID and content ownership. Conflicting usernames/emails, disabled accounts, and accounts with a different role require a Superset administrator's attention and are never overwritten by this control. Passwords and service credentials are never returned to the browser, emailed, or included in audit records. Resets are limited to five attempts per account per five minutes.
+
+The backend uses Superset's Flask-AppBuilder user-management API (`FAB_ADD_SECURITY_API = True`) with internal service credentials. Restart Superset and run its normal `superset init` initialization when applying this configuration to an existing deployment. On first startup, initialization creates only the explicitly configured service admin using `SUPERSET_ADMIN_PASSWORD` in the private server environment; personal accounts are created on demand. Existing accounts and passwords are preserved on restarts. No default datasets, charts, dashboard links, or sample dashboards are created. Rotate the service admin password through Superset's security tools and update the backend's API credentials together; the personal password button does not reset that service account.
+
+`POST /api/superset/account/password` accepts only `{ "password": "..." }` for the authenticated admin and returns `{ "username": "admin@example.com", "loginPath": "/login/", "created": true }`. It accepts no target email, role, or user ID. The endpoint requires an active app-admin session and `admin.superset`; dashboard viewers and admins with only Dashboard links access cannot use it.
 
 ## Access boundary
 

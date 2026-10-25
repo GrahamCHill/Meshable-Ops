@@ -11,7 +11,7 @@ export interface AiSource { number: number; pointId: string; documentId: string;
 export interface AiAnswer { answer: string; sources: AiSource[]; model?: string; grounded: boolean }
 export interface AiEndpointCheckInput { source: AiSettings['source']; endpoint: AiEndpointInput }
 export interface AiModels { models: { id: string; name: string }[]; message: string; truncated: boolean }
-export interface AiModelCheck { status: 'COMPATIBLE' | 'SETTING_CHANGE_REQUIRED' | 'INCOMPATIBLE'; model: string; message: string; requiredDimensions?: number; actualDimensions?: number; suggestedSendDimensions?: boolean }
+export interface AiModelCheck { status: 'COMPATIBLE' | 'SETTING_CHANGE_REQUIRED' | 'INCOMPATIBLE'; model: string; message: string; requiredDimensions?: number | null; actualDimensions?: number | null; suggestedSendDimensions?: boolean | null }
 
 export const aiApi = {
   settings: () => api.get<AiSettings>('/admin/ai').then(response => response.data),

@@ -52,7 +52,9 @@ Set **Workspace URL for notification links** in Kanban's plugin configuration, o
 
 ### Estimation preferences
 
-In **Administration → Plugins → Kanban → Configuration**, toggle **Enable story points** and **Enable T-shirt sizes** independently. T-shirt sizes are XS, S, M, L, XL and XXL. New installations default to points on and sizes off. Projects inherit these organisation defaults, or their managers can override them in the project's Kanban extension or **Configure board → Estimation**. Both systems, either system, or neither can be enabled. Hidden estimates remain stored for later use; changing the setting does not erase existing values. Project settings apply across that project's boards; private boards use organisation defaults.
+Open **Administration → Plugins → Kanban boards → Settings** to toggle **Enable story points** and **Enable T-shirt sizes** independently. Settings open within the administration portal. T-shirt sizes are XS, S, M, L, XL and XXL. New installations default to points on and sizes off. Projects inherit these organisation defaults. Administrators can select a project under **Project estimates** on the same settings page to override them. Estimation configuration is available only in Administration, with no project overview panel or board-configuration tab. The API requires an administrator with `admin.plugins` permission, project access, and the plugin's table permissions. Project managers and team leads cannot change estimation configuration through direct API calls. Members can still assign ticket estimates when the administrator enables that estimate type.
+
+Both systems, either system, or neither can be enabled. Hidden estimates remain stored for later use; changing the setting does not erase existing values. Project settings apply across that project's boards; private boards use organisation defaults.
 
 ## Sprint planning
 
@@ -85,7 +87,7 @@ Gallery artwork remains visible in Administration → Plugins. Workspace banners
 | `POST /api/plugins/kanban/boards/{id}/sprints/{sprintId}/complete` | `{revision, destinationSprintId?}`; atomic completion/carry-over, null destination means backlog |
 | `GET /api/projects/{id}/work-summary` | Authorized stage/assignee/epic/tag aggregates |
 | `GET/POST /api/plugins/kanban/boards/{id}/cards/{cardId}/comments` | Comments/replies; POST accepts `text`, optional legacy `mentionIds` and `parentId` |
-| `GET/PUT /api/plugins/kanban/projects/{projectId}/estimation` | Effective preferences and revision-checked project override (`inherit`, `storyPoints`, `tshirtSizes`, `revision`) |
+| `GET/PUT /api/plugins/kanban/projects/{projectId}/estimation` | Admin settings only: effective preferences and revision-checked project override (`inherit`, `storyPoints`, `tshirtSizes`, `revision`); requires `admin.plugins`, project access and table permissions |
 
 Columns add `enter`/`leave` objects (`mode`, `userIds`); content adds `epics` and `workflow` (`enabled`, `transitions`, `positions`). Cards add `tags`, `epicId`, `type`, `priority`, `parentId`, `tshirtSize` and `links` (`targetId`, `type`). Sprints add `status` (`PLANNED`, `ACTIVE`, `COMPLETED`) and `goal`. Comment mention tokens use `@[Display name](user:UUID)`; the UI presents readable names. Comments add nullable `parentId`; project estimate overrides use `plugin_kanban_estimation`. Defaults preserve existing JSON. No business data is seeded. Search indexing includes tags and epic text when enabled; existing boards adopt that text on their next save.
 

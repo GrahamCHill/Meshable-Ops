@@ -1,6 +1,7 @@
 """Structured invoice PDFs. All text is escaped; no external assets or caller HTML."""
 from decimal import Decimal
 from html import escape
+from urllib.parse import urlsplit
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -32,10 +33,15 @@ class BillingPdf(BaseModel):
     tax: str = Field(max_length=40)
     total: str = Field(max_length=40)
     paymentInstructions: str = Field(default="", max_length=6000)
+    paymentUrl: str = Field(default="", max_length=2000)
     lines: list[BillingLine] = Field(min_length=1, max_length=500)
 
     @model_validator(mode="after")
     def numeric(self):
+        if self.paymentUrl:
+            url = urlsplit(self.paymentUrl)
+            if url.scheme != "https" or not url.hostname or url.username or url.password:
+                raise ValueError("Use an HTTPS payment link without credentials")
         values = [self.net, self.tax, self.total, self.taxPercent]
         values += [v for row in self.lines for v in [row.quantity, row.unit, row.net, row.tax, row.total]]
         if any(not Decimal(v).is_finite() for v in values):
@@ -48,6 +54,8 @@ def billing_html(value):
     e = escape
     title = {"INVOICE": "Invoice", "QUOTE": "Quote", "PROVISIONAL": "Provisional statement — not payable"}[pdf.kind]
     payment = f'<h2>Payment details</h2><p class="address">{e(pdf.paymentInstructions)}</p>' if pdf.paymentInstructions and pdf.kind == "INVOICE" else ""
+    if pdf.paymentUrl and pdf.kind == "INVOICE":
+        payment += f'<p><a href="{e(pdf.paymentUrl, quote=True)}">Open payment page</a></p>'
     rows = "".join(f"<tr><td>{e(row.description)}</td><td>{e(row.quantity)}</td><td>{e(row.unit)}</td><td>{e(row.net)}</td><td>{e(row.tax)}</td><td>{e(row.total)}</td></tr>" for row in pdf.lines)
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><style>
     @page {{size:A4;margin:18mm 14mm;@bottom-right {{content:counter(page) ' / ' counter(pages);font-size:8pt}}}}

@@ -1,6 +1,18 @@
 import os
 from urllib.parse import quote_plus
 from flask_caching.backends.rediscache import RedisCache
+from superset.security import SupersetSecurityManager
+
+
+class WorkspaceSecurityManager(SupersetSecurityManager):
+    # Superset 4 otherwise includes FAB security API permissions in Alpha/Gamma.
+    # Keep user/role/permission administration exclusive to Superset Admins.
+    ADMIN_ONLY_VIEW_MENUS = set(SupersetSecurityManager.ADMIN_ONLY_VIEW_MENUS) | {
+        "User", "Role", "Permission", "ViewMenu", "PermissionViewMenu",
+    }
+
+
+CUSTOM_SECURITY_MANAGER = WorkspaceSecurityManager
 
 # ─── Core ─────────────────────────────────────────────────────────────────────
 SECRET_KEY = os.environ["SUPERSET_SECRET_KEY"]
@@ -111,6 +123,10 @@ GUEST_ROLE_NAME = "EmbeddedGuest"
 SESSION_COOKIE_NAME = "superset_session"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
+
+# Backend-only personal authoring account provisioning through FAB's guarded API.
+# Superset's Admin role controls these endpoints; personal authors use Alpha.
+FAB_ADD_SECURITY_API = True
 
 
 def configure_workspace(app):

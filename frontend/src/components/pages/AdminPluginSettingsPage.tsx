@@ -7,6 +7,7 @@ import {PluginConfigurationForm} from '../admin/plugins/PluginConfigurationForm'
 import {PluginSetting} from '../admin/plugins/PluginSetting'
 import {MessagingMembers} from '../admin/plugins/MessagingMembers'
 import {PluginSharedSettingsPanel} from '../admin/plugins/PluginSharedSettingsPanel'
+import {KanbanEstimationSettings} from '../admin/plugins/KanbanEstimationSettings'
 
 export default function AdminPluginSettingsPage() {
   const {pluginId,sectionId,settingsId}=useParams(),[params,setParams]=useSearchParams()
@@ -25,6 +26,7 @@ export default function AdminPluginSettingsPage() {
     {members&&<nav className="workspace-tabs" aria-label={`${plugin.manifest.name} settings`}><button aria-current={tab==='settings'?'page':undefined} onClick={()=>setParams({})}>Settings</button><button aria-current={tab==='members'?'page':undefined} onClick={()=>setParams({tab:'members'})}>People & chats</button></nav>}
     {tab==='members'?<MessagingMembers key={pluginId} pluginId={plugin.manifest.id}/>:<>
       {location.fields.length>0&&<PluginConfigurationForm key={`${pluginId}:${location.id}`} plugin={plugin} fieldKeys={location.fields} title="Options"/>}
+      {plugin.manifest.id==='kanban'&&!location.id&&<KanbanEstimationSettings/>}
       {refs.length>0&&<PluginSharedSettingsPanel key={`${pluginId}:${location.id}:shared`} pluginId={plugin.manifest.id} sectionId={location.id}/>}
       {!location.id&&!location.fields.length&&!refs.length&&<PluginSetting key={pluginId} plugin={plugin}/>}
     </>}

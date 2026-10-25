@@ -23,6 +23,10 @@ export function PluginConfigurationForm({plugin,fieldKeys,title}: {plugin: Plugi
     client.setQueryData(['plugin-configuration', id], data)
     setValues(data.values); setClearSecrets([]); setDirty(false)
     void client.invalidateQueries({queryKey:['operations','cloud']})
+    if(id==='kanban') {
+      void client.invalidateQueries({queryKey:['project-estimation']})
+      void client.invalidateQueries({queryKey:['plugin-kanban-board']})
+    }
   }})
   if (!fields.length) return null
   if (configuration.isLoading) return <p role="status">Loading configuration…</p>

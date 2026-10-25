@@ -60,6 +60,7 @@ export function AiModelPicker({ kind, source, value, configured, readOnly, onCha
   const hasChoices = choices.length > 0 && !readOnly
   const custom = manual || (!!model && !choices.some(choice => choice.id === model))
   const title = provider === 'AZURE_OPENAI' ? 'Model or deployment name' : 'Model name'
+  const suggestedSendDimensions = check?.suggestedSendDimensions
   const modelInput = (inputId: string) => <input id={inputId} maxLength={200} readOnly={readOnly} value={model} onChange={event => onChange({ model: event.target.value })} autoComplete="off" />
   return <div className="form-field full-width">
     <label htmlFor={`${id}-model`}>{title}</label>
@@ -87,7 +88,7 @@ export function AiModelPicker({ kind, source, value, configured, readOnly, onCha
     {checking && <p role="status" className="field-help">{kind === 'embeddings' ? 'Checking whether this model returns 1,536 dimensions…' : 'Checking whether this model can answer a chat request…'}</p>}
     {check && <div role="status" className={`feedback ${check.status === 'COMPATIBLE' ? 'success' : 'warning'}`}>
       <p>{check.message}</p>
-      {check.status === 'SETTING_CHANGE_REQUIRED' && typeof check.suggestedSendDimensions === 'boolean' && !readOnly && <Button type="button" variant="secondary" onClick={() => onChange({ sendDimensions: check.suggestedSendDimensions })}>Apply suggested dimensions setting</Button>}
+      {check.status === 'SETTING_CHANGE_REQUIRED' && typeof suggestedSendDimensions === 'boolean' && !readOnly && <Button type="button" variant="secondary" onClick={() => onChange({ sendDimensions: suggestedSendDimensions })}>Apply suggested dimensions setting</Button>}
     </div>}
     {checkError && <p role="status" className="feedback warning">Compatibility could not be verified. {checkError}</p>}
   </div>

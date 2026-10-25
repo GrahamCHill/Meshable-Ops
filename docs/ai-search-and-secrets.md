@@ -2,12 +2,12 @@
 
 ## Start with search only
 
-Storage search defaults to enabled. The chat launcher preference is on, but the floating button is hidden while AI answers or content indexing are disabled or a chat model is absent. AI answers and content indexing default to disabled. Leave embeddings on **Internal text matcher** to search metadata with no AI credentials, model download, or ML container. Add/share storage folders and reindex them; the database starts empty, so add your own folders and original documents.
+Storage search and the chat launcher default to enabled. The floating assistant is available to members with search access; it offers search and setup guidance while AI answers or content indexing are disabled or a chat model is absent. AI answers and content indexing default to disabled. Leave embeddings on **Internal text matcher** to search metadata with no AI credentials, model download, or ML container. Add/share storage folders and reindex them; the database starts empty, so add your own folders and original documents.
 
 1. For local Compose, run `python deploy/github/setup-instance.py --local --admin-email owner@example.com`. For production, use the [deployment guide](deployment.md). Blank environment examples contain no working credentials.
 2. Configure a persistent wrapping key before saving credentials or running the MinIO/Azurite development profiles. Generate it once with `openssl rand -base64 32`, set `APP_SECRETS_ENCRYPTION_KEY`, and keep a separate secure copy. Development storage seeds also save keys and need this value even when AI is off.
 3. Rebuild/start the stack, configure accessible folders, and run **Reindex now** under **Administration > Storage connections > Search index**.
-4. Use the ordinary search field in **Storage**. Once AI answers and content indexing are configured, the bottom-right **Ask your documents** button opens chat. **Administration > AI & search** independently controls search, launcher visibility, AI answers, and content indexing.
+4. Use the ordinary search field in **Storage** or open the bottom-right **Workspace assistant**. The assistant supports search immediately and switches to **Ask AI** once AI answers, content indexing, and a chat model are configured. **App Intelligence** independently controls search, launcher visibility, AI answers, and content indexing.
 
 On Windows PowerShell without OpenSSL, generate a new wrapping-key value with:
 

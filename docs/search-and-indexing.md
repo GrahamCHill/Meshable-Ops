@@ -9,9 +9,9 @@
 | Control | Default | Effect |
 | --- | --- | --- |
 | Enable similarity search in Storage | On | Shows storage search fields; off hides them and rejects search/chat requests with HTTP 403 |
-| Show bottom-right AI chat launcher | On | Allows the floating chat button when search, AI, content indexing, and a chat model are configured |
-| Enable AI answers | Off | Shows optional AI controls and allows answer generation; off hides the chat launcher while ordinary storage search remains available |
-| Index document content | Off | Enables bounded extraction/chunks; off excludes stored chunks immediately and hides the chat launcher, retaining metadata search |
+| Show bottom-right AI chat launcher | On | Shows the floating assistant when search is enabled and the member has search access; it offers search and setup guidance until AI answers are ready |
+| Enable AI answers | Off | Shows optional AI controls and allows answer generation; off leaves ordinary search available in Storage and the assistant |
+| Index document content | Off | Enables bounded extraction/chunks; off excludes stored chunks and AI answers immediately, retaining metadata search in Storage and the assistant |
 
 These are application-wide settings. `ADMIN` can change them; environment values are read-only until **Admin settings** is selected. UI controls refresh status about every 30 seconds; saving in the current browser updates them immediately. Backend checks always use current settings. The dedicated `/search` route remains available only when search is enabled.
 

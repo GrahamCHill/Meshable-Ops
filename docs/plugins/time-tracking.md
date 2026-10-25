@@ -15,7 +15,7 @@ Every member with project and Timesheets access can see aggregate project hours,
 1. Record completed manual work, stop a running timer, allocate an ActivityWatch event, or import TimeCamp data.
 2. Review the draft and submit it.
 3. A project leader/assigned Business Manager approves or rejects it. Members cannot approve their own work; administrators can.
-4. Approval snapshots the effective developer billing role, hourly rate and currency for the work's start date. Only approved, billable entries can become invoice lines.
+4. Approval snapshots the enabled project member rate (or default billing role), hourly rate and currency. An enabled rate is required for billable approvals when Billing items & rates is enabled. Only approved, billable entries can become invoice lines.
 5. Invoice generation reserves entries. Reserved work cannot be edited, rejected or removed behind an invoice.
 
 At most one internal timer runs per member. Entries must be completed intervals of at most 24 hours. Stop timers before that limit; longer spans must be recorded as separate completed intervals. Submitted, approved, imported and invoiced entries cannot be silently overwritten. Reconciliation resets an unbilled imported entry to draft and clears approval/rate snapshots: administrators reconcile TimeCamp; members can reconcile their own allocated ActivityWatch entries. Internal draft edits remain owner-controlled.
@@ -30,4 +30,4 @@ Administrators store an encrypted API token, select the provider timezone, and e
 
 Configure an optional daily time/timezone in plugin settings. It is **off by default**. Each daily run revisits the previous seven complete provider-local days to find newly recorded work. Use the manual date-range import for older corrections (up to 31 days per request). The provider token determines the remote records it can read; use a dedicated least-privilege account. [TimeCamp API](https://developer.timecamp.com/) · [ActivityWatch exports](https://docs.activitywatch.net/en/latest/api/rest.html#export-and-import).
 
-Developer billing roles such as Senior developer / Junior developer are pricing assignments in `billing-items`; they do not grant application or project permissions. Configure effective dates and the desired ISO currency. Rates are not automatically converted. Existing approvals retain their original snapshot; reject/reapprove unbilled work when intentionally applying a corrected rate.
+Developer billing roles such as Senior developer / Junior developer are pricing assignments in `billing-items`; they do not grant application or project permissions. Configure the going hourly rate, enabled switch and desired ISO currency; project-specific member rates are assigned in the project Billing tab. Rates are not automatically converted. Existing approvals retain their original snapshot; reject/reapprove unbilled work when intentionally applying a corrected rate.

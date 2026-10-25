@@ -67,4 +67,4 @@ Each outgoing subject includes an unguessable document correlation reference. A 
 
 No inbox access, real mail sends or cloud billing queries occur merely by saving configuration or enabling the page. Only explicit sends, polls/refreshes or separately enabled schedules contact those services.
 
-Legacy catalog and rate JSON remains readable; retired recurrence and date fields are ignored. Existing approved work and saved invoice snapshots remain unchanged. Legacy multiple rate/assignment rows resolve to the most recently saved enabled row; disable superseded rows in the rates screen. Enabled linked items retain calendar-month charge keys and no automatic proration; use manual lines for ad hoc one-off charges.
+Enabled linked items use calendar-month charge keys and no automatic proration; use manual lines for ad hoc one-off charges.

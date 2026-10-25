@@ -107,8 +107,8 @@ class BillingService(private val store:OperationsStore,private val access:Operat
     @Transactional fun state(email:String,id:UUID,input:BillingState):BillingDocumentView {
         val row=get(email,id);val (actor,_)=profiles.authorize(email,row.projectId!!,true);val d=store.decode(row,BillingSnapshot::class.java)
         if(input.action=="SIGN_OFF") {
-            if(d.status !in setOf("DRAFT","ISSUED")||d.signedOffBy!=null)throw ConflictException("Only a draft document can be signed off")
-            return view(store.save("billing",row.ownerId,row.projectId,"DOCUMENT",d.copy(status="ISSUED",signedOffBy=actor.id,signedOffAt=Instant.now()),row.id,input.revision))
+            if(d.status !in setOf("DRAFT","ISSUED","DELIVERY_UNCERTAIN")||d.signedOffBy!=null)throw ConflictException("Only a draft document can be signed off")
+            return view(store.save("billing",row.ownerId,row.projectId,"DOCUMENT",d.copy(status=if(d.status=="DRAFT")"ISSUED" else d.status,signedOffBy=actor.id,signedOffAt=Instant.now()),row.id,input.revision))
         }
         val status=when(input.action){"MARK_PAID"->{if(d.kind!=BillingKind.INVOICE||d.status !in setOf("SENT","ISSUED","DELIVERY_UNCERTAIN"))throw ConflictException("Only an issued invoice can be marked paid");"PAID"}
             "VOID"->{if(d.status in setOf("SENDING","PAID","VOID"))throw ConflictException("This document cannot be voided");"VOID"}

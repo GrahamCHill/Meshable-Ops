@@ -343,7 +343,7 @@ Restore the matching `APP_SECRETS_ENCRYPTION_KEY`; do not generate a replacement
 
 ### Search button is absent or AI answers are unavailable
 
-Check **Administration > AI & search** and the selected configuration source. The floating chat button requires search, launcher visibility, AI answers, content indexing, and a configured chat model. Ordinary Storage search remains available with AI off; switching search off hides its fields. Answers need accessible indexed excerpts. Status reports configuration, not live provider health; use the saved-connection tests. External embeddings must return 1536 dimensions. Basic local matching needs neither an API key nor the ML container; failed extraction keeps metadata search. MongoDB records are intentionally not included.
+Check **App Intelligence** and the selected configuration source. The floating assistant requires search, launcher visibility, and permission to use search. It opens with search and setup guidance while AI answers, content indexing, or the chat model are not configured. Ordinary Storage search remains available with AI off; switching search off hides its fields and the launcher. Answers need accessible indexed excerpts. Status reports configuration, not live provider health; use the saved-connection tests. External embeddings must return 1536 dimensions. Basic local matching needs neither an API key nor the ML container; failed extraction keeps metadata search. MongoDB records are intentionally not included.
 
 ### Indexing job does not run at the expected time
 

@@ -22,13 +22,14 @@ export function SearchPanel({ compact = false, onNavigate }: { compact?: boolean
   const ask = () => { if (query.trim()) { search.reset(); answer.mutate(query.trim()) } }
   const settingsLink = admin && <Link to="/admin/ai" onClick={onNavigate}>Search and AI settings</Link>
 
-  if (!status.data?.searchEnabled || (compact && !askEnabled)) return null
+  if (!status.data?.searchEnabled) return null
   return <div className="page-stack">
     {!compact && <div className="page-heading"><div><h1>Search workspace</h1><p>Find accessible folders, documents, and records from plugins enabled for search.</p></div>{settingsLink}</div>}
-    <form className="page-stack" onSubmit={event => { event.preventDefault(); if (compact) ask(); else runSearch() }}>
-      <label htmlFor={compact ? 'assistant-query' : 'storage-search-query'}>{compact ? 'Ask about your documents' : 'Search your workspace'}</label>
+    {compact && !askEnabled && <p role="status" className="field-help">{!status.data.enabled ? 'AI answers are not configured or enabled. You can still search your workspace below.' : 'Document content indexing is off. You can still search folders and document metadata below.'}</p>}
+    <form className="page-stack" onSubmit={event => { event.preventDefault(); if (compact && askEnabled) ask(); else runSearch() }}>
+      <label htmlFor={compact ? 'assistant-query' : 'storage-search-query'}>{compact && askEnabled ? 'Ask about your documents' : 'Search your workspace'}</label>
       <input id={compact ? 'assistant-query' : 'storage-search-query'} placeholder={askEnabled ? 'Which contracts renew this quarter?' : 'Search folders and documents'} maxLength={4000} value={query} onChange={event => setQuery(event.target.value)} />
-      <div className="inline-actions"><Button type="submit" disabled={!query.trim() || busy}>{compact ? 'Ask AI' : 'Search documents'}</Button>{!compact && askEnabled && <Button type="button" variant="secondary" disabled={!query.trim() || busy} onClick={ask}>Ask AI</Button>}{!compact && <><label htmlFor="search-limit">Results</label><select id="search-limit" value={limit} onChange={event => setLimit(Number(event.target.value))} style={{ width: 72 }}>{[5, 10, 20, 50].map(value => <option key={value} value={value}>{value}</option>)}</select></>}</div>
+      <div className="inline-actions"><Button type="submit" disabled={!query.trim() || busy}>{compact && askEnabled ? 'Ask AI' : 'Search documents'}</Button>{!compact && askEnabled && <Button type="button" variant="secondary" disabled={!query.trim() || busy} onClick={ask}>Ask AI</Button>}{!compact && <><label htmlFor="search-limit">Results</label><select id="search-limit" value={limit} onChange={event => setLimit(Number(event.target.value))} style={{ width: 72 }}>{[5, 10, 20, 50].map(value => <option key={value} value={value}>{value}</option>)}</select></>}</div>
     </form>
     {busy && <p role="status"><Spinner /> {answer.isPending ? 'Finding excerpts and preparing an answer…' : 'Searching…'}</p>}
     {(search.isError || answer.isError) && <p role="alert" className="feedback error">{getErrorMessage(search.error ?? answer.error)}</p>}
