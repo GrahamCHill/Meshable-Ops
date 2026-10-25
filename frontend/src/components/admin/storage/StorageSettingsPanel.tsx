@@ -6,7 +6,7 @@ import { useStorageSettings, type StorageSettingsTab } from './useStorageSetting
 export function StorageSettingsPanel({ tab }: { tab: StorageSettingsTab }) {
   const state = useStorageSettings()
   const { form, error, setError, notice, setNotice, settings, restore, check, save, dirty, busy, validate } = state
-  if (tab === 'shared') return null
+  if (tab === 'shared' || tab === 'cleanup') return null
   if (settings.isLoading) return <Card><Spinner /> Loading settings…</Card>
   if (settings.isError) return <Card><div role="alert" className="feedback error">Unable to load storage settings.</div><Button variant="secondary" onClick={() => settings.refetch()}>Try again</Button></Card>
   return (<form className="page-stack" onSubmit={event => { event.preventDefault(); if (validate()) save.mutate(form) }}>

@@ -36,7 +36,7 @@ class WorkflowEmailTest {
     private val row=WorkflowRun(ownerId=actor.id,workflowId=definition.id,graphJson=mapper.writeValueAsString(graph),currentNodeId="email")
     private val runner=WorkflowRunService(definitions,rows,guard,access,documents,runtime,WorkflowValidation(),mapper,mock(RateLimits::class.java),mock(com.starter.plugins.workflows.WorkflowNotificationHooks::class.java))
     private val claims=WorkflowEmailClaims(rows,guard,runtime,mock(com.starter.plugins.workflows.WorkflowNotificationHooks::class.java))
-    private val service=WorkflowEmailService(claims,runner,guard,GeneratedDocumentDelivery(access,PdfService(),policy,notifications,mock(RateLimits::class.java)),notifications,policy)
+    private val service=WorkflowEmailService(claims,runner,guard,GeneratedDocumentDelivery(access,PdfService(),policy,notifications,mock(RateLimits::class.java),GeneratedPdfContent(mock(com.starter.rendering.WeasyRendererClient::class.java),mapper,PdfService())),notifications,policy)
     private val password="Example-secret-for-test-123"
     private var attachments=emptyList<EmailAttachment>()
     private var message: SendEmailRequest?=null

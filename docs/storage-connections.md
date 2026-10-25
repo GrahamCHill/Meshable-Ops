@@ -96,6 +96,67 @@ saving to check read access against the draft bucket/container and prefix. This 
 not save settings, create a container, or upload objects; write permissions must be granted
 separately for uploads. Automatic vector recalculation is configured on the **Search index** tab.
 
+## Generated PDF storage and cleanup
+
+**Administration > Storage connections > PDF cleanup** also controls where newly generated
+document, billing, and project report PDFs are stored. The default **Automatic** destination prefers
+the default S3/Azure Blob/GCS container. If no default container is configured, it uses the first
+enabled named connection by nickname; otherwise it keeps the PDF in PostgreSQL. You can explicitly
+select a named connection, the default container, Google Drive, OneDrive, SharePoint, or the database.
+An unsuccessful external upload falls back to database bytes and records a status on this screen.
+Changing the destination applies to new PDFs. Existing database PDFs remain readable without
+external storage, and existing external PDFs retain their saved location. Credentials are encrypted;
+credential rotation for the same service is picked up without repointing old PDFs to a different bucket.
+
+External PDFs use UUID filenames in a dedicated `__generated_pdfs__/` folder beneath the selected
+container prefix or Drive root. The app does not register these exports as searchable storage
+documents. Reserved paths are excluded from keyword search, vector search, metadata embeddings,
+content extraction, queued indexing, ordinary storage browsing, and folder ZIP downloads, including
+when a parent folder is shared. Use the document/report's authorized preview, download, or email action.
+These exclusions apply to this application; a Drive provider can still index PDFs in its own service.
+Google describes this native indexing in its [upload documentation](https://developers.google.com/workspace/drive/api/guides/manage-uploads).
+
+Drive destinations are explicit choices because existing browsing-only credentials may lack write
+permission. Configure their plugin connection first. Google needs a refresh token authorized to create,
+read, and delete app files in the chosen folder, such as `drive.file` for an app-accessible folder.
+Microsoft app credentials need appropriate write permission to the configured drive, such as
+`Files.ReadWrite.All` or `Sites.ReadWrite.All`; see [Graph upload permissions](https://learn.microsoft.com/en-us/graph/api/driveitem-put-content).
+The app creates the export subfolder, does not create sharing grants, uses resumable Google uploads,
+and reads Microsoft download redirects without forwarding the bearer token to the content host.
+
+In **Administration > Storage connections > PDF cleanup**, administrators can keep automatic cleanup
+set to **Never** (the default), or run it **Every day** or **Every week**. Set how many days to keep
+generated PDFs (1–3650; initially 30). Saving an enabled schedule sets its first run one day or one
+week later. The server checks once a minute, persists the next run across restarts, and runs overdue
+cleanup after startup. Failed scheduled runs roll back and retry after five minutes.
+
+The screen previews eligible export counts and PDF content size. **Clear expired PDFs** runs the
+saved retention rule immediately after confirmation, even when automatic cleanup is set to Never.
+Save or discard draft settings first. Settings changes and cleanup runs are audited.
+
+- Expired **project report exports** are removed from report history. Their projects, tickets, and
+  other source records remain. Generate a fresh report from the project when needed; it reflects
+  current data rather than preserving the removed export's historical snapshot.
+- **Template documents generated with cleanup support** retain their document IDs, metadata,
+  template snapshots, and resolved field values. Only their cached PDF bytes are cleared. Opening,
+  downloading, or emailing them rebuilds the PDF from those saved inputs without caching it again.
+  Existing ownership, workflow access, download, watermark, and password rules continue to apply.
+- Uploaded files, Markdown/documentation sources, templates, billing PDFs, and older documents
+  without explicit rebuildable provenance are excluded. Their filenames or file extensions never
+  determine cleanup eligibility. Only tracked generated exports are deleted from external storage.
+
+Cloud deletion is recorded in the same database transaction as cleanup, then processed by a separate
+background worker. Failed cloud deletions retain their exact locator and retry after five minutes.
+The settings screen displays how many cloud deletions are still waiting or retrying.
+Failed uploads/source saves are tracked too; unreferenced objects are queued after 24 hours, even
+when scheduled retention is Never. Billing exports with a live source record remain protected.
+Microsoft cleanup uses permanent deletion for tracked generated files rather than filling the recycle
+bin; see [Graph permanent deletion](https://learn.microsoft.com/en-us/graph/api/driveitem-permanentdelete).
+
+The displayed size measures cleared PDF content. PostgreSQL maintenance reclaims deleted/updated
+database space for reuse. Object versioning, provider retention policies, and provider billing delays
+can affect when external storage usage falls; cleanup does not override provider retention policies.
+
 ## What server identity means
 
 **Server identity** uses the cloud identity or credentials available to the backend process

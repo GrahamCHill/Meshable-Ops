@@ -28,7 +28,7 @@ function toForm(settings: AdminSettings): SettingsForm {
   }
 }
 
-export type StorageSettingsTab = 'shared' | 'connection' | 'vectors'
+export type StorageSettingsTab = 'shared' | 'connection' | 'vectors' | 'cleanup'
 export type StorageSettingsState = ReturnType<typeof useStorageSettings>
 
 export function useStorageSettings() {

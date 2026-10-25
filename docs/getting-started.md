@@ -24,9 +24,39 @@ Or use Azure Blob-compatible Azurite:
 docker compose -f docker-compose.yml -f docker-compose.dev.azurite.yml up --build -d --remove-orphans
 ```
 
-Use one development override at a time. Both configure a local storage connection, not sample business records. Persisted connection settings win unless `APP_SEED_STORAGE_FORCE=true` is intentionally set for that startup. The local bucket/container name is `starter-dev`; override `MINIO_BUCKET` or `AZURITE_CONTAINER` if needed.
+Use one storage override at a time. Both configure a local storage connection, not sample business records. Persisted connection settings win unless `APP_SEED_STORAGE_FORCE=true` is intentionally set for that startup. The local bucket/container name is `starter-dev`; override `MINIO_BUCKET` or `AZURITE_CONTAINER` if needed.
 
 Open [localhost:3000](http://localhost:3000) and sign in with the admin email/password you chose. No default user, demo folder, or dashboard is inserted. Create users and shared dashboards from Administration.
+
+## Frontend live reload
+
+With the private `.env` created, run this instead of the normal startup command:
+
+```bash
+python scripts/docker-dev.py
+```
+
+The helper builds and starts the stack in the background, layering `docker-compose.local.yml` over the base and MinIO files. Use `python scripts/docker-dev.py --storage azurite` for Azurite, or `py -3` in place of `python` on Windows. The script works from any directory when invoked by its path.
+
+The workspace stays at [localhost:3000](http://localhost:3000). Vite serves the mounted `frontend/` source and sends hot updates through nginx's WebSocket proxy. API, Superset, and authorization routes still use the shared nginx configuration. Container dependencies use a separate anonymous `/app/node_modules` volume so host dependencies are not used. The script renews that volume on startup; rerun it after changing `package.json` or `package-lock.json` to rebuild dependencies, or after changing backend code. Saving frontend source, styles, or public assets needs no rebuild.
+
+Polling is enabled to detect edits from Windows/Docker Desktop. Set `CHOKIDAR_USEPOLLING=false` in `.env` and rerun the script if native file events work on your machine and you want to reduce polling. No host Node.js/npm installation is needed.
+
+```bash
+python scripts/docker-dev.py logs
+python scripts/docker-dev.py ps
+python scripts/docker-dev.py down
+```
+
+Add `--storage azurite` consistently when using that emulator. `down` preserves named data volumes; Ctrl+C while following logs only exits the log viewer.
+
+The MinIO startup command without the helper is:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local.yml up --build -d --renew-anon-volumes
+```
+
+To return to the compiled frontend, stop the live-reload stack with the helper's `down` command, then use the normal startup command from [First startup](#first-startup). Both modes use the same Compose project and named data volumes.
 
 ## Local storage services
 

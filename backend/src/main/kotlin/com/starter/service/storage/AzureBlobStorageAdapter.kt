@@ -20,7 +20,7 @@ private data class AzureBlobConfig(
     val rootPrefix: String,
 )
 
-internal class AzureBlobStorageAdapter(settings: AppSettings, viewPrefix: String) : ObjectStorageAdapter {
+internal class AzureBlobStorageAdapter(settings: AppSettings, viewPrefix: String, private val boundedTransfers: Boolean = false) : ObjectStorageAdapter {
     override val provider = "AZURE_BLOB"
     private val config = AzureBlobConfig(
         container = settings.storageBucket ?: throw BadRequestException("Azure Blob container is not configured"),
@@ -115,8 +115,12 @@ internal class AzureBlobStorageAdapter(settings: AppSettings, viewPrefix: String
         )
     }
 
+    override fun delete(rootPrefix: String, relativePath: String) { container().getBlobClient(rootPrefix + relativePath).deleteIfExists() }
+
     private fun container(createIfMissing: Boolean = false): BlobContainerClient {
         val builder = BlobServiceClientBuilder().endpoint(config.endpoint)
+        if (boundedTransfers) builder.retryOptions(com.azure.storage.common.policy.RequestRetryOptions(
+            com.azure.storage.common.policy.RetryPolicyType.FIXED, 2, 10, 1000L, 1000L, null))
         if (config.accountName != null && config.accountKey != null) {
             builder.credential(AzureNamedKeyCredential(config.accountName, config.accountKey))
         } else {

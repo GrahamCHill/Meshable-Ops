@@ -82,8 +82,8 @@ class PluginIntegrationsTest {
             } else org.mockito.Answers.RETURNS_DEFAULTS.answer(call)
         }
         val result=MicrosoftDriveService(registry,configuration,transport).files("sharepoint")
-        assertThat(calls).hasSize(2)
-        assertThat(calls[1][1] as String).contains("/items/folder1/children").doesNotContain("/me/")
+        assertThat(calls).hasSize(3)
+        assertThat(calls[2][1] as String).contains("/items/folder1/children").doesNotContain("/me/")
         assertThat(result.items.single().name).isEqualTo("Quote.pdf")
         assertThat(result.items.single().folder).isFalse()
         assertThat(result.hasMore).isTrue()

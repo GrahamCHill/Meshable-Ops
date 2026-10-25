@@ -19,7 +19,7 @@ async def payload(request, kind="template"):
     if token and not hmac.compare_digest(request.headers.get("Authorization", "").encode(), ("Bearer " + token).encode()):
         raise HTTPException(401, "Renderer authentication required")
     raw = bytearray()
-    limit = 4 * 1024 * 1024 if kind in {'report', 'cover'} else MAX_BODY
+    limit = 4 * 1024 * 1024 if kind in {'report', 'cover', 'knowledge'} else MAX_BODY
     async for chunk in request.stream():
         raw.extend(chunk)
         if len(raw) > limit:

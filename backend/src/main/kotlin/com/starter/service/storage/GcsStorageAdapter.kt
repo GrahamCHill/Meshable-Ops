@@ -83,6 +83,8 @@ internal class GcsStorageAdapter(
         return StorageObjectDownload(relativePath.substringAfterLast('/'), blob.contentType ?: MediaType.APPLICATION_OCTET_STREAM_VALUE, bytes)
     }
 
+    override fun delete(rootPrefix: String, relativePath: String) { storage.delete(BlobId.of(bucket, rootPrefix + relativePath)) }
+
     private fun Blob.entry(path: String, name: String) = StorageEntry(
         name = name, path = path, type = "OBJECT", size = size,
         contentType = contentType, lastModified = updateTimeOffsetDateTime?.toString(),

@@ -23,7 +23,8 @@ class GeneratedDocument(@Id val id: UUID = UUID.randomUUID(), val ownerId: UUID 
     val createdAt: Instant = Instant.now(),
     @get:JsonIgnore @Column(columnDefinition = "TEXT") val valuesJson: String = "{}",
     @get:JsonIgnore @Column(columnDefinition = "TEXT") val templateSnapshot: String = "{}",
-    @get:JsonIgnore @Column(columnDefinition = "bytea") val pdfBytes: ByteArray = byteArrayOf()) {
+    @get:JsonIgnore @Column(columnDefinition = "bytea") val pdfBytes: ByteArray = byteArrayOf(),
+    @get:JsonIgnore @Column(nullable = false) @org.hibernate.annotations.ColumnDefault("false") val pdfRegenerable: Boolean = false) {
     override fun toString() = "GeneratedDocument(id=$id)"
 }
 interface DocumentTemplateRepository : JpaRepository<DocumentTemplateRecord, UUID> {

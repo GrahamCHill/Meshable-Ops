@@ -8,6 +8,10 @@ export default defineConfig({
   server: {
     headers: crawlerHeaders,
     port: 5173,
+    watch: {
+      usePolling: process.env.CHOKIDAR_USEPOLLING === 'true',
+      interval: 300,
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8080',

@@ -1,5 +1,7 @@
 # Creating a plugin
 
+For shared Markdown documentation, linked pages, images, Mermaid and selective PDF books with administrator-assigned exporters, see [Knowledge base](knowledge-base.md).
+
 For the optional billing, cloud-cost, timekeeping and on-call suite, see [Operations plugins](operations.md). These modules demonstrate project/client contexts, source reconciliation, private imports, PDF rendering, scheduled work and authenticated webhook dispatch.
 
 For a minimal uploadable frontend + backend example, use [custom-page](../../examples/plugins/custom-page/README.md): run its `package.py`, then install the resulting ZIP. It includes a custom page, guide submenu, settings, author file, and Python route. For React plus Python/Kotlin, use the [full-stack example](../../examples/plugins/full-stack/README.md).

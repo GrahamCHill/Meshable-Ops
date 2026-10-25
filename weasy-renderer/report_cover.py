@@ -6,7 +6,7 @@ from html.parser import HTMLParser
 from urllib.parse import unquote, urlsplit
 import base64
 
-TOKENS = {"title", "organization", "project", "projectName", "period", "ticketCount", "generatedAt", "siteName", "companyName"}
+TOKENS = {"title", "organization", "project", "projectName", "period", "ticketCount", "documentCount", "generatedAt", "siteName", "companyName"}
 IMAGE_TOKEN = re.compile(r"\{\{\s*(siteLogo|clientLogo)\s*\}\}")
 TEXT_TOKEN = re.compile(r"\{\{\s*(\w+)\s*\}\}")
 CSS_URL = re.compile(r'''url\s*\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\s*\)''', re.I)

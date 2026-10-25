@@ -28,7 +28,7 @@ private data class S3StorageConfig(
     val rootPrefix: String,
 )
 
-internal class S3StorageAdapter(settings: AppSettings, viewPrefix: String) : ObjectStorageAdapter {
+internal class S3StorageAdapter(settings: AppSettings, viewPrefix: String, private val boundedTransfers: Boolean = false) : ObjectStorageAdapter {
     override val provider = "S3"
     private val config = S3StorageConfig(
         bucket = settings.storageBucket ?: throw BadRequestException("S3 bucket is not configured"),
@@ -141,6 +141,10 @@ internal class S3StorageAdapter(settings: AppSettings, viewPrefix: String) : Obj
         }
     }
 
+    override fun delete(rootPrefix: String, relativePath: String) {
+        client().use { it.deleteObject(DeleteObjectRequest.builder().bucket(config.bucket).key(rootPrefix + relativePath).build()) }
+    }
+
     private fun client(probe: Boolean = false): S3Client {
         val builder = S3Client.builder()
             .region(Region.of(config.region))
@@ -152,7 +156,7 @@ internal class S3StorageAdapter(settings: AppSettings, viewPrefix: String) : Obj
                     DefaultCredentialsProvider.create()
                 }
             )
-        if (probe) {
+        if (probe || boundedTransfers) {
             builder.httpClientBuilder(UrlConnectionHttpClient.builder().connectionTimeout(Duration.ofSeconds(5)).socketTimeout(Duration.ofSeconds(10)))
                 .overrideConfiguration { it.apiCallTimeout(Duration.ofSeconds(20)) }
         }

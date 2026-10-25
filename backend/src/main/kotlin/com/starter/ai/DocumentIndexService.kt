@@ -28,12 +28,17 @@ class DocumentIndexService(
     fun sync(item: Item, entries: List<StorageEntry>, removeMissing: Boolean = false, force: Boolean = false): Map<String, StorageDocument> {
         if (!item.accessible || item.storageConnection?.enabled == false) throw NotFoundException("Storage root not found")
         val existing = documents.findAllByItemId(item.id).associateBy { it.storagePath }
+        val ordinary = entries.filterNot { com.starter.service.storage.GeneratedPdfNamespace.excluded(item.storagePrefix, it.path) }
+        val excluded = existing.values.filter { com.starter.service.storage.GeneratedPdfNamespace.excluded(item.storagePrefix, it.storagePath) }
+        excluded.forEach { processing.cancel(it.id); vectors.deleteDocument(it.id) }
+        if (excluded.isNotEmpty()) documents.deleteAll(excluded)
+        if (com.starter.service.storage.GeneratedPdfNamespace.excluded(item.storagePrefix)) return emptyMap()
         val config = settings.current()
         val model = embeddings.fingerprint(config.embeddings)
-        val seen = entries.map { it.path }.toSet()
-        val changed = entries.any { existing[it.path]?.sourceChecksum != DocumentFingerprints.metadata(it) } ||
+        val seen = ordinary.map { it.path }.toSet()
+        val changed = ordinary.any { existing[it.path]?.sourceChecksum != DocumentFingerprints.metadata(it) } ||
             (removeMissing && existing.keys.any { it !in seen })
-        val synchronized = entries.associate { entry ->
+        val synchronized = ordinary.associate { entry ->
             val checksum = DocumentFingerprints.metadata(entry)
             var document = existing[entry.path] ?: StorageDocument(item = item, storagePath = entry.path)
             val needsIndex = force || document.sourceChecksum != checksum || document.vectorizedAt == null ||
@@ -64,7 +69,7 @@ class DocumentIndexService(
             }
             entry.path to document
         }
-        if (removeMissing) documents.deleteAll(existing.values.filter { it.storagePath !in seen })
+        if (removeMissing) documents.deleteAll(existing.values.filter { it.storagePath !in seen && it !in excluded })
         if (changed) reindexJobs.queueFileChanges()
         return synchronized
     }

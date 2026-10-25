@@ -29,11 +29,12 @@ class GeneratedDocumentServiceTest {
     private val policy = mock(DocumentAccessService::class.java)
     private val notifications = mock(NotificationService::class.java)
     private val actor = User(email = "owner@example.test")
+    private val renderer = mock(WeasyRendererClient::class.java)
     private val bytes = PDDocument().use { doc -> doc.addPage(PDPage()); ByteArrayOutputStream().use { doc.save(it); it.toByteArray() } }
     private val document = GeneratedDocument(ownerId = actor.id, name = "Quote", filename = "quote.pdf", pdfBytes = bytes)
     private var attachments = emptyList<EmailAttachment>()
     private val service = GeneratedDocumentService(mock(GeneratedDocumentRepository::class.java), mock(DocumentTemplateService::class.java), access,
-        DocumentFields(), mock(WeasyRendererClient::class.java), jacksonObjectMapper(), PdfService(), GeneratedDocumentDelivery(access,PdfService(),policy,notifications,mock(RateLimits::class.java)), mock(RateLimits::class.java))
+        DocumentFields(), renderer, jacksonObjectMapper(), PdfService(), GeneratedDocumentDelivery(access,PdfService(),policy,notifications,mock(RateLimits::class.java),GeneratedPdfContent(renderer,jacksonObjectMapper(),PdfService())), mock(RateLimits::class.java))
     @BeforeEach fun setup() {
         `when`(access.actor(actor.email)).thenReturn(actor); `when`(access.document(actor, document.id)).thenReturn(document)
         `when`(policy.current()).thenReturn(DocumentAccessPolicy())
@@ -64,5 +65,22 @@ class GeneratedDocumentServiceTest {
         `when`(policy.current()).thenReturn(DocumentAccessPolicy(), DocumentAccessPolicy(), DocumentAccessPolicy(), DocumentAccessPolicy(downloadMode = DownloadMode.WATERMARKED))
         assertThatThrownBy { service.email(actor.email, document.id, EmailDocumentRequest("reader@example.test", "Quote", "Attached", DocumentEmailProtection.PASSWORD, "Sample-PDF-password-123")) }.isInstanceOf(ForbiddenException::class.java)
         assertThat(attachments).isEmpty()
+    }
+    @Test fun `cleared PDFs remain available for preview download and email without refilling storage`() {
+        val cleared = GeneratedDocument(id = document.id, ownerId = actor.id, filename = document.filename,
+            templateSnapshot = """{"defaults":{"title":"Saved title"}}""", valuesJson = """{"name":"Saved name"}""", pdfRegenerable = true)
+        `when`(access.document(actor, document.id)).thenReturn(cleared)
+        `when`(renderer.render(jacksonObjectMapper().readTree(cleared.templateSnapshot), mapOf("name" to "Saved name"))).thenReturn(bytes)
+        assertThat(service.page(actor.email, document.id, 1)).isNotEmpty()
+        assertThat(service.download(actor.email, document.id).bytes).isEqualTo(bytes)
+        service.email(actor.email, document.id, EmailDocumentRequest("reader@example.test", "Quote", "Attached"))
+        assertThat(attachments.single().bytes).isEqualTo(bytes)
+        assertThat(cleared.pdfBytes).isEmpty()
+    }
+    @Test fun `disabled downloads block reconstruction of cleared PDFs`() {
+        `when`(access.document(actor, document.id)).thenReturn(GeneratedDocument(id = document.id, pdfRegenerable = true))
+        `when`(policy.current()).thenReturn(DocumentAccessPolicy(downloadMode = DownloadMode.DISABLED))
+        assertThatThrownBy { service.download(actor.email, document.id) }.isInstanceOf(ForbiddenException::class.java)
+        verifyNoInteractions(renderer)
     }
 }

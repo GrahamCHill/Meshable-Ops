@@ -26,10 +26,12 @@ class MicrosoftDriveService(private val registry: PluginRegistry, private val se
             ?: throw IntegrationUnavailable("Microsoft did not return an access token")
         val root = values["rootItemId"]?.let { "items/${encode(it)}" } ?: "root"
         registry.requireAvailable(id, "ADMIN")
+        val rootMetadata = http.request("GET", "https://graph.microsoft.com/v1.0/drives/${encode(values.getValue("driveId"))}/$root?\$select=name", headers=mapOf("Authorization" to "Bearer $token")).body
+        com.starter.service.storage.GeneratedPdfNamespace.requireOrdinary(rootMetadata?.path("name")?.asText())
         val page = http.request("GET", "https://graph.microsoft.com/v1.0/drives/${encode(values.getValue("driveId"))}/$root/children?\$top=100&\$select=id,name,size,folder",
             headers = mapOf("Authorization" to "Bearer $token")).body ?: throw IntegrationUnavailable("Microsoft did not return file metadata")
         if (!page.path("value").isArray) throw IntegrationUnavailable("Microsoft returned an unsupported file listing")
-        return ExternalDrivePage(page.path("value").take(100).map { ExternalDriveItem(it.path("id").asText(), it.path("name").asText(),
+        return ExternalDrivePage(page.path("value").take(100).filterNot {com.starter.service.storage.GeneratedPdfNamespace.excluded(it.path("name").asText())}.map { ExternalDriveItem(it.path("id").asText(), it.path("name").asText(),
             it.path("size").asLong(), it.path("folder").isObject) }, page.path("@odata.nextLink").isTextual && page.path("@odata.nextLink").asText().isNotBlank())
     }
     private fun encode(value: String) = URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20")

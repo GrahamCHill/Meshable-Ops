@@ -5,6 +5,17 @@ from fastapi import Request
 def register_routes(app, payload, render_payload):
     from plugins.documents.routes import router
     app.include_router(router(payload, render_payload))
+    @app.post("/plugins/knowledge/render")
+    async def knowledge(request: Request):
+        from fastapi import HTTPException
+        from plugins.knowledge.renderer import KnowledgeBook
+        value = await payload(request, "knowledge")
+        try:
+            KnowledgeBook.model_validate(value["knowledge"])
+        except ValueError:
+            raise HTTPException(400, "Invalid knowledge book") from None
+        value["operation"] = "knowledge.render"
+        return await render_payload(value)
     @app.post("/plugins/billing/render")
     async def billing(request: Request):
         from fastapi import HTTPException
@@ -34,7 +45,8 @@ def render_plugin(operation, value):
     from plugins.documents.renderer import render
     from plugins.billing.renderer import render as render_billing
     from plugins.analytics.renderer import render as render_analytics
-    handlers = {"documents.render": lambda: render(value["template"], value.get("values", {})), "billing.render": lambda: render_billing(value["billing"]), "analytics.render": lambda: render_analytics(value["analytics"])}
+    from plugins.knowledge.renderer import render as render_knowledge
+    handlers = {"documents.render": lambda: render(value["template"], value.get("values", {})), "billing.render": lambda: render_billing(value["billing"]), "analytics.render": lambda: render_analytics(value["analytics"]), "knowledge.render": lambda: render_knowledge(value["knowledge"])}
     if operation not in handlers:
         raise ValueError("Unknown plugin operation")
     return handlers[operation]()

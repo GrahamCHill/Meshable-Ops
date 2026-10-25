@@ -1,0 +1,27 @@
+# Layer over the base Compose file and either local storage override.
+services:
+  frontend:
+    build:
+      target: proxy
+    depends_on:
+      frontend-dev:
+        condition: service_started
+    volumes:
+      - ./frontend/nginx.frontend.dev.conf:/etc/nginx/snippets/frontend.conf:ro
+      - ./frontend/public/robots.txt:/usr/share/nginx/html/robots.txt:ro
+
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    init: true
+    restart: unless-stopped
+    environment:
+      CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-true}
+    volumes:
+      - ./frontend:/app
+      # Keep Linux dependencies separate from the host's node_modules.
+      - /app/node_modules
+    expose:
+      - "5173"

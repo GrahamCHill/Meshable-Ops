@@ -19,6 +19,7 @@ class KeywordSearchService(private val jdbc: JdbcTemplate, private val mapper: O
                 FROM items i LEFT JOIN storage_connections sc ON sc.id = i.storage_connection_id
                 CROSS JOIN requested_scope s
                 WHERE i.accessible = TRUE AND (sc.id IS NULL OR sc.enabled = TRUE)
+                  AND coalesce(i.storage_prefix,'') !~* '${com.starter.service.storage.GeneratedPdfNamespace.SQL_PATTERN}'
                   AND (s.folder_id IS NULL OR i.id = s.folder_id) AND s.path_prefix = ''
                 UNION ALL
                 SELECT d.id::text, jsonb_build_object('entityType', 'document', 'documentId', d.id::text, 'folderId', i.id::text,
@@ -27,6 +28,7 @@ class KeywordSearchService(private val jdbc: JdbcTemplate, private val mapper: O
                 LEFT JOIN storage_connections sc ON sc.id = i.storage_connection_id
                 CROSS JOIN requested_scope s
                 WHERE i.accessible = TRUE AND (sc.id IS NULL OR sc.enabled = TRUE)
+                  AND concat_ws('/',i.storage_prefix,d.storage_path) !~* '${com.starter.service.storage.GeneratedPdfNamespace.SQL_PATTERN}'
                   AND (s.folder_id IS NULL OR i.id = s.folder_id)
                   AND left(d.storage_path, length(s.path_prefix)) = s.path_prefix
                 UNION ALL
@@ -37,6 +39,7 @@ class KeywordSearchService(private val jdbc: JdbcTemplate, private val mapper: O
                 LEFT JOIN storage_connections sc ON sc.id = i.storage_connection_id
                 CROSS JOIN requested_scope s
                 WHERE i.accessible = TRUE AND (sc.id IS NULL OR sc.enabled = TRUE) AND ?
+                  AND concat_ws('/',i.storage_prefix,d.storage_path) !~* '${com.starter.service.storage.GeneratedPdfNamespace.SQL_PATTERN}'
                   AND (s.folder_id IS NULL OR i.id = s.folder_id)
                   AND left(d.storage_path, length(s.path_prefix)) = s.path_prefix
             ), query AS (SELECT to_tsquery('simple', ?) AS terms)

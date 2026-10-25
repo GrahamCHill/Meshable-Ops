@@ -25,7 +25,8 @@ class ProjectReportService(private val access: ProjectAccess, private val projec
     private val branding: BrandingPreferencesService, private val notifications: NotificationService, private val boards: com.starter.plugins.kanban.KanbanRepository,
     private val boardAccess: ProjectBoardAccess, private val mapper: com.fasterxml.jackson.databind.ObjectMapper,
     private val downloadPolicy: com.starter.service.DocumentAccessService, private val pdfService: com.starter.service.PdfService,
-    private val covers: ProjectReportCoverService? = null,private val aiInsights: ProjectReportAiInsights? = null) {
+    private val covers: ProjectReportCoverService? = null,private val aiInsights: ProjectReportAiInsights? = null,
+    private val storage: com.starter.service.pdfstorage.GeneratedPdfStorage? = null) {
     fun list(email: String, id: UUID): List<ProjectReportView> { val actor = access.actor(email); access.require(id, actor); return reports.findTop100ByProjectIdOrderByCreatedAtDesc(id).filter { allowedBoards(actor, it.boardIdsJson) }.map { ProjectReportView(it.id, it.projectId, it.kind, it.fromDate, it.toDate, it.createdAt) } }
     fun generate(email: String, id: UUID, request: ProjectReportInput, deliveryKey: String? = null): ProjectReportView {
         val actor = access.actor(email); val project = access.require(id, actor, request.sendEmail)
@@ -64,7 +65,9 @@ class ProjectReportService(private val access: ProjectAccess, private val projec
             cover?.assets.orEmpty(),cover?.siteName ?: branding.current().applicationName,cover?.companyName.orEmpty(),cover?.siteLogo.orEmpty(),
             ProjectSprintMonitor.summarize(cards,LocalDate.now(java.time.ZoneOffset.UTC)),project.name,cover?.clientLogo.orEmpty(),aiSummary))
         access.require(id, access.actor(email), request.sendEmail)
-        val saved = reports.saveAndFlush(ProjectReportRecord(projectId = id, createdBy = actor.id, kind = request.kind, fromDate = request.from, toDate = request.to, pdf = pdf, boardIdsJson = mapper.writeValueAsString(boardIds)))
+        val reportId = UUID.randomUUID()
+        val stored = storage?.persist(reportId, com.starter.service.pdfstorage.GeneratedPdfKind.REPORT, pdf) ?: pdf
+        val saved = reports.saveAndFlush(ProjectReportRecord(id = reportId, projectId = id, createdBy = actor.id, kind = request.kind, fromDate = request.from, toDate = request.to, pdf = stored, boardIdsJson = mapper.writeValueAsString(boardIds)))
         val deliveries = recipients.associate { recipient ->
             val fresh = users.findById(recipient.id).orElseThrow { NotFoundException("Recipient unavailable") }
             if (!access.canRead(fresh, project) || !allowedBoards(fresh, saved.boardIdsJson)) throw BadRequestException("Recipient access changed before sending")
@@ -80,7 +83,8 @@ class ProjectReportService(private val access: ProjectAccess, private val projec
     fun pdf(email: String, projectId: UUID, reportId: UUID): ByteArray {
         val actor = access.actor(email); access.require(projectId, actor)
         val row = reports.findById(reportId).orElse(null)?.takeIf { it.projectId == projectId && allowedBoards(actor, it.boardIdsJson) } ?: throw NotFoundException("Report unavailable")
-        val bytes = protectedPdf(row.pdf, email)
+        val source = storage?.read(row.id, row.pdf) ?: row.pdf.takeIf { it.isNotEmpty() } ?: throw NotFoundException("Saved report PDF unavailable")
+        val bytes = protectedPdf(source, email)
         val fresh = access.actor(email); access.require(projectId, fresh)
         if (!allowedBoards(fresh, row.boardIdsJson)) throw NotFoundException("Report unavailable")
         return bytes

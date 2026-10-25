@@ -171,6 +171,10 @@ class ItemService(
         var contentCount = 0
         var failures = 0
         items.forEach { item ->
+            if (com.starter.service.storage.GeneratedPdfNamespace.excluded(item.storagePrefix)) {
+                vectorService.delete(item.id)
+                return@forEach
+            }
             try { vectorService.upsertText(
                 item.id,
                 buildVectorText(item.title, item.description, item.tags),
@@ -285,7 +289,7 @@ class ItemService(
     }
 
     private fun indexFolder(folder: Item) {
-        if (!folder.accessible || folder.storageConnection?.enabled == false) {
+        if (!folder.accessible || folder.storageConnection?.enabled == false || com.starter.service.storage.GeneratedPdfNamespace.excluded(folder.storagePrefix)) {
             vectorService.delete(folder.id)
             return
         }

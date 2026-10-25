@@ -21,10 +21,12 @@ with tempfile.TemporaryDirectory() as directory, chdir(directory):
         if override:
             command += ["-f", str(ROOT / override)]
         subprocess.run(command + ["config", "--quiet"], capture_output=True, check=True)
+        if override:
+            subprocess.run(command + ["-f", str(ROOT / "docker-compose.local.yml"), "config", "--quiet"], capture_output=True, check=True)
     assert "superset-embed-init" not in config["services"]
     missing_secret = Path(directory) / "missing-secret.env"
     source = env_file.read_text()
     missing_secret.write_text("\n".join(line for line in source.splitlines() if not line.startswith("JWT_SECRET=")))
     rejected = subprocess.run(["docker", "compose", "--env-file", str(missing_secret), "-f", str(ROOT / "docker-compose.yml"), "config", "--quiet"], capture_output=True)
     assert rejected.returncode != 0, "Compose must reject missing JWT credentials"
-    print("Production Compose settings, private ports, initialization, and literal secrets checked.")
+    print("Production/local Compose settings, private ports, initialization, and literal secrets checked.")

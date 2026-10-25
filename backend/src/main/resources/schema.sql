@@ -1,6 +1,44 @@
 -- Vector columns allow NULL while an existing index awaits dimension migration and reindexing.
 CREATE EXTENSION IF NOT EXISTS vector;
 
+-- Generated PDF locations and deletion outbox. These objects never enter storage_documents or the search index.
+CREATE TABLE IF NOT EXISTS generated_pdf_files (
+    id UUID PRIMARY KEY,
+    kind VARCHAR(16) NOT NULL CHECK (kind IN ('DOCUMENT','REPORT')),
+    provider VARCHAR(32) NOT NULL,
+    source TEXT NOT NULL,
+    location_json TEXT NOT NULL,
+    credentials_json TEXT NULL,
+    locator_json TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    checksum VARCHAR(64) NOT NULL,
+    state VARCHAR(24) NOT NULL CHECK (state IN ('UPLOADING','ACTIVE','DELETE_PENDING')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    next_delete_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_generated_pdf_deletions ON generated_pdf_files (next_delete_at) WHERE state='DELETE_PENDING';
+CREATE INDEX IF NOT EXISTS idx_generated_pdf_orphans ON generated_pdf_files (created_at) WHERE state IN ('UPLOADING','ACTIVE');
+
+-- Export retention is opt-in. Only explicit template derivatives may lose their cached PDF bytes.
+CREATE TABLE IF NOT EXISTS generated_pdf_cleanup_settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    schedule VARCHAR(16) NOT NULL DEFAULT 'NEVER' CHECK (schedule IN ('NEVER', 'DAILY', 'WEEKLY')),
+    retention_days INTEGER NOT NULL DEFAULT 30 CHECK (retention_days BETWEEN 1 AND 3650),
+    next_run_at TIMESTAMPTZ NULL,
+    last_run_at TIMESTAMPTZ NULL,
+    last_reports BIGINT NOT NULL DEFAULT 0,
+    last_documents BIGINT NOT NULL DEFAULT 0,
+    last_bytes BIGINT NOT NULL DEFAULT 0,
+    last_status TEXT NULL
+);
+INSERT INTO generated_pdf_cleanup_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+ALTER TABLE generated_pdf_cleanup_settings ADD COLUMN IF NOT EXISTS destination VARCHAR(32) NOT NULL DEFAULT 'AUTO';
+ALTER TABLE generated_pdf_cleanup_settings ADD COLUMN IF NOT EXISTS connection_id UUID NULL;
+ALTER TABLE generated_pdf_cleanup_settings ADD COLUMN IF NOT EXISTS last_storage_status TEXT NULL;
+ALTER TABLE generated_pdf_cleanup_settings ADD COLUMN IF NOT EXISTS last_storage_at TIMESTAMPTZ NULL;
+CREATE INDEX IF NOT EXISTS idx_project_reports_cleanup ON workspace_project_reports (created_at);
+CREATE INDEX IF NOT EXISTS idx_generated_documents_cleanup ON generated_documents (created_at) WHERE pdf_regenerable = TRUE;
+
 -- Section IDs remain in category, preserving existing assignments while allowing custom sections.
 ALTER TABLE IF EXISTS workspace_projects DROP CONSTRAINT IF EXISTS workspace_projects_category_check;
 
@@ -180,4 +218,18 @@ ALTER TABLE storage_connections ALTER COLUMN access_key TYPE TEXT;
 ALTER TABLE storage_connections ALTER COLUMN secret_key TYPE TEXT;
 
 -- JPA creates ai_settings before supplemental schema initialization. Secret fields are encrypted by the entity converter.
+
+-- Shared documentation. No business pages or export grants are seeded.
+CREATE TABLE IF NOT EXISTS plugin_knowledge_pages (
+    id UUID PRIMARY KEY, title VARCHAR(255) NOT NULL, parent_id UUID,
+    markdown TEXT NOT NULL, assets_json TEXT NOT NULL DEFAULT '{}',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), revision BIGINT NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_plugin_knowledge_parent ON plugin_knowledge_pages(parent_id);
+ALTER TABLE plugin_knowledge_pages DROP CONSTRAINT IF EXISTS fk_plugin_knowledge_parent;
+ALTER TABLE plugin_knowledge_pages ADD CONSTRAINT fk_plugin_knowledge_parent FOREIGN KEY (parent_id) REFERENCES plugin_knowledge_pages(id);
+CREATE TABLE IF NOT EXISTS plugin_knowledge_settings (
+    id INTEGER PRIMARY KEY, exporter_ids_json TEXT NOT NULL DEFAULT '[]',
+    cover_html TEXT NOT NULL DEFAULT '', cover_assets_json TEXT NOT NULL DEFAULT '{}', revision BIGINT NOT NULL DEFAULT 0
+);
 

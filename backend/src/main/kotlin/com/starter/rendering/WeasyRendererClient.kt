@@ -25,6 +25,7 @@ class WeasyRendererClient(@Value("\${app.documents.renderer-url:http://weasy-ren
     fun reportCover(value: Any): ByteArray = request("/reports/cover/preview",mapOf("cover" to value),ByteArray::class.java)
     fun billing(value: Any): ByteArray = request("/plugins/billing/render", mapOf("billing" to value), ByteArray::class.java)
     fun analytics(value: Any): ByteArray = request("/plugins/analytics/render", mapOf("analytics" to value), ByteArray::class.java)
+    fun knowledge(value: Any): ByteArray = request("/plugins/knowledge/render", mapOf("knowledge" to value), ByteArray::class.java)
     private fun <T> request(path: String, body: Any, type: Class<T>): T {
         try {
             val headers = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON; if (token.isNotBlank()) setBearerAuth(token) }

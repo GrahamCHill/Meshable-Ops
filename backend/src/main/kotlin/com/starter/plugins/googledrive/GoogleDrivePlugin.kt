@@ -12,7 +12,7 @@ class GoogleDrivePlugin:WorkspacePlugin {
         capabilities=mapOf("files.google-drive" to "Google Drive folder browsing"),runtimes=setOf(PluginRuntime.REACT,PluginRuntime.KOTLIN),
         settingsFields=listOf(PluginSettingField("clientId","Google OAuth client ID",required=true,maxLength=1000),
             PluginSettingField("clientSecret","Google OAuth client secret",PluginFieldType.SECRET,true,maxLength=4096),
-            PluginSettingField("refreshToken","Google refresh token",PluginFieldType.SECRET,true,"Use an offline token with drive.metadata.readonly access to the selected folder.",4096),
+            PluginSettingField("refreshToken","Google refresh token",PluginFieldType.SECRET,true,"Browsing uses drive.metadata.readonly. To store generated PDFs, use an offline token with drive.file access to the selected folder (or drive access).",4096),
             PluginSettingField("rootFolderId","Root folder ID",required=true,help="A Google folder ID, or root for the connected account's My Drive. Members can browse only this folder and its descendants.",maxLength=200)))
     override fun validateConfiguration(values:Map<String,String>) {
         values["rootFolderId"]?.let {if(!it.matches(Regex("[A-Za-z0-9_-]{1,200}")))throw BadRequestException("Use a Google Drive folder ID")}

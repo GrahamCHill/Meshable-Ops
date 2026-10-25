@@ -36,6 +36,24 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d --r
 
 Open [localhost:3000](http://localhost:3000) and sign in with the credentials you chose during setup. Business data starts empty; plugins, outbound email, and project schedules need configuration. The local profile supplies MinIO. See [development setup](docs/getting-started.md) for PowerShell/Azurite and [deployment](docs/github-deployment.md) for opt-in GitHub Actions deployment to a Linux VM over SSH.
 
+### Local development with live reload
+
+After generating `.env` as above, build and start the local stack with:
+
+```bash
+python scripts/docker-dev.py
+```
+
+Open [localhost:3000](http://localhost:3000). Changes under `frontend/` are mounted into a Vite container and update the browser automatically through hot module replacement. The nginx proxy continues to handle API and Superset routes. File polling is enabled for Docker Desktop/Windows. Node.js and npm run inside Docker.
+
+```bash
+python scripts/docker-dev.py logs   # Follow frontend logs; Ctrl+C exits logs
+python scripts/docker-dev.py ps     # Show container status
+python scripts/docker-dev.py down   # Stop the stack, keeping named data volumes
+```
+
+Use `py -3` in place of `python` with the Windows Python launcher. For Azurite, add `--storage azurite` to each command. Rerun the startup script after dependency or backend changes; ordinary frontend edits need no rebuild. See [live-reload setup](docs/getting-started.md#frontend-live-reload) for the Compose equivalent and how to return to the compiled frontend.
+
 ## Deployment options
 
 | Destination | Provisioning |

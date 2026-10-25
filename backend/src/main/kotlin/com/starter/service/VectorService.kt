@@ -106,6 +106,7 @@ class VectorService(
                         LEFT JOIN storage_connections sc ON sc.id = i.storage_connection_id
                         CROSS JOIN query_vector q CROSS JOIN active_model m CROSS JOIN requested_scope s
                         WHERE i.accessible = TRUE AND (sc.id IS NULL OR sc.enabled = TRUE)
+                          AND coalesce(i.storage_prefix,'') !~* '${com.starter.service.storage.GeneratedPdfNamespace.SQL_PATTERN}'
                           AND iv.embedding_model = m.id
                           AND (s.folder_id IS NULL OR i.id = s.folder_id) AND s.path_prefix = ''
                         UNION ALL
@@ -117,6 +118,7 @@ class VectorService(
                         LEFT JOIN storage_connections sc ON sc.id = i.storage_connection_id
                         CROSS JOIN query_vector q CROSS JOIN active_model m CROSS JOIN requested_scope s
                         WHERE i.accessible = TRUE AND (sc.id IS NULL OR sc.enabled = TRUE)
+                          AND concat_ws('/',i.storage_prefix,d.storage_path) !~* '${com.starter.service.storage.GeneratedPdfNamespace.SQL_PATTERN}'
                           AND dv.embedding_model = m.id
                           AND (s.folder_id IS NULL OR i.id = s.folder_id)
                           AND left(d.storage_path, length(s.path_prefix)) = s.path_prefix
@@ -131,6 +133,7 @@ class VectorService(
                         LEFT JOIN storage_connections sc ON sc.id = i.storage_connection_id
                         CROSS JOIN query_vector q CROSS JOIN active_model m CROSS JOIN requested_scope s
                         WHERE i.accessible = TRUE AND (sc.id IS NULL OR sc.enabled = TRUE)
+                          AND concat_ws('/',i.storage_prefix,d.storage_path) !~* '${com.starter.service.storage.GeneratedPdfNamespace.SQL_PATTERN}'
                           AND dc.embedding_model = m.id AND ?
                           AND (s.folder_id IS NULL OR i.id = s.folder_id)
                           AND left(d.storage_path, length(s.path_prefix)) = s.path_prefix
@@ -200,6 +203,7 @@ class VectorService(
             JOIN storage_documents d ON d.id = dc.document_id JOIN items i ON i.id = d.item_id
             LEFT JOIN storage_connections sc ON sc.id = i.storage_connection_id
             WHERE i.accessible = TRUE AND (sc.id IS NULL OR sc.enabled = TRUE)
+            AND concat_ws('/',i.storage_prefix,d.storage_path) !~* '${com.starter.service.storage.GeneratedPdfNamespace.SQL_PATTERN}'
             AND dc.embedding_model = ? AND dc.id IN ($placeholders)""", Long::class.java,
             embeddings.fingerprint(), *ids.map(UUID::fromString).toTypedArray()) ?: 0
         if (count != ids.distinct().size.toLong()) return false

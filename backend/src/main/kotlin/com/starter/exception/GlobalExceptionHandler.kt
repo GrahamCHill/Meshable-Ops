@@ -19,6 +19,8 @@ data class ErrorResponse(val message: String, val status: Int, val timestamp: In
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
+    @ExceptionHandler(com.starter.service.pdfstorage.GeneratedPdfStorageUnavailable::class)
+    fun generatedPdfStorageUnavailable(ex: com.starter.service.pdfstorage.GeneratedPdfStorageUnavailable) = ResponseEntity.status(503).body(ErrorResponse(ex.message ?: "PDF storage unavailable", 503))
     @ExceptionHandler(com.starter.plugins.packages.backend.PluginWorkerUnavailable::class)
     fun pluginWorkerUnavailable(ex: com.starter.plugins.packages.backend.PluginWorkerUnavailable) = ResponseEntity.status(503).body(ErrorResponse(ex.message ?: "Plugin backend unavailable", 503))
     @ExceptionHandler(com.starter.plugins.integrations.IntegrationUnavailable::class)

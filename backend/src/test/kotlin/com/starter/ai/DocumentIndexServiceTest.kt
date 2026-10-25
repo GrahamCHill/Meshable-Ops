@@ -53,6 +53,14 @@ class DocumentIndexServiceTest {
         verifyNoInteractions(processing, storage, documents)
     }
 
+    @Test fun `reserved export descendants are never included in metadata embeddings`() {
+        val folder=Item(storagePrefix="shared/")
+        assertThat(service.sync(folder,listOf(StorageEntry("report.pdf","__generated_pdfs__/report.pdf","OBJECT")),force=true)).isEmpty()
+        verify(embeddings,never()).embed(anyList(),eq(endpoint) ?: endpoint)
+        verifyNoInteractions(processing,storage)
+        verify(documents,never()).saveAndFlush(any(StorageDocument::class.java))
+    }
+
     @Test fun `long documents continue beyond the former 32 chunk cap`() {
         val chunks = documentChunks("a".repeat(100000))
         assertThat(chunks.size).isGreaterThan(32)

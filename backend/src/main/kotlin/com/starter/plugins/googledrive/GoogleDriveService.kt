@@ -24,7 +24,9 @@ class GoogleDriveService(private val plugins:PluginRegistry,private val settings
         val form=mapOf("client_id" to values.getValue("clientId"),"client_secret" to values.getValue("clientSecret"),"refresh_token" to values.getValue("refreshToken"),"grant_type" to "refresh_token").entries.joinToString("&"){"${encode(it.key)}=${encode(it.value)}"}
         val token=http.request("POST","https://oauth2.googleapis.com/token",body=form,contentType="application/x-www-form-urlencoded").body?.path("access_token")?.asText()?.takeIf {it.isNotBlank()} ?: throw IntegrationUnavailable("Google did not return an access token")
         val headers=mapOf("Authorization" to "Bearer $token")
-        fun metadata(id:String)=http.request("GET","https://www.googleapis.com/drive/v3/files/${encode(id)}?fields=id,mimeType,parents&supportsAllDrives=true",headers).body ?: throw IntegrationUnavailable("Folder metadata unavailable")
+        fun metadata(id:String)=http.request("GET","https://www.googleapis.com/drive/v3/files/${encode(id)}?fields=id,mimeType,parents,name&supportsAllDrives=true",headers).body?.also {
+            com.starter.service.storage.GeneratedPdfNamespace.requireOrdinary(it.path("name").asText())
+        } ?: throw IntegrationUnavailable("Folder metadata unavailable")
         val root=metadata(values.getValue("rootFolderId"))
         if(root.path("mimeType").asText()!=FOLDER)throw BadRequestException("The configured root must be a folder")
         val rootId=root.path("id").asText().takeIf {it.matches(Regex("[A-Za-z0-9_-]{1,200}"))} ?: throw IntegrationUnavailable("Google returned an invalid root")
@@ -42,7 +44,7 @@ class GoogleDriveService(private val plugins:PluginRegistry,private val settings
         val url="https://www.googleapis.com/drive/v3/files?q=$query&pageSize=100&fields=nextPageToken,files(id,name,mimeType,size,modifiedTime,webViewLink)&orderBy=folder,name&supportsAllDrives=true&includeItemsFromAllDrives=true"+(pageToken?.let {"&pageToken=${encode(it)}"}?:"")
         val page=http.request("GET",url,headers).body ?: throw IntegrationUnavailable("Google did not return files")
         if(!page.path("files").isArray)throw IntegrationUnavailable("Google returned an unsupported file listing")
-        val result=GoogleDriveFiles(page.path("files").take(100).map(::file),page.path("nextPageToken").asText().takeIf {it.isNotBlank()&&it.length<=4096},target,rootId)
+        val result=GoogleDriveFiles(page.path("files").take(100).filterNot {com.starter.service.storage.GeneratedPdfNamespace.excluded(it.path("name").asText())}.map(::file),page.path("nextPageToken").asText().takeIf {it.isNotBlank()&&it.length<=4096},target,rootId)
         plugins.requireAvailable(ID,role)
         if(settings.current(ID)!=values)throw ConflictException("Google Drive settings changed. Reload the folder.")
         return result

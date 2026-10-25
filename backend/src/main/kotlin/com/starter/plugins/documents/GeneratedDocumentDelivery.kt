@@ -14,19 +14,21 @@ import org.springframework.stereotype.Service
 /** Both the private library and an authorized workflow step use the same PDF and delivery policy. */
 @Service
 class GeneratedDocumentDelivery(private val access: DocumentAccess,private val pdf: PdfService,private val policy: DocumentAccessService,
-    private val notifications: NotificationService,private val rates: RateLimits) {
+    private val notifications: NotificationService,private val rates: RateLimits,private val content: GeneratedPdfContent) {
     fun page(email: String,page: Int,authorize: () -> GeneratedDocument): ByteArray {
         val actor=access.actor(email);val saved=authorize();val previous=policy.current()
         if (!previous.pdfPreviewEnabled) throw ForbiddenException("PDF viewing is disabled")
         rates.check("generated-preview",actor.id.toString(),120,300)
-        val bytes=pdf.page(saved.pdfBytes,page,previous.watermarkText.takeIf {previous.downloadMode==DownloadMode.WATERMARKED},email)
+        val bytes=pdf.page(content.bytes(saved),page,previous.watermarkText.takeIf {previous.downloadMode==DownloadMode.WATERMARKED},email)
         authorize();if (policy.current()!=previous) throw ForbiddenException("Document policy changed. Refresh the page.")
         return bytes
     }
     fun download(email: String,authorize: () -> GeneratedDocument): StorageObjectDownload {
-        access.actor(email);val saved=authorize();val previous=policy.current()
+        val actor=access.actor(email);val saved=authorize();val previous=policy.current()
         if (previous.downloadMode==DownloadMode.DISABLED) throw ForbiddenException("Downloads are disabled")
-        val bytes=if (previous.downloadMode==DownloadMode.WATERMARKED) pdf.watermark(saved.pdfBytes,previous.watermarkText,email) else saved.pdfBytes
+        rates.check("generated-download",actor.id.toString(),120,300)
+        val source=content.bytes(saved)
+        val bytes=if (previous.downloadMode==DownloadMode.WATERMARKED) pdf.watermark(source,previous.watermarkText,email) else source
         authorize();if (policy.current()!=previous) throw ForbiddenException("Document policy changed. Refresh the page.")
         return StorageObjectDownload(saved.filename,"application/pdf",bytes)
     }

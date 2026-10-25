@@ -24,13 +24,17 @@ class FolderStorageService(
         return prefix
     }
 
-    fun browse(item: Item, path: String) = scopedAdapter(item).browse(prefixFor(item), normalizeStorageFolder(path))
-    fun listDocuments(item: Item) = scopedAdapter(item).listDocuments(prefixFor(item))
+    fun browse(item: Item, path: String): StorageBrowseResult {
+        GeneratedPdfNamespace.requireOrdinary(prefixFor(item), path)
+        return scopedAdapter(item).browse(prefixFor(item), normalizeStorageFolder(path)).ordinary(prefixFor(item))
+    }
+    fun listDocuments(item: Item) = scopedAdapter(item).listDocuments(prefixFor(item)).filterNot { GeneratedPdfNamespace.excluded(prefixFor(item), it.path) }
     fun upload(item: Item, path: String, objects: List<StorageObjectUpload>) {
         val adapter = scopedAdapter(item)
         val destination = normalizeStorageFolder(path)
         // Validate the whole batch before writing its first object.
         val paths = objects.map { normalizeStorageObject(it.relativePath) }
+        paths.forEach { GeneratedPdfNamespace.requireOrdinary(prefixFor(item), destination + it) }
         objects.zip(paths).forEach { (file, objectPath) -> adapter.upload(prefixFor(item), destination + objectPath, file.contentType, file.bytes) }
     }
     fun download(item: Item, path: String, archive: Boolean): StorageObjectDownload =
@@ -41,6 +45,7 @@ class FolderStorageService(
         val acl = access?.storage()
         val adapter = scopedAdapter(item)
         val prefix = prefixFor(item)
+        GeneratedPdfNamespace.requireOrdinary(prefix, path)
         fun read(root: String, objectPath: String): StorageObjectDownload {
             val source = if (maxPdfBytes != null && objectPath.endsWith(".pdf", ignoreCase = true)) adapter.download(root, objectPath, maxPdfBytes)
                 else adapter.download(root, objectPath)
@@ -52,6 +57,7 @@ class FolderStorageService(
         ZipOutputStream(output).use { zip ->
             adapter.listDocuments(prefix + folder).forEach { document ->
                 val safePath = normalizeStorageObject(document.path)
+                if (GeneratedPdfNamespace.excluded(prefix, folder + safePath)) return@forEach
                 if (acl?.allows(item.id, folder + safePath) == false) return@forEach
                 zip.putNextEntry(ZipEntry(safePath))
                 zip.write(read(prefix + folder, safePath).bytes)
@@ -60,7 +66,10 @@ class FolderStorageService(
         }
         return StorageObjectDownload("${folder.trimEnd('/').substringAfterLast('/').ifBlank { "storage-folder" }}.zip", "application/zip", output.toByteArray())
     }
-    fun downloadForIndex(item: Item, path: String, maxBytes: Int) = scopedAdapter(item).download(prefixFor(item), normalizeStorageObject(path), maxBytes)
+    fun downloadForIndex(item: Item, path: String, maxBytes: Int): StorageObjectDownload {
+        GeneratedPdfNamespace.requireOrdinary(prefixFor(item), path)
+        return scopedAdapter(item).download(prefixFor(item), normalizeStorageObject(path), maxBytes)
+    }
     private fun scopedAdapter(item: Item): ObjectStorageAdapter {
         if (!item.accessible || item.storageConnection?.enabled == false) throw com.starter.exception.NotFoundException("Storage root not found")
         val connection = item.storageConnection
@@ -107,12 +116,13 @@ class FolderStorageService(
 
     fun browse(rootPrefix: String, path: String): StorageBrowseResult {
         requireManagedRoot(rootPrefix)
-        return adapter().browse(rootPrefix, normalizeRelativePath(path))
+        GeneratedPdfNamespace.requireOrdinary(rootPrefix, path)
+        return adapter().browse(rootPrefix, normalizeRelativePath(path)).ordinary(rootPrefix)
     }
 
     fun listDocuments(rootPrefix: String): List<StorageEntry> {
         requireManagedRoot(rootPrefix)
-        return adapter().listDocuments(rootPrefix)
+        return adapter().listDocuments(rootPrefix).filterNot { GeneratedPdfNamespace.excluded(rootPrefix, it.path) }
     }
 
     fun upload(rootPrefix: String, currentPath: String, objects: List<StorageObjectUpload>) {
@@ -120,19 +130,22 @@ class FolderStorageService(
         val destination = normalizeRelativePath(currentPath)
         objects.forEach { objectUpload ->
             val objectPath = normalizeObjectPath(objectUpload.relativePath)
+            GeneratedPdfNamespace.requireOrdinary(rootPrefix, destination + objectPath)
             adapter().upload(rootPrefix, destination + objectPath, objectUpload.contentType, objectUpload.bytes)
         }
     }
 
     fun download(rootPrefix: String, path: String): StorageObjectDownload {
         requireManagedRoot(rootPrefix)
+        GeneratedPdfNamespace.requireOrdinary(rootPrefix, path)
         return adapter().download(rootPrefix, normalizeObjectPath(path))
     }
 
     fun downloadFolder(rootPrefix: String, path: String): StorageObjectDownload {
         requireManagedRoot(rootPrefix)
         val folderPath = normalizeRelativePath(path)
-        val documents = adapter().listDocuments(rootPrefix).filter { it.path.startsWith(folderPath) }
+        GeneratedPdfNamespace.requireOrdinary(rootPrefix, folderPath)
+        val documents = listDocuments(rootPrefix).filter { it.path.startsWith(folderPath) }
         val output = ByteArrayOutputStream()
         ZipOutputStream(output).use { archive ->
             documents.forEach { document ->
@@ -145,6 +158,8 @@ class FolderStorageService(
         val folderName = folderPath.trimEnd('/').substringAfterLast('/').ifBlank { "storage-root" }
         return StorageObjectDownload("$folderName.zip", "application/zip", output.toByteArray())
     }
+
+    private fun StorageBrowseResult.ordinary(prefix: String) = copy(entries = entries.filterNot { GeneratedPdfNamespace.excluded(prefix, it.path) })
 
     private fun adapter(settings: AppSettings = adminSettingsService.currentEntity()): ObjectStorageAdapter {
         return objectStorageAdapter(settings)

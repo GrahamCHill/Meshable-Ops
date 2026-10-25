@@ -23,9 +23,9 @@ class PluginVersionTest {
             com.starter.plugins.discord.DiscordPlugin(),com.starter.plugins.telegram.TelegramPlugin(),com.starter.plugins.teams.TeamsPlugin(),com.starter.plugins.whatsapp.WhatsAppPlugin(),
             com.starter.plugins.sourcecontrol.GitHubPlugin(),com.starter.plugins.sourcecontrol.GitLabPlugin(),com.starter.plugins.sourcecontrol.GiteaPlugin(),
             com.starter.plugins.sharepoint.SharePointPlugin(),com.starter.plugins.onedrive.OneDrivePlugin(),
-            com.starter.plugins.documents.DocumentsPlugin(),com.starter.plugins.workflows.WorkflowsPlugin(),com.starter.plugins.jira.JiraPlugin(),com.starter.plugins.figma.FigmaPlugin(),com.starter.plugins.mermaid.MermaidPlugin())
+            com.starter.plugins.documents.DocumentsPlugin(),com.starter.plugins.workflows.WorkflowsPlugin(),com.starter.plugins.jira.JiraPlugin(),com.starter.plugins.figma.FigmaPlugin(),com.starter.plugins.mermaid.MermaidPlugin(),com.starter.plugins.knowledge.KnowledgePlugin())
         plugins.forEach { plugin -> PluginManifests.validateIdentity(plugin.manifest)
-            assertThat(plugin.manifest.version).isEqualTo(when(plugin.manifest.id) { "kanban" -> "1.6.0"; "calendar" -> "1.1.1"; "jira","figma","mermaid" -> "1.0.0"; else -> "1.0.0-a" })
+            assertThat(plugin.manifest.version).isEqualTo(when(plugin.manifest.id) { "kanban" -> "1.6.0"; "calendar" -> "1.1.1"; "jira","figma","mermaid","knowledge" -> "1.0.0"; else -> "1.0.0-a" })
             assertThat(plugin.manifest.compatibleVersions).describedAs(plugin.manifest.id).isNotEmpty()
             assertThat(policy.assess(plugin.manifest).status).describedAs(plugin.manifest.id).isEqualTo(PluginVersionStatus.COMPATIBLE) }
     }

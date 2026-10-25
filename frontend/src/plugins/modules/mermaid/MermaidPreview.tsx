@@ -1,6 +1,5 @@
 import {useEffect,useId,useState} from 'react'
-import DOMPurify from 'dompurify'
-import {diagramSourceError} from './mermaidSource'
+import {renderMermaidSvg} from './renderMermaid'
 
 let renderQueue=Promise.resolve()
 export function MermaidPreview({source,onValid}: {source:string;onValid?:(valid:boolean)=>void}) {
@@ -12,12 +11,7 @@ export function MermaidPreview({source,onValid}: {source:string;onValid?:(valid:
       renderQueue=renderQueue.catch(()=>undefined).then(async()=>{
         if(cancelled)return
         try{
-          const invalid=diagramSourceError(source)
-          if(invalid)throw new Error(invalid)
-          const mermaid=(await import('mermaid')).default
-          mermaid.initialize({startOnLoad:false,securityLevel:'strict',theme:'default',htmlLabels:false,maxTextSize:20000,maxEdges:200,suppressErrorRendering:true,flowchart:{htmlLabels:false},secure:['securityLevel','startOnLoad','maxTextSize','maxEdges','suppressErrorRendering','htmlLabels']})
-          const rendered=await mermaid.render(id,source)
-          const clean=DOMPurify.sanitize(rendered.svg,{USE_PROFILES:{svg:true,svgFilters:true},FORBID_TAGS:['script','foreignObject','iframe','image'],FORBID_ATTR:['href','xlink:href','src']})
+          const clean=await renderMermaidSvg(source)
           if(!cancelled){setSvg(clean);setError('');onValid?.(true)}
         }catch(failure){if(!cancelled){setSvg('');setError(failure instanceof Error?failure.message:'Unable to render this diagram.');onValid?.(false)}}
         finally{if(!cancelled)setLoading(false)}

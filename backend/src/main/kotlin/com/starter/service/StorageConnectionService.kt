@@ -90,6 +90,7 @@ class StorageConnectionService(
         val saved = connection(id)
         val relative = normalizeStorageFolder(req.path)
         val prefix = saved.basePath + relative
+        com.starter.service.storage.GeneratedPdfNamespace.requireOrdinary(prefix)
         if (items.existsByStorageConnectionIdAndStoragePrefix(id, prefix)) throw ConflictException("This folder is already selected. Edit its nickname or visibility below.")
         if (items.findAllByStorageConnectionIdOrderByTitleAsc(id).any { folder ->
             val selected = normalizeStorageFolder(folder.storagePrefix.orEmpty())

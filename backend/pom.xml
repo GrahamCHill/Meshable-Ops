@@ -65,6 +65,8 @@
     <dependency><groupId>com.google.cloud</groupId><artifactId>google-cloud-storage</artifactId><version>${google.cloud.storage.version}</version></dependency>
 
     <!-- PDF previews and watermarks -->
+    <dependency><groupId>org.commonmark</groupId><artifactId>commonmark</artifactId><version>0.30.0</version></dependency>
+    <dependency><groupId>org.commonmark</groupId><artifactId>commonmark-ext-gfm-tables</artifactId><version>0.30.0</version></dependency>
     <dependency><groupId>org.apache.pdfbox</groupId><artifactId>pdfbox</artifactId><version>3.0.8</version></dependency>
     <!-- Pure-Java WebP decoding for bounded branding uploads. -->
     <dependency><groupId>com.twelvemonkeys.imageio</groupId><artifactId>imageio-webp</artifactId><version>3.15.3</version></dependency>

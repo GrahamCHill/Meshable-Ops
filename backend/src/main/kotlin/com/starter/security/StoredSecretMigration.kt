@@ -17,6 +17,7 @@ class StoredSecretMigration(private val jdbc: JdbcTemplate, private val encrypti
         for ((table, columns) in listOf(
             "app_settings" to listOf("storage_access_key", "storage_secret_key"),
             "storage_connections" to listOf("access_key", "secret_key"),
+            "generated_pdf_files" to listOf("credentials_json"),
             "ai_settings" to listOf("chat_api_key", "embedding_api_key"),
             "email_settings" to listOf("smtp_username", "smtp_password", "api_key"),
             "mfa_credentials" to listOf("totp_secret"),

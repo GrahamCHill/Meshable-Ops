@@ -13,12 +13,13 @@ internal interface ObjectStorageAdapter {
     fun listDocuments(rootPrefix: String): List<StorageEntry>
     fun upload(rootPrefix: String, relativePath: String, contentType: String?, bytes: ByteArray)
     fun download(rootPrefix: String, relativePath: String, maxBytes: Int? = null): StorageObjectDownload
+    fun delete(rootPrefix: String, relativePath: String)
 }
 
-internal fun objectStorageAdapter(settings: AppSettings, viewPrefix: String = settings.storageViewPrefix()): ObjectStorageAdapter = when (settings.storageProvider) {
+internal fun objectStorageAdapter(settings: AppSettings, viewPrefix: String = settings.storageViewPrefix(), boundedTransfers: Boolean = false): ObjectStorageAdapter = when (settings.storageProvider) {
     "NONE" -> NoStorageAdapter
-    "S3" -> S3StorageAdapter(settings, viewPrefix)
-    "AZURE_BLOB" -> AzureBlobStorageAdapter(settings, viewPrefix)
+    "S3" -> S3StorageAdapter(settings, viewPrefix, boundedTransfers)
+    "AZURE_BLOB" -> AzureBlobStorageAdapter(settings, viewPrefix, boundedTransfers)
     "GCS" -> GcsStorageAdapter(settings, viewPrefix)
     else -> throw BadRequestException("Unsupported storage provider")
 }
@@ -37,4 +38,5 @@ private object NoStorageAdapter : ObjectStorageAdapter {
         throw BadRequestException("Object storage is not configured")
     override fun download(rootPrefix: String, relativePath: String, maxBytes: Int?): StorageObjectDownload =
         throw BadRequestException("Object storage is not configured")
+    override fun delete(rootPrefix: String, relativePath: String) = throw BadRequestException("Object storage is not configured")
 }

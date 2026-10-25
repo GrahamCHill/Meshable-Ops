@@ -49,6 +49,12 @@ class DocumentProcessingWorker(
 
     internal fun process(job: DocumentJob) {
         val document = documents.findForProcessing(job.documentId) ?: return
+        if (com.starter.service.storage.GeneratedPdfNamespace.excluded(document.item.storagePrefix, document.storagePath)) {
+            tx.executeWithoutResult {
+                if (queue.lockDocument(job.documentId) && queue.owns(job)) { vectors.deleteDocument(document.id); queue.complete(job) }
+            }
+            return
+        }
         val config = settings.current()
         if (!config.indexContent || !document.item.accessible || document.item.storageConnection?.enabled == false) {
             tx.executeWithoutResult { if (queue.lockDocument(job.documentId) && queue.owns(job)) queue.complete(job) }
