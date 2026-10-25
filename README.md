@@ -54,7 +54,7 @@ flowchart TB
     users["Members, admins and restricted external accounts"]
     web["React workspace / nginx proxy<br/>Projects, files, documents, workflows, search"]
     api["Kotlin / Spring Boot<br/>Authentication, RBAC, jobs and application APIs"]
-    state["Persistent data<br/>PostgreSQL + pgvector: records, PDFs, secrets, search<br/>S3 / Azure Blob: original documents<br/>MongoDB: events and audit, excluded from search"]
+    state["Persistent data<br/>PostgreSQL + pgvector: records, PDFs, secrets, search<br/>S3 / Azure Blob: original documents<br/>Events and audit history in PostgreSQL"]
     python["Private Python document services<br/>WeasyCanvas / WeasyPrint: documents and reports<br/>Content helper: bounded PDF, DOCX and text extraction"]
     plugins["Plugin host and optional providers<br/>Documents, workflows, boards, Git, calendars and chat<br/>ZIP frontend bundles + isolated Python / Kotlin workers"]
     analytics["Python: Apache Superset<br/>Embedded dashboards and admin authoring<br/>Separate metadata, Redis, Celery worker and beat"]
@@ -73,7 +73,7 @@ Create plugins with pages, submenus, settings, managed tables, search, and clien
 
 Installed ZIP plugins and their saved data persist across application updates. Authors can declare supported app releases or ranges; missing/mismatched versions show caution and backup advice. [Compatibility and updates](docs/plugins/compatibility-and-updates.md).
 
-The project is evolving. Providers require your credentials and permissions; external invitations and MongoDB/OCR search are deferred. [Feature guides](docs/README.md) describe behavior and limits.
+The project is evolving. Providers require your credentials and permissions; external invitations are deferred, and OCR engines connect through an external adapter. [Feature guides](docs/README.md) describe behavior and limits.
 
 ## License
 

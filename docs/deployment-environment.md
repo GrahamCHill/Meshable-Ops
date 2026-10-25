@@ -44,7 +44,7 @@ All helpers privately prompt for a password and refuse to overwrite an existing 
 | `APP_BOOTSTRAP_USERS_JSON` | Explicit initial account list; missing accounts are created, existing passwords are preserved |
 | `JWT_SECRET` | Application signing key; keep stable across updates |
 | `APP_SECRETS_ENCRYPTION_KEY` | Base64 32-byte wrapping key for stored API/storage/plugin secrets; keep a separate recovery copy |
-| `POSTGRES_PASSWORD` / `MONGO_PASSWORD` | Database credentials; keep consistent with existing databases |
+| `POSTGRES_PASSWORD` | Database credentials; keep consistent with existing databases |
 | `SUPERSET_SECRET_KEY` / `GUEST_TOKEN_JWT_SECRET` | Superset metadata/session and dashboard guest-token keys |
 | `SUPERSET_ADMIN_PASSWORD` | Separate Superset authoring administrator password |
 | `APP_DOCUMENT_RENDER_TOKEN` | Shared app/renderer private-service token |
@@ -95,7 +95,7 @@ Use literal single-quoted dotenv values when needed, particularly for `$` in pas
 
 ## Preserve and recover
 
-Back up the role environment files, Terraform secret inputs/state, PostgreSQL, MongoDB and original objects to encrypted storage with restricted access. For a split stack, keep the services/runtime files as well as the app file; service tokens must agree between the app and its workers. Cloud-init retains an original environment copy under `/etc/meshable-ops/environment`; handle it with the same care.
+Back up the role environment files, Terraform secret inputs/state, PostgreSQL and original objects to encrypted storage with restricted access. For a split stack, keep the services/runtime files as well as the app file; service tokens must agree between the app and its workers. Cloud-init retains an original environment copy under `/etc/meshable-ops/environment`; handle it with the same care.
 
 Retain `APP_SECRETS_ENCRYPTION_KEY` during rebuilds and restores. Losing it prevents decryption of stored provider credentials and plugin settings. Changing database environment passwords does not update existing database accounts. The initialization job creates missing roles; it deliberately does not reset existing credentials.
 

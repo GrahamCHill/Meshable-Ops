@@ -23,14 +23,13 @@ The checked-in Superset copies correspond to the `apache/superset:4.0.2` image s
 | WeasyPrint and its Python/native dependencies | Separate upstream packages used by the private PDF renderer; retain their respective terms and font notices. |
 | Imported WeasyCanvas source snapshot | The project owner's imported editor/model/generator code is covered by this repository's community/commercial choice. Third-party packages used by it remain under their own terms. See [licensing scope](LICENSING.md#code-covered-by-this-choice). |
 | PostgreSQL and pgvector | Separately distributed database/extension software with their upstream PostgreSQL-family licenses and notices. |
-| MongoDB Community Server 7 | Separately operated SSPL-licensed service, not relicensed by Meshable Ops. MongoDB distinguishes applications using it as a database from offering MongoDB itself as a service. See its [licensing FAQ](https://www.mongodb.com/legal/licensing/server-side-public-license/faq). |
 | Redis | Separately operated Superset cache/queue. Redis 7.2 and earlier use BSD-3-Clause; 7.4 uses RSALv2/SSPLv1; Redis 8 adds an AGPLv3 option. The `redis:7-alpine` tag can resolve to a 7.4 release: inspect the image actually shipped. See [Redis licensing](https://redis.io/legal/licenses/). |
 | MinIO, Azurite, nginx, Caddy, base images, fonts, and OS packages | Development storage and runtime components retain their own version-specific licenses. A Meshable Ops commercial license does not waive them. |
 | External AI, email, messaging, calendar, Microsoft, and source-control services | Optional connections are subject to each service's terms and the credentials/account rights configured by the operator. |
 
 Covered plugins follow the app's community license. Independently authored, separable service-integration components may retain compatible licenses with their own notices, while independent external services retain their own terms. An SDK incorporated into covered plugin code must be compatible with the actual combination; API communication does not create a blanket linking exception. See [plugin licensing](LICENSING.md#plugins-and-external-service-integrations).
 
-Meshable Ops uses a custom source-available license and must not be advertised as OSI open source. MongoDB SSPL and Redis's source-available options also retain their distinct terms. Other components can be open source under their own licenses.
+Meshable Ops uses a custom source-available license and must not be advertised as OSI open source. Redis's source-available options retain their distinct terms. Other components can be open source under their own licenses.
 
 ## Redistribution
 

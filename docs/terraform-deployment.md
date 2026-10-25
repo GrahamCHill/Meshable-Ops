@@ -7,7 +7,7 @@ The Terraform modules deploy a split stack with managed PostgreSQL and three Lin
 | Tier | Runs here | Access |
 | --- | --- | --- |
 | Application | Caddy, React/nginx and one Kotlin backend | Public HTTPS; private backend callback from the runtime host |
-| Private services | Superset web/init/Celery/beat, Redis and MongoDB history | Superset and MongoDB accept traffic only from the app host; Redis stays inside Docker |
+| Private services | Superset web/init/Celery/beat and Redis | Superset accepts traffic only from the app host; Redis stays inside Docker |
 | Private runtime | WeasyCanvas/WeasyPrint renderer, content extractor, plugin runner and Python/Kotlin worker images | Only the app host reaches their API ports |
 | Managed PostgreSQL | Separate application and Superset databases/users, pgvector | Private endpoint; TLS with CA verification; no runtime-host database access |
 | Object storage | AWS S3 or Azure Blob; a separately configured file location for GCP | Authenticated access; original files stay outside the app host |
@@ -19,16 +19,16 @@ flowchart LR
     browser["Browser"] -->|HTTPS| ingress["Public web ingress"]
     ingress --> app["Application host<br/>Caddy · React/nginx · Kotlin"]
     app -->|5432 · verified TLS| sql["Managed PostgreSQL<br/>app_db + pgvector · superset"]
-    app -->|8088 / 27017 · private| services["Private services host<br/>Superset · Celery · Redis · MongoDB"]
+    app -->|8088 / 27017 · private| services["Private services host<br/>Superset · Celery · Redis"]
     services -->|5432 · verified TLS| sql
     app -->|8000 / 8001 / 8090 · private| runtime["Private execution host<br/>Extractor · PDF renderer · Plugin runtime"]
     runtime -->|8080 · authenticated callback| app
     app --> objects["Private S3 / Azure Blob"]
 ```
 
-This separates workloads and adds managed database recovery; it is not a fully highly available application. Each host role is a single VM, and MongoDB/Redis are self-managed. The backend's in-process schedulers currently require one backend instance. Do not add backend replicas without coordinating jobs. Inter-host application traffic uses HTTP on the restricted private network; database traffic and public browser traffic use TLS.
+This separates workloads and adds managed database recovery; it is not a fully highly available application. Each host role is a single VM, and Redis is self-managed. The backend's in-process schedulers currently require one backend instance. Do not add backend replicas without coordinating jobs. Inter-host application traffic uses HTTP on the restricted private network; database traffic and public browser traffic use TLS.
 
-The services host has a separate **128 GB persistent data disk** for MongoDB, Redis and Superset home files, mounted at `/srv/meshable-data`. Its Terraform lifecycle prevents accidental destruction. VM replacement can reattach the existing disk. First boot formats only a blank whole disk; an existing ext4 disk is reused, and unknown filesystems/partitions or mounted system disks are rejected. The startup helper refuses to run services when the data mount is absent. Keep filesystem/application backups as well; disk persistence alone is not recovery or replication.
+The services host has a separate **128 GB persistent data disk** for Redis and Superset home files, mounted at `/srv/meshable-data`. Its Terraform lifecycle prevents accidental destruction. VM replacement can reattach the existing disk. First boot formats only a blank whole disk; an existing ext4 disk is reused, and unknown filesystems/partitions or mounted system disks are rejected. The startup helper refuses to run services when the data mount is absent. Keep filesystem/application backups as well; disk persistence alone is not recovery or replication.
 
 ## 1. Prepare tools, a repository and a domain
 
@@ -244,7 +244,7 @@ Edit the role's live environment file for operations; changing Terraform cloud-i
 
 ## 8. Update and back up
 
-Take a tested database recovery backup, MongoDB backup, object backup and encrypted copies of role environments/keys before updating. Managed PostgreSQL backups do not include MongoDB, original files, plugin worker images or Caddy's certificate volume.
+Take a tested database recovery backup, legacy-history export when upgrading, object backup and encrypted copies of role environments/keys before updating. Managed PostgreSQL backups do not include original files, plugin worker images or Caddy's certificate volume.
 
 Fetch the same reviewed release on all three hosts. Update private services, then runtime, then app, rerunning that role's `start.py` after selecting the revision. App schema updates happen at backend startup; do not run old/new app revisions concurrently against a changing schema. Runtime releases must include both worker image builds. Preserve project names and volumes; never use `down -v` as an update command.
 
@@ -254,10 +254,10 @@ The existing [GitHub Actions SSH release job](github-deployment.md) deploys a **
 
 These modules are not an automatic migration from the previous all-in-one VM templates. Plan a maintenance window and restore into a separately provisioned split deployment:
 
-1. Back up/export app and Superset PostgreSQL databases, roles, MongoDB, original objects, plugin data and every original wrapping/service key.
+1. Back up/export app and Superset PostgreSQL databases, roles, legacy history exports, original objects, plugin data and every original wrapping/service key.
 2. Preserve the old stack and volumes until recovery and data checks pass. Review the Terraform plan: AWS cloud-init changes now replace VMs, and Azure custom data changes can also replace VMs. GCP metadata changes do not reliably rerun first-boot setup.
 3. Restore databases into the managed server with the correct owners, pgvector/UUID extensions and separate app/Superset credentials. A new password in Terraform does not rotate a role created by the initialization job.
-4. Restore MongoDB on the private services host; point the app at the new endpoints and retain the original wrapping key so encrypted settings and ZIP plugin records remain readable.
+4. Import legacy event/audit history using [history migration](history-migration.md); point the app at the new PostgreSQL endpoints and retain the original wrapping key so encrypted settings and ZIP plugin records remain readable.
 5. Verify permissions, files, reports, dashboards, plugin execution, email and scheduled jobs before changing DNS. Keep a rollback plan that includes database/schema changes.
 
 Infrastructure deletion also needs review. The separate services data disks have `prevent_destroy`: moving them to a different zone or destroying the stack requires deliberately changing that guard after a verified backup/migration. Their existing disk can be reattached when replacing the VM in the same zone. RDS requires deletion protection to be disabled deliberately and takes its configured final snapshot; choose a new final snapshot name if a prior one exists. Azure's lock can be removed by a reviewed Terraform teardown. GCP requires both Terraform and Cloud SQL deletion protection to be disabled deliberately. Retained boot disks can keep incurring charges and are not automatically restored to replacement VMs. Terraform state is not an application backup.

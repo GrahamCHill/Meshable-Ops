@@ -17,63 +17,54 @@ class DocumentIndexServiceTest {
     private val settings = mock(AiSettingsService::class.java)
     private val text = mock(DocumentTextService::class.java)
     private val jobs = mock(AdminSettingsService::class.java)
+    private val processing = mock(DocumentProcessingQueue::class.java)
     private val endpoint = AiEndpoint(AiProvider.LOCAL, "", "local")
-    private val service = DocumentIndexService(documents, storage, vectors, embeddings, settings, text, jobs)
-    init { `when`(documents.saveAndFlush(any(StorageDocument::class.java))).thenAnswer { it.arguments[0] } }
-
-    @Test fun `vectors use the persisted document identity returned by JPA merge`() {
-        val folder = Item(storagePrefix = "shared/")
-        val persisted = StorageDocument(item = folder, storagePath = "file.txt", fileName = "file.txt")
-        `when`(settings.current()).thenReturn(ActiveAiConfiguration(false, false, endpoint, endpoint))
-        `when`(embeddings.fingerprint(endpoint)).thenReturn("local-model")
-        `when`(documents.saveAndFlush(any(StorageDocument::class.java))).thenReturn(persisted)
-        `when`(embeddings.embed(anyList(), eq(endpoint) ?: endpoint)).thenReturn(listOf(List(EmbeddingDimensions.SIZE) { 0.1f }))
-        val result = service.sync(folder, listOf(StorageEntry("file.txt", "file.txt", "OBJECT", size = 4))).getValue("file.txt")
-        assertThat(result.id).isEqualTo(persisted.id)
-        verify(vectors).upsertDocument(eq(persisted.id) ?: persisted.id, anyList(), anyMap(), anyString(), eq("local-model") ?: "local-model")
-    }
-
-    @Test fun `missing extraction service still indexes metadata without failing storage browsing`() {
-        val folder = Item(storagePrefix = "shared/")
-        `when`(settings.current()).thenReturn(ActiveAiConfiguration(false, true, endpoint, endpoint))
-        `when`(embeddings.fingerprint(endpoint)).thenReturn("local-model")
-        `when`(text.supports("contract.txt")).thenReturn(true)
-        `when`(storage.downloadForIndex(folder, "contract.txt", 5 * 1024 * 1024)).thenReturn(StorageObjectDownload("contract.txt", "text/plain", "body".toByteArray()))
-        `when`(text.extract(eq("contract.txt") ?: "contract.txt", any(ByteArray::class.java) ?: byteArrayOf())).thenThrow(AiUnavailableException("Extraction offline"))
-        `when`(embeddings.embed(anyList(), eq(endpoint) ?: endpoint)).thenReturn(listOf(List(EmbeddingDimensions.SIZE) { 0.1f }))
-        val document = service.sync(folder, listOf(StorageEntry("contract.txt", "contract.txt", "OBJECT", size = 4))).getValue("contract.txt")
-        assertThat(document.processingStatus).isEqualTo("CONTENT_UNAVAILABLE")
-        assertThat(document.vectorizedAt).isNotNull()
-        verify(vectors).upsertDocument(eq(document.id) ?: document.id, anyList(), anyMap(), anyString(), eq("local-model") ?: "local-model")
-    }
-
-    @Test fun `content indexing reads a bounded object and stores chunks tied to its document and embedding model`() {
-        val folder = Item(storagePrefix = "shared/", storageConnection = StorageConnection())
-        val body = "Renewal notice must be delivered 60 days in advance. ".repeat(60)
+    private val service = DocumentIndexService(documents, storage, vectors, embeddings, settings, text, jobs, processing)
+    init {
+        `when`(documents.saveAndFlush(any(StorageDocument::class.java))).thenAnswer { it.arguments[0] }
+        `when`(text.maxBytes).thenReturn(52428800)
         `when`(settings.current()).thenReturn(ActiveAiConfiguration(false, true, endpoint, endpoint))
         `when`(embeddings.fingerprint(endpoint)).thenReturn("model-id")
-        `when`(documents.saveAndFlush(any(StorageDocument::class.java))).thenAnswer { it.arguments[0] }
-        `when`(text.supports("contract.txt")).thenReturn(true)
-        `when`(storage.downloadForIndex(folder, "contract.txt", 5 * 1024 * 1024)).thenReturn(StorageObjectDownload("contract.txt", "text/plain", body.toByteArray()))
-        `when`(text.extract(eq("contract.txt") ?: "contract.txt", any(ByteArray::class.java) ?: byteArrayOf())).thenReturn(ExtractedDocumentText(body, false))
-        `when`(embeddings.embed(anyList(), eq(endpoint) ?: endpoint)).thenAnswer { call -> List((call.arguments[0] as List<*>).size) { List(EmbeddingDimensions.SIZE) { 0.1f } } }
-        val result = service.sync(folder, listOf(StorageEntry("contract.txt", "contract.txt", "OBJECT", size = body.length.toLong())))
-        val document = result.getValue("contract.txt")
-        assertThat(document.processingStatus).isEqualTo("CONTENT_INDEXED")
-        assertThat(document.vectorizedAt).isNotNull()
-        verify(vectors).replaceChunks(eq(document.id) ?: document.id, argThat<List<String>> { it.size > 1 && it.first().contains("Renewal notice") } ?: emptyList(), anyList(), anyString(), eq("model-id") ?: "model-id")
-        verify(storage).downloadForIndex(folder, "contract.txt", 5 * 1024 * 1024)
-        verify(jobs).queueFileChanges()
+        `when`(embeddings.embed(anyList(), eq(endpoint) ?: endpoint)).thenReturn(listOf(List(EmbeddingDimensions.SIZE) { 0.1f }))
     }
-    @Test fun `indexing hidden folders never reads storage or calls a provider`() {
+
+    @Test fun `browsing queues content without downloading or extracting bytes`() {
+        val folder = Item(storagePrefix = "shared/")
+        `when`(text.supports("scan.pdf")).thenReturn(true)
+        val document = service.sync(folder, listOf(StorageEntry("scan.pdf", "scan.pdf", "OBJECT", size = 20_000_000))).getValue("scan.pdf")
+        assertThat(document.processingStatus).isEqualTo("CONTENT_QUEUED")
+        verify(processing).enqueue(document.id, document.sourceChecksum!!, "model-id")
+        verifyNoInteractions(storage)
+        verify(text, never()).extract(anyString(), any(ByteArray::class.java) ?: byteArrayOf())
+    }
+
+    @Test fun `metadata vectors use the persisted identity returned by JPA merge`() {
+        val folder = Item(storagePrefix = "shared/")
+        val persisted = StorageDocument(item = folder, storagePath = "note.txt", fileName = "note.txt")
+        `when`(documents.saveAndFlush(any(StorageDocument::class.java))).thenReturn(persisted)
+        `when`(settings.current()).thenReturn(ActiveAiConfiguration(false, false, endpoint, endpoint))
+        service.sync(folder, listOf(StorageEntry("note.txt", "note.txt", "OBJECT", size = 4)))
+        verify(vectors).upsertDocument(eq(persisted.id) ?: persisted.id, anyList(), anyMap(), anyString(), eq("model-id") ?: "model-id")
+        verify(processing).cancel(persisted.id)
+    }
+
+    @Test fun `hidden folders never queue or call a provider`() {
         assertThatThrownBy { service.sync(Item(accessible = false), emptyList()) }.isInstanceOf(NotFoundException::class.java)
-        verifyNoInteractions(documents, storage, vectors, embeddings, settings, text)
+        verifyNoInteractions(processing, storage, documents)
     }
-    @Test fun `chunking is bounded and keeps overlap without an infinite tail`() {
-        assertThat(documentChunks("")).isEmpty()
+
+    @Test fun `long documents continue beyond the former 32 chunk cap`() {
         val chunks = documentChunks("a".repeat(100000))
-        assertThat(chunks).hasSize(32)
+        assertThat(chunks.size).isGreaterThan(32)
         assertThat(chunks.all { it.length <= 1600 }).isTrue()
         assertThat(documentChunks("short")).containsExactly("short")
+    }
+
+    @Test fun `page provenance survives chunking and exceeding the cap is explicit`() {
+        val extracted = ExtractedDocumentText("", false, listOf(ExtractedPage(7, "first page"), ExtractedPage(8, "second page")))
+        val (chunks, truncated) = pageChunks(extracted)
+        assertThat(chunks.map { it.pageNumber }).containsExactly(7, 8)
+        assertThat(truncated).isFalse()
+        assertThat(pageChunks(extracted, 1).second).isTrue()
     }
 }

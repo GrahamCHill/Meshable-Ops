@@ -12,7 +12,6 @@ resource "aws_security_group" "private" {
 }
 locals {
   private_ingress = {
-    history       = { target = "services", source = "app", port = 27017 }
     analytics     = { target = "services", source = "app", port = 8088 }
     extraction    = { target = "runtime", source = "app", port = 8000 }
     rendering     = { target = "runtime", source = "app", port = 8001 }

@@ -3,6 +3,7 @@ package com.starter.ai
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Service
 import java.util.UUID
+import org.springframework.transaction.annotation.Transactional
 
 data class DocumentJob(val documentId: UUID, val checksum: String, val model: String, val token: UUID, val attempts: Int)
 
@@ -45,10 +46,15 @@ class DocumentProcessingQueue(private val jdbc: JdbcTemplate) {
             WHERE document_id=? AND claim_token=?""", job.documentId, job.token)
     }
 
+    @Transactional
     fun failed(job: DocumentJob) {
-        jdbc.update("""UPDATE document_processing_jobs SET state=?, lease_until=NULL,
+        // Match browsing's document -> job lock order, and never overwrite a newer job's status.
+        jdbc.query("SELECT id FROM storage_documents WHERE id=? FOR UPDATE", { rs, _ -> rs.getObject(1) }, job.documentId)
+        val changed = jdbc.update("""UPDATE document_processing_jobs SET state=?, lease_until=NULL,
             next_attempt_at=NOW()+INTERVAL '1 minute' * ?, updated_at=NOW()
-            WHERE document_id=? AND claim_token=?""",
+            WHERE document_id=? AND claim_token=? AND state='RUNNING'""",
             if (job.attempts >= 3) "FAILED" else "QUEUED", job.attempts * job.attempts, job.documentId, job.token)
+        if (changed == 1) jdbc.update("UPDATE storage_documents SET processing_status=?, updated_at=NOW() WHERE id=? AND source_checksum=?",
+            if (job.attempts >= 3) "CONTENT_FAILED" else "CONTENT_RETRY", job.documentId, job.checksum)
     }
 }

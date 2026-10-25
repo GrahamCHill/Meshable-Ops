@@ -2,7 +2,7 @@
 
 Meshable Ops combines shared storage, document generation, workflow design, search, communication, and analytics in one business workspace. Start with local setup or choose the guide for your task.
 
-The implementation uses PostgreSQL/pgvector for storage metadata, content chunks, search, and configuration; S3/Azure Blob retains original files. MongoDB continues to store events and audit history. MongoDB search and OCR integration are deferred.
+The implementation uses PostgreSQL/pgvector for storage metadata, content chunks, search, and configuration; S3/Azure Blob retains original files. PostgreSQL also stores events and audit history. OCR uses a configurable external service.
 
 ## Start here
 
@@ -49,7 +49,7 @@ The implementation uses PostgreSQL/pgvector for storage metadata, content chunks
 | Enable optional Documents/Workflows and preserve existing data | [Document and workflow plugins](plugins/documents-and-workflows.md) |
 | Build plugins spanning React, Kotlin and Python | [Full-stack plugin authoring](plugins/full-stack.md) |
 | Inspect extraction formats, limits, and processing states | [Document processing](document-processing-extension.md) |
-| Understand tables, MongoDB collections, and backup boundaries | [Database layout](database-layout.md) |
+| Understand tables, history, and backup boundaries | [Database layout](database-layout.md) |
 | Deploy, upgrade, verify, or troubleshoot the stack | [Deployment](deployment.md) |
 | Work on the frontend/backend or run relevant checks | [Code organization](code-organization.md) |
 | Integrate with search, storage, or admin APIs | [API reference](api.md) |
@@ -72,7 +72,7 @@ For sidebar ordering, header/account behavior and admin section artwork, see [Na
 - The initial admin becomes `SUPER_ADMIN`; assignable `ADMIN`, `USER`, and read-only `EXTERNAL` roles have configurable view and storage permissions. See [access controls](access-controls.md).
 - Internal members retain shared-root access unless restricted. External members need explicit directory/file grants. Upload permission defaults off and is unavailable to external members.
 - AI and storage keys saved through the app require a persistent server wrapping key. MinIO/Azurite development seeds also persist credentials, so set the key before starting those profiles.
-- MongoDB records, audit logs, and events are not search or AI-answer sources.
+- Audit logs and events are not search or AI-answer sources.
 - Plugins start disabled on new databases, including Documents and Workflows. Upgrades retain these modules' existing use when saved documents/designs/runs exist; explicit activation settings are preserved. Source modules and runtime ZIPs support React, Kotlin and Python. Super admins can install ZIPs containing frontend code, isolated backend code, or both after enabling third-party extensions in Security. Backend-only packages need no page. ZIPs require an author file and are excluded from search by default.
 - Projects support scoped member/team-lead/manager roles and explicit team access. Departments and tags do not share work automatically. Reports and digests stay manual until schedules are configured; no schedule is created at startup.
 - Meshable Ops is the product name. Existing Docker project/volume names and the older plugin SDK alias remain compatible; business branding is preserved.

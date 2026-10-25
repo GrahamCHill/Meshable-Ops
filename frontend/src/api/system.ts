@@ -3,7 +3,6 @@ import api from './http'
 export interface HealthStatus {
   timestamp: string
   postgres: string
-  mongodb: string
   pgvector: string
 }
 

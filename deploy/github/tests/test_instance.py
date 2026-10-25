@@ -49,16 +49,16 @@ class InstanceTests(unittest.TestCase):
         self.assertNotIn('admin@app.local', content)
 
     def config(self):
-        pg, mongo = "a" * 64, "b" * 64
+        pg = "a" * 64
         env = {"APP_PUBLIC_BASE_URL": "https://app.example.com", "SPRING_PROFILES_ACTIVE": "docker,prod",
                "APP_AUTH_COOKIE_SECURE": "true", "APP_SECRETS_ENCRYPTION_KEY": base64.b64encode(b"k" * 32).decode(),
                "APP_BOOTSTRAP_USERS_JSON": json.dumps([{"email": "owner@example.com", "password": "private-password-1234", "role": "ADMIN"}]),
                "JWT_SECRET": "c" * 64, "APP_DOCUMENT_RENDER_TOKEN": "d" * 64, "APP_PLUGIN_RUNNER_TOKEN": "8" * 64, "SUPERSET_ADMIN_PASSWORD": "e" * 48,
-               "POSTGRES_PASSWORD": pg, "MONGO_URI": f"mongodb://app_user:{mongo}@mongodb:27017/app_db?authSource=admin"}
+               "POSTGRES_PASSWORD": pg}
         services = {name: {"environment": {"DATABASE_PASSWORD": pg, "SUPERSET_SECRET_KEY": "f" * 64, "GUEST_TOKEN_JWT_SECRET": "9" * 64}} for name in ("superset", "superset-init", "superset-worker", "superset-beat")}
         services.update({"backend": {"environment": env}, "caddy": {"environment": {"APP_DOMAIN": "app.example.com", "ACME_EMAIL": "ops@example.com"}},
                          "postgres": {"environment": {"POSTGRES_PASSWORD": pg}, "volumes": [{"target": "/docker-entrypoint-initdb.d/init.sql", "source": "/repo/docker/postgres/init.sql"}]},
-                         "mongodb": {"environment": {"MONGO_INITDB_ROOT_PASSWORD": mongo}}, "frontend": {},
+                         "frontend": {},
                          "plugin-runner": {"environment": {"APP_PLUGIN_RUNNER_TOKEN": "8" * 64}}})
         return {"services": services}
 

@@ -82,7 +82,6 @@ variables {
   postgres_admin_password    = "Test-only-managed-postgres-password-1234!"
   postgres_password          = "test-only-postgres_password-long-random-value"
   superset_database_password = "test-only-superset_database_password-long-random-value"
-  mongo_password             = "test-only-mongo_password-long-random-value"
   secrets_encryption_key     = "dGVzdC1vbmx5LXdyYXBwaW5nLWtleS0zMi1ieXRlcyEh"
   document_render_token      = "test-only-document_render_token-long-random-value"
   plugin_runner_token        = "test-only-plugin_runner_token-long-random-value"

@@ -49,13 +49,12 @@ def validate(config: dict) -> str:
     if services["plugin-runner"]["environment"].get("APP_PLUGIN_RUNNER_TOKEN", "") != runner_token:
         raise ValueError("The private plugin runner token must match the backend")
     pg_password = services["postgres"]["environment"]["POSTGRES_PASSWORD"]
-    mongo_password = services["mongodb"]["environment"]["MONGO_INITDB_ROOT_PASSWORD"]
-    if not all(re.fullmatch(r"[a-fA-F0-9]{64}", value) for value in (pg_password, mongo_password)):
+    if not re.fullmatch(r"[a-fA-F0-9]{64}", pg_password):
         raise ValueError("Database passwords must be 64 hex characters; use setup-instance.py")
     for name in ("superset", "superset-init", "superset-worker", "superset-beat"):
         if services[name]["environment"].get("DATABASE_PASSWORD") != pg_password:
             raise ValueError("PostgreSQL connections must use the same password")
-    if backend.get("POSTGRES_PASSWORD") != pg_password or f":{mongo_password}@" not in backend.get("MONGO_URI", ""):
+    if backend.get("POSTGRES_PASSWORD") != pg_password:
         raise ValueError("Backend database credentials must match their services")
     for name, service in services.items():
         if name != "caddy" and service.get("ports"):

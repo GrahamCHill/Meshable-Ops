@@ -10,7 +10,7 @@ resource "azurerm_network_security_group" "private" {
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
-    destination_port_ranges    = each.key == "services" ? ["8088", "27017"] : ["8000", "8001", "8090"]
+    destination_port_ranges    = each.key == "services" ? ["8088"] : ["8000", "8001", "8090"]
     source_address_prefix      = "${local.private_ips.app}/32"
     destination_address_prefix = "*"
   }

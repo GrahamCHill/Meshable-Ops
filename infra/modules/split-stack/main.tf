@@ -23,7 +23,6 @@ locals {
     app = merge(var.storage_environment, {
       JWT_SECRET                  = var.secrets.jwt_secret
       POSTGRES_PASSWORD           = var.secrets.postgres_password
-      MONGO_PASSWORD              = var.secrets.mongo_password
       APP_SECRETS_ENCRYPTION_KEY  = var.secrets.secrets_encryption_key
       SUPERSET_ADMIN_PASSWORD     = var.secrets.superset_admin_password
       APP_DOCUMENT_RENDER_TOKEN   = var.secrets.document_render_token
@@ -37,7 +36,6 @@ locals {
       POSTGRES_ADMIN_PASSWORD    = var.secrets.postgres_admin_password
       POSTGRES_PASSWORD          = var.secrets.postgres_password
       SUPERSET_DATABASE_PASSWORD = var.secrets.superset_database_password
-      MONGO_PASSWORD             = var.secrets.mongo_password
       SUPERSET_SECRET_KEY        = var.secrets.superset_secret_key
       GUEST_TOKEN_JWT_SECRET     = var.secrets.guest_token_jwt_secret
       SUPERSET_ADMIN_PASSWORD    = var.secrets.superset_admin_password

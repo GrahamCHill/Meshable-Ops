@@ -21,7 +21,7 @@ In practice, the architecture can be run in two main ways:
 - all-in-one:
   the VM carries the frontend, backend, Superset, and the supporting data services
 - app host plus offloaded state:
-  the VM mainly carries the app logic and proxy layers while PostgreSQL, MongoDB, or storage live elsewhere
+  the VM mainly carries the app logic and proxy layers while PostgreSQL or storage live elsewhere
 
 The current Redis service is best thought of as part of the Superset runtime side, not as a general app-runtime dependency.
 
@@ -59,7 +59,6 @@ flowchart LR
     end
     data[("PostgreSQL + pgvector<br/>Workspace records, PDF bytes, encrypted secrets, search")]
     objects[("S3 / Azure Blob originals")]
-    mongo[("MongoDB events and audit<br/>Outside search and AI")]
     analytics[("Superset metadata DB + Redis")]
     external["Configured provider APIs<br/>AI, email, Git, calendar, chat, files"]
     browser --> auth
@@ -67,7 +66,6 @@ flowchart LR
     browser --> superset --> analytics
     projects & storage & documents & workflows & search & messaging & jobs & host --> data
     storage --> objects
-    auth --> mongo
     documents --> render
     projects --> render
     search -.-> extract
@@ -87,7 +85,7 @@ flowchart LR
 | Location | Purpose and boundary |
 | --- | --- |
 | `weasy-renderer/` | FastAPI adapter around the imported WeasyCanvas generator and WeasyPrint. Validates templates and renders documents; `/reports/render` renders escaped structured multipage project reports. Worker processes have time/page/size limits and no arbitrary remote asset fetching. Kotlin owns permissions, storage, encryption/watermarks, and delivery. |
-| `ml-backend/app/` | Bounded content extraction for supported text, PDF, and DOCX files during content indexing. Its legacy vectorize/package helper endpoints are not the default search engine. Kotlin local feature hashing works without this container or an AI provider; missing extraction leaves metadata search available. OCR and MongoDB retrieval are deferred. |
+| `ml-backend/app/` | Bounded content extraction for supported text, PDF, and DOCX files during content indexing. Its legacy vectorize/package helper endpoints are not the default search engine. Kotlin local feature hashing works without this container or an AI provider; missing extraction leaves metadata search available. OCR uses a separate configurable service. |
 | `superset/` | Python configuration/bootstrap for Apache Superset's own Python analytics runtime. Redis and Celery belong to Superset; application jobs run in Kotlin. |
 | `deploy/github/` | Python setup/configuration/validation helpers used locally and by GitHub Actions. They prepare private configuration and check deployment; they are not request-serving services. |
 | `plugin-runtime/` | Private execution control plane and fixed Python/JVM worker images. Uploaded code runs in disposable containers without network, host mounts or credentials; host callbacks enforce grants, RBAC, ownership and provider origins. The Docker socket belongs only to the trusted control plane. |
@@ -118,7 +116,7 @@ Schedules are disabled by default. Details and operational limits are in [projec
 1. Browser requests hit Caddy in production.
 2. Caddy forwards traffic to the `frontend` container.
 3. The frontend serves the SPA and proxies `/api/*` to the backend.
-4. The backend reads and writes app data in PostgreSQL (including pgvector) and MongoDB.
+4. The backend reads and writes app data in PostgreSQL (including pgvector).
 
 ### Storage and content indexing
 
@@ -136,7 +134,7 @@ Schedules are disabled by default. Details and operational limits are in [projec
 3. Default local feature hashing runs within Kotlin and needs no AI provider, model download, API key, or running ML container. PostgreSQL/pgvector still provides persistence and ranking.
 4. Folder, document, and chunk queries join live folder visibility and connection state. If configured embeddings are unavailable, access-checked keyword queries provide ordinary search. Different model identities are never compared as if their vectors were compatible.
 5. Optional AI answers retrieve relevant document chunks and send excerpts to the selected chat provider. The backend rechecks access before generation and before returning the answer and source links. Provider failure returns guidance rather than fabricated content.
-6. MongoDB events and audit logs remain outside search and AI retrieval. OCR/MongoDB document-search integration is deferred.
+6. Events and audit logs remain outside search and AI retrieval. OCR uses a configurable external service.
 
 ### Indexing jobs
 
@@ -252,9 +250,7 @@ It is treated as an internal dependency rather than the primary public web app.
 ### Storage and Runtime Services
 
 - PostgreSQL:
-  application relational data, configuration, schedule state, extracted chunks, and vectors; Superset metadata uses its separate database
-- MongoDB:
-  events and audit-style activity documents
+  application records, event/audit history, configuration, schedule state, content jobs/pages/chunks, and vectors; Superset metadata uses its separate database
 - pgvector:
   vector index storage inside the application PostgreSQL database
 - Redis:
@@ -271,7 +267,7 @@ Today that means:
 - a future app-level Redis stack would be an additional architectural concern, not the current default
 
 Folder metadata remains relational and searchable; object storage is the durable document boundary.
-[Document processing](document-processing-extension.md) describes implemented text extraction and chunk indexing. OCR, image classification, and an asynchronous indexing worker remain future work. S3-compatible and Azure Blob adapters share the same hierarchical browsing contract.
+[Document processing](document-processing-extension.md) describes implemented text extraction and chunk indexing. Background content jobs and an external OCR adapter are supported; image classification remains future work. S3-compatible and Azure Blob adapters share the same hierarchical browsing contract.
 
 ## Credential boundary
 
@@ -290,7 +286,7 @@ For production, the intended public boundary is:
 The default Compose posture in this repository now matches that boundary in local and production runs:
 
 - only the frontend is published on the host by default
-- backend, PostgreSQL, MongoDB, Redis, Superset, and the ML helper stay on Docker-internal service addresses unless you deliberately re-expose them
+- backend, PostgreSQL, Redis, Superset, and the ML helper stay on Docker-internal service addresses unless you deliberately re-expose them
 
 If data services are offloaded:
 
@@ -316,6 +312,5 @@ If data services are offloaded:
 | WeasyCanvas renderer | internal only | Template validation and bounded PDF generation |
 | ML backend | internal only | Optional text/PDF/DOCX extraction; legacy vectorization endpoint |
 | PostgreSQL + pgvector | internal only | Application relational data, Superset metadata, and vector search storage |
-| MongoDB | internal only | Events and audit-style documents |
 | Redis | internal only | Superset cache and task coordination |
 | Caddy | `https://your-domain` | Production HTTPS entrypoint |

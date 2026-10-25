@@ -74,4 +74,4 @@ For failed HTTPS issuance, inspect Caddy logs using the same Compose options and
 
 ## 6. Update and recover
 
-Back up PostgreSQL, MongoDB, original files and `.env.production` before updating. Preserve the wrapping key and existing database passwords. Check out a reviewed release, then rerun the same Compose build/start command. Do not delete volumes during an upgrade. Read [upgrade and recovery](deployment.md#upgrading-an-existing-installation), and use the [GitHub release deployment guide](github-deployment.md) if you want automated releases rather than manual Git/Compose updates.
+Back up PostgreSQL, original files and `.env.production` before updating. Preserve the wrapping key and existing database passwords. Check out a reviewed release, then rerun the same Compose build/start command. Do not delete volumes during an upgrade. Read [upgrade and recovery](deployment.md#upgrading-an-existing-installation), and use the [GitHub release deployment guide](github-deployment.md) if you want automated releases rather than manual Git/Compose updates.

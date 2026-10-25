@@ -11,14 +11,14 @@ from start import compose_environment
 ROOT = Path(__file__).resolve().parents[2]
 EXPECTED = {
     "app": {"caddy", "frontend", "backend"},
-    "services": {"postgres-init", "mongodb", "redis", "superset-init", "superset", "superset-worker", "superset-beat"},
+    "services": {"postgres-init", "redis", "superset-init", "superset", "superset-worker", "superset-beat"},
     "runtime": {"plugin-python-worker", "plugin-kotlin-worker", "plugin-runner", "weasy-renderer", "ml-backend"},
 }
 values = {
     "APP_DOMAIN": "workspace.example.com", "ACME_EMAIL": "ops@example.com",
     "APP_PRIVATE_IP": "10.44.1.10", "SERVICES_PRIVATE_IP": "10.44.2.10", "RUNTIME_PRIVATE_IP": "10.44.2.11",
     "POSTGRES_HOST": "postgres.internal.example.com", "POSTGRES_ADMIN_USER": "meshable_admin",
-    "JWT_SECRET": "test-only-jwt-secret", "POSTGRES_PASSWORD": "test-only-app-password", "MONGO_PASSWORD": "test-only-history-password",
+    "JWT_SECRET": "test-only-jwt-secret", "POSTGRES_PASSWORD": "test-only-app-password",
     "APP_SECRETS_ENCRYPTION_KEY": "test-only-wrapping-key", "SUPERSET_ADMIN_PASSWORD": "test-only-admin-password",
     "APP_DOCUMENT_RENDER_TOKEN": "test-only-render-token", "APP_PLUGIN_RUNNER_TOKEN": "test-only-plugin-token",
     "POSTGRES_ADMIN_PASSWORD": "test-only-database-admin-password", "SUPERSET_DATABASE_PASSWORD": "test-only-superset-password",
@@ -54,7 +54,7 @@ with tempfile.TemporaryDirectory() as directory:
             assert services["superset"]["environment"]["DATABASE_PASSWORD"] == values["SUPERSET_DATABASE_PASSWORD"]
             assert not services["redis"].get("ports")
             volumes = json.loads(result.stdout)["volumes"]
-            for name in ("mongo_data", "redis_data", "superset_home"):
+            for name in ("redis_data", "superset_home"):
                 assert volumes[name]["driver_opts"]["device"].startswith("/srv/meshable-data/")
         if role == "runtime":
             assert services["plugin-runner"]["environment"]["PLUGIN_HOST_CALLBACK"] == "http://10.44.1.10:8080/internal/plugins/host-call"

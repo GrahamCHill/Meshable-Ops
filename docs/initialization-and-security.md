@@ -2,7 +2,7 @@
 
 Third-party ZIP extensions default off. Only a super admin can change **Administration → People & security → Security → Allow third-party extensions** or upload a package. Turning the switch off blocks installed ZIP pages, APIs, and search while retaining their data and configuration; bundled plugins are unaffected. Packages require an author file (blank values allowed), strict archive validation, and code/permission review. See [ZIP extension security](plugins/zip-packages.md#isolation-and-trust).
 
-Fresh databases start without demo users, folders, audit events, datasets, charts, or dashboards. The PostgreSQL initializer creates only the application database and required extensions. Hibernate and `backend/src/main/resources/schema.sql` own application schema setup; Docker no longer duplicates those table/index definitions. MongoDB's initializer retains its collection/index setup without inserting a sample event.
+Fresh databases start without demo users, folders, audit events, datasets, charts, or dashboards. The PostgreSQL initializer creates only the application database and required extensions. Hibernate and `backend/src/main/resources/schema.sql` own application schema setup; Docker no longer duplicates those table/index definitions. Hibernate creates empty PostgreSQL event/audit tables. Existing MongoDB history requires the [history importer](history-migration.md).
 
 ## Initial access
 
@@ -20,7 +20,7 @@ Superset also creates its explicitly configured authoring admin only when absent
 
 ## Required runtime secrets
 
-Compose requires explicit `POSTGRES_PASSWORD`, `MONGO_PASSWORD`, `JWT_SECRET`, `SUPERSET_SECRET_KEY`, `GUEST_TOKEN_JWT_SECRET`, and `SUPERSET_ADMIN_PASSWORD`. The application has no working fallback database/JWT/Superset passwords. JWT keys are validated at startup. Native backend runs also need `MONGO_URI` and the other required environment values; Spring does not load `.env` automatically.
+Compose requires explicit `POSTGRES_PASSWORD`, `JWT_SECRET`, `SUPERSET_SECRET_KEY`, `GUEST_TOKEN_JWT_SECRET`, and `SUPERSET_ADMIN_PASSWORD`. The application has no working fallback database/JWT/Superset passwords. JWT keys are validated at startup. Native backend runs need the required environment values; Spring does not load `.env` automatically.
 
 `.env.example` and `.env.production.example` are blank references, not runnable credential sets. The setup helper generates safe values and preserves the server wrapping key across updates. MinIO/Azurite use generated credentials, and their host ports bind to loopback. Production exposes only Caddy; Compose 2.24.4 or later is required for the port reset.
 

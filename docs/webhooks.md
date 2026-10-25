@@ -2,7 +2,7 @@
 
 **Admin → Webhooks** manages named incoming or outgoing endpoints, enabled state, authentication, and recent deliveries. Only `ADMIN` can configure, send, or inspect payloads. Set `APP_SECRETS_ENCRYPTION_KEY` first: endpoint secrets and retained payloads are encrypted in PostgreSQL. New or replaced secrets are shown once. Blank secret inputs preserve an existing secret for the same destination; a changed outgoing URL generates a new secret unless supplied explicitly. Direction cannot change after creation.
 
-Outgoing sends are manual from this page or the admin API. They are not automatically subscribed to app events. Incoming JSON is authenticated and retained for admin review; it does not execute code, change app data, trigger emails, or enter search/AI retrieval. MongoDB, audit logs, and event collections are unchanged.
+Outgoing sends are manual from this page or the admin API. They are not automatically subscribed to app events. Incoming JSON is authenticated and retained for admin review; it does not execute code, change app data, trigger emails, or enter search/AI retrieval. Audit logs and event tables are unchanged.
 
 ## Signature protocol
 

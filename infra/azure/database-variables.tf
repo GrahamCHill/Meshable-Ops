@@ -16,10 +16,6 @@ variable "superset_database_password" {
   type      = string
   sensitive = true
 }
-variable "mongo_password" {
-  type      = string
-  sensitive = true
-}
 variable "secrets_encryption_key" {
   type      = string
   sensitive = true

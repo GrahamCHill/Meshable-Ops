@@ -83,7 +83,7 @@ def prepare(reference: str) -> None:
                 stream.write("\n" + entry + "\n")
         TARGET.mkdir(parents=True, exist_ok=True)
         subprocess.run(["mount", str(TARGET)], check=True)
-    for name, uid in {"mongodb": 999, "redis": 999, "superset": 1000}.items():
+    for name, uid in {"redis": 999, "superset": 1000}.items():
         directory = TARGET / name
         if not directory.exists():
             directory.mkdir(mode=0o750)

@@ -24,7 +24,6 @@ module "bootstrap" {
     postgres_admin_password    = var.postgres_admin_password
     postgres_password          = var.postgres_password
     superset_database_password = var.superset_database_password
-    mongo_password             = var.mongo_password
     secrets_encryption_key     = var.secrets_encryption_key
     document_render_token      = var.document_render_token
     plugin_runner_token        = var.plugin_runner_token

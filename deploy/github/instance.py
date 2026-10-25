@@ -39,7 +39,7 @@ def environment(domain: str, admin_email: str, acme_email: str, admin_password: 
         "SUPERSET_SECRET_KEY": secrets.token_hex(48), "GUEST_TOKEN_JWT_SECRET": secrets.token_hex(48),
         "SUPERSET_ADMIN_USER": "admin", "SUPERSET_ADMIN_PASSWORD": secrets.token_hex(24),
         "SUPERSET_ADMIN_EMAIL": admin_email, "POSTGRES_PASSWORD": secrets.token_hex(32),
-        "MONGO_PASSWORD": secrets.token_hex(32), "APP_DOCUMENT_RENDER_TOKEN": secrets.token_hex(32),
+        "APP_DOCUMENT_RENDER_TOKEN": secrets.token_hex(32),
         "APP_PLUGIN_RUNNER_TOKEN": secrets.token_hex(32),
         "DOCKER_GID": str(Path("/var/run/docker.sock").stat().st_gid) if Path("/var/run/docker.sock").exists() else "0",
         "APP_PUBLIC_BASE_URL": f"https://{domain}", "APP_MFA_PRIMARY_ADMIN_EMAIL": admin_email,

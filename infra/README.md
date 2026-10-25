@@ -8,7 +8,7 @@ Provision Meshable Ops on **AWS, Azure or GCP** with managed PostgreSQL and sepa
 | [Azure](azure/) | VNet/subnets, three private VMs, web-only Standard load balancer, explicit outbound connectivity, NAT for private services, delegated/private-DNS PostgreSQL Flexible Server, managed-identity Blob access and optional Bastion |
 | [GCP](gcp/) | Custom VPC/subnets, app VM/static IP, two private VMs, Cloud NAT, private-service-access Cloud SQL, OS Login/IAP administration and dedicated service accounts |
 
-The app host runs Caddy, React/nginx and Kotlin. Superset/Celery/Redis/MongoDB run on the private services host. Python extraction, PDF rendering and isolated Python/Kotlin plugin execution run on the private runtime host. PostgreSQL/pgvector and Superset metadata use separate managed databases/accounts. GCP original-file storage is configured separately under Administration.
+The app host runs Caddy, React/nginx and Kotlin. Superset/Celery/Redis run on the private services host. Python extraction, PDF rendering and isolated Python/Kotlin plugin execution run on the private runtime host. PostgreSQL/pgvector and Superset metadata use separate managed databases/accounts. GCP original-file storage is configured separately under Administration.
 
 Services use a separate persistent data disk mounted at `/srv/meshable-data`, protected with `prevent_destroy` and reused when that VM is replaced in the same zone. Startup fails closed if the mount is missing; backups are still required.
 
@@ -39,4 +39,4 @@ Each cloud directory is a root module. Networking, firewalls, managed databases,
 
 Run `terraform test` after initialization in each cloud directory. All provider resources are mocked; tests create no real cloud resources. GitHub Actions validates AWS/Azure/GCP and checks the split Compose roles without starting them.
 
-The old all-in-one Terraform layouts require a [planned migration](../docs/terraform-deployment.md#existing-installations). Applying updated user data/custom data can replace VMs and does not migrate Docker volumes. Managed PostgreSQL backups are not a backup of MongoDB, original files or wrapping keys.
+The old all-in-one Terraform layouts require a [planned migration](../docs/terraform-deployment.md#existing-installations). Applying updated user data/custom data can replace VMs and does not migrate Docker volumes. Managed PostgreSQL backups include migrated history; original files and wrapping keys need separate backups.

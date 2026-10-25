@@ -24,7 +24,7 @@ Personal sync additionally uses `plugin_calendar_connections` (owner, encrypted 
 
 Workspace branding uses PostgreSQL: `branding_assets` stores logo/favicon PNGs; `branding_preferences` stores the business name, hex colour overrides, background mode/selection/timing, and optimistic revision; `branding_login_images` stores up to five numbered JPEG images with content versions. Image listing queries project metadata without fetching the image bytes. Include all three tables in database backups; the metadata JSON export omits them. See [branding](branding.md).
 
-PostgreSQL stores application identity, storage metadata, feature/provider configuration, indexing jobs, and derived search content. S3/Azure Blob stores original files. MongoDB retains events and audit history; it is not a search source. Redis supports Superset.
+PostgreSQL stores application identity, storage metadata, feature/provider configuration, indexing jobs, and derived search content. S3/Azure Blob stores original files. PostgreSQL also retains events and audit history; these tables are excluded from document search. Redis supports Superset.
 
 ## Stores and ownership
 
@@ -236,9 +236,9 @@ Storage access/secret fields and AI API-key fields are encrypted TEXT using AES-
 
 Hibernate currently uses `ddl-auto=update`; supplemental [schema.sql](../backend/src/main/resources/schema.sql) runs after JPA initialization to create pgvector objects, indexes, and compatibility changes. `StoredSecretMigration` then encrypts legacy plaintext/rewraps credentials before explicit account/storage bootstrap; scheduled work waits until application startup completes. This is the current startup mechanism, not a versioned Flyway/Liquibase migration system. Existing encrypted rows require the matching wrapping key. See [upgrade and key rotation](deployment.md#upgrading-an-existing-installation).
 
-## MongoDB and Redis
+## Event history and Redis
 
-MongoDB collections remain `events` (`userId`, `type`, `payload`, `createdAt`) and `activity_logs` (`userId`, `action`, resource/client metadata, `timestamp`). Existing event viewing, audit viewing, and admin export remain intact. There is no OCR-text collection or MongoDB vector-search integration in this change.
+PostgreSQL tables `events` and `activity_logs` retain existing history APIs and export fields. Events use typed identifiers/timestamps and a JSONB payload. Existing history requires the [legacy importer](history-migration.md). These tables remain outside document search. `document_processing_jobs`, `document_pages`, and page-aware `document_chunks` support [background extraction and external OCR](document-processing-extension.md).
 
 Redis remains a Superset cache/Celery concern. The application backend does not use it for indexing jobs, vector storage, or search sessions.
 
@@ -248,7 +248,6 @@ Redis remains a Superset cache/Celery concern. The application backend does not 
 | --- | --- | --- |
 | Admin JSON export v2 | Selected user/profile metadata, folders/connections, document metadata/status, dashboard definitions, non-secret AI/settings/job configuration, events, audit logs | Omits password hashes, credentials/ciphertext, original objects, content chunks, vectors, pending-job runtime state, and per-user upload grants; no application import/restore endpoint |
 | PostgreSQL database backup | Relational state, bcrypt hashes, encrypted credential fields, content chunks, vectors, and persisted job state | Stored credentials need the matching separately retained wrapping key |
-| MongoDB backup | Event/audit history | Does not restore PostgreSQL configuration or original documents |
 | Object-storage backup/versioning | Original files and prefixes | Does not restore application nicknames, publication rules, or login identities |
 | Wrapping-key backup | Current/required previous server keys | Retain separately from database backups and with restricted access; losing the matching key prevents decryption |
 
@@ -257,10 +256,9 @@ The export identifies itself as `superset-docker-app-backup-v2` and `credentials
 ## Implementation sources
 
 - [PostgreSQL entities](../backend/src/main/kotlin/com/starter/model/postgres/)
-- [MongoDB document models](../backend/src/main/kotlin/com/starter/model/mongo/Documents.kt)
+- [PostgreSQL history models](../backend/src/main/kotlin/com/starter/model/postgres/History.kt)
 - [Supplemental schema](../backend/src/main/resources/schema.sql)
 - [First-volume PostgreSQL bootstrap](../docker/postgres/init.sql)
-- [MongoDB bootstrap](../docker/mongo/init.js)
 - [Backup export](../backend/src/main/kotlin/com/starter/service/BackupExportService.kt)
 - [Search and job guide](search-and-indexing.md)
 
@@ -276,7 +274,7 @@ The export identifies itself as `superset-docker-app-backup-v2` and `credentials
 
 ### MFA, webhooks, and protected sharing
 
-Hibernate also creates the following domain tables. They are excluded from JSON export and from search/AI retrieval. Preserve PostgreSQL backups and wrapping keys; MongoDB is unchanged.
+Hibernate also creates the following domain tables. They are excluded from JSON export and from search/AI retrieval. Preserve PostgreSQL backups and wrapping keys; 
 
 | Table / columns | Purpose and protection |
 | --- | --- |
@@ -305,11 +303,11 @@ These tables belong to the optional Documents and Workflows source plugins. Thei
 
 Hibernate creates these tables through the existing upgrade mechanism; there is no Flyway migration system. Admins author workflow definitions and manage generated documents. Runs remain private to their owner, including against other admins. Published ready workflows grant PDFs through reached document/email steps only; unpublishing pauses those grants. Existing ready definitions gain `published=false` during upgrade and are not silently shared. Attachment IDs are validated against available documents on every workflow save, not accepted as proof of access. PDF bytes/snapshots/resolved values are excluded from metadata serialization; library queries fetch metadata only. Template revisions are optimistic concurrency tokens beginning at zero. Editing a template does not rewrite an existing PDF.
 
-Generated PDFs live in PostgreSQL in this first version. They are not automatically mirrored into S3/Azure Blob or added to document search. Template/field data and workflow metadata are access-controlled application records, not credentials encrypted by the secret converter; protect database backups appropriately. PDF passwords are supplied per send and never persisted. The current admin JSON export omits these tables. Preserve PostgreSQL backups for document history and templates; MongoDB and existing object storage remain unchanged. See [documents and workflows](documents-and-workflows.md).
+Generated PDFs live in PostgreSQL in this first version. They are not automatically mirrored into S3/Azure Blob or added to document search. Template/field data and workflow metadata are access-controlled application records, not credentials encrypted by the secret converter; protect database backups appropriately. PDF passwords are supplied per send and never persisted. The current admin JSON export omits these tables. Preserve PostgreSQL backups for document history and templates; Existing object storage remains unchanged. See [documents and workflows](documents-and-workflows.md).
 
 ### Notification tables
 
-`notification_settings` stores one versioned JSON configuration for global method switches and per-type rules/templates; no row is seeded. `notification_preferences` stores versioned per-member method choices; absence means use administrator defaults. `notification_deliveries` stores UUID, notification/method IDs, optional recipient account UUID, masked recipient hint, status/timestamps, and a unique hashed idempotency key. Created-time and recipient/time indexes support bounded history queries. Claims commit before provider I/O; completed metadata is retained for 90 days. Message bodies, HTML, codes, full addresses, and provider credentials are not copied into delivery records. These tables are excluded from document/vector search and metadata JSON backup exports. Preserve PostgreSQL backups. Provider credentials remain in the existing encrypted email/plugin settings. MongoDB is unchanged. See [Notifications](notifications.md).
+`notification_settings` stores one versioned JSON configuration for global method switches and per-type rules/templates; no row is seeded. `notification_preferences` stores versioned per-member method choices; absence means use administrator defaults. `notification_deliveries` stores UUID, notification/method IDs, optional recipient account UUID, masked recipient hint, status/timestamps, and a unique hashed idempotency key. Created-time and recipient/time indexes support bounded history queries. Claims commit before provider I/O; completed metadata is retained for 90 days. Message bodies, HTML, codes, full addresses, and provider credentials are not copied into delivery records. These tables are excluded from document/vector search and metadata JSON backup exports. Preserve PostgreSQL backups. Provider credentials remain in the existing encrypted email/plugin settings.  See [Notifications](notifications.md).
 
 ### Access controls and role migration
 

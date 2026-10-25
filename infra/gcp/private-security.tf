@@ -1,5 +1,5 @@
 resource "google_compute_firewall" "private" {
-  for_each                = { services = ["8088", "27017"], runtime = ["8000", "8001", "8090"] }
+  for_each                = { services = ["8088"], runtime = ["8000", "8001", "8090"] }
   name                    = "${var.name}-${each.key}-from-app"
   network                 = google_compute_network.app.id
   direction               = "INGRESS"

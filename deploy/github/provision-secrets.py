@@ -19,7 +19,7 @@ def complete(path: Path) -> None:
 
 def _complete(stream, content: str) -> None:
     additions = {
-        "POSTGRES_PASSWORD": secrets.token_hex(32), "MONGO_PASSWORD": secrets.token_hex(32),
+        "POSTGRES_PASSWORD": secrets.token_hex(32),
         "APP_SECRETS_ENCRYPTION_KEY": base64.b64encode(secrets.token_bytes(32)).decode(),
         "APP_DOCUMENT_RENDER_TOKEN": secrets.token_hex(32),
         "APP_PLUGIN_RUNNER_TOKEN": secrets.token_hex(32),

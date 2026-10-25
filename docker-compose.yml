@@ -30,7 +30,7 @@ x-superset-env: &superset-env
 
 services:
 
-  # ─── Databases ─────────────────────────────────────────────────────────────
+  # â”€â”€â”€ Databases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   postgres:
     image: pgvector/pgvector:0.8.6-pg18-trixie
@@ -51,24 +51,6 @@ services:
       timeout: 5s
       retries: 10
 
-  mongodb:
-    image: mongo:7.0
-    restart: unless-stopped
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: app_user
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?Set MONGO_PASSWORD}
-      MONGO_INITDB_DATABASE: app_db
-    expose:
-      - "27017"
-    volumes:
-      - mongo_data:/data/db
-      - ./docker/mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -82,7 +64,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # ─── Apache Superset ───────────────────────────────────────────────────────
+  # â”€â”€â”€ Apache Superset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   superset-init:
     image: apache/superset:4.0.2
@@ -160,7 +142,7 @@ services:
       retries: 3
       start_period: 15s
 
-  # ─── Kotlin Backend ────────────────────────────────────────────────────────
+  # â”€â”€â”€ Kotlin Backend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   backend:
     build:
@@ -170,8 +152,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      mongodb:
-        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: docker
       POSTGRES_HOST: postgres
@@ -179,7 +159,6 @@ services:
       POSTGRES_DB: app_db
       POSTGRES_USER: superset_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
-      MONGO_URI: mongodb://app_user:${MONGO_PASSWORD:?Set MONGO_PASSWORD}@mongodb:27017/app_db?authSource=admin
       DB_POOL_MAX_SIZE: 10
       DB_POOL_MIN_IDLE: 2
       APP_SEED_STORAGE_PROVIDER: ${APP_SEED_STORAGE_PROVIDER:-NONE}
@@ -191,6 +170,9 @@ services:
       APP_SEED_STORAGE_ROOT_PATH: ${APP_SEED_STORAGE_ROOT_PATH:-folders}
       APP_SEED_STORAGE_FORCE: ${APP_SEED_STORAGE_FORCE:-false}
       ML_BASE_URL: http://ml-backend:8000
+      DOCUMENT_MAX_BYTES: ${DOCUMENT_MAX_BYTES:-52428800}
+      DOCUMENT_OCR_URL: ${DOCUMENT_OCR_URL:-}
+      DOCUMENT_OCR_TOKEN: ${DOCUMENT_OCR_TOKEN:-}
       APP_SECRETS_ENCRYPTION_KEY: ${APP_SECRETS_ENCRYPTION_KEY:-}
       APP_SECRETS_PREVIOUS_ENCRYPTION_KEY: ${APP_SECRETS_PREVIOUS_ENCRYPTION_KEY:-}
       AI_ENABLED: ${AI_ENABLED:-false}
@@ -322,6 +304,8 @@ services:
       retries: 3
 
   ml-backend:
+    environment:
+      DOCUMENT_MAX_BYTES: ${DOCUMENT_MAX_BYTES:-52428800}
     build:
       context: ./ml-backend
       dockerfile: Dockerfile
@@ -339,7 +323,7 @@ services:
       retries: 5
       start_period: 20s
 
-  # ─── React Frontend ────────────────────────────────────────────────────────
+  # â”€â”€â”€ React Frontend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   frontend:
     build:
@@ -350,6 +334,8 @@ services:
       backend:
         condition: service_healthy
       ml-backend:
+    environment:
+      DOCUMENT_MAX_BYTES: ${DOCUMENT_MAX_BYTES:-52428800}
         condition: service_healthy
       superset:
         condition: service_healthy
@@ -359,6 +345,5 @@ services:
 volumes:
   postgres_data:
   postgres18_data:
-  mongo_data:
   redis_data:
   superset_home:

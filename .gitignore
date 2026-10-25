@@ -21,3 +21,5 @@
 *.tfvars
 *.tfvars.json
 *.tfbackend
+
+/tmp/

@@ -32,7 +32,6 @@ services:
       POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_USER: app_user
       POSTGRES_JDBC_PARAMETERS: ?sslmode=${POSTGRES_SSL_MODE:-verify-full}&sslrootcert=/run/secrets/postgres-ca.pem
-      MONGO_URI: mongodb://app_user:${MONGO_PASSWORD:-}@${SERVICES_PRIVATE_IP}:27017/app_db?authSource=admin
       SUPERSET_BASE_URL: http://${SERVICES_PRIVATE_IP}:8088
       ML_BASE_URL: http://${RUNTIME_PRIVATE_IP}:8000
       APP_DOCUMENT_RENDER_URL: http://${RUNTIME_PRIVATE_IP}:8001
@@ -57,11 +56,6 @@ services:
     volumes:
       - ./deploy/terraform:/bootstrap:ro
       - /etc/meshable-ops/postgres-ca.pem:/run/secrets/postgres-ca.pem:ro
-
-  mongodb:
-    profiles: [services]
-    ports:
-      - ${HOST_PRIVATE_IP}:27017:27017
 
   redis:
     profiles: [services]
@@ -117,9 +111,6 @@ services:
       - ${HOST_PRIVATE_IP}:8000:8000
 
 volumes:
-  mongo_data:
-    driver: local
-    driver_opts: { type: none, o: bind, device: /srv/meshable-data/mongodb }
   redis_data:
     driver: local
     driver_opts: { type: none, o: bind, device: /srv/meshable-data/redis }

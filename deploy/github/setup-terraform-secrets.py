@@ -27,7 +27,6 @@ def configuration(admin_email: str, admin_password: str) -> dict[str, str]:
         "postgres_admin_password": secrets.token_hex(32) + "aA7!",
         "postgres_password": secrets.token_hex(32),
         "superset_database_password": secrets.token_hex(32),
-        "mongo_password": secrets.token_hex(32),
         "secrets_encryption_key": base64.b64encode(secrets.token_bytes(32)).decode(),
         "document_render_token": secrets.token_hex(32),
         "plugin_runner_token": secrets.token_hex(32),

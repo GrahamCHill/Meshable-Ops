@@ -89,7 +89,7 @@ class DocumentProcessingWorker(
                     json.writeValueAsString(mapOf("method" to page.method, "confidence" to page.confidence,
                         "engine" to extracted.engine, "languages" to extracted.languages)))
             }
-            val status = when { chunks.isEmpty() -> "NO_EXTRACTABLE_TEXT"; truncated -> "CONTENT_TRUNCATED"; else -> "CONTENT_INDEXED" }
+            val status = when { extracted.ocrRequired -> "OCR_REQUIRED"; chunks.isEmpty() -> "NO_EXTRACTABLE_TEXT"; truncated -> "CONTENT_TRUNCATED"; else -> "CONTENT_INDEXED" }
             jdbc.update("UPDATE storage_documents SET processing_status=?, embedding_model=?, updated_at=NOW() WHERE id=?", status, model, document.id)
             queue.complete(job)
         }

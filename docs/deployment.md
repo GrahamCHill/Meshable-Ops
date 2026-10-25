@@ -30,7 +30,6 @@ One Linux VM runs:
 - backend
 - Superset
 - PostgreSQL
-- MongoDB
 - pgvector inside PostgreSQL
 - Redis for Superset
 - ML helper
@@ -58,7 +57,6 @@ The VM mainly runs:
 Stateful dependencies can be moved out to managed services:
 
 - PostgreSQL
-- MongoDB
 - pgvector-capable PostgreSQL
 - object storage
 
@@ -95,7 +93,7 @@ That keeps the browser path simple:
 - browser -> caddy -> frontend
 - frontend -> backend internally
 - frontend -> superset internally
-- backend -> postgres/mongo/ml internally
+- backend -> postgres/ml internally
 - backend -> private WeasyCanvas renderer for document generation
 - backend -> selected object-storage prefixes; optional configured chat/embedding APIs
 - frontend/superset runtime -> superset/redis internally
@@ -166,7 +164,7 @@ The production override expects `.env.production` to provide at least:
 - `APP_DOMAIN`
 - `ACME_EMAIL`
 - `JWT_SECRET`
-- `POSTGRES_PASSWORD` and `MONGO_PASSWORD`
+- `POSTGRES_PASSWORD`
 - `APP_SECRETS_ENCRYPTION_KEY` before storing API/storage credentials or upgrading rows that already contain them
 - `SUPERSET_SECRET_KEY`
 - `GUEST_TOKEN_JWT_SECRET`
@@ -177,7 +175,6 @@ The production override expects `.env.production` to provide at least:
 If you offload services, also override any relevant connection settings for:
 
 - PostgreSQL
-- MongoDB
 - pgvector data as part of PostgreSQL
 - object storage
 
@@ -243,7 +240,7 @@ Normal production posture:
 - private or tightly restricted:
   `22`
 - not publicly exposed:
-  `3000`, `8080`, `5432`, `27017`, `6379`
+  `3000`, `8080`, `5432`, `6379`
 
 The production override already removes direct host publishing for backend and data services. Keep it that way unless you have a specific secured admin-access reason.
 
@@ -289,7 +286,7 @@ After deployment, verify:
 
 ## MFA, webhook, and PDF sharing rollout
 
-Rebuild the backend/frontend after upgrading. Hibernate creates the MFA, webhook, sharing, and rate-limit tables plus user security-version fields. Preserve the wrapping key: authenticator setup secrets, webhook secrets, and retained webhook payloads join the existing startup key rotation. The JSON export omits these tables; retain proper PostgreSQL backups. MongoDB needs no changes.
+Rebuild the backend/frontend after upgrading. Hibernate creates the MFA, webhook, sharing, and rate-limit tables plus user security-version fields. Preserve the wrapping key: authenticator setup secrets, webhook secrets, and retained webhook payloads join the existing startup key rotation. The JSON export omits these tables; retain proper PostgreSQL backups. 
 
 Set `APP_MFA_PRIMARY_ADMIN_EMAIL` to the primary administrator's saved email (when unset, the oldest active admin is selected). Its first password login prompts optional MFA setup; deploy synchronized server time for authenticator codes. Configure and test email before email enrollment or sharing; enrollment requires receipt of an actual code. Preserve recovery codes before relying on email MFA. Admin delivery changes cannot disable a configuration used as an account's sole factor, but external environment changes/provider outages still need recovery or restored delivery.
 
@@ -303,7 +300,7 @@ Email sharing sends a mandatory watermarked, password-encrypted PDF attachment, 
 
 Rebuild the frontend/backend and build the new `weasy-renderer` service with the normal Compose deployment. The repository contains its source snapshot and Python dependencies; a neighbouring WeasyCanvas checkout is not required. Its container installs Pango/fonts, runs as non-root, and has no published host port. Backend `APP_DOCUMENT_RENDER_URL` defaults to the internal service URL; native development may use `http://127.0.0.1:8720`. Set a shared `APP_DOCUMENT_RENDER_TOKEN` on backend/renderer and keep the renderer on a trusted private network. The Compose stack forwards both settings.
 
-Templates, generated PDF bytes/snapshots, and workflow definitions use new PostgreSQL tables. Back up the database; JSON export does not include these records. No MongoDB changes, AI provider, or ML extractor are required. An absent renderer affects template validation/generation with a safe 503, while ordinary app features remain available. After deploying, create a template with your own sample content, publish it, generate a sample PDF, and verify plain/protected attachments with a recipient you control. Health alone does not confirm native rendering/font behavior.
+Templates, generated PDF bytes/snapshots, and workflow definitions use new PostgreSQL tables. Back up the database; JSON export does not include these records. No AI provider or ML extractor is required. An absent renderer affects template validation/generation with a safe 503, while ordinary app features remain available. After deploying, create a template with your own sample content, publish it, generate a sample PDF, and verify plain/protected attachments with a recipient you control. Health alone does not confirm native rendering/font behavior.
 
 The workflow builder saves drafts/validated diagrams and attachment links. Ready diagrams do not run automatically; email sends are explicit. [The feature guide](documents-and-workflows.md) describes its current limits, security, and expansion points. Native renderer setup/tests are in [its README](../weasy-renderer/README.md).
 
@@ -348,7 +345,7 @@ Restore the matching `APP_SECRETS_ENCRYPTION_KEY`; do not generate a replacement
 
 ### Search button is absent or AI answers are unavailable
 
-Check **App Intelligence** and the selected configuration source. The floating assistant requires search, launcher visibility, and permission to use search. It opens with search and setup guidance while AI answers, content indexing, or the chat model are not configured. Ordinary Storage search remains available with AI off; switching search off hides its fields and the launcher. Answers need accessible indexed excerpts. Status reports configuration, not live provider health; use the saved-connection tests. External embeddings must return 1536 dimensions. Basic local matching needs neither an API key nor the ML container; failed extraction keeps metadata search. MongoDB records are intentionally not included.
+Check **App Intelligence** and the selected configuration source. The floating assistant requires search, launcher visibility, and permission to use search. It opens with search and setup guidance while AI answers, content indexing, or the chat model are not configured. Ordinary Storage search remains available with AI off; switching search off hides its fields and the launcher. Answers need accessible indexed excerpts. Status reports configuration, not live provider health; use the saved-connection tests. External embeddings must return 1536 dimensions. Basic local matching needs neither an API key nor the ML container; failed extraction keeps metadata search. Events and audit records remain excluded from document search.
 
 ### Indexing job does not run at the expected time
 

@@ -9,7 +9,7 @@ function HealthValue({ label, value }: Readonly<{ label: string; value?: string 
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '0.65rem 0' }}>
       <span>{label}</span>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontWeight: 600 }}>{value ?? 'Checking…'}</span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontWeight: 600 }}>{value ?? 'Checkingâ€¦'}</span>
     </div>
   )
 }
@@ -34,7 +34,6 @@ export function AdminSystemPage() {
             <Card>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, marginBottom: 6 }}> Dependency health</div>
               <HealthValue label="PostgreSQL" value={health.data?.postgres} />
-              <HealthValue label="MongoDB" value={health.data?.mongodb} />
               <HealthValue label="pgvector" value={health.data?.pgvector} />
             </Card>
             <Card>
@@ -48,7 +47,7 @@ export function AdminSystemPage() {
           </div>
 
           <Card style={{ padding: '0.85rem 1rem', color: 'var(--color-text-secondary)', fontSize: '0.8rem' }}>
-            Runtime checked {formatDate(stack.data?.timestamp)} · Dependency health checked {formatDate(health.data?.timestamp)}
+            Runtime checked {formatDate(stack.data?.timestamp)} Â· Dependency health checked {formatDate(health.data?.timestamp)}
           </Card>
 
           <div>

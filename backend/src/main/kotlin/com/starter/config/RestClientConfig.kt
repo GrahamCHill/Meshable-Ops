@@ -13,7 +13,12 @@ class RestClientConfig {
     fun restTemplate() = RestTemplate()
 
     @Bean("documentRestTemplate")
-    fun documentRestTemplate() = RestTemplate(SimpleClientHttpRequestFactory().apply { setConnectTimeout(10000); setReadTimeout(910000) })
+    fun documentRestTemplate() = RestTemplate(object : SimpleClientHttpRequestFactory() {
+        override fun prepareConnection(connection: HttpURLConnection, httpMethod: String) {
+            super.prepareConnection(connection, httpMethod)
+            connection.instanceFollowRedirects = false
+        }
+    }.apply { setConnectTimeout(10000); setReadTimeout(910000) })
 
     @Bean("aiRestTemplate")
     fun aiRestTemplate(): RestTemplate {

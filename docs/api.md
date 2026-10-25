@@ -91,7 +91,7 @@ Browser requests use the application origin's `/api` prefix through the frontend
 
 
 
-This is a reference for the current storage/search/admin contracts. [Controllers](../backend/src/main/kotlin/com/starter/controller/) and [DTOs](../backend/src/main/kotlin/com/starter/dto/) remain the source of truth. No public API indexes MongoDB collections, events, audit logs, or OCR text.
+This is a reference for the current storage/search/admin contracts. [Controllers](../backend/src/main/kotlin/com/starter/controller/) and [DTOs](../backend/src/main/kotlin/com/starter/dto/) remain the source of truth. Events and audit logs are excluded from document search. Document OCR uses a configured external adapter and background indexing.
 
 
 
@@ -221,7 +221,7 @@ Disabling search returns 403 for both POST endpoints. Revoking document access d
 
 
 
-Folder create/update uses `title`, optional `description`, and `tags`. Relative paths cannot escape the selected prefix. Hidden folders/disabled connections are denied even for a known ID. Cloud write permissions must also permit uploads. Removing an external selection does not delete cloud objects. Reindex returns `{ "message": "..." }` with folder/document/content/error counts and runs synchronously; clients should allow sufficient time.
+Folder create/update uses `title`, optional `description`, and `tags`. Relative paths cannot escape the selected prefix. Hidden folders/disabled connections are denied even for a known ID. Cloud write permissions must also permit uploads. Removing an external selection does not delete cloud objects. Reindex returns `{ "message": "..." }` with folder/document/content/error counts after metadata synchronization; content is queued for background extraction/OCR, so counts do not imply all content jobs have completed.
 
 
 

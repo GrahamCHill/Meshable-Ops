@@ -21,7 +21,7 @@ class TerraformSecretsTests(unittest.TestCase):
         second = module.configuration("Owner@Example.com", secret_password)
         self.assertNotEqual(first["jwt_secret"], second["jwt_secret"])
         service_secrets = [first[key] for key in first if key not in {"bootstrap_users_json", "secrets_encryption_key"}]
-        self.assertEqual(len(set(service_secrets)), 10)
+        self.assertEqual(len(set(service_secrets)), 9)
         self.assertTrue(all(len(value) >= 48 for value in service_secrets))
         self.assertEqual(len(base64.b64decode(first["secrets_encryption_key"])), 32)
         master = first["postgres_admin_password"]

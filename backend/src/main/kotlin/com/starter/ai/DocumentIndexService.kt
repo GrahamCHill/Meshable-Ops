@@ -68,6 +68,7 @@ class DocumentIndexService(
 
     private fun index(document: StorageDocument, config: ActiveAiConfiguration, model: String, metadataChecksum: String) {
         document.processingStatus = "METADATA_ONLY"
+        processing.cancel(document.id)
         if (config.indexContent) {
             document.processingStatus = when {
                 !textService.supports(document.fileName) -> "UNSUPPORTED_FORMAT"
@@ -77,7 +78,7 @@ class DocumentIndexService(
                     "CONTENT_QUEUED"
                 }
             }
-        } else processing.cancel(document.id)
+        }
         val metadata = listOf(document.item.title, document.fileName, document.storagePath.replace('/', ' '), document.contentType.orEmpty()).joinToString(" ")
         val batch = embeddings.embed(listOf(metadata), config.embeddings)
         vectors.upsertDocument(document.id, batch.first(), mapOf(
