@@ -40,8 +40,10 @@ abstract class AnalyticsPlugin(private val provider: AnalyticsProvider): Workspa
                 add(PluginSettingField("clientId","Google OAuth client ID",required=true,maxLength=1000))
                 add(PluginSettingField("clientSecret","Google OAuth client secret",PluginFieldType.SECRET,true,maxLength=4096))
                 add(PluginSettingField("refreshToken","Google OAuth refresh token",PluginFieldType.SECRET,true,"Grant offline access with the adwords scope for Ads, or analytics.readonly for GA4. Credentials stay on the server.",4096))
-            } else add(PluginSettingField("accessToken",if(provider==AnalyticsProvider.META_PAGE)"Page access token" else "Read-only API access token",PluginFieldType.SECRET,true,
-                when(provider) { AnalyticsProvider.CLOUDFLARE -> "Use a scoped API token with Analytics: Read on the approved zones.";AnalyticsProvider.META_PAGE -> "Use a Page token with read_insights and pages_read_engagement. Multiple approved Pages must be accessible to this token.";else -> "Use a Meta token with ads_read for the approved accounts. No advertising changes are made." },4096))
+            } else add(PluginSettingField("accessToken",if(provider==AnalyticsProvider.META_PAGE)"User or Page access token" else "Read-only API access token",PluginFieldType.SECRET,true,
+                when(provider) { AnalyticsProvider.CLOUDFLARE -> "Use a scoped API token with Analytics: Read on the approved zones.";AnalyticsProvider.META_PAGE -> "Use a user token able to resolve approved Page tokens (pages_show_list), or a single Page token. Insights need read_insights and pages_read_engagement.";else -> "Use a Meta token with ads_read for the approved accounts. No advertising changes are made." },4096))
+            if(provider==AnalyticsProvider.META_PAGE)add(PluginSettingField("resolvePageToken","Resolve each Page token",PluginFieldType.BOOLEAN,
+                help="Enabled: resolve an approved Page's token from the configured user token on refresh, supporting multiple Pages. Disable when supplying one Page token directly.",defaultValue="true"))
             if(provider==AnalyticsProvider.GOOGLE_ADS) {
                 add(PluginSettingField("developerToken","Google Ads developer token",PluginFieldType.SECRET,true,maxLength=4096))
                 add(PluginSettingField("managerCustomerId","Manager customer ID",help="Optional 10-digit login-customer-id for a manager account."))

@@ -21,6 +21,8 @@ The Users page is a scrollable, searchable row table. **Add new user** opens a d
 
 **Role features** sets the available views and administration areas for each lower role. Member access can narrow those choices further; it cannot override a feature disabled for the role. Access controls itself always belongs to super admins. Plugin access must also satisfy the plugin's enablement, supported-role, and table policies; granting a view never bypasses those policies. Calendar connections remain for internal members.
 
+Only active plugins contribute views to the Role features and Member access lists. Disabled, removed, security-blocked, and dependency-blocked plugins are hidden, including their administration paths. Plugin changes refresh the access-control list. Saved role/member permissions are retained while a plugin is inactive and appear again when it is re-enabled.
+
 Disabled views disappear from navigation and administration cards. Direct links redirect to an available workspace view or personal security settings. Personal MFA and notification preferences remain accessible. Permissions are read from current database state on API requests rather than trusting a role submitted by the browser.
 
 ## External sharing and directory grants

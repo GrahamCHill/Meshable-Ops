@@ -11,7 +11,7 @@ export function PluginSetting({ plugin }: { plugin: PluginView }) {
   const [settings, setSettings] = useState(() => settingsFor(plugin))
   useEffect(() => setSettings(settingsFor(plugin)), [plugin])
   const save = useMutation({ mutationFn: () => pluginsApi.configure(plugin.manifest.id, settings), onSuccess: async () => {
-    await Promise.all([client.invalidateQueries({ queryKey: ['admin-plugins'] }), client.invalidateQueries({ queryKey: ['plugins'] }),client.invalidateQueries({queryKey:['my-access']}),client.invalidateQueries({queryKey:['admin-notifications']}),client.invalidateQueries({queryKey:['notification-preferences']}),client.invalidateQueries({queryKey:['admin-navigation']}),client.invalidateQueries({queryKey:['workspace-navigation']}),client.invalidateQueries({queryKey:['admin-section-artwork']}),client.invalidateQueries({queryKey:['admin-section-icons']})])
+    await Promise.all([client.invalidateQueries({ queryKey: ['admin-plugins'] }), client.invalidateQueries({ queryKey: ['plugins'] }),client.invalidateQueries({queryKey:['my-access']}),client.invalidateQueries({queryKey:['access-policy']}),client.invalidateQueries({queryKey:['admin-notifications']}),client.invalidateQueries({queryKey:['notification-preferences']}),client.invalidateQueries({queryKey:['admin-navigation']}),client.invalidateQueries({queryKey:['workspace-navigation']}),client.invalidateQueries({queryKey:['admin-section-artwork']}),client.invalidateQueries({queryKey:['admin-section-icons']})])
   } })
   const update = (values: Partial<PluginSettings>) => {setSettings(current => ({...current, ...values})); save.reset()}
   const tableAccess = (name: string, level: string) => update({tableAccess: {...settings.tableAccess, [name]: {

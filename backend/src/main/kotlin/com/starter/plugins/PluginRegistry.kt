@@ -36,10 +36,19 @@ class PluginRegistry(definitions: List<WorkspacePlugin>, private val settings: P
 
     private fun accessFeature(id: String) = modules[id]?.accessFeature ?: "plugin.$id"
     private fun canAccess(id: String) = modules[id]?.accessViews?.any { access?.allows(it.id) != false } ?: (access?.allows(accessFeature(id)) != false)
+    private fun inactiveAccessFeatures(active: Set<String>) = manifests.keys.filter { it !in active }.flatMap { id ->
+        listOf("plugin.$id") + modules[id]?.accessViews.orEmpty().map { it.id }
+    }.toSet()
     fun effectiveAccess(value: com.starter.access.MyAccess): com.starter.access.MyAccess {
         val active = available(value.role).map { it.manifest.id }.toSet()
-        val hidden = modules.values.filter { it.manifest.id !in active }.flatMap { it.accessViews }.map { it.id }.toSet()
-        return value.copy(features = value.features - hidden)
+        val hidden = inactiveAccessFeatures(active)
+        return value.copy(features = value.features - hidden, views = value.views.filterNot { it.id in hidden })
+    }
+    fun effectiveAccessControls(value: com.starter.access.AccessPolicyView): com.starter.access.AccessPolicyView {
+        // Show configurable views based on activation, independently of the permissions being edited.
+        val active = catalogue(settings.findAll().associateBy { it.pluginId }, "ADMIN", checkAccess = false).filter { it.active }.map { it.manifest.id }.toSet()
+        val hidden = inactiveAccessFeatures(active)
+        return value.copy(features = value.features.filterNot { it.id in hidden })
     }
 
     fun definition(id: String) = manifests[id] ?: throw NotFoundException("Plugin not installed")

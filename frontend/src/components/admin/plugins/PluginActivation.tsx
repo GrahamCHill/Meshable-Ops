@@ -9,7 +9,7 @@ export function PluginActivation({plugins,draft,setDraft,onPending}: {plugins:Pl
   const client=useQueryClient()
   const save=useMutation({mutationFn:()=>pluginsApi.activation(Object.entries(draft).map(([id,value])=>({id,...value}))),onSuccess:async values=>{
     setDraft({});client.setQueryData(['admin-plugins'],values)
-    await Promise.all(['plugins','my-access','admin-notifications','notification-preferences','admin-navigation','workspace-navigation','admin-section-artwork','admin-section-icons'].map(key=>client.invalidateQueries({queryKey:[key]})))
+    await Promise.all(['plugins','my-access','access-policy','admin-notifications','notification-preferences','admin-navigation','workspace-navigation','admin-section-artwork','admin-section-icons'].map(key=>client.invalidateQueries({queryKey:[key]})))
   }})
   useEffect(()=>{onPending(save.isPending);return()=>onPending(false)},[save.isPending,onPending])
   const all=(enabled:boolean)=>setDraft(Object.fromEntries(plugins.filter(plugin=>!plugin.removed&&plugin.enabled!==enabled).map(plugin=>[plugin.manifest.id,{enabled,expectedRevision:plugin.settingsRevision}])))

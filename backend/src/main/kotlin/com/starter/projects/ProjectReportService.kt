@@ -7,6 +7,7 @@ import com.starter.exception.BadRequestException
 import com.starter.exception.NotFoundException
 import com.starter.notification.NotificationService
 import com.starter.plugins.kanban.CardStatus
+import com.starter.plugins.kanban.KanbanContent
 import com.starter.repository.postgres.UserRepository
 import com.starter.service.branding.BrandingPreferencesService
 import org.springframework.stereotype.Service
@@ -33,7 +34,15 @@ class ProjectReportService(private val access: ProjectAccess, private val projec
         val recipients = if (request.sendEmail) (request.recipientIds + project.leadId).map { target ->
             users.findById(target).orElse(null)?.takeIf { it.active && it.role != "EXTERNAL" && access.canRead(it, project) } ?: throw BadRequestException("Every recipient, including the project lead, must be an active internal project member")
         } else emptyList()
-        val cards = work.work(id, actor).filter { item -> (request.boardId == null || item.boardId == request.boardId) && (request.sprintId == null || item.card.sprintId == request.sprintId) && inPeriod(item.card.startDate, item.card.dueDate, item.card.completionDate, request.from, request.to) }
+        val projectWork = work.work(id, actor)
+        if (request.boardId != null || request.sprintId != null) {
+            val scope = boards.findByProjectId(id).filter { boardAccess.readable(actor, it) && (request.boardId == null || it.id == request.boardId) }
+            if (request.boardId != null && scope.isEmpty()) throw BadRequestException("Choose an accessible board in this project")
+            if (request.sprintId != null && scope.none { board -> mapper.readValue(board.contentJson, KanbanContent::class.java).sprints.any { it.id == request.sprintId } }) {
+                throw BadRequestException("Choose an accessible sprint in this project and selected board")
+            }
+        }
+        val cards = projectWork.filter { item -> (request.boardId == null || item.boardId == request.boardId) && (request.sprintId == null || item.card.sprintId == request.sprintId) && inPeriod(item.card.startDate, item.card.dueDate, item.card.completionDate, request.from, request.to) }
         if (cards.size > 1500) throw BadRequestException("Select a narrower period or board for reports exceeding 1500 tickets")
         val boardIds = cards.map { it.boardId }.toSet()
         if (recipients.any { !allowedBoards(it, mapper.writeValueAsString(boardIds)) }) throw BadRequestException("A report recipient cannot access one of its team-restricted boards. Select a narrower board or different recipients.")

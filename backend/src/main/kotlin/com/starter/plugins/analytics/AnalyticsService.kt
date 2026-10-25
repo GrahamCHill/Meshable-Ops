@@ -57,7 +57,7 @@ class AnalyticsService(private val store: AnalyticsStore,private val configurati
     private fun view(p: AnalyticsProvider,row: AnalyticsRow): AnalyticsLink {
         val s=row.payload.selection
         val url=when(p) {
-            AnalyticsProvider.GOOGLE_ADS -> "https://ads.google.com/aw/overview?ocid=${s.resourceId}"
+            AnalyticsProvider.GOOGLE_ADS -> "https://ads.google.com/aw/overview"
             AnalyticsProvider.META_ADS -> "https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${s.resourceId}"+(if(s.filter==AnalyticsFilter.CAMPAIGN)"&selected_campaign_ids=${s.selector}" else "")
             AnalyticsProvider.GOOGLE_ANALYTICS -> "https://analytics.google.com/analytics/web/#/p${s.resourceId}/reports/intelligenthome"
             AnalyticsProvider.META_PAGE -> "https://www.facebook.com/${s.resourceId}"

@@ -10,7 +10,7 @@ export function AdminSecurityPage() {
   const security = useQuery({queryKey: ['extension-security'], queryFn: extensionSecurityApi.get})
   const save = useMutation({mutationFn: (allow: boolean) => extensionSecurityApi.save({...security.data!, allowThirdPartyExtensions: allow}), onSuccess: async data => {
     client.setQueryData(['extension-security'], data)
-    await Promise.all(['admin-plugins', 'plugins', 'plugin-runtime'].map(key => client.invalidateQueries({queryKey: [key]})))
+    await Promise.all(['admin-plugins', 'plugins', 'plugin-runtime', 'my-access', 'access-policy'].map(key => client.invalidateQueries({queryKey: [key]})))
   }})
   return <div className="page-stack" style={{maxWidth: 800}}>
     <AdminPageHeader title="Security" description="Control third-party extensions and account protection." />
