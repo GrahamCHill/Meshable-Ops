@@ -11,7 +11,7 @@ export function StorageConnectionsPanel() {
   const connections = useQuery({ queryKey: ['admin-storage-connections'], queryFn: storageConnectionsApi.listAdmin })
   const legacy = useQuery({ queryKey: ['admin-storage-folders'], queryFn: storageConnectionsApi.legacyFolders })
   return <div className="page-stack">
-    <div className="page-heading"><div><h2 className="card-title">Shared storage locations</h2><p className="field-help" style={{ margin: 0 }}>Add multiple S3 buckets or Azure containers, then select exactly which folders people can access.</p></div><Button onClick={() => setEditing('new')}> Add connection</Button></div>
+    <div className="page-heading"><div><h2 className="card-title">Shared storage locations</h2><p className="field-help" style={{ margin: 0 }}>Add S3 buckets, Azure containers, or Google Cloud Storage buckets, then select exactly which folders people can access.</p></div><Button onClick={() => setEditing('new')}> Add connection</Button></div>
     {editing && <ConnectionForm key={editing === 'new' ? 'new' : editing.id} initial={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />}
     {connections.isLoading && <Card><Spinner /> Loading connections…</Card>}
     {connections.isError && <Card><p role="alert" className="feedback error">Unable to load connections.</p><Button variant="secondary" onClick={() => connections.refetch()}>Retry</Button></Card>}

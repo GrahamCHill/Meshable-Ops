@@ -49,6 +49,7 @@ run "secure_storage_and_explicit_networking" {
   assert {
     condition = (
       alltrue([for host in aws_instance.private : !host.associate_public_ip_address && host.subnet_id == aws_subnet.services.id && host.root_block_device[0].encrypted]) &&
+      aws_ebs_volume.services.encrypted && aws_ebs_volume.services.size == 128 && aws_volume_attachment.services.instance_id == aws_instance.private["services"].id &&
       aws_route.services_outbound.nat_gateway_id == aws_nat_gateway.services.id &&
       aws_route_table_association.services.route_table_id == aws_route_table.services.id &&
       alltrue([for subnet in aws_subnet.database : !subnet.map_public_ip_on_launch]) &&

@@ -38,7 +38,8 @@ class StorageConnectionService(
     @Transactional
     fun save(id: UUID?, req: StorageConnectionRequest, email: String): StorageConnectionResponse {
         val existing = id?.let { connection(it) }
-        val sameService = existing?.provider == req.provider && existing.endpoint == req.endpoint?.trim()?.ifBlank { null }
+        val sameService = existing?.provider == req.provider && existing.endpoint == req.endpoint?.trim()?.ifBlank { null } &&
+            (req.provider != "GCS" || existing.bucket == req.bucket.trim())
         val access = if (req.useServerIdentity) null else req.accessKey?.trim()?.ifBlank { null } ?: existing?.accessKey?.takeIf { sameService }
         val secret = if (req.useServerIdentity) null else req.secretKey?.trim()?.ifBlank { null } ?: existing?.secretKey?.takeIf { sameService }
         if (!req.useServerIdentity && (secret == null || (req.provider != "GCS" && access == null))) {

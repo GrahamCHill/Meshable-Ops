@@ -5,7 +5,7 @@ import { type StorageEntry } from './items'
 export type SharedFolder = { id: string; nickname: string; path: string; accessible: boolean }
 export type SharedConnection = { id: string; nickname: string; provider: StorageProvider; folderCount: number }
 export type StorageConnectionInput = {
-  nickname: string; provider: 'S3' | 'AZURE_BLOB'; bucket: string; region: string; endpoint: string
+  nickname: string; provider: Exclude<StorageProvider, 'NONE'>; bucket: string; region: string; endpoint: string
   accessKey: string; secretKey: string; useServerIdentity: boolean; basePath: string; enabled: boolean
 }
 export type StorageConnection = Omit<StorageConnectionInput, 'accessKey' | 'secretKey' | 'useServerIdentity'> & {

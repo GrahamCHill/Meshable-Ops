@@ -19,7 +19,7 @@ resource "azurerm_subnet" "database" {
   resource_group_name  = azurerm_resource_group.app.name
   virtual_network_name = azurerm_virtual_network.app.name
   address_prefixes     = [cidrsubnet(var.vnet_cidr, 8, 16)]
-  service_endpoints    = ["Microsoft.Storage"]
+  service_endpoint { service = "Microsoft.Storage" }
   delegation {
     name = "postgres"
     service_delegation {

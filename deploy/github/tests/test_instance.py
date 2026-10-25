@@ -1,5 +1,6 @@
 import base64
 import copy
+from contextlib import chdir
 import json
 import os
 import sys
@@ -30,7 +31,7 @@ class InstanceTests(unittest.TestCase):
         second = environment("app.example.com", "owner@example.com", "ops@example.com", "private-password-1234")
         self.assertNotEqual(first, second)
         self.assertNotIn("admin@app.local", first)
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory() as directory, chdir(directory):
             path = Path(directory) / ".env.production"
             write_new(path, first)
             with self.assertRaises(FileExistsError):

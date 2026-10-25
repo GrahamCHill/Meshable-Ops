@@ -115,3 +115,14 @@ services:
     profiles: [runtime]
     ports:
       - ${HOST_PRIVATE_IP}:8000:8000
+
+volumes:
+  mongo_data:
+    driver: local
+    driver_opts: { type: none, o: bind, device: /srv/meshable-data/mongodb }
+  redis_data:
+    driver: local
+    driver_opts: { type: none, o: bind, device: /srv/meshable-data/redis }
+  superset_home:
+    driver: local
+    driver_opts: { type: none, o: bind, device: /srv/meshable-data/superset }

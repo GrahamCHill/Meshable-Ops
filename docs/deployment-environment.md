@@ -30,6 +30,8 @@ chmod 600 .env.production
 
 For GitHub releases, omit `--output`: the helper writes `/srv/weaveops/shared/.env.production`. For Terraform, run `python3 ../../deploy/github/setup-terraform-secrets.py --admin-email owner@example.com` **inside the selected cloud module**, before planning.
 
+Private configuration helpers accept files only inside the current working directory or, for environment files, the trusted deployment directory `DEPLOY_PATH/shared` (default `/srv/weaveops/shared` on Linux). They reject parent traversal and file aliases. For a custom GitHub deployment root, set `DEPLOY_PATH` in the setup process as well as the GitHub variable. For other locations, change into the intended directory before invoking the helper by its absolute path.
+
 All helpers privately prompt for a password and refuse to overwrite an existing file. Use them for fresh installations. Retain settings for upgrades and rotate credentials deliberately with the corresponding database/provider.
 
 ## Required settings

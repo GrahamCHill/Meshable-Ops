@@ -25,7 +25,7 @@ jobs:
         with:
           terraform_version: '1.16.5'
           terraform_wrapper: false
-      - run: terraform fmt -check -recursive
+      - run: terraform fmt -check -recursive ..
       - run: terraform init -backend=false -input=false -lockfile=readonly
       - run: terraform validate -no-color
       - name: Test networking and storage with mocked cloud providers
@@ -79,7 +79,7 @@ jobs:
             ml-backend/requirements.txt
             weasy-renderer/requirements*.txt
             weasy-renderer/requirements*.lock
-            plugin-runtime/requirements.txt
+            plugin-runtime/requirements.lock
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-liberation
       - run: python -m venv /tmp/weaveops-renderer && /tmp/weaveops-renderer/bin/pip install --require-hashes --only-binary=:all: -r weasy-renderer/requirements-dev.lock
       - run: /tmp/weaveops-renderer/bin/python -m unittest discover -s tests -v
@@ -88,7 +88,7 @@ jobs:
       - run: /tmp/weaveops-extraction/bin/python -m unittest discover -s tests -v
         working-directory: ml-backend
       - run: python -m unittest discover -s deploy/github/tests -v
-      - run: python -m venv /tmp/meshable-plugin-runtime && /tmp/meshable-plugin-runtime/bin/pip install -r plugin-runtime/requirements.txt
+      - run: python -m venv /tmp/meshable-plugin-runtime && /tmp/meshable-plugin-runtime/bin/pip install --require-hashes --only-binary=:all: -r plugin-runtime/requirements.lock
       - run: /tmp/meshable-plugin-runtime/bin/python -m unittest discover -s tests -v
         working-directory: plugin-runtime
       - run: python deploy/github/check-release-version.py

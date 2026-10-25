@@ -74,6 +74,7 @@ export function useStorageSettings() {
   }
   const dirty = !!settings.data && (JSON.stringify(form) !== JSON.stringify(toForm(settings.data)) || identity !== (!settings.data.storageAccessKeyConfigured && !settings.data.storageSecretKeyConfigured))
   const azure = form.storageProvider === 'AZURE_BLOB'
+  const gcs = form.storageProvider === 'GCS'
   const enabled = form.storageProvider !== 'NONE'
   const busy = save.isPending || check.isPending
   const prefix = form.storageRootPath.trim().replace(/\\/g, '/').split('/').filter(Boolean).join('/')
@@ -82,12 +83,12 @@ export function useStorageSettings() {
     const message = !prefix || prefix.split('/').some(part => part === '.' || part === '..') ? 'Enter a folder prefix without . or .. segments.'
       : enabled && !form.storageBucket.trim() ? `Enter a ${azure ? 'container' : 'bucket'} name.`
         : azure && !form.storageEndpoint.trim() ? 'Enter the Azure Blob service endpoint.'
-          : enabled && !identity && ((!form.storageAccessKey.trim() && !(sameLocation && settings.data?.storageAccessKeyConfigured)) || (!form.storageSecretKey.trim() && !(sameLocation && settings.data?.storageSecretKeyConfigured))) ? 'Complete both credential fields or select server identity.'
-            : enabled && !identity && !!form.storageAccessKey.trim() && !form.storageSecretKey.trim() ? 'Enter a new secret when replacing the account or access key.'
+          : enabled && !identity && ((!gcs && !form.storageAccessKey.trim() && !(sameLocation && settings.data?.storageAccessKeyConfigured)) || (!form.storageSecretKey.trim() && !(sameLocation && settings.data?.storageSecretKeyConfigured))) ? (gcs ? 'Enter service account JSON or select server identity.' : 'Complete both credential fields or select server identity.')
+            : enabled && !identity && !gcs && !!form.storageAccessKey.trim() && !form.storageSecretKey.trim() ? 'Enter a new secret when replacing the account or access key.'
               : enabled && !identity && !settings.data?.encryptionReady ? 'Set APP_SECRETS_ENCRYPTION_KEY on the server before saving credentials.'
                 : form.vectorReindexIntervalMinutes < 15 || form.vectorReindexIntervalMinutes > 10080 ? 'Choose an interval between 15 and 10080 minutes.' : ''
     setError(message)
     return !message
   }
-  return { fieldId, form, identity, setIdentity, showSecret, setShowSecret, error, setError, notice, setNotice, settings, restore, check, save, reindex, update, dirty, azure, enabled, busy, prefix, validate }
+  return { fieldId, form, identity, setIdentity, showSecret, setShowSecret, error, setError, notice, setNotice, settings, restore, check, save, reindex, update, dirty, azure, gcs, enabled, busy, prefix, validate }
 }

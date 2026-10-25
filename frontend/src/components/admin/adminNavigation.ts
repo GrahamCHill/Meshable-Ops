@@ -12,7 +12,7 @@ export const adminGroups = [
     { to: '/account/security', label: 'My security & MFA', description: 'Set up authenticator or email verification and recovery codes.' },
   ] },
   { id: 'storage-sharing', label: 'Storage & sharing', description: 'Cloud connections, downloads, watermarks, and protected sharing.', items: [
-    { to: '/admin/storage', label: 'Storage connections', description: 'Connect S3 or Azure Blob and maintain the search index.' },
+    { to: '/admin/storage', label: 'Storage connections', description: 'Connect S3, Azure Blob, or Google Cloud Storage and maintain the search index.' },
     { to: '/admin/documents', label: 'Document access', description: 'Control PDF viewing, downloads, and watermarks.' },
     { to: '/admin/shares', label: 'File sharing', description: 'Email protected PDF attachments and manage shared links.' },
   ] },

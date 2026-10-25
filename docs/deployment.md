@@ -8,7 +8,7 @@ For independent template copies deploying automatically to an existing Linux VM,
 
 For a new cloud installation, use the [AWS, Azure or GCP Terraform walkthrough](terraform-deployment.md).
 The modules provision managed PostgreSQL and separate application, private analytics/history, and private Python/plugin runtime hosts, with restricted ingress and explicit outbound connectivity.
-AWS/Azure also provision private object storage accessed by the app's cloud identity; GCP uses a separately configured S3/Blob connection.
+AWS/Azure also provision private object storage accessed by the app's cloud identity; GCP starts with file storage configured separately in Administration.
 See [`infra/`](../infra/README.md), [environment file locations](deployment-environment.md), or the [manual Linux VM walkthrough](linux-vm-deployment.md).
 
 This guide explains the practical deployment shapes supported by this repository and how the built-in reverse-proxy setup is intended to be used.

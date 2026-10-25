@@ -42,7 +42,8 @@ def write_new(path: Path, values: dict[str, str]) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--admin-email", required=True)
-    parser.add_argument("--output", type=Path, default=Path("bootstrap.auto.tfvars.json"))
+    parser.add_argument("--output", type=Path, default=Path("bootstrap.auto.tfvars.json"),
+                        help="Bootstrap file inside the working directory")
     args = parser.parse_args()
     admin_email = email(args.admin_email)
     if args.output.exists() or args.output.is_symlink():

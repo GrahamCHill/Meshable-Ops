@@ -41,6 +41,10 @@ def main() -> None:
     values = json.loads(interpolation.stdout)["services"]["environment"]["environment"]
     # Rendered Compose models double literal dollars for reuse as YAML input.
     env = compose_environment({key: str(value).replace("$$", "$") for key, value in values.items() if value is not None}, args.role)
+    if args.role == "runtime":
+        env["DOCKER_GID"] = str(Path("/var/run/docker.sock").stat().st_gid)
+    if args.role == "services" and not os.path.ismount("/srv/meshable-data"):
+        raise ValueError("Services data disk is not mounted; refusing to write history onto the system disk")
     ca_path = Path("/etc/meshable-ops/postgres-ca.pem")
     if args.role != "runtime" and not ca_path.exists():
         if env.get("POSTGRES_CA_SOURCE") == "SYSTEM":

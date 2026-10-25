@@ -85,8 +85,11 @@ The browser bridge is scoped to its own plugin. It receives no token and cannot 
 Fresh setup generates `APP_PLUGIN_RUNNER_TOKEN`. Keep it private and identical in `backend` and `plugin-runner`. Existing deployments may add a random secret of at least 32 characters to their private environment file; omitting it leaves uploaded backend endpoints unavailable while core functionality and frontend-only ZIPs continue working. The Compose stack builds the fixed worker images and private runner:
 
 ```bash
+export DOCKER_GID="$(stat -c %g /var/run/docker.sock)"
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build backend frontend plugin-python-worker plugin-kotlin-worker plugin-runner
 ```
+
+The runner runs as UID 10001. `DOCKER_GID` grants its supplementary group access to the host Docker socket; export it before manual Compose commands (or save the numeric value in the private environment file). GitHub releases and Terraform runtime startup detect this group automatically. Docker Desktop sockets owned by group 0 use the default. The runner installs only wheels from `plugin-runtime/requirements.lock`, with every resolved version and SHA-256 hash pinned. Install that lockfile with `--require-hashes --only-binary=:all:` for local testing too.
 
 The two worker services build tagged images and exit successfully; the runner creates disposable jobs from those fixed images. No uploaded code executes inside the Kotlin application or runner process. Jobs run as UID 10001, with networking disabled, a read-only root, no mounts, dropped capabilities, no new privileges, 384 MiB RAM, half a CPU, 32 processes and 64 MiB temporary storage. They are killed after 40 seconds and removed after every result/failure. A periodic sweep removes abandoned jobs after runner restarts. A runner permits four concurrent jobs; a backend permits 30 calls per member/plugin per minute, 64 KiB request JSON, 8 KiB query parameters, 64 host operations per job, and approximately 4 MiB results.
 

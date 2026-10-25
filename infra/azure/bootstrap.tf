@@ -1,9 +1,10 @@
 module "bootstrap" {
-  depends_on     = [azurerm_postgresql_flexible_server_configuration.app]
-  source         = "../modules/split-stack"
-  repository_url = var.repository_url
-  repository_ref = var.repository_ref
-  private_ips    = local.private_ips
+  data_disk_device = "/dev/disk/azure/scsi1/lun10"
+  depends_on       = [azurerm_postgresql_flexible_server_configuration.app]
+  source           = "../modules/split-stack"
+  repository_url   = var.repository_url
+  repository_ref   = var.repository_ref
+  private_ips      = local.private_ips
   storage_environment = {
     APP_SEED_STORAGE_PROVIDER  = "AZURE_BLOB"
     APP_SEED_STORAGE_BUCKET    = azurerm_storage_container.documents.name

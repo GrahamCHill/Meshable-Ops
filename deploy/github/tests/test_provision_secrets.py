@@ -1,4 +1,5 @@
 import importlib.util
+from contextlib import chdir
 from pathlib import Path
 import tempfile
 import unittest
@@ -13,7 +14,7 @@ spec.loader.exec_module(module)
 
 class ProvisionSecretsTests(unittest.TestCase):
     def test_missing_runtime_fields_are_generated_once(self):
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory() as directory, chdir(directory):
             path = Path(directory) / ".env.production"
             path.write_text("APP_DOMAIN=example.com\n")
             module.complete(path)
@@ -25,7 +26,7 @@ class ProvisionSecretsTests(unittest.TestCase):
             self.assertEqual(path.read_text(), first)
 
     def test_existing_values_including_blank_keys_are_never_rotated(self):
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory() as directory, chdir(directory):
             path = Path(directory) / ".env.production"
             path.write_text("APP_SECRETS_ENCRYPTION_KEY=''\nPOSTGRES_PASSWORD='retained-value'\n")
             module.complete(path)

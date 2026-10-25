@@ -1,8 +1,9 @@
 module "bootstrap" {
-  source         = "../modules/split-stack"
-  repository_url = var.repository_url
-  repository_ref = var.repository_ref
-  private_ips    = local.private_ips
+  data_disk_device = "ebs:${aws_ebs_volume.services.id}"
+  source           = "../modules/split-stack"
+  repository_url   = var.repository_url
+  repository_ref   = var.repository_ref
+  private_ips      = local.private_ips
   storage_environment = {
     APP_SEED_STORAGE_PROVIDER  = "S3"
     APP_SEED_STORAGE_BUCKET    = aws_s3_bucket.documents.id

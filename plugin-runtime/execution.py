@@ -21,7 +21,7 @@ def container_options(image):
     return dict(image=image, stdin_open=True, tty=False, detach=True, network_mode='none', read_only=True,
                 user='10001:10001', cap_drop=['ALL'], security_opt=['no-new-privileges:true'],
                 mem_limit='384m', memswap_limit='384m', nano_cpus=500000000, pids_limit=32,
-                tmpfs={'/tmp': 'rw,noexec,nosuid,nodev,size=64m,mode=1777'},
+                tmpfs={'/tmp': 'rw,noexec,nosuid,nodev,size=64m,mode=0700,uid=10001,gid=10001'},
                 labels={LABEL: '1'}, environment={}, use_config_proxy=False,
                 log_config=LogConfig(type='none'))
 

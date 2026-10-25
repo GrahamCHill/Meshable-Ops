@@ -5,6 +5,7 @@ import com.google.cloud.storage.BlobId
 import com.google.cloud.storage.BlobInfo
 import com.google.cloud.storage.Storage
 import com.google.cloud.storage.StorageOptions
+import com.google.cloud.http.HttpTransportOptions
 import com.starter.exception.BadRequestException
 import com.starter.exception.ConflictException
 import com.starter.exception.NotFoundException
@@ -14,7 +15,7 @@ import java.nio.channels.Channels
 import java.time.Duration
 
 internal class GcsStorageAdapter(
-    private val settings: AppSettings,
+    settings: AppSettings,
     private val viewPrefix: String,
     private val storageFactory: () -> Storage = { gcsStorage(settings) },
 ) : ObjectStorageAdapter {
@@ -90,7 +91,7 @@ internal class GcsStorageAdapter(
 
 private fun gcsStorage(settings: AppSettings): Storage {
     val builder = StorageOptions.newBuilder()
-        .setTransportOptions(StorageOptions.getDefaultHttpTransportOptions().toBuilder().setConnectTimeout(5000).setReadTimeout(10000).build())
+        .setTransportOptions(HttpTransportOptions.newBuilder().setConnectTimeout(5000).setReadTimeout(10000).build())
         .setRetrySettings(StorageOptions.getDefaultRetrySettings().toBuilder().setTotalTimeoutDuration(Duration.ofSeconds(20)).build())
     settings.storageSecretKey?.let { builder.setCredentials(gcsServiceAccountCredentials(it)) }
     return builder.build().service

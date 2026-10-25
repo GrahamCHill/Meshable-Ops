@@ -10,7 +10,7 @@ The Terraform modules deploy a split stack with managed PostgreSQL and three Lin
 | Private services | Superset web/init/Celery/beat, Redis and MongoDB history | Superset and MongoDB accept traffic only from the app host; Redis stays inside Docker |
 | Private runtime | WeasyCanvas/WeasyPrint renderer, content extractor, plugin runner and Python/Kotlin worker images | Only the app host reaches their API ports |
 | Managed PostgreSQL | Separate application and Superset databases/users, pgvector | Private endpoint; TLS with CA verification; no runtime-host database access |
-| Object storage | AWS S3 or Azure Blob; separately configured S3/Blob for GCP | Authenticated access; original files stay outside the app host |
+| Object storage | AWS S3 or Azure Blob; a separately configured file location for GCP | Authenticated access; original files stay outside the app host |
 
 The app and Superset use different database passwords. The database administrator password is kept on the services host for the initialization job, and is absent from app/runtime host settings. The runtime host receives only its service tokens, plus nonsecret connection information. The plugin runner controls Docker on that host; treat it as a privileged service.
 
@@ -27,6 +27,8 @@ flowchart LR
 ```
 
 This separates workloads and adds managed database recovery; it is not a fully highly available application. Each host role is a single VM, and MongoDB/Redis are self-managed. The backend's in-process schedulers currently require one backend instance. Do not add backend replicas without coordinating jobs. Inter-host application traffic uses HTTP on the restricted private network; database traffic and public browser traffic use TLS.
+
+The services host has a separate **128 GB persistent data disk** for MongoDB, Redis and Superset home files, mounted at `/srv/meshable-data`. Its Terraform lifecycle prevents accidental destruction. VM replacement can reattach the existing disk. First boot formats only a blank whole disk; an existing ext4 disk is reused, and unknown filesystems/partitions or mounted system disks are rejected. The startup helper refuses to run services when the data mount is absent. Keep filesystem/application backups as well; disk persistence alone is not recovery or replication.
 
 ## 1. Prepare tools, a repository and a domain
 
@@ -115,7 +117,7 @@ SSH uses OS Login through IAP. The firewall accepts port 22 only from Google's I
 
 Cloud SQL's per-instance CA is installed on app/services hosts and checked with `verify-ca`; its private IP is used rather than a hostname. Egress rules allow database access only from the app/services identities. See [Cloud SQL TLS modes](https://docs.cloud.google.com/sql/docs/postgres/configure-ssl-instance).
 
-This deployment adds GCP hosting, not a native Google Cloud Storage adapter. Connect an existing S3-compatible or Azure Blob location in Administration when you need original-file storage. Google Drive is a separate optional integration.
+The GCP module starts without a seeded object-storage connection or an application bucket. Configure a supported file location in Administration when you need original-file storage; see [storage connections](storage-connections.md). Google Drive is a separate optional integration.
 
 ## 3. Create private bootstrap inputs
 
@@ -256,7 +258,7 @@ These modules are not an automatic migration from the previous all-in-one VM tem
 4. Restore MongoDB on the private services host; point the app at the new endpoints and retain the original wrapping key so encrypted settings and ZIP plugin records remain readable.
 5. Verify permissions, files, reports, dashboards, plugin execution, email and scheduled jobs before changing DNS. Keep a rollback plan that includes database/schema changes.
 
-Infrastructure deletion also needs review. RDS requires deletion protection to be disabled deliberately and takes its configured final snapshot; choose a new final snapshot name if a prior one exists. Azure's lock can be removed by a reviewed Terraform teardown. GCP requires both Terraform and Cloud SQL deletion protection to be disabled deliberately. Retained AWS/GCP disks can keep incurring charges and are not automatically reattached/restored to replacements. Terraform state is not an application backup.
+Infrastructure deletion also needs review. The separate services data disks have `prevent_destroy`: moving them to a different zone or destroying the stack requires deliberately changing that guard after a verified backup/migration. Their existing disk can be reattached when replacing the VM in the same zone. RDS requires deletion protection to be disabled deliberately and takes its configured final snapshot; choose a new final snapshot name if a prior one exists. Azure's lock can be removed by a reviewed Terraform teardown. GCP requires both Terraform and Cloud SQL deletion protection to be disabled deliberately. Retained boot disks can keep incurring charges and are not automatically restored to replacement VMs. Terraform state is not an application backup.
 
 ## Checks and troubleshooting
 

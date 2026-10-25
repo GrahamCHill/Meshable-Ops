@@ -15,6 +15,10 @@ variable "postgres_ca" {
   type    = string
   default = ""
 }
+variable "data_disk_device" {
+  type    = string
+  default = ""
+}
 locals {
   environment_content = join("\n", [for key, value in var.environment : "${key}='${replace(value, "'", "\\'")}'"])
   ca_files = var.postgres_ca == "" ? [] : [{
@@ -28,12 +32,13 @@ locals {
     write_files = concat([{
       path = "/etc/meshable-ops/environment", owner = "root:root", permissions = "0600", encoding = "b64", content = base64encode("${local.environment_content}\n")
     }], local.ca_files)
-    runcmd = [
+    runcmd = concat([
       ["systemctl", "enable", "--now", "docker"],
       ["git", "clone", "--branch", var.repository_ref, "--", var.repository_url, "/opt/contract-app"],
       ["install", "-m", "0600", "/etc/meshable-ops/environment", "/opt/contract-app/.env.production"],
+      ], var.data_disk_device == "" ? [] : [["python3", "/opt/contract-app/deploy/terraform/mount_data.py", "--device", var.data_disk_device]], [
       ["python3", "/opt/contract-app/deploy/terraform/start.py", "--role", var.role],
-    ]
+    ])
   }
 }
 output "cloud_init" {

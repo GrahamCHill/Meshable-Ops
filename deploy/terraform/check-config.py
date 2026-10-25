@@ -53,6 +53,9 @@ with tempfile.TemporaryDirectory() as directory:
         if role == "services":
             assert services["superset"]["environment"]["DATABASE_PASSWORD"] == values["SUPERSET_DATABASE_PASSWORD"]
             assert not services["redis"].get("ports")
+            volumes = json.loads(result.stdout)["volumes"]
+            for name in ("mongo_data", "redis_data", "superset_home"):
+                assert volumes[name]["driver_opts"]["device"].startswith("/srv/meshable-data/")
         if role == "runtime":
             assert services["plugin-runner"]["environment"]["PLUGIN_HOST_CALLBACK"] == "http://10.44.1.10:8080/internal/plugins/host-call"
         print(f"Split {role} role: service selection, dependencies and private bindings checked.")

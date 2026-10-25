@@ -1,4 +1,5 @@
 module "bootstrap" {
+  data_disk_device    = "/dev/disk/by-id/google-${var.name}-services-data"
   depends_on          = [google_sql_user.admin]
   source              = "../modules/split-stack"
   repository_url      = var.repository_url

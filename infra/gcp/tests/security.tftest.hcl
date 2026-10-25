@@ -1,4 +1,7 @@
 mock_provider "google" {
+  mock_resource "google_compute_disk" {
+    defaults = { id = "projects/meshable-test-project/zones/us-central1-a/disks/meshable-ops-services-data" }
+  }
   mock_resource "google_compute_network" {
     defaults = { id = "projects/meshable-test-project/global/networks/meshable-ops-vpc" }
   }
@@ -58,6 +61,8 @@ run "explicit_network_and_iap_administration" {
   assert {
     condition = (
       alltrue([for host in google_compute_instance.private : length(host.network_interface[0].access_config) == 0 && host.network_interface[0].subnetwork == google_compute_subnetwork.private.id]) &&
+      google_compute_disk.services.size == 128 && one(google_compute_instance.private["services"].attached_disk).source == google_compute_disk.services.id &&
+      length(google_compute_instance.private["runtime"].attached_disk) == 0 &&
       google_compute_router_nat.private.source_subnetwork_ip_ranges_to_nat == "LIST_OF_SUBNETWORKS" &&
       one(google_compute_router_nat.private.subnetwork).name == google_compute_subnetwork.private.id &&
       !google_sql_database_instance.app.settings[0].ip_configuration[0].ipv4_enabled &&

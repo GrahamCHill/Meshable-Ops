@@ -277,6 +277,7 @@ services:
   plugin-runner:
     build: ./plugin-runtime
     restart: unless-stopped
+    group_add: ["${DOCKER_GID:-0}"]
     depends_on:
       plugin-python-worker:
         condition: service_completed_successfully

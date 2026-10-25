@@ -10,6 +10,10 @@ variable "postgres_ca" {
   type    = string
   default = ""
 }
+variable "data_disk_device" {
+  type    = string
+  default = ""
+}
 variable "secrets" {
   type      = map(string)
   sensitive = true
@@ -46,12 +50,13 @@ locals {
   }
 }
 module "host" {
-  for_each       = toset(["app", "services", "runtime"])
-  source         = "../host-bootstrap"
-  role           = each.key
-  repository_url = var.repository_url
-  repository_ref = var.repository_ref
-  postgres_ca    = each.key == "runtime" ? "" : var.postgres_ca
+  for_each         = toset(["app", "services", "runtime"])
+  source           = "../host-bootstrap"
+  role             = each.key
+  repository_url   = var.repository_url
+  repository_ref   = var.repository_ref
+  postgres_ca      = each.key == "runtime" ? "" : var.postgres_ca
+  data_disk_device = each.key == "services" ? var.data_disk_device : ""
   environment = merge(var.common_environment, local.environments[each.key], {
     HOST_PRIVATE_IP     = var.private_ips[each.key]
     APP_PRIVATE_IP      = var.private_ips.app

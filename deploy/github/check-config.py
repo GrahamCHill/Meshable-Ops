@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """CI check with temporary generated credentials; does not start containers."""
 import tempfile
+from contextlib import chdir
 import subprocess
 from pathlib import Path
 from instance import environment, write_new
 from preflight import ROOT, load, validate
 
-with tempfile.TemporaryDirectory() as directory:
+with tempfile.TemporaryDirectory() as directory, chdir(directory):
     env_file = Path(directory) / ".env.production"
     # Exercise Compose's literal quoting, including interpolation-looking password text.
     write_new(env_file, environment("workspace.example.com", "owner@example.com", "ops@example.com", "Test-'$quotes\\-password-123!"))

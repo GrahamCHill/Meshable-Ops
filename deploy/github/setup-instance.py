@@ -2,6 +2,7 @@
 """Run once on a Linux deployment host, before enabling GitHub deployments."""
 import argparse
 import getpass
+import os
 from pathlib import Path
 from instance import environment, local_environment, write_new
 
@@ -12,9 +13,9 @@ def main() -> None:
     parser.add_argument("--domain")
     parser.add_argument("--admin-email", required=True)
     parser.add_argument("--acme-email")
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=Path, help="Private file inside the working directory or DEPLOY_PATH/shared")
     args = parser.parse_args()
-    args.output = args.output or (Path(".env") if args.local else Path("/srv/weaveops/shared/.env.production"))
+    args.output = args.output or (Path(".env") if args.local else Path(os.environ.get("DEPLOY_PATH", "/srv/weaveops")) / "shared/.env.production")
     if not args.local and (not args.domain or not args.acme_email):
         parser.error("Production setup requires --domain and --acme-email")
     if args.output.exists() or args.output.is_symlink():

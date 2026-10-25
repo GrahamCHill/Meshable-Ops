@@ -15,6 +15,8 @@ command -v flock >/dev/null
 exec 9>"$root/.deploy.lock"
 flock -w 1800 9
 cd "$release"
+DOCKER_GID="$(stat -c %g /var/run/docker.sock)"
+export DOCKER_GID
 
 python3 - <<'PY'
 import re, subprocess

@@ -23,6 +23,13 @@ resource "google_compute_instance" "private" {
       type  = "pd-balanced"
     }
   }
+  dynamic "attached_disk" {
+    for_each = each.key == "services" ? [1] : []
+    content {
+      source      = google_compute_disk.services.id
+      device_name = "${var.name}-services-data"
+    }
+  }
   network_interface {
     subnetwork = google_compute_subnetwork.private.id
     network_ip = local.private_ips[each.key]

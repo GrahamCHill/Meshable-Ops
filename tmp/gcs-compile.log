@@ -1,6 +1,45 @@
+Access is denied.
 [INFO] Scanning for projects...
 [INFO] 
 [INFO] ------------------------< com.starter:backend >-------------------------
 [INFO] Building Meshable Ops Backend 1.0.0
 [INFO]   from pom.xml
 [INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- spring-boot:3.3.2:build-info (build-info) @ backend ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ backend ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ backend ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- kotlin:1.9.24:compile (compile) @ backend ---
+[INFO] Applied plugin: 'spring'
+[INFO] Applied plugin: 'jpa'
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\ai\AiProviderClient.kt: (24, 20) Variable 'more' initializer is redundant
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\notification\NotificationCatalogue.kt: (17, 5) Property must be initialized, be final, or be abstract. This warning will become an error in future releases.
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\plugins\PluginRegistry.kt: (20, 5) Property must be initialized, be final, or be abstract. This warning will become an error in future releases.
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\plugins\jira\JiraProjectService.kt: (71, 62) Unnecessary non-null assertion (!!) on a non-null receiver of type String
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\plugins\jira\JiraProjectService.kt: (71, 74) Unnecessary non-null assertion (!!) on a non-null receiver of type String
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\plugins\operations\CloudCosts.kt: (13, 43) 'Aws4Signer' is deprecated. Deprecated in Java
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\plugins\operations\CloudCosts.kt: (97, 43) 'create(): DefaultCredentialsProvider!' is deprecated. Deprecated in Java
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\plugins\operations\CloudCosts.kt: (104, 24) 'Aws4Signer' is deprecated. Deprecated in Java
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\plugins\operations\OnCallService.kt: (83, 184) Elvis operator (?:) always returns the left operand of non-nullable type Long
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\plugins\operations\OnCallService.kt: (91, 119) Elvis operator (?:) always returns the left operand of non-nullable type UUID
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\plugins\operations\OnCallWebhook.kt: (18, 130) Elvis operator (?:) always returns the left operand of non-nullable type String
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\plugins\operations\OperationsJobs.kt: (96, 57) There is more than one label with such a name in this scope
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\plugins\operations\OperationsJobs.kt: (102, 81) There is more than one label with such a name in this scope
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\plugins\operations\TimeImports.kt: (53, 40) There is more than one label with such a name in this scope
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\plugins\operations\TimesheetService.kt: (102, 403) Elvis operator (?:) always returns the left operand of non-nullable type Long
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\security\RateLimits.kt: (24, 112) Elvis operator (?:) always returns the left operand of non-nullable type Int
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\service\VectorService.kt: (199, 82) Elvis operator (?:) always returns the left operand of non-nullable type Long
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\service\storage\GcsStorageAdapter.kt: (93, 45) 'getDefaultHttpTransportOptions(): HttpTransportOptions!' is deprecated. Deprecated in Java
+[WARNING] C:\Users\Graham\Documents\projects\Contract-Management-Template\backend\src\main\kotlin\com\starter\service\storage\S3StorageAdapter.kt: (152, 48) 'create(): DefaultCredentialsProvider!' is deprecated. Deprecated in Java
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:19 min
+[INFO] Finished at: 2026-10-25T03:25:09+02:00
+[INFO] ------------------------------------------------------------------------

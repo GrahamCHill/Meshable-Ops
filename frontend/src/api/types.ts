@@ -1,6 +1,6 @@
 
 
-export type StorageProvider = 'NONE' | 'S3' | 'AZURE_BLOB'
+export type StorageProvider = 'NONE' | 'S3' | 'AZURE_BLOB' | 'GCS'
 
 export interface PageResponse<T> {
   content: T[]

@@ -30,25 +30,69 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(options['environment'], {})
         self.assertNotIn('volumes', options)
         self.assertIn('noexec', options['tmpfs']['/tmp'])
+        self.assertIn('mode=0700', options['tmpfs']['/tmp'])
+        self.assertIn('uid=10001,gid=10001', options['tmpfs']['/tmp'])
 
     def test_bootstrap_rejects_traversal_absolute_and_foreign_artifacts(self):
-        for path in ('../evil.py', '/backend/evil.py', 'backend/../evil.py', 'backend//evil.py', 'frontend/evil.py'):
+        for path in ('../evil.py', '/backend/evil.py', 'backend/../evil.py', 'backend//evil.py',
+                     'frontend/evil.py', 'backend/folder./evil.py', 'backend/.. /evil.py', 'backend\\evil.py'):
             with tempfile.TemporaryDirectory() as directory:
                 with self.assertRaises(ValueError):
-                    bootstrap.prepare({'runtime': 'PYTHON', 'entrypoint': path, 'files': {path: 'x'}, 'request': {}}, Path(directory) / 'job')
+                    bootstrap.prepare({'runtime': 'PYTHON', 'entrypoint': path, 'files': {path: 'x'}, 'request': {}}, Path(directory))
 
     def test_bootstrap_rejects_invalid_runtime_and_missing_entrypoint(self):
         for runtime, entry in [('SHELL', 'backend/a.py'), ('KOTLIN', 'backend/a.py'), ('PYTHON', 'backend/missing.py')]:
             with tempfile.TemporaryDirectory() as directory:
                 with self.assertRaises(ValueError):
-                    bootstrap.prepare({'runtime': runtime, 'entrypoint': entry, 'files': {'backend/a.py': 'x'}, 'request': {}}, Path(directory) / 'job')
+                    bootstrap.prepare({'runtime': runtime, 'entrypoint': entry, 'files': {'backend/a.py': 'x'}, 'request': {}}, Path(directory))
 
     def test_kotlin_jar_is_decoded_and_request_has_no_callback_credentials(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory) / 'job'
-            bootstrap.prepare({'runtime': 'KOTLIN', 'entrypoint': 'backend/app.jar', 'files': {'backend/app.jar': base64.b64encode(b'JAR').decode()}, 'request': {'body': {'safe': True}}}, root)
+            root = Path(directory)
+            runtime, entry, env = bootstrap.prepare({'runtime': 'KOTLIN', 'entrypoint': 'backend/app.jar', 'files': {'backend/app.jar': base64.b64encode(b'JAR').decode()}, 'request': {'body': {'safe': True}}}, root)
             self.assertEqual((root / 'backend/app.jar').read_bytes(), b'JAR')
             self.assertEqual(json.loads((root / 'request.json').read_text()), {'body': {'safe': True}})
+            self.assertEqual(runtime, 'KOTLIN')
+            self.assertEqual(Path(entry), root / 'backend/app.jar')
+            self.assertEqual(env['HOME'], str(root))
+            self.assertEqual(env['TMPDIR'], str(root))
+            if os.name == 'posix':
+                for path in ('backend/app.jar', 'request.json'):
+                    self.assertEqual((root / path).stat().st_mode & 0o777, 0o600)
+
+    @unittest.skipUnless(os.name == 'posix', 'Workers use POSIX private directories')
+    def test_bootstrap_rejects_symlink_escape_without_touching_outside_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'job'
+            root.mkdir(mode=0o700)
+            outside = Path(directory) / 'outside'
+            outside.mkdir()
+            target = outside / 'app.py'
+            target.write_text('retained')
+            (root / 'backend').symlink_to(outside, target_is_directory=True)
+            with self.assertRaises(ValueError):
+                bootstrap.prepare({'runtime': 'PYTHON', 'entrypoint': 'backend/app.py', 'files': {'backend/app.py': 'overwrite'}, 'request': {}}, root)
+            self.assertEqual(target.read_text(), 'retained')
+            self.assertFalse((root / 'request.json').exists())
+
+    def test_bootstrap_cannot_overwrite_preexisting_artifact_or_request(self):
+        for target_name in ('backend/app.py', 'request.json'):
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                target = root / target_name
+                target.parent.mkdir(exist_ok=True)
+                target.write_text('retained')
+                with self.assertRaises(FileExistsError):
+                    bootstrap.prepare({'runtime': 'PYTHON', 'entrypoint': 'backend/app.py', 'files': {'backend/app.py': 'overwrite'}, 'request': {}}, root)
+                self.assertEqual(target.read_text(), 'retained')
+
+    @unittest.skipUnless(os.name == 'posix', 'Workers use POSIX private directories')
+    def test_bootstrap_rejects_publicly_accessible_job_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            root.chmod(0o777)
+            with self.assertRaises(ValueError):
+                bootstrap.prepare({'runtime': 'PYTHON', 'entrypoint': 'backend/app.py', 'files': {'backend/app.py': 'x'}, 'request': {}}, root)
 
     def test_fixed_image_and_bootstrap_never_expose_callback_token(self):
         client = MagicMock(); container = client.containers.create.return_value

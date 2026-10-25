@@ -1,4 +1,7 @@
 mock_provider "azurerm" {
+  mock_resource "azurerm_managed_disk" {
+    defaults = { id = "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/test/providers/Microsoft.Compute/disks/services-data" }
+  }
   mock_resource "azurerm_virtual_network" {
     defaults = { id = "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/test/providers/Microsoft.Network/virtualNetworks/app" }
   }
@@ -56,6 +59,7 @@ mock_provider "azurerm" {
   }
   mock_resource "azurerm_linux_virtual_machine" {
     defaults = {
+      id = "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/test/providers/Microsoft.Compute/virtualMachines/app"
       identity = {
         principal_id = "12345678-1234-1234-1234-123456789012"
         tenant_id    = "12345678-1234-1234-1234-123456789012"
@@ -64,6 +68,15 @@ mock_provider "azurerm" {
   }
 }
 mock_provider "random" {}
+
+override_resource {
+  target = azurerm_linux_virtual_machine.private["services"]
+  values = { id = "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/test/providers/Microsoft.Compute/virtualMachines/services" }
+}
+override_resource {
+  target = azurerm_linux_virtual_machine.private["runtime"]
+  values = { id = "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/test/providers/Microsoft.Compute/virtualMachines/runtime" }
+}
 
 variables {
   postgres_admin_password    = "test-only-postgres_admin_password-long-random-value"
@@ -91,6 +104,9 @@ run "private_vm_and_managed_storage" {
   assert {
     condition = (
       alltrue([for nic in azurerm_network_interface.private : nic.ip_configuration[0].public_ip_address_id == null]) &&
+      azurerm_managed_disk.services.disk_size_gb == 128 && azurerm_virtual_machine_data_disk_attachment.services.lun == 10 &&
+      azurerm_virtual_machine_data_disk_attachment.services.managed_disk_id == azurerm_managed_disk.services.id &&
+      azurerm_virtual_machine_data_disk_attachment.services.virtual_machine_id == azurerm_linux_virtual_machine.private["services"].id &&
       alltrue([for subnet in azurerm_subnet.private : !subnet.default_outbound_access_enabled]) &&
       alltrue([for association in azurerm_subnet_nat_gateway_association.private : association.nat_gateway_id == azurerm_nat_gateway.private.id]) &&
       alltrue([for nsg in azurerm_network_security_group.private : one([for rule in nsg.security_rule : rule if rule.name == "from-app"]).source_address_prefix == "${local.private_ips.app}/32" && one([for rule in nsg.security_rule : rule if rule.name == "deny-other-inbound"]).access == "Deny"]) &&

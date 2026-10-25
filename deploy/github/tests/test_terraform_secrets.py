@@ -1,5 +1,6 @@
 import importlib.util
 import base64
+from contextlib import chdir
 import json
 import os
 from pathlib import Path
@@ -28,7 +29,7 @@ class TerraformSecretsTests(unittest.TestCase):
         }])
 
     def test_private_file_is_valid_json_and_cannot_be_overwritten(self):
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory() as directory, chdir(directory):
             path = Path(directory) / "bootstrap.auto.tfvars.json"
             values = module.configuration("owner@example.com", "private-password-1234")
             module.write_new(path, values)
@@ -43,13 +44,13 @@ class TerraformSecretsTests(unittest.TestCase):
         for address, value in [("bad-email", "private-password-1234"), ("owner@example.com", "short")]:
             with self.assertRaises(ValueError):
                 module.configuration(address, value)
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory() as directory, chdir(directory):
             with self.assertRaises(ValueError):
                 module.write_new(Path(directory) / "settings.json", {})
 
     @unittest.skipUnless(os.name == "posix", "Production uses POSIX directory handles")
     def test_symlink_parent_cannot_redirect_bootstrap_secrets(self):
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory() as directory, chdir(directory):
             root = Path(directory)
             (root / "real").mkdir()
             (root / "alias").symlink_to(root / "real", target_is_directory=True)
