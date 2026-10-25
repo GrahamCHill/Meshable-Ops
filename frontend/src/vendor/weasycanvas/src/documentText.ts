@@ -9,7 +9,7 @@ export type DocumentText = {
 export const footerText = (value: { organization: string; reference: string; text?: DocumentText }) => value.text?.footer ?? `${value.organization} · ${value.reference}`;
 export const headingText = (value: { text?: DocumentText }, section: { id?: string; kind: string; label: string }) => {
   const headings = value.text?.sectionHeadings, id = section.id || section.kind;
-  return headings && Object.prototype.hasOwnProperty.call(headings, id) ? headings[id] : section.label;
+  return headings && Object.prototype.hasOwnProperty.call(headings, id) ? headings[id] : "";
 };
 export function isDocumentText(input: unknown): input is DocumentText {
   if (!input || typeof input !== "object" || Array.isArray(input)) return false;

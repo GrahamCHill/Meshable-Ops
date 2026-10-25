@@ -13,6 +13,9 @@ nested clauses, family reordering/removal, and validated bulk text additions.
 The default Edit page view uses the inline text editor directly in the layout preview,
 with the same source draft shared by Manage terms. API bindings and signature markers
 are preserved; preview values are never written back as template wording.
+Section headings are optional and separate from editor labels; blank headings take no
+space in the preview or PDF. Page terms honor the saved paragraph gap and line spacing,
+with compact defaults for new templates.
 Designer styles are scoped to `.weasy-host` and simplified to match this app. The matching
 Python model/renderer sources are under `weasy-renderer/backend/`; its host wrapper blocks
 external resource fetching and runs PDF rendering in bounded child processes.

@@ -14,7 +14,7 @@ export function templatePageText(template: DocumentTemplate, section: TemplateSe
   if (slot === "closingBefore" || slot === "closingAfter") return splitSignatureText(defaults.closing_text)[slot === "closingBefore" ? "before" : "after"];
   if (slot === "heading") {
     const id = section.id || section.kind, headings = defaults.text?.sectionHeadings;
-    return headings && Object.prototype.hasOwnProperty.call(headings, id) ? headings[id] : section.label;
+    return headings && Object.prototype.hasOwnProperty.call(headings, id) ? headings[id] : "";
   }
   if (slot === "footer") {
     const organizationKey = template.sections.find((item) => item.kind === "header")?.bindings?.text;

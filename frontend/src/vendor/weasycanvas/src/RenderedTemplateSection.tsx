@@ -18,7 +18,7 @@ export function RenderedTemplateSection({ template, section, preview, onChange, 
     return <div className="template-render-field"><InlineText label={label} value={key ? resolved : source} sourceKey={key} editable multiline maxLength={maxLength}
       placeholder={`Click to add ${label.toLowerCase()}`} onFocus={onSelect} onCommit={(text) => onChange(updateTemplatePageText(template, section, slot, text))} /></div>;
   }
-  if (isContentSection(section)) return <div className="template-render-heading">{field("heading", `${section.label} heading`, headingText(preview, section), 80)}</div>;
+  if (isContentSection(section)) return headingText(preview, section).trim() ? <div className="template-render-heading">{field("heading", `${section.label} heading`, headingText(preview, section), 80)}</div> : null;
   if (section.kind === "header") return <div className="mock-header">{field("organization", "Organisation", preview.organization, Math.min(160, section.maxLength))}</div>;
   if (section.kind === "title") return <div className="mock-title" style={textStyle({ ...template.formatting.body, ...template.formatting.title })}>{field("title", "Document title", preview.title)}</div>;
   if (section.kind === "details") return <div className="template-render-details">

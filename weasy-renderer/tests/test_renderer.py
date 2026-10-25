@@ -43,6 +43,51 @@ class RendererTests(unittest.TestCase):
         self.assertEqual(len(draft.paragraphs), 2)
         self.assertEqual(draft.paragraphSectionIds, ["items", "items"])
 
+    def test_multiple_required_sections_do_not_force_headings_or_empty_heading_space(self):
+        template = copy.deepcopy(SOURCE["template"])
+        template["sections"].insert(4, {"kind": "body", "id": "terms", "label": "Terms", "required": True})
+        template["defaults"]["paragraphs"].append("Payment is due within thirty days.")
+        template["defaults"]["paragraphSectionIds"].append("terms")
+        template["defaults"]["subparagraphs"].append([])
+        for headings in [{}, {"items": "", "terms": "  \n"}]:
+            with self.subTest(headings=headings):
+                template["defaults"]["text"] = {"sectionHeadings": headings}
+                html = render_document_html(make_draft(template, VALUES))
+                self.assertNotIn('<h2 class="paragraph-section-heading">', html)
+                self.assertIn("Payment is due within thirty days.", html)
+        template["defaults"]["text"]["sectionHeadings"]["terms"] = "Payment & delivery"
+        html = render_document_html(make_draft(template, VALUES))
+        self.assertEqual(html.count('<h2 class="paragraph-section-heading">'), 1)
+        self.assertIn('>Payment &amp; delivery</h2>', html)
+
+    def test_single_section_can_have_an_optional_inline_or_bound_heading(self):
+        template = copy.deepcopy(SOURCE["template"])
+        template["defaults"]["text"] = {"sectionHeadings": {"items": "For {{api:customer.name}}"}}
+        html = render_document_html(make_draft(template, VALUES))
+        self.assertIn('>For Sample Customer</h2>', html)
+        self.assertNotIn("{{api:", html)
+        section = next(section for section in template["sections"] if section["kind"] == "text")
+        next(field for field in template["apiFields"] if field["key"] == "customer.name")["maxLength"] = 80
+        section["bindings"] = {"heading": "customer.name"}
+        html = render_document_html(make_draft(template, VALUES))
+        self.assertIn('>Sample Customer</h2>', html)
+
+    def test_compact_spacing_defaults_and_explicit_spacing_reach_the_pdf_layout(self):
+        template = copy.deepcopy(SOURCE["template"])
+        template["layout"].pop("paragraphGap")
+        template["formatting"].pop("body")
+        draft = make_draft(template, VALUES)
+        self.assertEqual(draft.layout.paragraphGap, 8)
+        self.assertEqual(draft.formatting.body.lineHeight, 1.2)
+        html = render_document_html(draft)
+        self.assertIn("margin-bottom: 8.0px", html)
+        self.assertIn("line-height:1.2", html)
+        template["layout"]["paragraphGap"] = 4
+        template["formatting"]["body"] = {"lineHeight": 1.15}
+        html = render_document_html(make_draft(template, VALUES))
+        self.assertIn("margin-bottom: 4.0px", html)
+        self.assertIn("line-height:1.15", html)
+
     def test_renderer_endpoints_require_configured_internal_token_and_bound_bodies(self):
         with patch.dict(os.environ, {"APP_DOCUMENT_RENDER_TOKEN": "sample-internal-render-token"}):
             client = TestClient(app)

@@ -56,10 +56,10 @@ def inline_entries(template, source):
                             if isinstance(row, list):
                                 for k, leaf_value in enumerate(row):
                                     add(f"content:{key}", leaf_value, ["subsubparagraphs", i, j, k])
-            if not bindings.get("heading") and len(content) > 1:
+            if not bindings.get("heading"):
                 headings = text.get("sectionHeadings") or {}
                 if isinstance(headings, dict):
-                    add(f"heading:{key}", headings.get(key, section.get("label", "")), ["text", "sectionHeadings", key])
+                    add(f"heading:{key}", headings.get(key, ""), ["text", "sectionHeadings", key])
         elif kind == "details":
             for name in ("reference", "recipient"):
                 if not bindings.get(name):

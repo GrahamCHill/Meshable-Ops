@@ -33,8 +33,9 @@ export function InlineText({ value, label, editable: requestedEditable, onCommit
   const [previousValue, setPreviousValue] = useState(value);
   if (previousValue !== value) { setPreviousValue(value); setDraft(value); }
   useLayoutEffect(() => {
+    // Inherited typography can change even when the wording stays the same.
     if (ref.current) { ref.current.style.height = "0px"; ref.current.style.height = `${ref.current.scrollHeight}px`; }
-  }, [draft, editable]);
+  });
   if (!sourceKey && inlineApiKeys(value).length) return <ProtectedText value={value} label={label} editable={editable} onCommit={onCommit} multiline={multiline} maxLength={maxLength} className={className} onFocus={onFocus} fields={api.fields} values={api.values} />;
   if (!editable || sourceKey) return <div className={`pdf-editor-text ${className}`} data-api-field={sourceKey} role={sourceKey ? "textbox" : undefined} aria-label={sourceKey ? label : undefined} aria-readonly={sourceKey ? true : undefined} tabIndex={sourceKey ? 0 : undefined} onFocus={sourceKey ? onFocus : undefined} title={sourceKey ? `Provided by API: ${sourceKey}` : undefined}>{value}</div>;
   return <textarea ref={ref} aria-label={label} title={label} placeholder={placeholder} spellCheck rows={1}

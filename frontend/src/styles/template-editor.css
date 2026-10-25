@@ -49,7 +49,7 @@
 .weasy-host .template-render-field .pdf-editor-inline::placeholder { color: #71818a; font-weight: 400; font-style: italic; }
 .weasy-host .template-render-field [data-api-field], .weasy-host .template-render-field .pdf-editor-api-token { background: #e8f2f4; outline: 1px dotted #abc8cc; cursor: default; }
 .weasy-host .template-terms-page { background: transparent; color: #17252f; padding: 0; }
-.weasy-host .template-terms-page .template-term { position: relative; border: 0; padding: 0; margin-bottom: 16px; }
+.weasy-host .template-terms-page .template-term { position: relative; border: 0; padding: 0; }
 .weasy-host .template-render-term { display: grid; grid-template-columns: minmax(0, 1fr); }
 .weasy-host .template-render-numbered { grid-template-columns: 32px minmax(0, 1fr); gap: 8px; }
 .weasy-host .template-render-marker { text-align: right; }

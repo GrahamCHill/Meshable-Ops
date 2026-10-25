@@ -25,7 +25,7 @@ export function inlineEntries(template: DocumentTemplate, source: TextSource): E
         source.subparagraphs[i]?.forEach((value, j) => add(`content:${id}`, value, ["subparagraphs", i, j]));
         source.subsubparagraphs?.[i]?.forEach((row, j) => row.forEach((value, k) => add(`content:${id}`, value, ["subsubparagraphs", i, j, k])));
       });
-      if (!bindings.heading && bodySections(template).length > 1) add(`heading:${id}`, headingText(source, section), ["text", "sectionHeadings", id]);
+      if (!bindings.heading) add(`heading:${id}`, headingText(source, section), ["text", "sectionHeadings", id]);
     } else if (section.kind === "details") {
       for (const key of ["reference", "recipient"] as const) if (!bindings[key]) add(key, source[key], [key]);
       add("referenceLabel", source.text?.referenceLabel ?? "Reference:", ["text", "referenceLabel"]);

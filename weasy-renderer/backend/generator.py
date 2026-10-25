@@ -106,7 +106,7 @@ class TextStyle(Model):
 
 
 class Formatting(Model):
-    body: TextStyle = Field(default_factory=lambda: TextStyle(fontFamily="Arial", fontSize=10.65, lineHeight=1.34))
+    body: TextStyle = Field(default_factory=lambda: TextStyle(fontFamily="Arial", fontSize=10.65, lineHeight=1.2))
     title: TextStyle = Field(default_factory=lambda: TextStyle(fontSize=15, bold=True))
     closing: TextStyle = Field(default_factory=TextStyle)
 
@@ -118,7 +118,7 @@ class PageSettings(Model):
     marginRight: float = Field(default=20, ge=15, le=50)
     marginBottom: float = Field(default=25, ge=25, le=50)
     marginLeft: float = Field(default=20, ge=15, le=50)
-    paragraphGap: float = Field(default=18, ge=4, le=32)
+    paragraphGap: float = Field(default=8, ge=4, le=32)
 
     @model_validator(mode="after")
     def writing_area(self):
@@ -433,8 +433,8 @@ def render_document_html(draft: DocumentDraft, asset_store=None) -> str:
         list_style = ' style="list-style-type:disc"' if not numbered else ""
         primary = next((section_id(s) for s in draft.template.sections if s.kind == section.kind), section.kind) if draft.template else "body"
         key = section_id(section) if section else "body"
-        heading_text = draft.text.sectionHeadings.get(section_id(section), section.label) if draft.text and section else section.label if section else ""
-        heading = f'<h2 class="paragraph-section-heading">{text(heading_text)}</h2>' if draft.template and sum(s.kind in ("body", "text") for s in draft.template.sections) > 1 else ""
+        heading_text = draft.text.sectionHeadings.get(section_id(section), "") if draft.text and section else ""
+        heading = f'<h2 class="paragraph-section-heading">{text(heading_text)}</h2>' if heading_text.strip() else ""
         images = render_images(draft.images, section.kind if section else "body", key, primary)
         if section and section.kind == "text":
             return heading + images + f'<div class="general-text">{"".join(items)}</div>'

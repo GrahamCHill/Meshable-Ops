@@ -64,7 +64,7 @@ export function TemplateTermsEditor({ template, section, onChange, presentation 
       const siblingIndex = row.subsubIndex ?? row.subIndex ?? localIndex;
       const childCount = depth === 1 ? content.subsubparagraphs?.[row.index]?.[row.subIndex!]?.length || 0 : content.subparagraphs[row.index]?.length || 0;
       const marker = depth === 2 ? `(${romanNumeral(row.subsubIndex! + 1)})` : depth === 1 ? `${String.fromCharCode(97 + row.subIndex!)}.` : (section.numbered ?? template.defaults.numbered) === false ? "•" : `${localIndex + 1}.`;
-      return <div key={clausePath(row)} className="template-term" data-term-path={clausePath(row)} data-depth={depth}>
+      return <div key={clausePath(row)} className="template-term" data-term-path={clausePath(row)} data-depth={depth} style={page ? { marginBottom: template.layout.paragraphGap } : undefined}>
         {page ? <div className={`template-render-term${terms ? " template-render-numbered" : ""}`} style={textStyle({ ...template.formatting.body, ...section.style, ...clauseStyle(content, row) })}>
           {terms ? <span className="template-render-marker" aria-hidden="true">{marker}</span> : null}
           <div className="template-render-field"><InlineText label={`${section.label} — ${label}`} sectionId={id} value={clauseText(content, row)} editable multiline maxLength={section.maxLength} placeholder={`Click to add ${noun} text`} onCommit={(text) => commit(setClauseText(content, row, text))} /></div>

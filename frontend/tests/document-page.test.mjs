@@ -82,7 +82,16 @@ test('headings, labels and footers save in their own slots and keep sibling valu
   assert.equal(original.defaults.text.sectionHeadings.terms, 'Terms')
   assert.equal(templatePageText(original, section('footer'), 'footer'), 'Example business · DOC-1')
   assert.equal(templatePageText(original, section('details'), 'recipientLabel'), 'Prepared for:')
-  assert.equal(templatePageText(original, section('body', { id: 'other', label: 'Other terms' }), 'heading'), 'Other terms')
+  assert.equal(templatePageText(original, section('body', { id: 'other', label: 'Other terms' }), 'heading'), '')
+})
+
+test('section headings can be cleared without changing the section label or its wording', () => {
+  const original = fixture(), terms = section('body', { id: 'terms', label: 'Terms' })
+  const updated = updateTemplatePageText(original, terms, 'heading', '')
+  assert.equal(templatePageText(updated, terms, 'heading'), '')
+  assert.equal(updated.defaults.text.sectionHeadings.terms, '')
+  assert.equal(terms.label, 'Terms')
+  assert.deepEqual(updated.defaults.paragraphs, original.defaults.paragraphs)
 })
 
 test('an automatic footer retains data bindings when its surrounding wording is edited', () => {
