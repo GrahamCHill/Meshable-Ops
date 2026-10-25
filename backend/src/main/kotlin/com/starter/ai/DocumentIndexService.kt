@@ -21,6 +21,7 @@ class DocumentIndexService(
     private val settings: AiSettingsService,
     private val textService: DocumentTextService,
     private val reindexJobs: AdminSettingsService,
+    private val processing: DocumentProcessingQueue,
 ) {
     fun sync(item: Item, entries: List<StorageEntry>, removeMissing: Boolean = false, force: Boolean = false): Map<String, StorageDocument> {
         if (!item.accessible || item.storageConnection?.enabled == false) throw NotFoundException("Storage root not found")
@@ -66,36 +67,23 @@ class DocumentIndexService(
     }
 
     private fun index(document: StorageDocument, config: ActiveAiConfiguration, model: String, metadataChecksum: String) {
-        var chunks = emptyList<String>()
-        var contentChecksum = metadataChecksum
         document.processingStatus = "METADATA_ONLY"
         if (config.indexContent) {
-            try {
-                when {
-                    !textService.supports(document.fileName) -> document.processingStatus = "UNSUPPORTED_FORMAT"
-                    document.sizeBytes == null || document.sizeBytes!! > 5 * 1024 * 1024 -> document.processingStatus = "CONTENT_TOO_LARGE"
-                    else -> {
-                        val content = storage.downloadForIndex(document.item, document.storagePath, 5 * 1024 * 1024)
-                        contentChecksum = DocumentFingerprints.hash(content.bytes)
-                        val extracted = textService.extract(document.fileName, content.bytes)
-                        chunks = documentChunks(extracted.text)
-                        document.processingStatus = when {
-                            chunks.isEmpty() -> "NO_EXTRACTABLE_TEXT"
-                            extracted.truncated || extracted.text.length > 32 * 1400 + 200 -> "CONTENT_TRUNCATED"
-                            else -> "CONTENT_INDEXED"
-                        }
-                    }
+            document.processingStatus = when {
+                !textService.supports(document.fileName) -> "UNSUPPORTED_FORMAT"
+                document.sizeBytes != null && document.sizeBytes!! > textService.maxBytes -> "CONTENT_TOO_LARGE"
+                else -> {
+                    processing.enqueue(document.id, metadataChecksum, model)
+                    "CONTENT_QUEUED"
                 }
-            } catch (_: AiUnavailableException) { document.processingStatus = "CONTENT_UNAVAILABLE" }
-              catch (_: BadRequestException) { document.processingStatus = "CONTENT_UNAVAILABLE" }
-        }
+            }
+        } else processing.cancel(document.id)
         val metadata = listOf(document.item.title, document.fileName, document.storagePath.replace('/', ' '), document.contentType.orEmpty()).joinToString(" ")
-        val batch = embeddings.embed(listOf(metadata) + chunks.map { "${document.fileName}\n$it" }, config.embeddings)
+        val batch = embeddings.embed(listOf(metadata), config.embeddings)
         vectors.upsertDocument(document.id, batch.first(), mapOf(
             "documentId" to document.id.toString(), "folderId" to document.item.id.toString(), "itemId" to document.item.id.toString(),
             "entityType" to "document", "title" to document.fileName, "storagePath" to document.storagePath,
             "processingStatus" to document.processingStatus,
         ), metadataChecksum, model)
-        vectors.replaceChunks(document.id, chunks, batch.drop(1), contentChecksum, model)
     }
 }

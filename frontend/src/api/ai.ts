@@ -7,7 +7,7 @@ export interface AiSettings { source: 'ENVIRONMENT' | 'ADMIN'; encryptionReady: 
 export interface AiEndpointInput { provider: AiProvider; baseUrl: string; model: string; apiKey: string; clearApiKey: boolean; sendDimensions: boolean }
 export interface AiSettingsInput { source: AiSettings['source']; enabled: boolean; indexContent: boolean; searchEnabled: boolean; launcherEnabled: boolean; chat: AiEndpointInput; embeddings: AiEndpointInput }
 export interface AiSearchStatus { enabled: boolean; indexContent: boolean; searchEnabled: boolean; launcherEnabled: boolean; embeddingProvider: AiProvider; dimensions: number }
-export interface AiSource { number: number; pointId: string; documentId: string; folderId: string; title: string; path: string; excerpt: string; score: number }
+export interface AiSource { number: number; pointId: string; documentId: string; folderId: string; title: string; path: string; excerpt: string; score: number; pageNumber?: number | null }
 export interface AiAnswer { answer: string; sources: AiSource[]; model?: string; grounded: boolean }
 export interface AiQuestionContext { query: string }
 export interface AiEndpointCheckInput { source: AiSettings['source']; endpoint: AiEndpointInput }

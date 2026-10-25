@@ -45,5 +45,5 @@ data class AiQuestionRequest(
     @field:Min(1) @field:Max(8) val limit: Int = 5,
     @field:Valid @field:Size(max = 6) val history: List<AiQuestionContext> = emptyList(),
 )
-data class AiSource(val number: Int, val pointId: String, val documentId: String, val folderId: String, val title: String, val path: String, val excerpt: String, val score: Float)
+data class AiSource(val number: Int, val pointId: String, val documentId: String, val folderId: String, val title: String, val path: String, val excerpt: String, val score: Float, val pageNumber: Int? = null)
 data class AiAnswerResponse(val answer: String, val sources: List<AiSource>, val model: String?, val grounded: Boolean)

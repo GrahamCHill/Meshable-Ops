@@ -26,7 +26,7 @@ class AiAnswerService(private val settings: AiSettingsService, private val vecto
         if (relevant.isEmpty()) return AiAnswerResponse("I could not find relevant, accessible document excerpts. Try a different question or ask an administrator to reindex storage.", emptyList(), null, false)
         val sources = relevant.mapIndexed { index, point ->
             AiSource(index + 1, point.id, point.payload.getValue("documentId"), point.payload.getValue("folderId"),
-                point.payload.getValue("title"), point.payload.getValue("storagePath"), point.payload.getValue("text").take(1800), point.score)
+                point.payload.getValue("title"), point.payload.getValue("storagePath"), point.payload.getValue("text").take(1800), point.score, point.payload["pageNumber"]?.toIntOrNull())
         }
         val ids = sources.map { it.pointId }
         if (!vectors.chunksStillAccessible(ids)) throw ForbiddenException("Document access changed. Run the question again.")

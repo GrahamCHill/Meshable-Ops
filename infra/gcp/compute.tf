@@ -1,6 +1,6 @@
 resource "google_compute_instance" "app" {
   # Install/build needs the explicit internet route and web firewall in place.
-  depends_on = [google_compute_route.internet, google_compute_firewall.web, google_compute_firewall.iap_ssh]
+  depends_on = [google_compute_route.internet, google_compute_firewall.web, google_compute_firewall.iap_ssh, google_compute_firewall.database_clients, google_compute_firewall.database_deny]
 
   name                = var.name
   zone                = var.zone

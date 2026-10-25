@@ -125,7 +125,7 @@ class VectorService(
                                (1 - (dc.embedding <=> q.embedding))::real AS score,
                                jsonb_build_object('documentId', d.id::text, 'folderId', i.id::text,
                                    'entityType', 'chunk', 'title', d.file_name, 'storagePath', d.storage_path,
-                                   'text', dc.content, 'chunkIndex', dc.chunk_index::text) AS payload
+                                   'text', dc.content, 'chunkIndex', dc.chunk_index::text, 'pageNumber', COALESCE(dc.page_number::text, '')) AS payload
                         FROM document_chunks dc JOIN storage_documents d ON d.id = dc.document_id
                         JOIN items i ON i.id = d.item_id
                         LEFT JOIN storage_connections sc ON sc.id = i.storage_connection_id
@@ -175,16 +175,21 @@ class VectorService(
     }
 
     fun replaceChunks(documentId: UUID, chunks: List<String>, vectors: List<List<Float>>, checksum: String, model: String) {
+        replacePageChunks(documentId, chunks.map { com.starter.ai.DocumentChunk(it) }, vectors, checksum, model)
+    }
+
+    fun replacePageChunks(documentId: UUID, chunks: List<com.starter.ai.DocumentChunk>, vectors: List<List<Float>>, checksum: String, model: String) {
         require(chunks.size == vectors.size)
         jdbcTemplate.update("DELETE FROM document_chunks WHERE document_id = ?", documentId)
-        chunks.zip(vectors).forEachIndexed { index, (content, vector) ->
-            jdbcTemplate.update("""INSERT INTO document_chunks (id, document_id, chunk_index, content, embedding, source_checksum, embedding_model)
-                VALUES (?, ?, ?, ?, CAST(? AS vector), ?, ?)""", UUID.randomUUID(), documentId, index, content, vector.toPgVector(), checksum, model)
+        chunks.zip(vectors).forEachIndexed { index, (chunk, vector) ->
+            jdbcTemplate.update("""INSERT INTO document_chunks (id, document_id, chunk_index, content, embedding, source_checksum, embedding_model, page_number)
+                VALUES (?, ?, ?, ?, CAST(? AS vector), ?, ?, ?)""", UUID.randomUUID(), documentId, index, chunk.text, vector.toPgVector(), checksum, model, chunk.pageNumber)
         }
     }
 
     fun deleteDocument(documentId: UUID) {
         jdbcTemplate.update("DELETE FROM document_chunks WHERE document_id = ?", documentId)
+        jdbcTemplate.update("DELETE FROM document_pages WHERE document_id = ?", documentId)
         jdbcTemplate.update("DELETE FROM document_vectors WHERE document_id = ?", documentId)
     }
 

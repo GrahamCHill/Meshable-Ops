@@ -103,6 +103,31 @@ CREATE TABLE IF NOT EXISTS document_chunks (
 CREATE INDEX IF NOT EXISTS idx_document_chunks_document_id ON document_chunks(document_id);
 CREATE INDEX IF NOT EXISTS idx_document_chunks_embedding_hnsw ON document_chunks USING hnsw (embedding vector_cosine_ops);
 
+-- Page provenance for OCR and existing searchable PDFs.
+ALTER TABLE document_chunks ADD COLUMN IF NOT EXISTS page_number INTEGER;
+CREATE INDEX IF NOT EXISTS idx_document_chunks_fulltext ON document_chunks USING gin(to_tsvector('simple', content));
+CREATE TABLE IF NOT EXISTS document_pages (
+    document_id UUID NOT NULL REFERENCES storage_documents(id) ON DELETE CASCADE,
+    page_index INTEGER NOT NULL,
+    page_number INTEGER,
+    content TEXT NOT NULL,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    PRIMARY KEY(document_id, page_index)
+);
+
+CREATE TABLE IF NOT EXISTS document_processing_jobs (
+    document_id UUID PRIMARY KEY REFERENCES storage_documents(id) ON DELETE CASCADE,
+    source_checksum VARCHAR(64) NOT NULL,
+    embedding_model VARCHAR(255) NOT NULL,
+    state VARCHAR(16) NOT NULL DEFAULT 'QUEUED',
+    attempts INTEGER NOT NULL DEFAULT 0,
+    claim_token UUID,
+    lease_until TIMESTAMPTZ,
+    next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_document_processing_due ON document_processing_jobs(state, next_attempt_at);
+
 CREATE TABLE IF NOT EXISTS dashboard_embed_configs (
     id UUID PRIMARY KEY,
     label TEXT NOT NULL,

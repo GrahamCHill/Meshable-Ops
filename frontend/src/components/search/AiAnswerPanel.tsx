@@ -3,7 +3,7 @@ import type { AiAnswer } from '../../api/ai'
 import { storageLink } from './storageLink'
 
 export function AiAnswerPanel({ answer, onNavigate, conversational = false }: { answer: AiAnswer; onNavigate?: () => void; conversational?: boolean }) {
-  const sources = answer.sources.map(source => <article key={source.pointId}><Link to={storageLink(source.folderId, source.path)} onClick={onNavigate}>[{source.number}] {source.title}</Link><p className="field-help" style={{ marginTop: 6 }}>{source.path}</p><p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: '0.85rem' }}>{source.excerpt}</p></article>)
+  const sources = answer.sources.map(source => <article key={source.pointId}><Link to={storageLink(source.folderId, source.path)} onClick={onNavigate}>[{source.number}] {source.title}{source.pageNumber ? ' - page ' + source.pageNumber : ''}</Link><p className="field-help" style={{ marginTop: 6 }}>{source.path}</p><p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: '0.85rem' }}>{source.excerpt}</p></article>)
   if (conversational) return <div className="assistant-answer"><p>{answer.answer}</p>{!!sources.length && <details className="assistant-sources"><summary>Sources ({sources.length})</summary><div className="page-stack">{sources}</div></details>}</div>
   return <section className="page-stack" aria-label="AI answer" aria-live="polite">
     <div><h2 className="card-title">{answer.grounded ? 'Answer from your documents' : 'No grounded answer available'}</h2><p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{answer.answer}</p></div>

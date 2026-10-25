@@ -12,6 +12,9 @@ class RestClientConfig {
     @Bean @Primary
     fun restTemplate() = RestTemplate()
 
+    @Bean("documentRestTemplate")
+    fun documentRestTemplate() = RestTemplate(SimpleClientHttpRequestFactory().apply { setConnectTimeout(10000); setReadTimeout(910000) })
+
     @Bean("aiRestTemplate")
     fun aiRestTemplate(): RestTemplate {
         val factory = object : SimpleClientHttpRequestFactory() {

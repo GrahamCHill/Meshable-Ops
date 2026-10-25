@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 import base64
 import binascii
-from .document_text import extract_with_limits, MAX_BYTES
+from .document_text import extract_pages_with_limits, MAX_BYTES
 
 
 app = FastAPI(
@@ -26,7 +26,7 @@ class VectorizeRequest(BaseModel):
 
 class ExtractRequest(BaseModel):
     filename: str = Field(..., min_length=1, max_length=255)
-    content: str = Field(..., max_length=7_000_000)
+    content: str = Field(..., max_length=(MAX_BYTES * 4 // 3 + 8))
 
 
 @app.post("/api/v1/ml/extract")
@@ -35,8 +35,8 @@ def extract(request: ExtractRequest) -> dict[str, Any]:
         content = base64.b64decode(request.content, validate=True)
         if len(content) > MAX_BYTES:
             raise ValueError("Document too large")
-        text, truncated = extract_with_limits(request.filename, content)
-        return {"text": text, "truncated": truncated}
+        result = extract_pages_with_limits(request.filename, content)
+        return result
     except (ValueError, binascii.Error, EOFError):
         raise HTTPException(status_code=422, detail="Document text could not be extracted within the supported format and resource limits") from None
 

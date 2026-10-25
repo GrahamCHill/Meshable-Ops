@@ -10,7 +10,7 @@ resource "google_service_account" "private" {
 }
 resource "google_compute_instance" "private" {
   for_each            = toset(["services", "runtime"])
-  depends_on          = [google_compute_router_nat.private, google_compute_firewall.private, google_compute_firewall.iap_ssh]
+  depends_on          = [google_compute_router_nat.private, google_compute_firewall.private, google_compute_firewall.iap_ssh, google_compute_firewall.database_clients, google_compute_firewall.database_deny]
   name                = "${var.name}-${each.key}"
   zone                = var.zone
   machine_type        = var.service_machine_type

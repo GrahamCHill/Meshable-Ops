@@ -31,7 +31,7 @@ class KeywordSearchService(private val jdbc: JdbcTemplate, private val mapper: O
                   AND left(d.storage_path, length(s.path_prefix)) = s.path_prefix
                 UNION ALL
                 SELECT dc.id::text, jsonb_build_object('entityType', 'chunk', 'documentId', d.id::text, 'folderId', i.id::text,
-                    'title', d.file_name, 'storagePath', d.storage_path, 'text', dc.content),
+                    'title', d.file_name, 'storagePath', d.storage_path, 'text', dc.content, 'pageNumber', COALESCE(dc.page_number::text, '')),
                     concat_ws(' ', d.file_name, dc.content)
                 FROM document_chunks dc JOIN storage_documents d ON d.id = dc.document_id JOIN items i ON i.id = d.item_id
                 LEFT JOIN storage_connections sc ON sc.id = i.storage_connection_id

@@ -1,13 +1,17 @@
 """Bounded text extraction. Documents are data; macros, scripts and external links never run."""
 import io
+import os
 import multiprocessing
 import re
 import zipfile
 from html.parser import HTMLParser
 from xml.etree import ElementTree
 
-MAX_BYTES = 5 * 1024 * 1024
-MAX_CHARS = 120_000
+MAX_BYTES = int(os.environ.get("DOCUMENT_MAX_BYTES", 50 * 1024 * 1024))
+MAX_CHARS = 2_000_000
+MAX_PAGES = 500
+if not 1 <= MAX_BYTES <= 100 * 1024 * 1024:
+    raise ValueError("Invalid document size limit")
 TEXT_EXTENSIONS = {"txt", "md", "csv", "tsv", "json", "xml", "html", "htm", "log", "yaml", "yml", "rst"}
 
 
@@ -30,11 +34,13 @@ class TextHTMLParser(HTMLParser):
             self.parts.append(data)
 
 
-def extract_document(filename: str, content: bytes) -> tuple[str, bool]:
+def extract_pages(filename: str, content: bytes) -> dict:
     if len(content) > MAX_BYTES:
         raise ValueError("Document exceeds the extraction size limit")
     extension = filename.rsplit(".", 1)[-1].lower()
     truncated = False
+    needs_ocr = False
+    pages = []
     if extension == "pdf":
         from pypdf import PdfReader
         reader = PdfReader(io.BytesIO(content))
@@ -42,17 +48,25 @@ def extract_document(filename: str, content: bytes) -> tuple[str, bool]:
             raise ValueError("Encrypted PDFs cannot be indexed")
         parts, count = [], 0
         for index, page in enumerate(reader.pages):
-            if index >= 200 or count >= MAX_CHARS:
+            if index >= MAX_PAGES or count >= MAX_CHARS:
                 truncated = True
                 break
             part = page.extract_text() or ""
             count += len(part)
+            resources = page.get("/Resources") or {}
+            if hasattr(resources, "get_object"):
+                resources = resources.get_object()
+            needs_ocr |= len(part.strip()) < 32 and bool(resources.get("/XObject"))
+            pages.append({"pageNumber": index + 1, "text": part[:MAX_CHARS], "method": "TEXT"})
             parts.append(part[:MAX_CHARS])
         text = "\n".join(parts)
+    elif extension in {"png", "jpg", "jpeg", "tif", "tiff", "bmp", "webp"}:
+        text = ""
+        needs_ocr = True
     elif extension == "docx":
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
             info = archive.getinfo("word/document.xml")
-            if info.file_size > 2 * 1024 * 1024 or len(archive.infolist()) > 5000:
+            if info.file_size > 20 * 1024 * 1024 or len(archive.infolist()) > 5000:
                 raise ValueError("Document exceeds the XML extraction limit")
             xml = archive.read(info)
             if b"<!DOCTYPE" in xml.upper() or b"<!ENTITY" in xml.upper():
@@ -68,7 +82,20 @@ def extract_document(filename: str, content: bytes) -> tuple[str, bool]:
     else:
         raise ValueError("Unsupported document format")
     text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", text).strip()
-    return text[:MAX_CHARS], truncated or len(text) > MAX_CHARS
+    remaining = MAX_CHARS
+    bounded = []
+    for page in pages:
+        part = page["text"]
+        bounded.append({**page, "text": part[:remaining]})
+        truncated |= len(part) > remaining
+        remaining = max(0, remaining - len(part) - 1)
+    return {"text": text[:MAX_CHARS], "truncated": truncated or len(text) > MAX_CHARS,
+            "pages": bounded, "needsOcr": needs_ocr, "engine": "text-v2"}
+
+
+def extract_document(filename: str, content: bytes) -> tuple[str, bool]:
+    result = extract_pages(filename, content)
+    return result["text"], result["truncated"]
 
 
 def _worker(connection, filename, content):
@@ -76,18 +103,18 @@ def _worker(connection, filename, content):
         # The process boundary also contains malformed PDFs and decompression bombs.
         try:
             import resource
-            resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
-            resource.setrlimit(resource.RLIMIT_CPU, (15, 15))
+            resource.setrlimit(resource.RLIMIT_AS, (1024 * 1024 * 1024, 1024 * 1024 * 1024))
+            resource.setrlimit(resource.RLIMIT_CPU, (60, 60))
         except ImportError:  # Windows development; production uses Linux containers.
             pass
-        connection.send((True, extract_document(filename, content)))
+        connection.send((True, extract_pages(filename, content)))
     except Exception:
         connection.send((False, None))
     finally:
         connection.close()
 
 
-def extract_with_limits(filename: str, content: bytes) -> tuple[str, bool]:
+def extract_pages_with_limits(filename: str, content: bytes) -> dict:
     if len(content) > MAX_BYTES:
         raise ValueError("Document exceeds the extraction size limit")
     context = multiprocessing.get_context("spawn")
@@ -96,7 +123,7 @@ def extract_with_limits(filename: str, content: bytes) -> tuple[str, bool]:
     process.start()
     child.close()
     try:
-        if not parent.poll(20):
+        if not parent.poll(65):
             raise ValueError("Document extraction timed out")
         success, result = parent.recv()
         if not success:
@@ -110,3 +137,8 @@ def extract_with_limits(filename: str, content: bytes) -> tuple[str, bool]:
         if process.is_alive():
             process.kill()
             process.join()
+
+
+def extract_with_limits(filename: str, content: bytes) -> tuple[str, bool]:
+    result = extract_pages_with_limits(filename, content)
+    return result["text"], result["truncated"]
