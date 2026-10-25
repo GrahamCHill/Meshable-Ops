@@ -10,6 +10,7 @@ import com.starter.service.storage.StorageEntry
 import com.starter.exception.NotFoundException
 import com.starter.exception.BadRequestException
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 
 @Service
@@ -23,6 +24,7 @@ class DocumentIndexService(
     private val reindexJobs: AdminSettingsService,
     private val processing: DocumentProcessingQueue,
 ) {
+    @Transactional
     fun sync(item: Item, entries: List<StorageEntry>, removeMissing: Boolean = false, force: Boolean = false): Map<String, StorageDocument> {
         if (!item.accessible || item.storageConnection?.enabled == false) throw NotFoundException("Storage root not found")
         val existing = documents.findAllByItemId(item.id).associateBy { it.storagePath }
@@ -40,6 +42,7 @@ class DocumentIndexService(
             document.sizeBytes = entry.size; document.storageLastModified = entry.lastModified
             document = documents.saveAndFlush(document)
             if (needsIndex) {
+                processing.lockDocument(document.id)
                 vectors.deleteDocument(document.id)
                 document.vectorizedAt = null
                 document.sourceChecksum = checksum

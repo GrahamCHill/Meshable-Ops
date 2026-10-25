@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClientException
 import org.springframework.web.client.RestTemplate
@@ -48,11 +49,18 @@ class DocumentTextService(
     }
 
     private fun post(url: String, entity: HttpEntity<*>): JsonNode = try {
-        http.postForObject(url, entity, JsonNode::class.java)
+        val headers = HttpHeaders().apply {
+            putAll(entity.headers)
+            contentType = MediaType.APPLICATION_JSON
+            accept = listOf(MediaType.APPLICATION_JSON)
+        }
+        http.postForObject(url, HttpEntity(entity.body, headers), JsonNode::class.java)
             ?: throw AiUnavailableException("No document text was returned")
     } catch (_: RestClientException) { throw AiUnavailableException("Document extraction service is unavailable") }
 
     private fun read(response: JsonNode, ocr: Boolean = false): ExtractedDocumentText {
+        if (!response.isObject || (!response.has("text") && !response.has("pages")))
+            throw AiUnavailableException("The extraction service returned an invalid document")
         val rawPages = response.path("pages")
         if ((!rawPages.isMissingNode && !rawPages.isArray) || rawPages.size() > 1000)
             throw AiUnavailableException("The extraction service returned invalid pages")
@@ -60,6 +68,8 @@ class DocumentTextService(
         var truncated = response.path("truncated").asBoolean()
         val seen = mutableSetOf<Int>()
         val pages = rawPages.map {
+            if (!it.isObject || !it.path("text").isTextual)
+                throw AiUnavailableException("The extraction service returned invalid page text")
             val number = it.path("pageNumber").takeIf { n -> !n.isMissingNode && !n.isNull }?.let { n ->
                 if (!n.isInt || n.asInt() !in 1..100000 || !seen.add(n.asInt()))
                     throw AiUnavailableException("The extraction service returned invalid page numbers")

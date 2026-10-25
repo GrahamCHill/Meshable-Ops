@@ -1,3 +1,6 @@
+// Preserve the section ID for bookmarks, saved artwork, and installed plugin categories.
+export const PROJECT_MANAGEMENT_SECTION_ID = 'documents-workflows'
+
 export const adminGroups = [
   { id: 'workspace', label: 'Workspace', description: 'Business identity, appearance, and optional plugins.', items: [
     { to: '/admin/branding', label: 'Branding', description: 'Set your business name, colours, logos, and sign-in backgrounds.' },
@@ -7,7 +10,6 @@ export const adminGroups = [
   { id: 'people-security', label: 'People & security', description: 'Accounts, permissions, external access, and extension security.', items: [
     { to: '/admin/access-controls', label: 'Access controls', description: 'Control role features, member views, external sharing, and protected cloud directories.' },
     { to: '/admin/users', label: 'Users', description: 'Manage accounts, roles, and upload permissions.' },
-    { to: '/admin/projects', label: 'Project settings', description: 'Project sections, teams, shared report covers, AI insights, and report delivery.' },
     { to: '/admin/security', label: 'Security', description: 'Allow third-party extensions and manage account protection.' },
     { to: '/account/security', label: 'My security & MFA', description: 'Set up authenticator or email verification and recovery codes.' },
   ] },
@@ -22,8 +24,9 @@ export const adminGroups = [
     { to: '/admin/email/inbox', label: 'Incoming email (IMAPS)', description: 'Shared inbox connections for plugins that read and process email replies.' },
     { to: '/admin/webhooks', label: 'Webhooks', description: 'Send JSON, receive signed requests, and review deliveries.' },
   ] },
-  { id: 'documents-workflows', label: 'Documents & workflows', description: 'Report covers, reusable documents, and the processes that use them.', items: [
-    { to: '/admin/projects/report-covers', label: 'Report covers', description: 'Redesign the shared project report cover, upload HTML and images, and preview the PDF.' },
+  { id: PROJECT_MANAGEMENT_SECTION_ID, label: 'Project Management', description: 'Project settings, report covers, document templates, and workflows.', items: [
+    { to: '/admin/projects', label: 'Project settings', description: 'Manage project sections, tags, teams, and custom roles.' },
+    { to: '/admin/projects/report-covers', label: 'Report covers', description: 'Edit shared report covers, upload HTML and images, preview PDFs, and manage insights and scheduled delivery.' },
   ] },
   { id: 'analytics-search', label: 'Analytics & search', description: 'Search providers, dashboards, and analytics authoring.', items: [
     { to: '/admin/superset-graph-builder', label: 'Superset workspace', description: 'Build dashboards, charts, and datasets.' },

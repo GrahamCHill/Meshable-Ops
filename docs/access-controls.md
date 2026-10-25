@@ -38,7 +38,7 @@ Internal accounts can also be limited to selected storage paths under **Member a
 
 **Protected files** defines paths excluded from all external members and external PDF shares. A protection can additionally block internal members and delegated admins. Exclusions and business protections always win over grants. They also follow the same bucket/prefix when it is mapped through another connection or root. Super admins retain workspace access. Existing online PDF-share links are rechecked against protections and the sender's current rights; an attachment already delivered by email cannot be recalled.
 
-Storage lists, connection/root counts, browsing, uploads, downloads, PDF previews, and ZIP archives enforce these rules. Archives omit inaccessible entries. Keyword/vector retrieval applies storage rules before ranking limits, and AI excerpts are rechecked before and after answering. Plugin search remains subject to its separate view, role, and row policies. Events, audit logs, and MongoDB remain outside search.
+Storage lists, connection/root counts, browsing, uploads, downloads, PDF previews, and ZIP archives enforce these rules. Archives omit inaccessible entries. Keyword/vector retrieval applies storage rules before ranking limits, and AI excerpts are rechecked before and after answering. Plugin search remains subject to its separate view, role, and row policies. Events and audit logs remain outside document search.
 
 ## Persistence and APIs
 

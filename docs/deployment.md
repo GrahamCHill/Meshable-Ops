@@ -221,7 +221,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 
 ## Upgrading an existing installation
 
-1. Back up the PostgreSQL databases, MongoDB history, and original object storage as appropriate. The JSON admin export omits credentials/hashes, chunks/vectors, and some account/runtime state; it is not a full recovery backup.
+1. Back up PostgreSQL and original object storage. For older installations, export and back up legacy history using [history migration](history-migration.md) before upgrading. The JSON admin export omits credentials/hashes, chunks/vectors, and some account/runtime state; it is not a full recovery backup.
 2. Preserve the current wrapping key. For an older installation with plaintext storage credentials and no key yet, configure a newly generated key before the first upgraded startup. For encrypted rows, use the matching current key or follow the explicit [rotation procedure](ai-search-and-secrets.md#stored-credentials-and-passwords).
 3. Review the selected environment/admin AI source and the current search/launcher/answer switches. No AI provider is required to upgrade or use the local matcher.
 4. Rebuild with the same Compose files and env file used by the deployment. Do not delete its volumes to apply these changes.

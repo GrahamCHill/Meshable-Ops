@@ -2,7 +2,7 @@ import io
 import unittest
 import zipfile
 
-from app.document_text import extract_document, extract_with_limits, MAX_BYTES, MAX_CHARS
+from app.document_text import extract_document, extract_with_limits, extract_pages, MAX_BYTES, MAX_CHARS
 
 
 class DocumentTextTests(unittest.TestCase):
@@ -40,6 +40,30 @@ class DocumentTextTests(unittest.TestCase):
 
     def test_extraction_runs_in_a_bounded_process(self):
         self.assertEqual(extract_with_limits("note.txt", b"Renewal in December"), ("Renewal in December", False))
+
+    def test_image_scans_require_an_external_ocr_service(self):
+        result = extract_pages("scan.png", b"original bytes for the external provider")
+        self.assertTrue(result["needsOcr"])
+        self.assertEqual(result["text"], "")
+
+    def test_image_only_pdf_reports_original_page_number_and_ocr_requirement(self):
+        from pypdf import PdfWriter
+        from pypdf.generic import DictionaryObject, NameObject
+        writer = PdfWriter()
+        page = writer.add_blank_page(width=400, height=400)
+        page[NameObject("/Resources")] = DictionaryObject({
+            NameObject("/XObject"): DictionaryObject({NameObject("/Im1"): DictionaryObject({NameObject("/Subtype"): NameObject("/Image")})})
+        })
+        output = io.BytesIO()
+        writer.write(output)
+        result = extract_pages("scan.pdf", output.getvalue())
+        self.assertTrue(result["needsOcr"])
+        self.assertEqual(result["pages"][0]["pageNumber"], 1)
+
+    def test_native_text_beyond_the_former_5_mib_limit_can_be_extracted(self):
+        result = extract_pages("long.txt", b"a" * (6 * 1024 * 1024))
+        self.assertEqual(len(result["text"]), MAX_CHARS)
+        self.assertTrue(result["truncated"])
 
 
 if __name__ == "__main__":

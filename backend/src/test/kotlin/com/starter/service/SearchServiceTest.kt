@@ -71,7 +71,7 @@ class SearchServiceTest {
         assertThatThrownBy { service.search(VectorSearchRequest("contract")) }.isInstanceOf(ForbiddenException::class.java)
         verifyNoInteractions(vectors, keywords)
     }
-    @Test fun `keyword fallback checks live visibility and never searches MongoDB events or audit logs`() {
+    @Test fun `keyword fallback checks live visibility and never searches events or audit logs`() {
         val statements = mutableListOf<String>()
         val arguments = mutableListOf<Any?>()
         val jdbc = mock(JdbcTemplate::class.java) { call ->

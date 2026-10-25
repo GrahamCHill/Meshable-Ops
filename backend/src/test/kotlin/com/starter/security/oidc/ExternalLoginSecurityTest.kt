@@ -169,7 +169,7 @@ class ExternalLoginSecurityTest {
             val rejected = mvc.perform(post("/api/auth/oidc/complete").session(session).header("Origin", "https://attacker.example.test").header("Sec-Fetch-Site", "cross-site")).andReturn().response
             assertThat(rejected.status).isEqualTo(403)
             assertThat(session.isInvalid).isFalse()
-            val accepted = mvc.perform(post("/api/auth/oidc/complete").session(session).header("Origin", "https://workspace.example.test")).andReturn().response
+            val accepted = mvc.perform(post("/api/auth/oidc/complete").accept(org.springframework.http.MediaType.APPLICATION_JSON).session(session).header("Origin", "https://workspace.example.test")).andReturn().response
             assertThat(accepted.status).isEqualTo(200)
             assertThat(accepted.contentAsString).contains("\"mfaRequired\":true", "test-challenge")
             assertThat(accepted.getHeaders("Set-Cookie")).isEmpty()

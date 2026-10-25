@@ -37,7 +37,14 @@ export function StorageEntries({
         </button>
       )}
       {contents.entries.map(entry => {
-        const vectorLabel = entry.vectorStatus === 'CONTENT_INDEXED' ? ' · Content indexed' : entry.vectorStatus === 'CONTENT_TRUNCATED' ? ' · Content partially indexed' : entry.vectorStatus === 'INDEX_ERROR' ? ' · Index error' : entry.vectorStatus === 'CONTENT_UNAVAILABLE' ? ' · Metadata indexed; content unavailable' : entry.vectorStatus ? ' · Metadata indexed' : ''
+        const processingLabels: Record<string, string> = {
+          CONTENT_INDEXED: 'Content indexed', CONTENT_TRUNCATED: 'Content partially indexed',
+          CONTENT_QUEUED: 'Content queued', CONTENT_PROCESSING: 'Processing content',
+          CONTENT_RETRY: 'Content processing will retry', CONTENT_FAILED: 'Content processing failed',
+          OCR_REQUIRED: 'OCR service required', INDEX_ERROR: 'Index error',
+          CONTENT_UNAVAILABLE: 'Metadata indexed; content unavailable',
+        }
+        const vectorLabel = entry.vectorStatus ? ' · ' + (processingLabels[entry.vectorStatus] ?? 'Metadata indexed') : ''
         const detail = entry.type === 'FOLDER' ? 'Folder' : `${formatSize(entry.size)}${vectorLabel}`
         return (
           <div key={`${entry.type}-${entry.path}`} style={entryStyle}>

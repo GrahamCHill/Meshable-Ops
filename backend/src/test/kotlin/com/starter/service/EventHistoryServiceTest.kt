@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.*
 import org.mockito.Mockito.*
 import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.PageRequest
 import java.time.Instant
 import java.util.Base64
 
@@ -20,13 +21,13 @@ class EventHistoryServiceTest {
 
     @Test fun `history uses one lookahead and the last returned row as its keyset`() {
         val rows = listOf("c", "b", "a").map { Event(id = it, type = "FOLDER_CREATED", createdAt = time) }
-        `when`(events.history(any(Pageable::class.java))).thenAnswer {
+        `when`(events.history(any(Pageable::class.java) ?: PageRequest.of(0, 3))).thenAnswer {
             assertThat((it.arguments[0] as Pageable).pageSize).isEqualTo(3)
             rows
         }
         val first = service.history(null, 2)
         assertThat(first.content.map { it.id }).containsExactly("c", "b")
-        `when`(events.historyBefore(eq(time), eq("b"), any(Pageable::class.java))).thenReturn(listOf(rows.last()))
+        `when`(events.historyBefore(eq(time) ?: time, eq("b") ?: "b", any(Pageable::class.java) ?: PageRequest.of(0, 3))).thenReturn(listOf(rows.last()))
         val second = service.history(first.nextCursor, 2)
         assertThat(second.content.map { it.id }).containsExactly("a")
         assertThat(second.nextCursor).isNull()

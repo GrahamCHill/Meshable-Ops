@@ -1,5 +1,7 @@
 import type { PageSettings } from "./templates";
 import { normalizeSignatureIds, validSignatureId, validImageDataUrl, isImageSource, type PdfEditorSignatureSettings, type PdfEditorSignature, type PdfEditorImageSource } from "../editor/index";
+import { signatureMarker } from "./signatureText";
+export { signatureMarker, signatureMarkerPattern } from "./signatureText";
 
 export type ImageSection = "header" | "title" | "details" | "text" | "body" | "closing" | "footer";
 export type DocumentImage = { id: string; name: string; section: ImageSection; sectionId?: string; widthMm: number; heightMm: number; xMm: number } & PdfEditorImageSource;
@@ -10,8 +12,6 @@ export const imageLocations: { value: ImageSection; label: string }[] = [
   { value: "header", label: "Header" }, { value: "footer", label: "Footer" }, { value: "text", label: "Paragraphs" }, { value: "body", label: "Terms" },
   { value: "title", label: "Title" }, { value: "details", label: "Document details" }, { value: "closing", label: "Closing" },
 ];
-export const signatureMarkerPattern = /\{\{signature\}\}|^[ \t]*(?:(?:signature|signed(?: by)?|sign here)[ \t]*:?[ \t]*)?_{5,}[ \t]*$/im;
-export const signatureMarker = (text: string) => text.match(signatureMarkerPattern);
 export function signatureFields(closing: string, signatures?: SignatureSettings[]): DocumentSignature[] {
   if (!signatureMarker(closing)) return [];
   const fields = signatures?.length ? signatures : [{ ...defaultSignature }];

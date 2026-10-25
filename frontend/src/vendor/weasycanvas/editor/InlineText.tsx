@@ -15,6 +15,7 @@ export type InlineTextProps = {
   className?: string;
   maxLength?: number;
   onFocus?: () => void;
+  placeholder?: string;
   /** Host-owned API value; always read-only, even if the rest of the document is editable. */
   sourceKey?: string;
   /** Stable host field ID. Unnamed slot text is read-only when editPolicy is supplied. */
@@ -23,7 +24,7 @@ export type InlineTextProps = {
   sectionId?: string;
 };
 
-export function InlineText({ value, label, editable: requestedEditable, onCommit, multiline = false, className = "", maxLength = 4000, onFocus, sourceKey, fieldId, sectionId }: InlineTextProps) {
+export function InlineText({ value, label, editable: requestedEditable, onCommit, multiline = false, className = "", maxLength = 4000, onFocus, placeholder, sourceKey, fieldId, sectionId }: InlineTextProps) {
   const api = useApiFields();
   const permissions = useEditPermissions();
   const editable = requestedEditable && (sectionId === undefined ? permissions.canEditField(fieldId) : fieldId === undefined && permissions.canEditSection(sectionId));
@@ -36,7 +37,7 @@ export function InlineText({ value, label, editable: requestedEditable, onCommit
   }, [draft, editable]);
   if (!sourceKey && inlineApiKeys(value).length) return <ProtectedText value={value} label={label} editable={editable} onCommit={onCommit} multiline={multiline} maxLength={maxLength} className={className} onFocus={onFocus} fields={api.fields} values={api.values} />;
   if (!editable || sourceKey) return <div className={`pdf-editor-text ${className}`} data-api-field={sourceKey} role={sourceKey ? "textbox" : undefined} aria-label={sourceKey ? label : undefined} aria-readonly={sourceKey ? true : undefined} tabIndex={sourceKey ? 0 : undefined} onFocus={sourceKey ? onFocus : undefined} title={sourceKey ? `Provided by API: ${sourceKey}` : undefined}>{value}</div>;
-  return <textarea ref={ref} aria-label={label} title={label} spellCheck rows={1}
+  return <textarea ref={ref} aria-label={label} title={label} placeholder={placeholder} spellCheck rows={1}
     className={`pdf-editor-inline ${className}`} value={draft} maxLength={maxLength} onFocus={onFocus}
     onChange={(event) => {
       if (!editable) return;

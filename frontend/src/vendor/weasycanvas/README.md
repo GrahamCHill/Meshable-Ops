@@ -8,6 +8,11 @@ state, demo shell, and image storage endpoints are not imported into this applic
 Host integration lives in `plugins/modules/documents/` and its authenticated Kotlin/Python plugin APIs. The optional Workflows module composes with generated PDFs.
 Host adaptations include React 18-compatible inert measurement markup, clearer data-field
 labels, removal of decorative glyphs, and server-save/create-document callbacks.
+The host also provides inline editing of every default term/paragraph, insertion,
+nested clauses, family reordering/removal, and validated bulk text additions.
+The default Edit page view uses the inline text editor directly in the layout preview,
+with the same source draft shared by Manage terms. API bindings and signature markers
+are preserved; preview values are never written back as template wording.
 Designer styles are scoped to `.weasy-host` and simplified to match this app. The matching
 Python model/renderer sources are under `weasy-renderer/backend/`; its host wrapper blocks
 external resource fetching and runs PDF rendering in bounded child processes.

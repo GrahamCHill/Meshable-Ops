@@ -19,7 +19,7 @@ flowchart LR
     browser["Browser"] -->|HTTPS| ingress["Public web ingress"]
     ingress --> app["Application host<br/>Caddy · React/nginx · Kotlin"]
     app -->|5432 · verified TLS| sql["Managed PostgreSQL<br/>app_db + pgvector · superset"]
-    app -->|8088 / 27017 · private| services["Private services host<br/>Superset · Celery · Redis"]
+    app -->|8088 · private| services["Private services host<br/>Superset · Celery · Redis"]
     services -->|5432 · verified TLS| sql
     app -->|8000 / 8001 / 8090 · private| runtime["Private execution host<br/>Extractor · PDF renderer · Plugin runtime"]
     runtime -->|8080 · authenticated callback| app

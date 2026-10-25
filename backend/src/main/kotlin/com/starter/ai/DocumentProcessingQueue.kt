@@ -10,20 +10,30 @@ data class DocumentJob(val documentId: UUID, val checksum: String, val model: St
 /** Durable PostgreSQL queue. Re-enqueueing fences any in-flight result for an older source. */
 @Service
 class DocumentProcessingQueue(private val jdbc: JdbcTemplate) {
+    fun lockDocument(documentId: UUID): Boolean = jdbc.query("SELECT id FROM storage_documents WHERE id=? FOR UPDATE",
+        { rs, _ -> rs.getObject(1) }, documentId).isNotEmpty()
+
+    @Transactional
     fun enqueue(documentId: UUID, checksum: String, model: String) {
+        if (!lockDocument(documentId)) return
         jdbc.update("""INSERT INTO document_processing_jobs(document_id, source_checksum, embedding_model)
             VALUES (?, ?, ?) ON CONFLICT(document_id) DO UPDATE SET source_checksum=EXCLUDED.source_checksum,
             embedding_model=EXCLUDED.embedding_model, state='QUEUED', attempts=0, claim_token=NULL,
             next_attempt_at=NOW(), lease_until=NULL, updated_at=NOW()""", documentId, checksum, model)
     }
 
+    @Transactional
     fun cancel(documentId: UUID) {
+        lockDocument(documentId)
         jdbc.update("DELETE FROM document_processing_jobs WHERE document_id=?", documentId)
     }
 
     fun claim(): DocumentJob? {
         jdbc.update("""UPDATE document_processing_jobs SET state='FAILED', updated_at=NOW()
             WHERE state='RUNNING' AND lease_until < NOW() AND attempts >= 3""")
+        jdbc.update("""UPDATE storage_documents d SET processing_status='CONTENT_FAILED', updated_at=NOW()
+            FROM document_processing_jobs j WHERE j.document_id=d.id AND j.state='FAILED'
+            AND j.source_checksum=d.source_checksum AND d.processing_status <> 'CONTENT_FAILED'""")
         val token = UUID.randomUUID()
         return jdbc.query("""WITH candidate AS (
             SELECT document_id FROM document_processing_jobs WHERE attempts < 3
@@ -40,6 +50,10 @@ class DocumentProcessingQueue(private val jdbc: JdbcTemplate) {
     fun owns(job: DocumentJob): Boolean = jdbc.query(
         "SELECT claim_token FROM document_processing_jobs WHERE document_id=? AND state='RUNNING' FOR UPDATE",
         { rs, _ -> rs.getObject("claim_token", UUID::class.java) }, job.documentId).singleOrNull() == job.token
+
+    fun heartbeat(job: DocumentJob): Boolean = jdbc.update("""UPDATE document_processing_jobs
+        SET lease_until=NOW()+INTERVAL '30 minutes', updated_at=NOW()
+        WHERE document_id=? AND claim_token=? AND state='RUNNING'""", job.documentId, job.token) == 1
 
     fun complete(job: DocumentJob) {
         jdbc.update("""UPDATE document_processing_jobs SET state='DONE', lease_until=NULL, updated_at=NOW()

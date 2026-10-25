@@ -15,5 +15,47 @@
 .weasy-host .designer-section-select:hover { background: #f6f6f6 !important; }
 .weasy-host .panel-divider { background: transparent; }
 .weasy-host .designer-toolbar button { color: var(--color-text); background: var(--color-surface-2); }
+.weasy-host .designer-section { cursor: default; }
+.weasy-host .designer-section-heading { cursor: grab; }
+.weasy-host .template-terms-editor { color: var(--color-text); background: var(--color-surface); padding: 12px; min-width: 0; }
+.weasy-host .template-terms-toolbar, .weasy-host .template-term-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.weasy-host .template-terms-toolbar { justify-content: space-between; }
+.weasy-host .template-terms-toolbar strong { font-size: 13px; }
+.weasy-host .template-terms-editor .muted { font-size: 12px; line-height: 1.5; margin: 10px 0; color: var(--color-text-secondary); }
+.weasy-host .template-term { padding: 12px 0; border-top: 1px solid var(--color-border); }
+.weasy-host .template-term[data-depth="1"] { margin-left: 16px; }
+.weasy-host .template-term[data-depth="2"] { margin-left: 32px; }
+.weasy-host .template-terms-editor label { display: grid; gap: 6px; font-size: 12px; font-weight: 600; }
+.weasy-host .template-terms-editor textarea, .weasy-host .template-terms-editor select { width: 100%; font-size: 13px; line-height: 1.5; }
+.weasy-host .template-terms-editor textarea { resize: vertical; min-height: 80px; }
+.weasy-host .template-terms-editor .inline-api-insert { flex-wrap: wrap; }
+.weasy-host .template-term-actions { margin-top: 8px; }
+.weasy-host .template-terms-editor button { background: var(--color-surface-2); color: var(--color-text); min-height: 32px; }
+.weasy-host .template-terms-bulk { border-top: 1px solid var(--color-border); padding-top: 12px; margin-top: 16px; }
+.weasy-host .template-terms-bulk summary { cursor: pointer; font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+.weasy-host .template-terms-bulk label { margin-bottom: 12px; }
+.weasy-host .template-page-modes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.weasy-host .template-page-modes button[aria-pressed="true"] { outline: 1px solid currentColor; font-weight: 600; }
+.weasy-host .template-page-hint { margin: 0 0 16px; font-size: 12px; line-height: 1.5; color: var(--color-text-secondary); }
+.weasy-host .template-render-page { color: #17252f; }
+.weasy-host .template-render-page .designer-section-select:hover { background: transparent !important; }
+.weasy-host .template-render-heading { color: #17252f; font-size: 16px; font-weight: 600; margin-bottom: 14px; }
+.weasy-host .template-render-details { display: grid; grid-template-columns: minmax(70px, 30%) minmax(0, 1fr); gap: 8px 12px; color: #49636b; font-size: 12px; line-height: 1.5; }
+.weasy-host .template-render-field { min-width: 0; }
+.weasy-host .template-render-field .pdf-editor-inline, .weasy-host .template-render-field .pdf-editor-text { display: block; width: 100%; min-height: 1lh; margin: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: inherit; text-decoration: inherit; line-height: inherit; white-space: pre-wrap; overflow-wrap: anywhere; }
+.weasy-host .template-render-field .pdf-editor-inline { box-sizing: content-box; resize: none; overflow: hidden; outline: 1px dashed transparent; outline-offset: 3px; }
+.weasy-host .template-render-field .pdf-editor-inline:hover { outline-color: #93b4d3; }
+.weasy-host .template-render-field .pdf-editor-inline:focus { outline: 2px solid #4c83aa; background: #f0f7fc; }
+.weasy-host .template-render-field .pdf-editor-inline::placeholder { color: #71818a; font-weight: 400; font-style: italic; }
+.weasy-host .template-render-field [data-api-field], .weasy-host .template-render-field .pdf-editor-api-token { background: #e8f2f4; outline: 1px dotted #abc8cc; cursor: default; }
+.weasy-host .template-terms-page { background: transparent; color: #17252f; padding: 0; }
+.weasy-host .template-terms-page .template-term { position: relative; border: 0; padding: 0; margin-bottom: 16px; }
+.weasy-host .template-render-term { display: grid; grid-template-columns: minmax(0, 1fr); }
+.weasy-host .template-render-numbered { grid-template-columns: 32px minmax(0, 1fr); gap: 8px; }
+.weasy-host .template-render-marker { text-align: right; }
+.weasy-host .template-terms-page .template-term-actions { position: absolute; top: 100%; right: 0; z-index: 3; max-width: 100%; margin: 0; padding: 4px; background: white; box-shadow: 0 2px 8px #0002; opacity: 0; pointer-events: none; }
+.weasy-host .template-terms-page .template-term:hover .template-term-actions, .weasy-host .template-terms-page .template-term:focus-within .template-term-actions { opacity: 1; pointer-events: auto; }
+.weasy-host .template-terms-page > .full-width { margin-top: 0; }
+@media (hover: none) { .weasy-host .template-terms-page .template-term-actions { position: static; opacity: 1; pointer-events: auto; } }
 @media (max-width: 1150px) { .weasy-host .designer-layout { grid-template-columns: 165px minmax(240px,1fr); }.weasy-host .designer-inspector { grid-column: 1 / -1; }.weasy-host { height: auto; }.weasy-host .designer { overflow: visible; }.weasy-host .designer-layout { overflow: visible; } }
 @media (max-width: 650px) { .weasy-host .designer-layout { display: flex; flex-direction: column; }.weasy-host .designer-stage, .weasy-host .designer-palette, .weasy-host .designer-inspector { width: 100%; }.weasy-host .designer-toolbar { flex-direction: column; align-items: start; } }

@@ -30,7 +30,7 @@ x-superset-env: &superset-env
 
 services:
 
-  # â”€â”€â”€ Databases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # ─── Databases ─────────────────────────────────────────────────────────────
 
   postgres:
     image: pgvector/pgvector:0.8.6-pg18-trixie
@@ -64,7 +64,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # â”€â”€â”€ Apache Superset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # ─── Apache Superset ───────────────────────────────────────────────────────
 
   superset-init:
     image: apache/superset:4.0.2
@@ -142,7 +142,7 @@ services:
       retries: 3
       start_period: 15s
 
-  # â”€â”€â”€ Kotlin Backend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # ─── Kotlin Backend ────────────────────────────────────────────────────────
 
   backend:
     build:
@@ -304,8 +304,6 @@ services:
       retries: 3
 
   ml-backend:
-    environment:
-      DOCUMENT_MAX_BYTES: ${DOCUMENT_MAX_BYTES:-52428800}
     build:
       context: ./ml-backend
       dockerfile: Dockerfile
@@ -313,6 +311,7 @@ services:
         EXTRA_PIP_PACKAGES: ${ML_EXTRA_PIP_PACKAGES:-}
     restart: unless-stopped
     environment:
+      DOCUMENT_MAX_BYTES: ${DOCUMENT_MAX_BYTES:-52428800}
       PYTHONUNBUFFERED: "1"
     expose:
       - "8000"
@@ -323,7 +322,7 @@ services:
       retries: 5
       start_period: 20s
 
-  # â”€â”€â”€ React Frontend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # ─── React Frontend ────────────────────────────────────────────────────────
 
   frontend:
     build:
@@ -334,8 +333,6 @@ services:
       backend:
         condition: service_healthy
       ml-backend:
-    environment:
-      DOCUMENT_MAX_BYTES: ${DOCUMENT_MAX_BYTES:-52428800}
         condition: service_healthy
       superset:
         condition: service_healthy

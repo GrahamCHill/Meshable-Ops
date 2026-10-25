@@ -48,7 +48,7 @@ Dependency and conflict checks also protect direct APIs. Disabling/removing a re
 
 ## Admin categories and optional settings
 
-`adminMenu.category` can use an existing admin group (`workspace`, `people-security`, `storage-sharing`, `communications`, `documents-workflows`, `analytics-search`, `operations`) or a custom slug with `categoryLabel`. The host adds a direct settings card there while the plugin is active. Enable it in the catalogue first; provider credentials can then be configured without launching its page. Existing group names cannot be replaced by a plugin.
+`adminMenu.category` can use an existing admin group (`workspace`, `people-security`, `storage-sharing`, `communications`, `documents-workflows`, `analytics-search`, `app-intelligence`, `operations`) or a custom slug with `categoryLabel`. The `documents-workflows` category appears as **Project Management**; its ID remains stable for existing plugins. The host adds a direct settings card there while the plugin is active. Enable it in the catalogue first; provider credentials can then be configured without launching its page. Existing group names cannot be replaced by a plugin.
 
 `adminMenu.icon` selects a default built-in section icon. Administrators can override category artwork with a built-in icon or uploaded WebP in **Workspace → Navigation & section icons**. See [navigation and artwork](../navigation-and-icons.md) for icon names, limits, permissions, and ordering.
 

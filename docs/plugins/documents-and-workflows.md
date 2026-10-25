@@ -2,7 +2,7 @@
 
 **Document generator** (`documents`) and **Workflows** (`workflows`) are bundled, first-class source plugins. Enable either under **Administration → Plugins → Manage**. They use the same lifecycle controls, role restrictions, table policies, dependency presentation, removal/restore, and explicit data clearing as other bundled plugins.
 
-When enabled, Documents stays at `/documents` and its template editor at `/admin/document-templates`. Workflows stays at `/workflows` and its visual builder at `/admin/workflows`. Admin authoring appears as cards in **Documents & workflows**. The plugin management page also links directly to these screens. Disabling/removing a module hides these entries, removes its effective feature permissions and notification choices, and rejects direct APIs. Background workflow alerts also check activation and the owner's access before delivery.
+When enabled, Documents stays at `/documents` and its template editor at `/admin/document-templates`. Workflows stays at `/workflows` and its visual builder at `/admin/workflows`. Admin authoring appears as **Document templates** and **Workflow builder** cards in **Administration → Project Management**, alongside **Project settings** and **Report covers**. The section retains its `documents-workflows` ID for existing plugin assignments and bookmarks. The plugin management page also links directly to these screens. Disabling/removing a module hides these entries, removes its effective feature permissions and notification choices, and rejects direct APIs. Background workflow alerts also check activation and the owner's access before delivery.
 
 ## Independent components and composition
 

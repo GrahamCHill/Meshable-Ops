@@ -51,6 +51,19 @@ jobs:
   backend:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.6-pg18-trixie
+        env:
+          POSTGRES_PASSWORD: test-only-history-ocr
+          POSTGRES_DB: history_ocr_test
+        ports:
+          - 55487:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d history_ocr_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DOCUMENT_TEST_JDBC_URL: jdbc:postgresql://127.0.0.1:55487/history_ocr_test
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -63,6 +76,13 @@ jobs:
           cache-dependency-path: backend/pom.xml
       - run: mvn --batch-mode --no-transfer-progress verify
         working-directory: backend
+      - name: Verify legacy history imports and transaction rollback
+        env:
+          HISTORY_TEST_DSN: host=127.0.0.1 port=55487 dbname=history_ocr_test user=postgres password=test-only-history-ocr
+        run: |
+          python3 -m venv /tmp/meshable-history-tests
+          /tmp/meshable-history-tests/bin/pip install -r scripts/history-migration-requirements.txt
+          /tmp/meshable-history-tests/bin/python -m unittest discover -s scripts/tests -v
 
   python:
     runs-on: ubuntu-24.04

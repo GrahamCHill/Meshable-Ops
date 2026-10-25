@@ -51,13 +51,16 @@ class DocumentProcessingWorker(
         val document = documents.findForProcessing(job.documentId) ?: return
         val config = settings.current()
         if (!config.indexContent || !document.item.accessible || document.item.storageConnection?.enabled == false) {
-            tx.executeWithoutResult { if (queue.owns(job)) queue.complete(job) }
+            tx.executeWithoutResult { if (queue.lockDocument(job.documentId) && queue.owns(job)) queue.complete(job) }
             return
         }
-        if (document.sourceChecksum != job.checksum) return
+        if (document.sourceChecksum != job.checksum) {
+            tx.executeWithoutResult { if (queue.lockDocument(job.documentId) && queue.owns(job)) queue.complete(job) }
+            return
+        }
         val model = embeddings.fingerprint(config.embeddings)
         if (model != job.model) {
-            tx.executeWithoutResult { if (queue.owns(job)) queue.enqueue(document.id, job.checksum, model) }
+            tx.executeWithoutResult { if (queue.lockDocument(job.documentId) && queue.owns(job)) queue.enqueue(document.id, job.checksum, model) }
             return
         }
         val content = storage.downloadForIndex(document.item, document.storagePath, maxBytes)
@@ -65,6 +68,7 @@ class DocumentProcessingWorker(
         val (chunks, truncated) = pageChunks(extracted)
         // Provider batches are bounded independently of document length.
         val batch = chunks.chunked(32).flatMap { part ->
+            if (!queue.heartbeat(job)) return
             embeddings.embed(part.map { "${document.fileName}\n${it.text}" }, config.embeddings)
         }
         val checksum = DocumentFingerprints.hash(content.bytes)
@@ -75,7 +79,8 @@ class DocumentProcessingWorker(
             if (current != job.checksum || !queue.owns(job)) return@executeWithoutResult
             val live = settings.current()
             if (!live.indexContent || embeddings.fingerprint(live.embeddings) != model) {
-                queue.complete(job)
+                if (live.indexContent) queue.enqueue(document.id, job.checksum, embeddings.fingerprint(live.embeddings))
+                else queue.complete(job)
                 return@executeWithoutResult
             }
             val available = jdbc.queryForObject("""SELECT count(*) FROM items i LEFT JOIN storage_connections sc ON sc.id=i.storage_connection_id
@@ -83,7 +88,7 @@ class DocumentProcessingWorker(
             if (!available) { queue.complete(job); return@executeWithoutResult }
             vectors.replacePageChunks(document.id, chunks, batch, checksum, model)
             jdbc.update("DELETE FROM document_pages WHERE document_id=?", document.id)
-            extracted.pages.forEachIndexed { index, page ->
+            extracted.pages.ifEmpty { listOf(ExtractedPage(null, extracted.text)) }.forEachIndexed { index, page ->
                 jdbc.update("""INSERT INTO document_pages(document_id, page_index, page_number, content, metadata)
                     VALUES (?, ?, ?, ?, CAST(? AS jsonb))""", document.id, index, page.pageNumber, page.text,
                     json.writeValueAsString(mapOf("method" to page.method, "confidence" to page.confidence,
@@ -91,6 +96,7 @@ class DocumentProcessingWorker(
             }
             val status = when { extracted.ocrRequired -> "OCR_REQUIRED"; chunks.isEmpty() -> "NO_EXTRACTABLE_TEXT"; truncated -> "CONTENT_TRUNCATED"; else -> "CONTENT_INDEXED" }
             jdbc.update("UPDATE storage_documents SET processing_status=?, embedding_model=?, updated_at=NOW() WHERE id=?", status, model, document.id)
+            jdbc.update("UPDATE document_vectors SET payload=jsonb_set(payload, '{processingStatus}', to_jsonb(CAST(? AS text))) WHERE document_id=?", status, document.id)
             queue.complete(job)
         }
     }

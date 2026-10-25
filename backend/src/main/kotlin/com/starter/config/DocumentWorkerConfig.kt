@@ -6,6 +6,12 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
 
 @Configuration
 class DocumentWorkerConfig {
+    @Bean("taskScheduler")
+    fun taskScheduler() = ThreadPoolTaskScheduler().apply {
+        poolSize = 1
+        setThreadNamePrefix("application-scheduler-")
+    }
+
     @Bean("documentTaskScheduler")
     fun documentTaskScheduler() = ThreadPoolTaskScheduler().apply {
         poolSize = 1

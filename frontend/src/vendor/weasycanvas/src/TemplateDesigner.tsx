@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { clone, createDocumentFromTemplate, newSection, pageDimensions, sectionCatalog, templateErrors, type DocumentTemplate, type SectionKind, type TemplateSection } from "./templates";
-import { clauseDepth, clauseReference, clauseStyle, flattenContent, textStyle } from "../editor/index";
+import { ApiFieldsProvider, clauseDepth, clauseReference, clauseStyle, flattenContent, textStyle } from "../editor/index";
 import { TemplateTypography } from "./TemplateTypography";
 import { ImageRegion } from "./ImageRegion";
 import { SignatureGroup } from "./SignatureGroup";
@@ -12,6 +12,8 @@ import { isApiValues, type PdfEditorApiValues } from "../editor/index";
 import { ApiBindingsPanel, newApiField } from "./ApiBindingsPanel";
 import { InlineApiPanel } from "./InlineApiPanel";
 import { TemplateTextField } from "./TemplateTextField";
+import { TemplateTermsEditor } from "./TemplateTermsEditor";
+import { RenderedTemplateSection } from "./RenderedTemplateSection";
 import { resolvedInlineDocument } from "./inlineFields";
 import type { PdfEditorImageStorage } from "../editor/index";
 
@@ -30,6 +32,7 @@ export function TemplateDesigner({ template: templateValue, onChange, onSave, on
   const uploadAbort = useRef<AbortController | null>(null);
   useEffect(() => () => uploadAbort.current?.abort(), []);
   const [showRuler, setRuler] = useState(true);
+  const [pageEditing, setPageEditing] = useState(true);
   const [apiJson, setApiJson] = useState(() => JSON.stringify(apiValues, null, 2));
   const [apiJsonError, setApiJsonError] = useState("");
   const previewDocument = resolvedInlineDocument(createDocumentFromTemplate(template, apiValues));
@@ -45,14 +48,12 @@ export function TemplateDesigner({ template: templateValue, onChange, onSave, on
   const dimensions = pageDimensions(template.layout);
   const previewWidth = template.layout.orientation === "landscape" ? 900 : 650;
   const rules = section ? sectionRules(template, section) : template.rules;
-  const indices = sectionIds(template.defaults, template).flatMap((id, i) => id === selected ? [i] : []);
-  const firstIndex = indices[0] ?? -1;
   const changeSection = (patch: Partial<TemplateSection>) => onChange({ ...template, sections: template.sections.map((s) => sectionId(s) === selected ? { ...s, ...patch } : s) });
   function place(kind: SectionKind, before?: string, existingId?: string) {
     if (!sectionCatalog.some((s) => s.kind === kind) || existingId && existingId === before) return;
     const existing = existingId ? template.sections.find((s) => sectionId(s) === existingId) : !isContentSection({ kind }) ? template.sections.find((s) => s.kind === kind) : undefined;
     if (!existing && isContentSection({ kind }) && (bodySections(template).length >= 10 || template.defaults.paragraphs.length >= 100)) return;
-    const added = existing || { ...newSection(kind), ...(isContentSection({ kind }) ? { id: crypto.randomUUID(), label: `${kind === "text" ? "Paragraphs" : "Terms"} ${template.sections.filter((s) => s.kind === kind).length + 1}` } : {}) };
+    const added = existing || { ...newSection(kind), ...(kind === "body" ? { numbered: true, rules: { ...template.rules, allowSubparagraphs: true, allowSubsubparagraphs: true } } : {}), ...(isContentSection({ kind }) ? { id: crypto.randomUUID(), label: `${kind === "text" ? "Paragraphs" : "Terms"} ${template.sections.filter((s) => s.kind === kind).length + 1}` } : {}) };
     const flow = template.sections.filter((s) => sectionId(s) !== sectionId(added) && s.kind !== "header" && s.kind !== "footer");
     const index = before ? flow.findIndex((s) => sectionId(s) === before) : isContentSection({ kind }) ? flow.findIndex((s) => s.kind === "closing") : -1;
     if (kind !== "header" && kind !== "footer") flow.splice(index < 0 ? flow.length : index, 0, added);
@@ -60,7 +61,7 @@ export function TemplateDesigner({ template: templateValue, onChange, onSave, on
     const footer = kind === "footer" ? added : template.sections.find((s) => s.kind === "footer");
     const sections = [...(header ? [header] : []), ...flow, ...(footer ? [footer] : [])];
     const next = { ...template, sections };
-    const content = !existing && isContentSection({ kind }) ? insertParagraph(orderedContent(template.defaults, template), template.defaults.paragraphs.length, kind === "text" ? "New general text paragraph." : "New term.", sectionId(added)) : template.defaults;
+    const content = !existing && isContentSection({ kind }) ? insertParagraph(orderedContent(template.defaults, template), template.defaults.paragraphs.length, "", sectionId(added)) : template.defaults;
     onChange({ ...next, defaults: orderedContent(content, next) as DocumentTemplate["defaults"] });
     setSelected(sectionId(added)); setDropTarget(null);
   }
@@ -131,7 +132,7 @@ export function TemplateDesigner({ template: templateValue, onChange, onSave, on
     const next = { ...template, sections, apiFields: [...(template.apiFields || []), field] };
     onChange({ ...next, defaults: { ...template.defaults, ...orderedContent(insertParagraph(template.defaults, template.defaults.paragraphs.length, "", sectionId(added)), next) } }); setSelected(sectionId(added));
   }
-  return <div className="designer">
+  return <ApiFieldsProvider fields={template.apiFields} values={apiValues}><div className="designer">
     <div className="designer-toolbar">
       <div><h2>Template designer</h2><p>Choose sections, wording, data fields, and page layout.</p></div>
       <div className="button-row"><button onClick={onImport}>Import template</button><button onClick={onExport} disabled={!!errors.length || imageUploading}>Export JSON</button><button onClick={onSave} disabled={!!errors.length || imageUploading}>Save template</button><button className="primary" onClick={onUse} disabled={!!errors.length || imageUploading}>Save & create document</button></div>
@@ -144,7 +145,7 @@ export function TemplateDesigner({ template: templateValue, onChange, onSave, on
         <span className="eyebrow">YOUR TEMPLATE</span>
         <label>Template name<input aria-label="Template name" maxLength={100} value={template.name} onChange={(e) => onChange({ ...template, name: e.target.value })} /></label>
         <label>Description<textarea maxLength={500} rows={3} value={template.description} onChange={(e) => onChange({ ...template, description: e.target.value })} /></label>
-        <div className="panel-divider" /><h3>Document sections</h3><p className="muted">Drag to add, or click a section.</p>
+        <div className="panel-divider" /><h3>Document sections</h3><p className="muted">Click to add a section. Add individual terms inside a Terms section.</p>
         {sectionCatalog.map((item) => <button className="palette-item" key={item.kind} disabled={isContentSection(item) && (bodySections(template).length >= 10 || template.defaults.paragraphs.length >= 100)} draggable onDragStart={(e) => e.dataTransfer.setData("text/plain", `add:${item.kind}`)} onClick={() => !isContentSection(item) && template.sections.some((s) => s.kind === item.kind) ? setSelected(sectionId(template.sections.find((s) => s.kind === item.kind)!)) : place(item.kind)}>
           <span className="section-icon">{item.icon}</span><span><strong>{item.label}</strong><small>{item.description}</small></span><span className="palette-plus">{!isContentSection(item) && template.sections.some((s) => s.kind === item.kind) ? "✓" : "+"}</span>
         </button>)}
@@ -154,23 +155,27 @@ export function TemplateDesigner({ template: templateValue, onChange, onSave, on
         {template.apiFields?.length ? <details className="api-preview-data" open><summary>Preview field values</summary><p className="muted">Example values for this draft. Saved templates keep bindings and fallbacks, not these values.</p><textarea aria-label="Preview field values JSON" rows={7} spellCheck={false} value={apiJson} onChange={(e) => { setApiJson(e.target.value); try { const values: unknown = JSON.parse(e.target.value); if (!isApiValues(values)) throw new Error("Use a JSON object with up to 50 text, number, boolean or null values."); onApiValuesChange?.(values); setApiJsonError(""); } catch (error) { setApiJsonError(error instanceof Error ? error.message : "Invalid JSON."); } }} />{apiJsonError ? <p role="alert" className="api-value-error">{apiJsonError}</p> : null}</details> : null}
       </aside>
       <div className="designer-stage">
+        <div className="template-page-modes" role="group" aria-label="Template editing view"><button type="button" aria-pressed={pageEditing} onClick={() => setPageEditing(true)}>Edit page</button><button type="button" aria-pressed={!pageEditing} onClick={() => setPageEditing(false)}>Manage terms</button></div>
+        <p className="template-page-hint">{pageEditing ? "Click text on the page to edit it. Enter adds a line break. Data fields show preview values; change their placement in Manage terms." : "Select a section to add, reorder, or paste multiple terms."}</p>
         <div className="designer-page-caption" style={{ maxWidth: previewWidth }}><span>{template.layout.size} · {template.layout.orientation}</span><label className="check-row"><input type="checkbox" checked={showRuler} onChange={(e) => setRuler(e.target.checked)} />Page ruler</label><span>{template.sections.length} sections</span></div>
         {showRuler ? <div className="designer-ruler" aria-label="Template page ruler in centimetres" style={{ maxWidth: previewWidth }}>{Array.from({ length: Math.floor(dimensions.width / 10) + 1 }, (_, i) => <span key={i} style={{ left: `${i * 10 / dimensions.width * 100}%` }}>{i}</span>)}</div> : null}
-        <div className={`designer-page ${dropTarget === "end" ? "drop-active" : ""}`} style={{ maxWidth: previewWidth, minHeight: template.layout.orientation === "landscape" ? 480 : 740 }} onDragOver={(e) => { e.preventDefault(); setDropTarget("end"); }} onDragLeave={() => setDropTarget(null)} onDrop={(e) => drop(e)}>
-          {template.sections.map((s, index) => <div key={sectionId(s)} data-section={s.kind} data-section-id={sectionId(s)} draggable className={`designer-section ${selected === sectionId(s) ? "selected" : ""} ${dropTarget === sectionId(s) ? "drop-active" : ""}`}
-            onDragStart={(e) => { e.stopPropagation(); e.dataTransfer.setData("text/plain", `move:${sectionId(s)}`); e.dataTransfer.effectAllowed = "move"; }}
+        <div className={`designer-page ${pageEditing ? "template-render-page" : ""} ${dropTarget === "end" ? "drop-active" : ""}`} style={{ maxWidth: previewWidth, minHeight: template.layout.orientation === "landscape" ? 480 : 740 }} onDragOver={(e) => { e.preventDefault(); setDropTarget("end"); }} onDragLeave={() => setDropTarget(null)} onDrop={(e) => drop(e)}>
+          {template.sections.map((s, index) => <div key={sectionId(s)} data-section={s.kind} data-section-id={sectionId(s)} className={`designer-section ${selected === sectionId(s) ? "selected" : ""} ${dropTarget === sectionId(s) ? "drop-active" : ""}`}
             onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDropTarget(sectionId(s)); }} onDrop={(e) => drop(e, sectionId(s))}>
             <div className="designer-section-select" onClick={() => setSelected(sectionId(s))}>
-              <button type="button" className="designer-section-heading" aria-label={`Configure ${s.label}`} aria-pressed={selected === sectionId(s)}><span>{s.label}</span><small>{s.locked ? "Locked" : s.required ? "Required" : "Optional"}{s.kind === "header" || s.kind === "footer" ? " · Repeating" : ""}</small></button>
+              <button type="button" className="designer-section-heading" draggable onDragStart={(e) => { e.stopPropagation(); e.dataTransfer.setData("text/plain", `move:${sectionId(s)}`); e.dataTransfer.effectAllowed = "move"; }} aria-label={`Configure ${s.label}`} aria-pressed={selected === sectionId(s)}><span>{s.label}</span><small>{s.locked ? "Locked" : s.required ? "Required" : "Optional"}{s.kind === "header" || s.kind === "footer" ? " · Repeating" : ""}</small></button>
               <ImageRegion images={template.images || []} section={s.kind} sectionId={isContentSection(s) ? sectionId(s) : undefined} sections={template.sections} layout={template.layout} text={repeatingText} editable onChange={updateImages} />
               {Object.keys(s.bindings || {}).length ? <span className="api-source-tag">API · {Object.values(s.bindings || {}).join(", ")}</span> : null}
+              {pageEditing && (!isContentSection(s) || bodySections(template).length > 1) ? <RenderedTemplateSection template={template} section={s} preview={previewDocument} onChange={onChange} onSelect={() => setSelected(sectionId(s))} /> : null}
+              {!pageEditing ? <>
               {s.bindings?.heading ? <h3>{headingText(previewDocument, s)}</h3> : null}
               {s.kind === "header" ? <div className="mock-header">{previewDocument.organization || "Your organisation"}</div> : null}
               {s.kind === "title" ? <div className="mock-title" style={textStyle({ ...template.formatting.body, ...template.formatting.title })}>{previewDocument.title || "Document title"}</div> : null}
               {s.kind === "details" ? <div className="mock-details">{template.defaults.text?.referenceLabel ?? "Reference:"} {previewDocument.reference}<br />{template.defaults.text?.recipientLabel ?? "Prepared for:"} {previewDocument.recipient}</div> : null}
-              {isContentSection(s) ? bodyPreview(s) : null}
               {s.kind === "closing" ? <div className="mock-closing" style={textStyle({ ...template.formatting.body, ...template.formatting.closing })}>{(signatureMarker(previewDocument.closing_text) ? previewDocument.closing_text.replace(signatureMarker(previewDocument.closing_text)![0], "") : previewDocument.closing_text) || "Your closing text"}{signatures.length ? <SignatureGroup signatures={signatures} /> : null}</div> : null}
               {s.kind === "footer" ? <div className="mock-footer">{footerText(previewDocument)}</div> : null}
+              </> : null}
+              {isContentSection(s) ? (pageEditing || selected === sectionId(s)) && !s.bindings?.text ? <TemplateTermsEditor key={sectionId(s)} template={template} section={s} onChange={onChange} presentation={pageEditing ? "page" : "form"} onSelect={() => setSelected(sectionId(s))} /> : <>{bodyPreview(s)}{!s.bindings?.text ? <button type="button" onClick={() => setSelected(sectionId(s))}>Edit {s.kind === "body" ? "terms" : "paragraphs"}</button> : null}</> : null}
             </div>
             <div className="designer-section-actions">
               <button aria-label={`Move ${s.label} up`} disabled={index === 0 || s.kind === "header" || s.kind === "footer" || template.sections[index - 1]?.kind === "header"} onClick={() => reorder(sectionId(s), -1)}>↑</button>
@@ -180,7 +185,7 @@ export function TemplateDesigner({ template: templateValue, onChange, onSave, on
           </div>)}
           <div className="designer-drop-zone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => drop(e)}>+ Drop a section here</div>
         </div>
-        <p className="muted designer-caption">A structure preview. Generate a PDF to verify the final layout.</p>
+        <p className="muted designer-caption">Changes in both views update the same draft. Save the template when finished; generate a PDF to verify the final layout.</p>
       </div>
       <aside className="designer-inspector panel">
         <span className="eyebrow">SECTION PROPERTIES</span><h3>{section?.label || "Select a section"}</h3>
@@ -213,7 +218,7 @@ export function TemplateDesigner({ template: templateValue, onChange, onSave, on
             <div className="field-pair">{(["minParagraphs", "maxParagraphs"] as const).map((key) => <label key={key}>{key === "minParagraphs" ? "Minimum" : "Maximum"}<input aria-label={key === "minParagraphs" ? "Minimum paragraphs" : "Maximum paragraphs"} type="number" min={1} max={100} value={rules[key]} onChange={(e) => changeSection({ rules: { ...rules, [key]: Math.max(1, Math.min(100, Number(e.target.value))) } })} /></label>)}</div>
             {section.kind === "body" ? <><label className="check-row"><input type="checkbox" checked={rules.allowSubparagraphs} onChange={(e) => changeSection({ rules: { ...rules, allowSubparagraphs: e.target.checked } })} />Allow lettered subparagraphs</label>
             <label className="check-row"><input type="checkbox" disabled={!rules.allowSubparagraphs} checked={rules.allowSubsubparagraphs !== false} onChange={(e) => changeSection({ rules: { ...rules, allowSubsubparagraphs: e.target.checked } })} />Allow Roman numeral subsubclauses</label></> : <p className="muted">General text has no numbering or nested clauses. Add a Terms section for clauses.</p>}
-            <TemplateTextField label="Default first paragraph" rows={5} maxLength={section.maxLength} fields={template.apiFields} value={template.defaults.paragraphs[firstIndex] || ""} onChange={(value) => onChange({ ...template, defaults: { ...template.defaults, paragraphs: template.defaults.paragraphs.map((text, i) => i === firstIndex ? value : text) } })} />
+            {!section.bindings?.text ? <p className="muted">Edit all {section.kind === "body" ? "terms" : "paragraphs"} directly in the selected section. Use Add {section.kind === "body" ? "term" : "paragraph"} to extend it, or Add multiple to paste a list.</p> : null}
           </> : null}
           {section.kind === "title" || section.kind === "header" || section.kind === "closing" ? <TemplateTextField label="Default text" fields={template.apiFields} maxLength={section.maxLength} value={template.defaults[section.kind === "title" ? "title" : section.kind === "header" ? "organization" : "closing_text"]} onChange={(value) => defaults(section.kind === "title" ? "title" : section.kind === "header" ? "organization" : "closing_text", value)} /> : null}
           {section.kind === "details" ? <><TemplateTextField label="Default reference" rows={3} fields={template.apiFields} maxLength={Math.min(100, section.maxLength)} value={template.defaults.reference} onChange={(value) => defaults("reference", value)} /><TemplateTextField label="Default recipient" rows={4} fields={template.apiFields} maxLength={Math.min(500, section.maxLength)} value={template.defaults.recipient} onChange={(value) => defaults("recipient", value)} /></> : null}
@@ -229,5 +234,5 @@ export function TemplateDesigner({ template: templateValue, onChange, onSave, on
         <button className="full-width" onClick={() => onChange({ ...clone(template), id: crypto.randomUUID(), name: `${template.name.slice(0, 90)} copy` })}>Duplicate template</button>
       </aside>
     </div>
-  </div>;
+  </div></ApiFieldsProvider>;
 }

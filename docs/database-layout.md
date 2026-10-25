@@ -30,10 +30,9 @@ PostgreSQL stores application identity, storage metadata, feature/provider confi
 
 | Store | Contents | Search participation |
 | --- | --- | --- |
-| PostgreSQL `app_db` | Users, shared folders, connections, settings, document identities/chunks, and pgvector indexes | Folder/document metadata and enabled extracted content |
+| PostgreSQL `app_db` | Users, folders, settings, events/audit history, document identities/jobs/pages/chunks, and pgvector indexes | Folder/document metadata and enabled extracted content |
 | PostgreSQL `superset` | Superset's own metadata | Outside application document search |
 | S3-compatible bucket or Azure Blob container | Original document objects beneath selected prefixes | Read through authenticated storage adapters for discovery/extraction |
-| MongoDB `app_db` | `events`, `activity_logs` | Excluded from search and AI retrieval; integration deferred |
 | Redis | Superset cache and Celery broker/results | Outside application search |
 
 ## Relational relationships
