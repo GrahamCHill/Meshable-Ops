@@ -5,11 +5,15 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.starter.exception.NotFoundException
 import org.springframework.stereotype.Service
 
+data class InstalledPackage(val manifest: com.starter.plugins.PluginManifest, val author: PluginAuthor)
+
 /** Database-backed so installation and the global kill switch also apply across host replicas. */
 @Service
 class InstalledPluginCatalogue(private val records: PluginPackageRepository, private val security: ExtensionSecurityRepository, private val mapper: ObjectMapper) {
     fun allowed() = security.findById(1).orElse(null)?.allowThirdPartyExtensions == true
     fun manifests() = records.findAllProjectedBy().map { mapper.readValue(it.descriptorJson, PluginPackageDescriptor::class.java).manifest }
+    fun installed() = records.findAllProjectedBy().map { InstalledPackage(mapper.readValue(it.descriptorJson, PluginPackageDescriptor::class.java).manifest,
+        mapper.readValue(it.authorJson, PluginAuthor::class.java)) }
     fun find(id: String) = records.findById(id).orElse(null)
     fun contains(id: String) = records.existsById(id)
     fun descriptor(record: PluginPackageRecord) = mapper.readValue(record.descriptorJson, PluginPackageDescriptor::class.java)

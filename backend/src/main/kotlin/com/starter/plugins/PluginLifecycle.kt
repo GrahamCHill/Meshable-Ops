@@ -19,12 +19,14 @@ class PluginLifecycle(private val registry: PluginRegistry, private val settings
         val row = settings.findById(id).orElseGet { PluginSettings(id) }
         row.enabled = false; row.searchEnabled = false; row.removed = true; settings.saveAndFlush(row)
         if (packages.existsById(id)) packages.deleteById(id)
+        registry.invalidate()
         // Business tables and encrypted configuration remain. Clear-data is a separate explicit action.
     }
     @Transactional fun restore(id: String) {
         registry.definition(id)
         val row = settings.findById(id).orElseGet { PluginSettings(id) }
         row.removed = false; row.enabled = false; settings.saveAndFlush(row)
+        registry.invalidate()
     }
 }
 @RestController @RequestMapping("/api/admin/plugins") @PreAuthorize("hasRole('SUPER_ADMIN')")
