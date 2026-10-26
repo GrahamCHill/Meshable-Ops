@@ -28,6 +28,7 @@ class PluginActivationService(private val settings: PluginSettingsRepository, pr
         }
         rows.forEach { (change, row) -> row.enabled = change.enabled }
         settings.saveAllAndFlush(rows.map { it.second })
+        registry.invalidate()
         return registry.installed()
     }
 }

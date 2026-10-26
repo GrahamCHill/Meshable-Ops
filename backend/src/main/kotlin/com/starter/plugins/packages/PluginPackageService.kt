@@ -28,6 +28,7 @@ class PluginPackageService(private val records: PluginPackageRepository, private
         val row = existing ?: ExtensionSecurityRecord()
         row.allowThirdPartyExtensions = request.allowThirdPartyExtensions
         security.saveAndFlush(row)
+        registry.invalidate()
         return security()
     }
 
@@ -51,6 +52,7 @@ class PluginPackageService(private val records: PluginPackageRepository, private
         records.saveAndFlush(PluginPackageRecord(manifest.id, mapper.writeValueAsString(parsed.descriptor),
             mapper.writeValueAsString(parsed.author), mapper.writeValueAsString(parsed.files), parsed.sha256))
         jdbc.update("UPDATE plugin_settings SET removed = false, enabled = false WHERE plugin_id = ?", manifest.id)
+        registry.invalidate()
         return registry.installed().first { it.manifest.id == manifest.id }
     }
 
