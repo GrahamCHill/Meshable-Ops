@@ -45,8 +45,11 @@ internal class S3StorageAdapter(settings: AppSettings, viewPrefix: String, priva
         }
     }
 
-    override fun inspectAndEnsureRoots(prefixes: Collection<String>): FolderStorageSnapshot = client().use { client ->
-        val counts = prefixes.associateWith { 0 }.toMutableMap()
+    override fun inspectAndEnsureRoots(prefixes: Collection<String>) = inspectRoots(prefixes)
+    override fun countRoots() = inspectRoots(null)
+
+    private fun inspectRoots(prefixes: Collection<String>?): FolderStorageSnapshot = client().use { client ->
+        val counts = prefixes.orEmpty().associateWith { 0 }.toMutableMap()
         val present = mutableSetOf<String>()
         var token: String? = null
         do {
@@ -56,14 +59,15 @@ internal class S3StorageAdapter(settings: AppSettings, viewPrefix: String, priva
             )
             response.contents().forEach { item ->
                 val root = item.key().managedRoot(config.rootPrefix) ?: return@forEach
-                if (root in counts) {
+                if (prefixes == null || root in counts) {
                     present += root
-                    if (!item.key().endsWith('/')) counts[root] = counts.getValue(root) + 1
+                    counts.putIfAbsent(root, 0)
+                    if (!item.key().endsWith('/') && !GeneratedPdfNamespace.excluded(item.key())) counts[root] = counts.getValue(root) + 1
                 }
             }
             token = response.nextContinuationToken()
         } while (response.isTruncated == true)
-        (prefixes - present).forEach { putMarker(client, it) }
+        (prefixes.orEmpty() - present).forEach { putMarker(client, it) }
         FolderStorageSnapshot(provider, counts)
     }
 

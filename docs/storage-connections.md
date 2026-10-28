@@ -22,6 +22,9 @@ not the objects in cloud storage. Existing application-managed folders retain th
 and can be renamed or hidden in the same admin workspace.
 
 Connection nicknames, selected-folder nicknames, and visibility are stored in PostgreSQL.
+Listings/counts use bounded provider caches and background metadata indexing;
+see [storage performance and measurement](storage-performance.md) for freshness,
+large-directory pagination, and latency limits.
 Nicknames do not rename buckets, containers, or cloud object keys. The backend schema update
 adds connection references and defaults existing folders to accessible; prefix uniqueness is
 scoped per connection so matching folder paths can be shared from different buckets.

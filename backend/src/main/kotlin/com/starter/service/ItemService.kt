@@ -41,6 +41,7 @@ class ItemService(
     private val auditLogService: AuditLogService,
     private val documentIndex: DocumentIndexService,
     private val access: com.starter.access.AccessControlService? = null,
+    private val browseJobs: com.starter.service.storage.StorageBrowseJobs? = null,
 ) {
     private fun buildVectorText(title: String, description: String?, tags: List<String>): String =
         listOf(title, description.orEmpty(), tags.joinToString(" ")).joinToString(" ").trim()
@@ -84,16 +85,26 @@ class ItemService(
     @Transactional
     fun listShared(page: Int, size: Int, connectionId: UUID? = null): PageResponse<ItemResponse> {
         val acl = access?.storage()
-        val p = if (acl == null) itemRepository.findVisibleByConnection(connectionId, PageRequest.of(page.coerceAtLeast(0), size.coerceIn(1, 100))) else {
-            val visible = itemRepository.findAllVisible().filter { it.storageConnection?.id == connectionId && acl.allows(it.id, "", true) }
+        val p = if (acl == null || acl.unrestricted && acl.blocks.isEmpty()) itemRepository.findVisibleByConnection(connectionId, PageRequest.of(page.coerceAtLeast(0), size.coerceIn(1, 100))) else {
+            val visible = itemRepository.findVisibleRootsByConnection(connectionId).filter { acl.allows(it.id, "", true) }
             val paging = PageRequest.of(page.coerceAtLeast(0), size.coerceIn(1, 100))
             org.springframework.data.domain.PageImpl(visible.drop(paging.offset.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()).take(paging.pageSize), paging, visible.size.toLong())
         }
-        p.content.forEach { it.ensureCurrentPrefix() }
+        val prefixes = folderStorageService.prefixesFor(p.content)
+        p.content.forEach { it.storagePrefix = prefixes.getValue(it.id) }
         itemRepository.flush()
-        val snapshot = legacySnapshot(p.content)
+        val restricted = acl != null && (!acl.unrestricted || acl.blocks.isNotEmpty())
+        val legacyPrefixes = p.content.filter { it.storageConnection == null }.map { prefixes.getValue(it.id) }
+        val snapshot = when {
+            restricted -> FolderStorageSnapshot(folderStorageService.provider(), emptyMap())
+            legacyPrefixes.isEmpty() -> FolderStorageSnapshot("NONE", emptyMap())
+            else -> folderStorageService.folderCounts(legacyPrefixes)
+        }
+        val visibleCounts = if (restricted && p.content.isNotEmpty()) storageDocumentRepository.findPathsByItemIds(p.content.map { it.id })
+            .filter { !com.starter.service.storage.GeneratedPdfNamespace.excluded(it.storagePath) && acl!!.allows(it.itemId, it.storagePath) }
+            .groupingBy { it.itemId }.eachCount() else emptyMap()
         return PageResponse(
-            p.content.map { it.toResponse(snapshot) },
+            p.content.map { it.toResponse(snapshot, acl, if (restricted) visibleCounts[it.id] ?: 0 else null, prefixes.getValue(it.id)) },
             p.number,
             p.size,
             p.totalElements,
@@ -210,7 +221,12 @@ class ItemService(
         val rootPrefix = folderStorageService.prefixFor(item)
         val acl = access?.storage()
         val result = folderStorageService.browse(item, path).let { result -> result.copy(entries = result.entries.filter { acl?.allows(itemId, it.path, it.type == "FOLDER") != false }) }
-        val documents = syncDocuments(item, result.entries.filter { it.type == "OBJECT" })
+        val objects = result.entries.filter { it.type == "OBJECT" }
+        val documents = if (objects.isEmpty()) emptyMap() else storageDocumentRepository
+            .findListingByItemIdAndStoragePathIn(itemId, objects.map { it.path }).associateBy { it.storagePath }
+        if (objects.any { documents[it.path]?.sourceChecksum != DocumentFingerprints.metadata(it) || documents[it.path]?.vectorizedAt == null }) {
+            browseJobs?.request(itemId, result.path)
+        }
         return StorageContentsResponse(
             folderId = item.id.toString(),
             rootPrefix = rootPrefix,
@@ -244,7 +260,11 @@ class ItemService(
         if (uploads.isEmpty()) throw com.starter.exception.BadRequestException("Select at least one file")
 
         folderStorageService.upload(item, path, uploads)
-        syncDocuments(item, folderStorageService.listDocuments(item))
+        // Enqueue affected directories, including uploaded trees, without walking the existing root.
+        uploads.map { upload ->
+            val relative = com.starter.service.storage.normalizeStorageFolder(path) + com.starter.service.storage.normalizeStorageObject(upload.relativePath)
+            relative.substringBeforeLast('/', "").let { if (it.isEmpty()) "" else "$it/" }
+        }.distinct().forEach { browseJobs?.request(itemId, it) }
         eventRepository.save(
             Event(
                 userId = user.id.toString(),
@@ -305,7 +325,7 @@ class ItemService(
 
     private fun legacySnapshot(items: List<Item>): FolderStorageSnapshot {
         val prefixes = items.filter { it.storageConnection == null }.map { it.ensureCurrentPrefix() }
-        return if (prefixes.isEmpty()) FolderStorageSnapshot("NONE", emptyMap()) else folderStorageService.inspectAndEnsureFolders(prefixes)
+        return if (prefixes.isEmpty()) FolderStorageSnapshot("NONE", emptyMap()) else folderStorageService.folderCounts(prefixes)
     }
 
     private fun vectorPayload(item: Item) = mapOf(
@@ -323,13 +343,15 @@ class ItemService(
         forceVectorize: Boolean = false,
     ): Map<String, StorageDocument> = documentIndex.sync(item, entries, removeMissing, forceVectorize)
 
-    private fun Item.toResponse(snapshot: FolderStorageSnapshot): ItemResponse {
-        val prefix = ensureCurrentPrefix()
+    private fun Item.toResponse(snapshot: FolderStorageSnapshot, acl: com.starter.access.StorageAccess? = access?.storage(), visibleCount: Int? = null, currentPrefix: String? = null): ItemResponse {
+        val prefix = currentPrefix ?: ensureCurrentPrefix()
         return ItemResponse(
             id = id.toString(), title = title, description = description, tags = tags.toList(),
             storagePrefix = prefix,
             storageProvider = storageConnection?.provider ?: snapshot.provider,
-            documentCount = if (access?.storage()?.let { !it.unrestricted || it.blocks.isNotEmpty() } == true) storageDocumentRepository.findAllByItemId(id).count { access.storage().allows(id, it.storagePath) } else snapshot.documentCounts[prefix] ?: 0,
+            documentCount = visibleCount ?: if (acl?.let { !it.unrestricted || it.blocks.isNotEmpty() } == true) storageDocumentRepository.findAllByItemId(id).count {
+                !com.starter.service.storage.GeneratedPdfNamespace.excluded(it.storagePath) && acl.allows(id, it.storagePath)
+            } else snapshot.documentCounts[prefix] ?: 0,
             createdAt = createdAt.toString(), updatedAt = updatedAt.toString(),
             connectionId = storageConnection?.id?.toString(), connectionNickname = storageConnection?.nickname,
             accessible = accessible,

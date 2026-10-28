@@ -18,7 +18,7 @@ internal fun AppSettings.storageViewPrefix(): String {
 }
 
 internal fun List<StorageEntry>.sortedEntries() =
-    sortedWith(compareBy<StorageEntry>({ it.type != "FOLDER" }, { it.name.lowercase() }))
+    sortedWith(compareBy<StorageEntry> { it.type != "FOLDER" }.thenBy(String.CASE_INSENSITIVE_ORDER) { it.name })
 
 internal fun normalizeStorageFolder(path: String): String {
     val normalized = path.replace('\\', '/').trim('/')

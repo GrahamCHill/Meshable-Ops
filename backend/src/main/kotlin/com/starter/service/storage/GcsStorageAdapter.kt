@@ -27,17 +27,21 @@ internal class GcsStorageAdapter(
         storage.list(bucket, Storage.BlobListOption.prefix(viewPrefix), Storage.BlobListOption.pageSize(1)).values.iterator().hasNext()
     }
 
-    override fun inspectAndEnsureRoots(prefixes: Collection<String>): FolderStorageSnapshot {
-        val counts = prefixes.associateWith { 0 }.toMutableMap()
+    override fun inspectAndEnsureRoots(prefixes: Collection<String>) = inspectRoots(prefixes)
+    override fun countRoots() = inspectRoots(null)
+
+    private fun inspectRoots(prefixes: Collection<String>?): FolderStorageSnapshot {
+        val counts = prefixes.orEmpty().associateWith { 0 }.toMutableMap()
         val present = mutableSetOf<String>()
         storage.list(bucket, Storage.BlobListOption.prefix(viewPrefix)).iterateAll().forEach { blob ->
             val root = blob.name.managedRoot(viewPrefix) ?: return@forEach
-            if (root in counts) {
+            if (prefixes == null || root in counts) {
                 present += root
-                if (!blob.name.endsWith('/')) counts[root] = counts.getValue(root) + 1
+                counts.putIfAbsent(root, 0)
+                if (!blob.name.endsWith('/') && !GeneratedPdfNamespace.excluded(blob.name)) counts[root] = counts.getValue(root) + 1
             }
         }
-        (prefixes - present).forEach { createFolder(it) }
+        (prefixes.orEmpty() - present).forEach { createFolder(it) }
         return FolderStorageSnapshot(provider, counts)
     }
 

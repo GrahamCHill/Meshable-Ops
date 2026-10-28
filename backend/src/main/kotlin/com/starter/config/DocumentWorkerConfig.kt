@@ -6,6 +6,12 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
 
 @Configuration
 class DocumentWorkerConfig {
+    @Bean("storageTaskScheduler")
+    fun storageTaskScheduler() = ThreadPoolTaskScheduler().apply {
+        poolSize = 1
+        setThreadNamePrefix("storage-index-")
+        setWaitForTasksToCompleteOnShutdown(false)
+    }
     @Bean("taskScheduler")
     fun taskScheduler() = ThreadPoolTaskScheduler().apply {
         poolSize = 1
