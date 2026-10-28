@@ -25,7 +25,12 @@ class StorageConnectionServiceTest {
         val visible = StorageConnection(nickname = "Legal archive", bucket = "private-bucket", endpoint = "https://private.example", accessKey = "private-access", secretKey = "private-secret")
         val empty = StorageConnection(nickname = "Unconfigured selection")
         `when`(connections.findAllByEnabledTrueOrderByNicknameAsc()).thenReturn(listOf(visible, empty))
-        `when`(items.countByStorageConnectionIdAndAccessibleTrue(visible.id)).thenReturn(2L)
+        `when`(items.findVisibleConnectionRoots()).thenReturn(List(2) {
+            object : com.starter.repository.postgres.StorageConnectionRoot {
+                override val id = java.util.UUID.randomUUID()
+                override val connectionId = visible.id
+            }
+        })
         val response = service.listShared()
         assertThat(response).hasSize(1)
         assertThat(response.single().nickname).isEqualTo("Legal archive")

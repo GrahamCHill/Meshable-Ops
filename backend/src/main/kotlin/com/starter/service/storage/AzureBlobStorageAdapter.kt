@@ -36,18 +36,22 @@ internal class AzureBlobStorageAdapter(settings: AppSettings, viewPrefix: String
             .iterableByPage(1).iterator().hasNext()
     }
 
-    override fun inspectAndEnsureRoots(prefixes: Collection<String>): FolderStorageSnapshot {
-        val container = container(createIfMissing = true)
-        val counts = prefixes.associateWith { 0 }.toMutableMap()
+    override fun inspectAndEnsureRoots(prefixes: Collection<String>) = inspectRoots(prefixes)
+    override fun countRoots() = inspectRoots(null)
+
+    private fun inspectRoots(prefixes: Collection<String>?): FolderStorageSnapshot {
+        val container = container(createIfMissing = prefixes != null)
+        val counts = prefixes.orEmpty().associateWith { 0 }.toMutableMap()
         val present = mutableSetOf<String>()
         container.listBlobs(ListBlobsOptions().setPrefix(config.rootPrefix), null).forEach { item ->
             val root = item.name.managedRoot(config.rootPrefix) ?: return@forEach
-            if (root in counts) {
+            if (prefixes == null || root in counts) {
                 present += root
-                if (!item.name.endsWith('/')) counts[root] = counts.getValue(root) + 1
+                counts.putIfAbsent(root, 0)
+                if (!item.name.endsWith('/') && !GeneratedPdfNamespace.excluded(item.name)) counts[root] = counts.getValue(root) + 1
             }
         }
-        (prefixes - present).forEach { putMarker(container, it) }
+        (prefixes.orEmpty() - present).forEach { putMarker(container, it) }
         return FolderStorageSnapshot(provider, counts)
     }
 

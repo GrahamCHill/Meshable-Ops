@@ -30,9 +30,14 @@ class StorageConnectionService(
     fun listAdmin() = connections.findAllByOrderByNicknameAsc().map { response(it) }
 
     @Transactional(readOnly = true)
-    fun listShared() = connections.findAllByEnabledTrueOrderByNicknameAsc().mapNotNull { connection ->
-        val count = if (access == null) items.countByStorageConnectionIdAndAccessibleTrue(connection.id) else items.findAllByStorageConnectionIdOrderByTitleAsc(connection.id).count { it.accessible && access.storage().allows(it.id, "", true) }.toLong()
-        if (count == 0L) null else SharedStorageConnectionResponse(connection.id.toString(), connection.nickname, connection.provider, count)
+    fun listShared(): List<SharedStorageConnectionResponse> {
+        val acl = access?.storage()
+        val counts = items.findVisibleConnectionRoots().filter { acl?.allows(it.id, "", true) != false }
+            .groupingBy { it.connectionId }.eachCount()
+        return connections.findAllByEnabledTrueOrderByNicknameAsc().mapNotNull { connection ->
+            val count = counts[connection.id]?.toLong() ?: 0L
+            if (count == 0L) null else SharedStorageConnectionResponse(connection.id.toString(), connection.nickname, connection.provider, count)
+        }
     }
 
     @Transactional

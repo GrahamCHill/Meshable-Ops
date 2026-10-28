@@ -108,7 +108,7 @@ export function StorageBrowser({ folder, onClose, initialPath = '', initialFile 
             Could not load this storage path. Check the provider settings and credentials.
           </div>
         )}
-        {current && <StorageEntries contents={current} parentPath={parentPath} onNavigate={setPath} onDownload={(objectPath, archive, filename) => download.mutate({ objectPath, archive, filename })} downloading={download.isPending} policy={access.data} onOpenPdf={setPdfPath} onSharePdf={canShare ? setSharePath : undefined} />}
+        {current && <StorageEntries key={current.path} contents={current} parentPath={parentPath} onNavigate={setPath} onDownload={(objectPath, archive, filename) => download.mutate({ objectPath, archive, filename })} downloading={download.isPending} policy={access.data} onOpenPdf={setPdfPath} onSharePdf={canShare ? setSharePath : undefined} />}
       </Card>
 
       <Card style={{ marginTop: '1rem', background: 'var(--color-surface-2)' }}>

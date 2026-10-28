@@ -1,6 +1,16 @@
 import type { StorageContents } from '../../api/items'
 import { Button } from '../ui'
 import { canDownload, type DocumentAccessPolicy } from '../../api/documentAccess'
+import { useMemo, useState } from 'react'
+
+const pageSize = 100
+const processingLabels: Record<string, string> = {
+  CONTENT_INDEXED: 'Content indexed', CONTENT_TRUNCATED: 'Content partially indexed',
+  CONTENT_QUEUED: 'Content queued', CONTENT_PROCESSING: 'Processing content',
+  CONTENT_RETRY: 'Content processing will retry', CONTENT_FAILED: 'Content processing failed',
+  OCR_REQUIRED: 'OCR service required', INDEX_ERROR: 'Index error',
+  CONTENT_UNAVAILABLE: 'Metadata indexed; content unavailable',
+}
 
 function formatSize(size?: number) {
   if (size == null) return '—'
@@ -28,22 +38,23 @@ export function StorageEntries({
   onOpenPdf: (path: string) => void
   onSharePdf?: (path: string) => void
 }>) {
+  const [page, setPage] = useState(0)
+  const pageCount = Math.max(1, Math.ceil(contents.entries.length / pageSize))
+  const currentPage = Math.min(page, pageCount - 1)
+  const visible = contents.entries.slice(currentPage * pageSize, (currentPage + 1) * pageSize)
+  const folders = useMemo(() => contents.entries.reduce((count, entry) => count + Number(entry.type === 'FOLDER'), 0), [contents.entries])
   return (
     <div>
+      <div role="status" style={{ padding: '0.5rem 1rem', color: 'var(--color-text-secondary)' }}>
+        {folders} folders · {contents.entries.length - folders} files
+      </div>
       {contents.path && (
         <button onClick={() => onNavigate(parentPath)} style={entryStyle}>
 
           <span style={{ flex: 1, textAlign: 'left' }}>..</span>
         </button>
       )}
-      {contents.entries.map(entry => {
-        const processingLabels: Record<string, string> = {
-          CONTENT_INDEXED: 'Content indexed', CONTENT_TRUNCATED: 'Content partially indexed',
-          CONTENT_QUEUED: 'Content queued', CONTENT_PROCESSING: 'Processing content',
-          CONTENT_RETRY: 'Content processing will retry', CONTENT_FAILED: 'Content processing failed',
-          OCR_REQUIRED: 'OCR service required', INDEX_ERROR: 'Index error',
-          CONTENT_UNAVAILABLE: 'Metadata indexed; content unavailable',
-        }
+      {visible.map(entry => {
         const vectorLabel = entry.vectorStatus ? ' · ' + (processingLabels[entry.vectorStatus] ?? 'Metadata indexed') : ''
         const detail = entry.type === 'FOLDER' ? 'Folder' : `${formatSize(entry.size)}${vectorLabel}`
         return (
@@ -60,6 +71,11 @@ export function StorageEntries({
           </div>
         )
       })}
+      {pageCount > 1 && <nav aria-label="Directory pages" className="inline-actions" style={{ padding: '1rem' }}>
+        <Button variant="secondary" size="sm" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Previous</Button>
+        <span>Page {currentPage + 1} of {pageCount}</span>
+        <Button variant="secondary" size="sm" disabled={currentPage + 1 === pageCount} onClick={() => setPage(currentPage + 1)}>Next</Button>
+      </nav>}
       {contents.entries.length === 0 && (
         <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>This folder is empty.</div>
       )}

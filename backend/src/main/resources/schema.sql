@@ -1,6 +1,18 @@
 -- Vector columns allow NULL while an existing index awaits dimension migration and reindexing.
 CREATE EXTENSION IF NOT EXISTS vector;
 
+-- Browsing never waits for metadata embeddings. Coalesce directory work independently of content extraction.
+CREATE TABLE IF NOT EXISTS storage_browse_jobs (
+    item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    path TEXT NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 1,
+    claim_token UUID NULL,
+    lease_until TIMESTAMPTZ NULL,
+    next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (item_id, path)
+);
+CREATE INDEX IF NOT EXISTS idx_storage_browse_jobs_due ON storage_browse_jobs(next_attempt_at);
+
 -- Generated PDF locations and deletion outbox. These objects never enter storage_documents or the search index.
 CREATE TABLE IF NOT EXISTS generated_pdf_files (
     id UUID PRIMARY KEY,

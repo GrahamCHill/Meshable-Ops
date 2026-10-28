@@ -16,6 +16,15 @@ import java.nio.charset.StandardCharsets
 import java.util.zip.GZIPInputStream
 
 class GcsStorageAdapterTest {
+    @Test fun `namespace counts preserve empty roots exclude exports and never write markers`() {
+        withStorage({ exchange -> reply(exchange, """{"items":[
+            {"bucket":"docs","name":"contracts/a/nested/file.txt","size":"1"},
+            {"bucket":"docs","name":"contracts/a/__generated_pdfs__/export.pdf","size":"1"},
+            {"bucket":"docs","name":"contracts/b/","size":"0"}]}""") }) { adapter, requests ->
+            assertThat(adapter.countRoots().documentCounts).containsEntry("contracts/a/", 1).containsEntry("contracts/b/", 0)
+            assertThat(requests).hasSize(1).allMatch { it.startsWith("GET ") }
+        }
+    }
     @Test
     fun `connection probe lists one object inside its boundary without writes`() {
         withStorage({ reply(it, "{}") }) { adapter, requests ->

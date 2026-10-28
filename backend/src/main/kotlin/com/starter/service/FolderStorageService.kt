@@ -16,6 +16,7 @@ import com.starter.service.storage.*
 class FolderStorageService(
     private val adminSettingsService: AdminSettingsService,
     private val access: com.starter.access.AccessControlService? = null,
+    private val listings: StorageListingCache = StorageListingCache(),
 ) {
     fun prefixFor(item: Item): String {
         val connection = item.storageConnection ?: return prefixFor(item.id)
@@ -25,17 +26,29 @@ class FolderStorageService(
     }
 
     fun browse(item: Item, path: String): StorageBrowseResult {
-        GeneratedPdfNamespace.requireOrdinary(prefixFor(item), path)
-        return scopedAdapter(item).browse(prefixFor(item), normalizeStorageFolder(path)).ordinary(prefixFor(item))
+        requireVisible(item)
+        val prefix = prefixFor(item)
+        GeneratedPdfNamespace.requireOrdinary(prefix, path)
+        val connection = item.storageConnection
+        val settings = connection?.settings() ?: adminSettingsService.currentEntity()
+        if (connection == null) requireManagedRoot(prefix)
+        return listings.browse(settings, connection?.basePath ?: settings.storageViewPrefix(), prefix, normalizeStorageFolder(path)).ordinary(prefix)
     }
-    fun listDocuments(item: Item) = scopedAdapter(item).listDocuments(prefixFor(item)).filterNot { GeneratedPdfNamespace.excluded(prefixFor(item), it.path) }
+    fun listDocuments(item: Item): List<StorageEntry> {
+        val adapter = scopedAdapter(item)
+        val prefix = prefixFor(item)
+        return adapter.listDocuments(prefix).filterNot { GeneratedPdfNamespace.excluded(prefix, it.path) }
+    }
     fun upload(item: Item, path: String, objects: List<StorageObjectUpload>) {
         val adapter = scopedAdapter(item)
+        val prefix = prefixFor(item)
         val destination = normalizeStorageFolder(path)
         // Validate the whole batch before writing its first object.
         val paths = objects.map { normalizeStorageObject(it.relativePath) }
-        paths.forEach { GeneratedPdfNamespace.requireOrdinary(prefixFor(item), destination + it) }
-        objects.zip(paths).forEach { (file, objectPath) -> adapter.upload(prefixFor(item), destination + objectPath, file.contentType, file.bytes) }
+        paths.forEach { GeneratedPdfNamespace.requireOrdinary(prefix, destination + it) }
+        try {
+            objects.zip(paths).forEach { (file, objectPath) -> adapter.upload(prefix, destination + objectPath, file.contentType, file.bytes) }
+        } finally { listings.invalidate() }
     }
     fun download(item: Item, path: String, archive: Boolean): StorageObjectDownload =
         downloadTransformed(item, path, archive, null) { it }
@@ -71,13 +84,17 @@ class FolderStorageService(
         return scopedAdapter(item).download(prefixFor(item), normalizeStorageObject(path), maxBytes)
     }
     private fun scopedAdapter(item: Item): ObjectStorageAdapter {
-        if (!item.accessible || item.storageConnection?.enabled == false) throw com.starter.exception.NotFoundException("Storage root not found")
+        requireVisible(item)
         val connection = item.storageConnection
         if (connection == null) {
             requireManagedRoot(prefixFor(item))
             return adapter()
         }
         return objectStorageAdapter(connection.settings(), normalizeStorageFolder(connection.basePath))
+    }
+
+    private fun requireVisible(item: Item) {
+        if (!item.accessible || item.storageConnection?.enabled == false) throw com.starter.exception.NotFoundException("Storage root not found")
     }
 
     fun testConnection(req: AdminSettingsRequest): MessageResponse {
@@ -110,14 +127,21 @@ class FolderStorageService(
     }
 
     fun prefixFor(itemId: UUID) = "${adminSettingsService.currentEntity().storageViewPrefix()}$itemId/"
+    fun prefixesFor(items: Collection<Item>): Map<UUID, String> {
+        val managed = if (items.any { it.storageConnection == null }) adminSettingsService.currentEntity().storageViewPrefix() else ""
+        return items.associate { it.id to if (it.storageConnection == null) "$managed${it.id}/" else prefixFor(it) }
+    }
+    fun provider() = adminSettingsService.currentEntity().storageProvider
     fun inspectAndEnsureFolders(prefixes: Collection<String>) = adapter().inspectAndEnsureRoots(prefixes)
-    fun createFolder(prefix: String) = adapter().createFolder(prefix)
-    fun deleteFolderIfEmpty(prefix: String) = adapter().deleteFolderIfEmpty(prefix)
+    fun folderCounts(prefixes: Collection<String>) = listings.inspect(adminSettingsService.currentEntity(), prefixes)
+    fun createFolder(prefix: String) { try { adapter().createFolder(prefix) } finally { listings.invalidate() } }
+    fun deleteFolderIfEmpty(prefix: String) { try { adapter().deleteFolderIfEmpty(prefix) } finally { listings.invalidate() } }
 
     fun browse(rootPrefix: String, path: String): StorageBrowseResult {
         requireManagedRoot(rootPrefix)
         GeneratedPdfNamespace.requireOrdinary(rootPrefix, path)
-        return adapter().browse(rootPrefix, normalizeRelativePath(path)).ordinary(rootPrefix)
+        val settings = adminSettingsService.currentEntity()
+        return listings.browse(settings, settings.storageViewPrefix(), rootPrefix, normalizeRelativePath(path)).ordinary(rootPrefix)
     }
 
     fun listDocuments(rootPrefix: String): List<StorageEntry> {
@@ -128,11 +152,14 @@ class FolderStorageService(
     fun upload(rootPrefix: String, currentPath: String, objects: List<StorageObjectUpload>) {
         requireManagedRoot(rootPrefix)
         val destination = normalizeRelativePath(currentPath)
-        objects.forEach { objectUpload ->
-            val objectPath = normalizeObjectPath(objectUpload.relativePath)
-            GeneratedPdfNamespace.requireOrdinary(rootPrefix, destination + objectPath)
-            adapter().upload(rootPrefix, destination + objectPath, objectUpload.contentType, objectUpload.bytes)
-        }
+        val adapter = adapter()
+        try {
+            objects.forEach { objectUpload ->
+                val objectPath = normalizeObjectPath(objectUpload.relativePath)
+                GeneratedPdfNamespace.requireOrdinary(rootPrefix, destination + objectPath)
+                adapter.upload(rootPrefix, destination + objectPath, objectUpload.contentType, objectUpload.bytes)
+            }
+        } finally { listings.invalidate() }
     }
 
     fun download(rootPrefix: String, path: String): StorageObjectDownload {

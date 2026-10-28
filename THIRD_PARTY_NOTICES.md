@@ -22,6 +22,7 @@ The checked-in Superset copies correspond to the `apache/superset:4.0.2` image s
 | React, TypeScript, Spring Boot, Kotlin, PDFBox, storage SDKs, and other application dependencies | Retain their package-specific licenses and notices. Root Meshable Ops terms do not substitute for a dependency inventory. |
 | WeasyPrint and its Python/native dependencies | Separate upstream packages used by the private PDF renderer; retain their respective terms and font notices. |
 | commonmark-java and its GFM tables extension | BSD-2-Clause Markdown parser used by the Knowledge base plugin. Preserve the upstream license included in their JARs. |
+| Caffeine | Apache-2.0 cache used for bounded storage listings and counts. Preserve the upstream license included in its JAR. |
 | Imported WeasyCanvas source snapshot | The project owner's imported editor/model/generator code is covered by this repository's community/commercial choice. Third-party packages used by it remain under their own terms. See [licensing scope](LICENSING.md#code-covered-by-this-choice). |
 | PostgreSQL and pgvector | Separately distributed database/extension software with their upstream PostgreSQL-family licenses and notices. |
 | Redis | Separately operated Superset cache/queue. Redis 7.2 and earlier use BSD-3-Clause; 7.4 uses RSALv2/SSPLv1; Redis 8 adds an AGPLv3 option. The `redis:7-alpine` tag can resolve to a 7.4 release: inspect the image actually shipped. See [Redis licensing](https://redis.io/legal/licenses/). |

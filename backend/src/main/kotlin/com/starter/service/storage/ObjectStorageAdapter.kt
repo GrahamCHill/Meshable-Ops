@@ -7,6 +7,7 @@ internal interface ObjectStorageAdapter {
     val provider: String
     fun testConnection()
     fun inspectAndEnsureRoots(prefixes: Collection<String>): FolderStorageSnapshot
+    fun countRoots(): FolderStorageSnapshot
     fun createFolder(prefix: String)
     fun deleteFolderIfEmpty(prefix: String)
     fun browse(rootPrefix: String, relativePath: String): StorageBrowseResult
@@ -29,6 +30,7 @@ private object NoStorageAdapter : ObjectStorageAdapter {
     override fun testConnection() = Unit
     override fun inspectAndEnsureRoots(prefixes: Collection<String>) =
         FolderStorageSnapshot(provider, prefixes.associateWith { 0 })
+    override fun countRoots() = FolderStorageSnapshot(provider, emptyMap())
     override fun createFolder(prefix: String) = Unit
     override fun deleteFolderIfEmpty(prefix: String) = Unit
     override fun browse(rootPrefix: String, relativePath: String) =

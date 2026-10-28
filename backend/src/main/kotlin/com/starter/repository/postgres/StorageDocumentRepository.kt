@@ -10,4 +10,17 @@ interface StorageDocumentRepository : JpaRepository<StorageDocument, UUID> {
     fun findForProcessing(id: UUID): StorageDocument?
     fun findByItemIdAndStoragePath(itemId: UUID, storagePath: String): StorageDocument?
     fun findAllByItemId(itemId: UUID): List<StorageDocument>
+    @Query("SELECT new com.starter.repository.postgres.StorageDocumentListing(d.id, d.storagePath, d.sourceChecksum, d.processingStatus, d.vectorizedAt) FROM StorageDocument d WHERE d.item.id=:itemId AND d.storagePath IN :paths")
+    fun findListingByItemIdAndStoragePathIn(itemId: UUID, paths: Collection<String>): List<StorageDocumentListing>
+
+    @Query("SELECT d.item.id AS itemId, d.storagePath AS storagePath FROM StorageDocument d WHERE d.item.id IN :itemIds")
+    fun findPathsByItemIds(itemIds: Collection<UUID>): List<StorageDocumentPath>
 }
+
+interface StorageDocumentPath {
+    val itemId: UUID
+    val storagePath: String
+}
+
+data class StorageDocumentListing(val id: UUID, val storagePath: String, val sourceChecksum: String?,
+    val processingStatus: String, val vectorizedAt: java.time.Instant?)
