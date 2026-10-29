@@ -21,7 +21,7 @@ export default function WorkflowActionDialog() {
     <p className="workflow-action-notice">{action.message}. The original action is paused. Completing this process does not send or change anything until you select Continue action.</p>
     {run.isLoading && <Spinner/>}
     {run.isError && <p role="alert">The workflow could not be loaded. <Button variant="ghost" onClick={() => void run.refetch()}>Retry</Button></p>}
-    {run.data && <WorkflowRunPanel key={`${run.data.id}-${run.data.revision}`} run={run.data}
+    {run.data && <WorkflowRunPanel key={`${userId}-${run.data.id}`} run={run.data}
       onChange={value => client.setQueryData(['workflow-action-run', userId, value.id], value)} onReload={() => void run.refetch()}/>}
     <div className="workflow-action-footer"><Button variant="secondary" onClick={action.cancel}>Cancel action</Button>
       <Button disabled={run.data?.status !== 'COMPLETED' || !!run.data?.blockedReason} onClick={action.resume}>Continue action</Button></div>

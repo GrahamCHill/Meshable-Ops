@@ -24,6 +24,23 @@ class WorkflowServiceTest {
     private val member=User(email="member@example.test");private val admin=User(email="admin@example.test",role="ADMIN")
     private val graph=WorkflowGraph(listOf(WorkflowBlock("start",BlockKind.START,"Start"),WorkflowBlock("end",BlockKind.END,"End")),listOf(WorkflowEdge("edge","start","end")))
     private val source=WorkflowDefinition(ownerId=admin.id,name="Quote approval",state=WorkflowState.READY,published=true,graphJson=mapper.writeValueAsString(graph),revision=4)
+    @Test fun `reviewers see their ready parallel branch and receive their own receipt when an automatic join follows`() {
+        val reviewer=User(email="parallel-reviewer@example.test");`when`(access.actor(reviewer.email)).thenReturn(reviewer)
+        val parallel=WorkflowGraph(listOf(WorkflowBlock("manual",BlockKind.START,"Start"),WorkflowBlock("audit",BlockKind.AUDIT,"Owner audit"),
+            WorkflowBlock("review",BlockKind.REVIEW,"Assigned review",reviewerIds=setOf(reviewer.id),allowInitiatorReview=false),
+            WorkflowBlock("join",BlockKind.JOIN,"Private join"),WorkflowBlock("end",BlockKind.END,"Private end")),
+            listOf(WorkflowEdge("s-a","manual","audit"),WorkflowEdge("s-r","manual","review"),WorkflowEdge("a-j","audit","join"),WorkflowEdge("r-j","review","join"),WorkflowEdge("j-e","join","end")))
+        val row=WorkflowRun(ownerId=member.id,workflowId=source.id,graphJson=mapper.writeValueAsString(parallel))
+        runtime.initialize(row);runtime.advance(row,WorkflowAdvanceRequest(0,"manual"),member.id)
+        `when`(rows.locked(row.id)).thenReturn(Optional.of(row));`when`(rows.findById(row.id)).thenReturn(Optional.of(row))
+        assertThat(runner.get(reviewer.email,row.id).current?.id).isEqualTo("review")
+        assertThat(runner.get(reviewer.email,row.id).readyNodes.map {it.id}).containsExactly("review")
+        runtime.advance(row,WorkflowAdvanceRequest(0,"audit",note="Checked"),member.id)
+        val receipt=runner.advance(reviewer.email,row.id,WorkflowAdvanceRequest(0,"review",WorkflowAction.REVIEWED))
+        assertThat(receipt.history.single().nodeId).isEqualTo("review")
+        assertThat(receipt.current).isNull();assertThat(receipt.waitingNodes).isEmpty()
+        assertThat(runtime.history(row).last().nodeId).isEqualTo("join")
+    }
     init {
         `when`(access.actor(member.email)).thenReturn(member);`when`(access.actor(admin.email)).thenReturn(admin)
         `when`(access.admin(admin.email)).thenReturn(admin);`when`(access.admin(member.email)).thenThrow(ForbiddenException("Admin required"))

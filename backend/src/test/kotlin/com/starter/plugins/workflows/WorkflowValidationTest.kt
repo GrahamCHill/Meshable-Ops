@@ -14,11 +14,11 @@ class WorkflowValidationTest {
         assertThatThrownBy { validation.check(WorkflowGraph(listOf(start,end), emptyList()), emptyList(), true) }.isInstanceOf(BadRequestException::class.java)
         validation.check(WorkflowGraph(listOf(start,end), listOf(WorkflowEdge("edge", "start", "end"))), emptyList(), true)
     }
-    @Test fun `cycles duplicate outputs unknown edges and nonfinite coordinates are rejected`() {
+    @Test fun `cycles duplicate connections unknown edges and nonfinite coordinates are rejected`() {
         val a = WorkflowBlock("a", BlockKind.REVIEW, "Review"); val b = WorkflowBlock("b", BlockKind.REVIEW, "Review again")
         listOf(
             WorkflowGraph(listOf(a,b), listOf(WorkflowEdge("one", "a", "b"), WorkflowEdge("two", "b", "a"))),
-            WorkflowGraph(listOf(start,end,a), listOf(WorkflowEdge("one", "start", "a"), WorkflowEdge("two", "start", "end"))),
+            WorkflowGraph(listOf(start,end,a), listOf(WorkflowEdge("one", "start", "a"), WorkflowEdge("two", "start", "a"))),
             WorkflowGraph(listOf(start,end), listOf(WorkflowEdge("one", "missing", "end"))),
             WorkflowGraph(listOf(start.copy(x = Double.NaN)), emptyList()),
             WorkflowGraph(listOf(start,start), emptyList()),

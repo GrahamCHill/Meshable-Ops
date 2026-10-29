@@ -15,7 +15,11 @@ import org.springframework.transaction.annotation.Transactional
 class WorkflowService(private val repository: WorkflowRepository, private val access: DocumentAccess,
     private val validation: WorkflowValidation, private val mapper: ObjectMapper, private val modules: com.starter.plugins.BundledModuleAccess,
     private val users: com.starter.repository.postgres.UserRepository? = null, private val audit: com.starter.service.AuditLogService? = null,
-    private val diagramBindings: WorkflowDiagramBindings? = null) {
+    private val diagramBindings: WorkflowDiagramBindings? = null, private val webhookConfiguration: WorkflowWebhookConfiguration? = null) {
+    fun webhookEndpoints(email: String): List<Map<String,String>> {
+        val actor=access.admin(email);modules.check("workflows",actor,"workflow_definitions","admin.workflows")
+        return webhookConfiguration?.options().orEmpty()
+    }
     fun list(email: String): List<WorkflowView> { val actor = access.admin(email); modules.check("workflows", actor, "workflow_definitions", "admin.workflows"); return repository.visible(actor.id, true, PageRequest.of(0, 100)).map(::view) }
     fun reviewers(email: String): List<Map<String,String>> {
         val actor=access.admin(email);modules.check("workflows",actor,"workflow_definitions","admin.workflows")
@@ -29,6 +33,7 @@ class WorkflowService(private val repository: WorkflowRepository, private val ac
             ?: throw NotFoundException("Workflow unavailable") } ?: WorkflowDefinition(ownerId = actor.id)
         if (id != null && saved.revision != request.revision) throw ConflictException("The workflow changed. Reload before saving.")
         validation.check(request.graph, request.documentIds, request.state == WorkflowState.READY)
+        if(request.state==WorkflowState.READY)webhookConfiguration?.check(request.graph)
         val reviewers = request.graph.nodes.flatMap { it.reviewerIds }.toSet()
         if (users != null && reviewers.isNotEmpty() && users.findAllById(reviewers).count { it.active && it.role != "EXTERNAL" } != reviewers.size)
             throw com.starter.exception.BadRequestException("Reviewers must be active internal members")

@@ -8,7 +8,7 @@ export function WorkflowStepForm({ run, busy, advance }: { run: WorkflowRun; bus
   const [value, setValue] = useState(Object.prototype.hasOwnProperty.call(run.values, block.field) ? run.values[block.field] : '')
   const [note, setNote] = useState(''); const [reviewed, setReviewed] = useState(false)
   const requiresNote = block.auditRequired || block.kind === 'AUDIT'
-  const trusted = block.conditionSource === 'VALUE' || block.field.startsWith('trigger.')
+  const trusted = block.conditionSource === 'VALUE' || (block.field.startsWith('trigger.') || block.field.startsWith('webhook.'))
   return <form className="page-stack" onSubmit={e => { e.preventDefault(); void advance({ action: block.kind === 'CONDITION' ? 'EVALUATE' : block.kind === 'REVIEW' ? 'REVIEWED' : 'CONTINUE', value, note }) }}>
     {block.kind === 'CONDITION' && <>
       <p>Continue along the True or False branch using this rule: <strong>{block.field} {operators[block.operator]}{block.operator !== 'IS_SET' && ` ${block.expected}`}</strong>.</p>

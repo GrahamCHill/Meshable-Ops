@@ -15,7 +15,7 @@ class WorkflowRunController(private val runs: WorkflowRunService,private val ema
     @GetMapping fun available(@AuthenticationPrincipal user: UserDetails) = runs.available(user.username)
     @GetMapping("/runs") fun list(@AuthenticationPrincipal user: UserDetails) = runs.list(user.username)
     @GetMapping("/reviews") fun reviews(@AuthenticationPrincipal user: UserDetails) = runs.reviews(user.username)
-    @PostMapping("/runs") fun start(@AuthenticationPrincipal user: UserDetails,@RequestBody request: WorkflowStartRequest) = runs.start(user.username,request.workflowId)
+    @PostMapping("/runs") fun start(@AuthenticationPrincipal user: UserDetails,@Valid @RequestBody request: WorkflowStartRequest) = runs.start(user.username,request.workflowId,reference=request.reference)
     @GetMapping("/runs/{id}") fun get(@AuthenticationPrincipal user: UserDetails,@PathVariable id: UUID) = runs.get(user.username,id)
     @PostMapping("/runs/{id}/advance") fun advance(@AuthenticationPrincipal user: UserDetails,@PathVariable id: UUID,@Valid @RequestBody request: WorkflowAdvanceRequest) = runs.advance(user.username,id,request)
     @PutMapping("/runs/{id}/document") fun document(@AuthenticationPrincipal user: UserDetails,@PathVariable id: UUID,@Valid @RequestBody request: WorkflowDocumentRequest) = runs.useDocument(user.username,id,request)

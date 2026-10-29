@@ -8,6 +8,7 @@ import java.util.UUID
 
 @RestController @RequestMapping("/api/admin/workflows") @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
 class WorkflowController(private val service: WorkflowService) {
+    @GetMapping("/webhook-endpoints") fun webhookEndpoints(@AuthenticationPrincipal user: UserDetails) = service.webhookEndpoints(user.username)
     @GetMapping fun list(@AuthenticationPrincipal user: UserDetails) = service.list(user.username)
     @GetMapping("/reviewers") fun reviewers(@AuthenticationPrincipal user: UserDetails) = service.reviewers(user.username)
     @PostMapping fun create(@AuthenticationPrincipal user: UserDetails, @Valid @RequestBody request: WorkflowRequest) = service.save(user.username, null, request)

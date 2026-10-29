@@ -49,7 +49,7 @@ class WorkflowActionPersistenceTest {
                         val definition=WorkflowDefinition(name="Approval",state=WorkflowState.READY,published=true)
                         val binding=WorkflowActionBinding(selector="category:external",workflowId=definition.id)
                         tx.executeWithoutResult { em.persist(definition);em.persist(binding) }
-                        `when`(workflows.start(eq(actor.email) ?: actor.email,eq(definition.id) ?: definition.id,anyMap())).thenAnswer {
+                        `when`(workflows.start(eq(actor.email) ?: actor.email,eq(definition.id) ?: definition.id,anyMap(),anyString())).thenAnswer {
                             val row=WorkflowRun(ownerId=actor.id,workflowId=definition.id,name="Approval",workflowRevision=definition.revision)
                             em.persist(row)
                             WorkflowRunView(row.id,row.name,row.workflowId,row.workflowRevision,row.status,row.revision,null,emptyList(),emptyMap(),emptyList(),null,row.emailState,null)

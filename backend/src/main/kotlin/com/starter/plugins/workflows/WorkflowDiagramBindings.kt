@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service
 class WorkflowDiagramBindings(private val bindings: WorkflowActionBindingRepository, private val catalogue: WorkflowActionCatalogue,
     private val audit: AuditLogService) {
     fun sync(email: String, definition: WorkflowDefinition, graph: WorkflowGraph) {
-        val start=graph.nodes.singleOrNull { it.kind==BlockKind.START }
+        val start=graph.nodes.singleOrNull { it.kind==BlockKind.START && it.actionSelector.isNotEmpty() }
         if (start?.actionSelector?.isNotEmpty()==true && catalogue.all().none { it.id==start.actionSelector })
             throw BadRequestException("Choose an installed plugin action for this trigger")
         // Draft/archive pauses the source. Keep its last policy enforced until an explicit published replacement.

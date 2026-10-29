@@ -19,11 +19,10 @@ class WorkflowRunAccess(private val runs: WorkflowRunRepository,private val defi
         if (lock) writable(actor)
         return (if (lock) runs.locked(id) else runs.findById(id)).orElse(null)?.takeIf { it.ownerId==actor.id } ?: throw NotFoundException("Workflow run unavailable")
     }
-    fun canReview(actor: User, run: WorkflowRun): Boolean {
-        if (!actor.active || actor.role == "EXTERNAL" || run.status != WorkflowRunStatus.IN_PROGRESS || run.currentNodeId == null) return false
-        val block = runtime.current(run)
-        return block.kind == BlockKind.REVIEW && (block.allowInitiatorReview || actor.id != run.ownerId) &&
-            (actor.id in block.reviewerIds || actor.id == run.ownerId && block.allowInitiatorReview)
+    fun canReview(actor: User,run: WorkflowRun,nodeId: String? = null): Boolean {
+        if(!actor.active || actor.role=="EXTERNAL" || run.status!=WorkflowRunStatus.IN_PROGRESS)return false
+        return runtime.active(run).any {block -> (nodeId==null || nodeId==block.id) && block.kind==BlockKind.REVIEW &&
+            (block.allowInitiatorReview || actor.id!=run.ownerId) && (actor.id in block.reviewerIds || actor.id==run.ownerId && block.allowInitiatorReview)}
     }
     fun participant(actor: User, id: UUID, lock: Boolean = false): WorkflowRun {
         if (lock) writable(actor)
@@ -40,7 +39,7 @@ class WorkflowRunAccess(private val runs: WorkflowRunRepository,private val defi
     @Transactional(readOnly=true,propagation=Propagation.REQUIRES_NEW)
     fun active(actor: User,run: WorkflowRun) {blocked(actor,run)?.let {throw ForbiddenException(it)}}
     fun allowedDocuments(run: WorkflowRun): Set<UUID> {
-        val revealed=runtime.history(run).map { it.nodeId }.toSet()+listOfNotNull(run.currentNodeId)
+        val revealed=runtime.history(run).map { it.nodeId }.toSet()+runtime.execution(run).active
         return runtime.graph(run).nodes.filter { it.id in revealed && it.kind in setOf(BlockKind.DOCUMENT,BlockKind.EMAIL) }.mapNotNull { runtime.effective(run,it).documentId }.toSet()
     }
     @Transactional(readOnly=true,propagation=Propagation.REQUIRES_NEW)

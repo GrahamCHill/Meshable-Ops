@@ -20,10 +20,11 @@ class WorkflowEmailClaims(private val runs: WorkflowRunRepository,private val gu
     @Transactional(propagation=Propagation.REQUIRES_NEW)
     fun claim(email: String,id: UUID,request: WorkflowSendRequest): WorkflowEmailClaim {
         val actor=guard.actor(email);val run=guard.owned(actor,id,true);guard.active(actor,run);runtime.matches(run,request.revision,request.nodeId)
-        val block=runtime.effective(run,runtime.current(run))
+        val block=runtime.effective(run,runtime.block(run,request.nodeId))
         if (block.kind!=BlockKind.EMAIL || block.documentId==null) throw BadRequestException("This is not an email step")
         if (block.auditRequired && request.note.isBlank()) throw BadRequestException("An audit note is required for this email step")
         if (run.emailState!=WorkflowEmailState.NONE) throw ConflictException("Delivery was already attempted. Check its result before confirming this step.")
+        run.currentNodeId=block.id
         val attempt=UUID.randomUUID()
         run.emailState=WorkflowEmailState.SENDING;run.emailAttemptId=attempt;run.emailAttemptAt=Instant.now();run.updatedAt=Instant.now()
         runs.saveAndFlush(run)
@@ -33,7 +34,7 @@ class WorkflowEmailClaims(private val runs: WorkflowRunRepository,private val gu
     @Transactional(propagation=Propagation.REQUIRES_NEW)
     fun finish(id: UUID,claim: WorkflowEmailClaim,accepted: Boolean) {
         val run=runs.locked(id).orElse(null) ?: return
-        if (run.ownerId!=claim.ownerId || run.emailAttemptId!=claim.attemptId || run.emailState!=WorkflowEmailState.SENDING) return
+        if (run.status!=WorkflowRunStatus.IN_PROGRESS || run.ownerId!=claim.ownerId || run.emailAttemptId!=claim.attemptId || run.emailState!=WorkflowEmailState.SENDING) return
         if (accepted) runtime.finishStep(run,"EMAIL_ACCEPTED",claim.auditNote.ifBlank {"The email provider accepted the PDF attachment; inbox delivery is not confirmed."},actorId=claim.ownerId)
         else {run.emailState=WorkflowEmailState.UNCERTAIN;run.updatedAt=Instant.now()}
         runs.saveAndFlush(run)
@@ -46,7 +47,7 @@ class WorkflowEmailClaims(private val runs: WorkflowRunRepository,private val gu
 class WorkflowEmailService(private val claims: WorkflowEmailClaims,private val runs: WorkflowRunService,private val guard: WorkflowRunAccess,
     private val delivery: GeneratedDocumentDelivery,private val notifications: NotificationService,private val policy: DocumentAccessService) {
     fun send(email: String,id: UUID,request: WorkflowSendRequest): WorkflowRunView {
-        val view=runs.get(email,id)
+        val view=runs.get(email,id,request.nodeId)
         if (view.blockedReason!=null) throw ForbiddenException(view.blockedReason)
         val block=view.current ?: throw ConflictException("This run has finished")
         if (block.kind!=BlockKind.EMAIL) throw BadRequestException("This is not an email step")

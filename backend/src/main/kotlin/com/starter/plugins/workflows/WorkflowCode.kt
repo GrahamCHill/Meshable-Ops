@@ -39,7 +39,7 @@ object WorkflowCode {
         if (result.size > 40) bad("return at most 40 values")
         return result.entries.associate { (key, value) ->
             val name = key as? String ?: bad("output keys must be strings")
-            if (!name.matches(Regex("[A-Za-z][A-Za-z0-9_.-]{0,119}")) || name.startsWith("trigger.") ||
+            if (!name.matches(Regex("[A-Za-z][A-Za-z0-9_.-]{0,119}")) || (name.startsWith("trigger.") || name.startsWith("webhook.")) ||
                 name.split('.').any { it in setOf("__proto__", "prototype", "constructor") }) bad("invalid or protected output field")
             val text = text(value)
             if (text.length > 500 || value is Map<*, *>) bad("output values must be scalar values of at most 500 characters")

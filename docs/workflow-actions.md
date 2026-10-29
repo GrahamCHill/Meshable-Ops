@@ -4,6 +4,71 @@ Enable Workflows and open **Administration > Workflow builder**. **Diagram & ste
 designs a process; **Action bindings** attaches it to a server action behind a button.
 No policies are enabled automatically on upgrade.
 
+## Parallel branches, joins, and webhook inputs
+
+An output can connect to multiple target nodes. Every connection on the chosen
+output receives a signal; conditions still choose exactly one of True or False.
+All ready branches are available in the run's **Ready branches** selector. An End
+node completes its branch; the run only completes when all active branches and
+required joins have finished. A rejection stops the whole run.
+
+Add **Steps > Join inputs** to wait for all incoming connections. Arrivals are
+stored in PostgreSQL, so reloads, restarts and concurrent callbacks cannot forget
+an input or release the join twice. Its output can be:
+
+- **Continue unconditionally**: emit Next after the input requirement is met.
+- **All true**: choose True only when every arriving signal is true.
+- **Any true**: choose True when at least one arriving signal is true, after all
+  inputs have arrived with the default All input requirement.
+
+A completed manual trigger supplies true. Webhook triggers can read a named JSON
+boolean, including false; conditions supply their selected boolean and ordinary
+steps preserve that signal. Joins release automatically. Enabling an audit note
+on the join holds it ready until a member records the note. **First arriving input**
+is an optional merge mode for exclusive branches. An unchosen conditional edge
+does not count as an arrival; avoid wiring mutually exclusive paths into an All
+join. Every manual/webhook root in a run is armed and remains pending until satisfied
+or the run is cancelled. Graphs remain acyclic and a node executes once per run.
+
+Add **Steps > Webhook trigger** and select an enabled incoming endpoint from
+**Administration > Webhooks**. Its existing HMAC/bearer authentication, timestamp
+checks and rate limits apply before the workflow receiver is called. Select an
+event name, optional boolean signal field, and an explicit allowlist of scalar
+data fields. Captured values use `webhook.<node-id>.<field>` and cannot be replaced
+by a manual condition value or code output. No webhook secret is shown in the builder.
+
+For a manual-first process, start a run with an optional business reference, then
+connect its manual and webhook roots to the same join. Send either the run ID:
+
+```json
+{"event":"order.ready","data":{"runId":"RUN_UUID","success":true,"status":"ready"}}
+```
+
+or match by workflow and reference:
+
+```json
+{"event":"order.ready","data":{"workflowId":"WORKFLOW_UUID","reference":"ORDER-123","success":true,"status":"ready"}}
+```
+
+Reference matching requires an explicitly configured internal account on the
+Webhook step. References are case-sensitive, trimmed, limited to 120 printable
+characters, and unique per workflow and owner including previous runs. Another
+account's same reference cannot receive the callback. The run ID and business
+reference appear in the waiting-state UI; polling refreshes progress after arrival.
+
+To start webhook-first, enable **Allow this webhook to start a new run** and choose
+the account that will own it. A delivery with workflow ID and a new reference
+creates that owner's run and satisfies the webhook side; the manual side remains
+ready for that person. Existing references resume their original run. Run-ID
+deliveries only address existing runs. Disabled, private, archived, or inaccessible
+workflows cannot be started/resumed by a callback.
+
+Workflow receipts deduplicate by authenticated endpoint and delivery ID. Repeated
+deliveries, including a new ID for an already satisfied trigger, cannot reopen it.
+Only allowlisted scalar values of up to 500 characters are copied; credentials and
+arbitrary payload objects are not imported. Existing runs retain their captured
+graph; legacy sequential runs resume their current step without restarting roots.
+
 ## Drag modules into the diagram
 
 The left palette's **Steps** and **Plugins** tabs contain draggable steps and searchable **Plugin triggers**. Drag

@@ -42,7 +42,9 @@ Name a design, select library PDFs in its attachments list, then add, drag, sele
 
 | Block | Configuration and member action |
 | --- | --- |
-| Start | One entry point; member selects Begin process |
+| Manual trigger | Entry point; member selects Begin process. Multiple manual inputs may join later |
+| Webhook trigger | Authenticated incoming event; resume by run ID or an owner-scoped business reference |
+| Join inputs | Wait for all connected inputs, then emit Next or aggregated True/False |
 | Document | Attached generated PDF; preview/download according to document policy, then Continue |
 | Review | Assigned internal reviewers, optional initiator approval, enforced separation of approver, and approve/reject actions |
 | Condition | Named data field, comparison, and True/False outputs; uses member input or saved code/trigger values |
@@ -54,13 +56,13 @@ Name a design, select library PDFs in its attachments list, then add, drag, sele
 Use **Action bindings** to require a process before a core/plugin action can finish.
 See [action enforcement, reviewers, audit, and restricted code](workflow-actions.md).
 
-**Save draft** allows incomplete diagrams. **Validate & mark ready** requires one start, an end, reachable blocks, complete paths, attached PDFs for document/email blocks, email recipient/subject, and both condition outputs. IDs, positions, limits, and document access are checked on every save, including drafts. Loops and duplicate outputs are rejected. Limits: 50 blocks, 100 connections, 50 unique attached PDFs. Optimistic revisions prevent silent concurrent overwrites.
+**Save draft** allows incomplete diagrams. **Validate & mark ready** requires at least one manual/webhook trigger, an end, reachable blocks, complete paths, attached PDFs for document/email blocks, email recipient/subject, and both condition outputs. IDs, positions, limits, and document access are checked on every save, including drafts. Loops and duplicate connections are rejected; each output may fan out to multiple targets. Limits: 50 blocks, 100 connections, 50 unique attached PDFs. Optimistic revisions prevent silent concurrent overwrites.
 
 Ready designs remain private until an admin selects **Publish for members when saved as ready** and saves. Existing ready designs default to unpublished on upgrade. Publishing is an explicit grant to internal members: PDFs configured on document/email steps become available through their private run only as those steps are reached. This does not expose the admin's document library or documents on unvisited branches. Saving a draft, archiving, or unpublishing removes a design from the member catalogue and pauses existing member runs and their PDF access. Admins can preview unpublished ready designs; drafts/archives cannot be run.
 
 ## Following a workflow
 
-Open **Workflows** (`/workflows`), start a published process, and follow its current step. **Your runs** lists the latest 100 runs for the signed-in member, including completed and cancelled runs. Reloading or returning later resumes server-saved progress. Runs are private to their owner, including against other admins. Each start captures the design and its revision; later edits apply to new runs. Paused runs retain their history and can be cancelled. A cancelled run cannot resume. Starting is limited to 20/account/hour.
+Open **Workflows** (`/workflows`), start a published process, and complete its ready branches. Webhook inputs and joins show their waiting state, and business references can pair callbacks with existing runs. **Your runs** lists the latest 100 runs for the signed-in member, including completed and cancelled runs. Reloading or returning later resumes server-saved progress. Runs are private to their owner, including against other admins. Each start captures the design and its revision; later edits apply to new runs. Paused runs retain their history and can be cancelled. A cancelled run cannot resume. Starting is limited to 20/account/hour.
 
 Conditions evaluate member input or saved code/trigger values according to their value source. Trigger fields always use immutable action context. String equality trims whitespace and is case sensitive; Contains is case sensitive; Is set checks for nonblank input. Greater than uses decimal numbers with up to 30 whole and 12 fractional digits. Values are saved in the run. The server enforces current node, revision, action, and next branch; users cannot skip directly to a future step. Code blocks support the bounded module language described in [workflow actions](workflow-actions.md).
 

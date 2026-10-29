@@ -42,3 +42,5 @@
 .workflow-review-inbox { padding: 20px; border: 1px solid var(--color-border); border-radius: 8px; }
 @media (max-width: 1250px) { .workflow-workspace { grid-template-columns: 160px minmax(300px,1fr); }.workflow-workspace > aside:last-child { grid-column: 1/-1; max-height: none; border-top: 1px solid var(--workflow-border); border-left: 0; } }
 @media (max-width: 650px) { .workflow-workspace { grid-template-columns: minmax(0,1fr); }.workflow-canvas { height: 560px; }.workflow-workspace > aside { max-height: none; }.workflow-binding-form { grid-template-columns: 1fr; }.workflow-canvas .react-flow__minimap { display: none; } }
+
+.workflow-step-webhook { --step-color: #0c66e4; border-radius: 24px; }.workflow-step-join { --step-color: #8f3e98; border-width: 2px; }.workflow-waiting { border: 1px solid var(--color-border); border-radius: 8px; padding: 16px; background: var(--color-surface-2); }.workflow-waiting article { padding: 10px 0; }.workflow-waiting code { overflow-wrap: anywhere; }

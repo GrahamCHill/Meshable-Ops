@@ -12,7 +12,9 @@ import java.time.Instant
 import java.util.UUID
 
 enum class WorkflowState { DRAFT, READY, ARCHIVED }
-enum class BlockKind { START, DOCUMENT, REVIEW, CONDITION, CODE, AUDIT, EMAIL, END }
+enum class BlockKind { START, WEBHOOK, JOIN, DOCUMENT, REVIEW, CONDITION, CODE, AUDIT, EMAIL, END }
+enum class JoinInputs { ALL, ANY }
+enum class JoinRule { PASS, ALL_TRUE, ANY_TRUE }
 enum class ConditionSource { INPUT, VALUE }
 enum class WorkflowEndOutcome { ALLOW, DENY }
 enum class Branch { NEXT, TRUE, FALSE }
@@ -30,7 +32,11 @@ data class WorkflowBlock(@field:Pattern(regexp = "[A-Za-z0-9_-]{1,80}") val id: 
     val auditRequired: Boolean = false, val conditionSource: ConditionSource = ConditionSource.INPUT,
     @field:Size(max = 8192) val code: String = "", val endOutcome: WorkflowEndOutcome = WorkflowEndOutcome.ALLOW,
     @field:Size(max = 300) val actionSelector: String = "",
-    @field:Size(max = 120) val contextField: String = "", @field:Size(max = 500) val contextEquals: String = "")
+    @field:Size(max = 120) val contextField: String = "", @field:Size(max = 500) val contextEquals: String = "",
+    val joinInputs: JoinInputs = JoinInputs.ALL, val joinRule: JoinRule = JoinRule.PASS,
+    val webhookEndpointId: UUID? = null, @field:Pattern(regexp="[A-Za-z0-9._-]{1,80}") val webhookEvent: String = "workflow.signal",
+    val webhookStartsRun: Boolean = false, val webhookOwnerId: UUID? = null,
+    @field:Size(max=20) val webhookFields: List<String> = emptyList(), @field:Size(max=80) val webhookBooleanField: String = "")
 data class WorkflowEdge(@field:Pattern(regexp = "[A-Za-z0-9_-]{1,80}") val id: String,
     @field:Size(max = 80) val source: String, @field:Size(max = 80) val target: String, val branch: Branch = Branch.NEXT)
 data class WorkflowGraph(@field:Valid @field:Size(max = 50) val nodes: List<WorkflowBlock>, @field:Valid @field:Size(max = 100) val edges: List<WorkflowEdge>)
@@ -49,6 +55,9 @@ class WorkflowDefinition(@Id val id: UUID = UUID.randomUUID(), val ownerId: UUID
     override fun toString() = "WorkflowDefinition(id=$id)"
 }
 interface WorkflowRepository : JpaRepository<WorkflowDefinition, UUID> {
+    @org.springframework.data.jpa.repository.Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT w FROM WorkflowDefinition w WHERE w.id=:id")
+    fun locked(id: UUID): java.util.Optional<WorkflowDefinition>
     @Query("SELECT w FROM WorkflowDefinition w WHERE w.state = com.starter.plugins.workflows.WorkflowState.READY AND (w.published = true OR :admin = true) ORDER BY w.updatedAt DESC")
     fun runnable(admin: Boolean,pageable: Pageable): List<WorkflowDefinition>
     @Query("SELECT w FROM WorkflowDefinition w WHERE (:admin = true OR w.ownerId = :owner) ORDER BY w.updatedAt DESC")
