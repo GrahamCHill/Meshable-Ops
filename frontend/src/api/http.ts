@@ -1,5 +1,6 @@
 import axios from 'axios'
 import {useAuthStore} from '../hooks/useAuthStore'
+import {completeRequiredWorkflow} from '../lib/workflowActions'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? '/api',
@@ -22,7 +23,14 @@ api.interceptors.request.use(config => {
 // Auto-logout on 401
 api.interceptors.response.use(
   res => res,
-  err => {
+  async err => {
+    if (err.response?.status === 428 && err.config) {
+      const detail = err.response.data instanceof Blob ? await err.response.data.text().then((text: string) => JSON.parse(text)) : err.response.data
+      if (typeof detail?.runId === 'string' && typeof detail?.workflowRequestId === 'string') {
+        await completeRequiredWorkflow(detail, err.config.signal)
+        return api.request(err.config)
+      }
+    }
     const authAttempt = /\/auth\/(login|mfa\/|oidc\/)|\/account\/mfa/.test(err.config?.url ?? '')
     if (err.response?.status === 401 && !authAttempt && err.response?.headers?.['x-meshable-plugin-response'] !== '1') {
       useAuthStore.getState().logout()

@@ -43,7 +43,8 @@ class ProjectReportDeliveryTest {
     }
     private val branding = mock(BrandingPreferencesService::class.java)
     private val policy = mock(DocumentAccessService::class.java)
-    private val service = ProjectReportService(access, projects, work, reports, users, renderer, branding, notifications, boards, boardAccess, mapper, policy, mock(PdfService::class.java))
+    private val ai = mock(ProjectReportAiInsights::class.java)
+    private val service = ProjectReportService(access, projects, work, reports, users, renderer, branding, notifications, boards, boardAccess, mapper, policy, mock(PdfService::class.java),aiInsights=ai)
     private val request = ProjectReportInput(kind = ProjectReportKind.PERIOD, from = LocalDate.parse("2026-10-01"), to = LocalDate.parse("2026-10-31"), sendEmail = true, recipientIds = setOf(member.id))
     init {
         `when`(access.actor(lead.email)).thenReturn(lead)
@@ -67,6 +68,15 @@ class ProjectReportDeliveryTest {
         assertThat(result.deliveries.keys).containsExactlyInAnyOrder(member.id, lead.id)
         assertThat(sent.map { it.first.recipient }).containsExactlyInAnyOrder(member.email, lead.email)
         assertThat(sent.all { it.second.size == 1 && it.second.single().filename.endsWith(".pdf") }).isTrue()
+    }
+    @Test fun `reviewed report content options reach the renderer and can suppress descriptions and AI processing`() {
+        `when`(work.work(project.id,lead)).thenReturn(listOf(ProjectWorkItem(board.id,"Board",KanbanCard(UUID.randomUUID(),UUID.randomUUID(),"Task",description="Private working detail"))))
+        service.generate(lead.email,project.id,request.copy(sendEmail=false,title="Reviewed release report",includeDescriptions=false,includeAiSummary=false))
+        val rendered=mockingDetails(renderer).invocations.single {it.method.name=="report"}.getArgument<ProjectReportDocument>(0)
+        assertThat(rendered.title).isEqualTo("Reviewed release report")
+        assertThat(rendered.sections.single().rows.single().last()).isEmpty()
+        assertThat(rendered.aiSummary).isNull()
+        verifyNoInteractions(ai,notifications)
     }
     @Test fun `external recipients are refused before PDF generation or delivery`() {
         assertThatThrownBy { service.generate(lead.email, project.id, request.copy(recipientIds = setOf(external.id))) }.isInstanceOf(BadRequestException::class.java)

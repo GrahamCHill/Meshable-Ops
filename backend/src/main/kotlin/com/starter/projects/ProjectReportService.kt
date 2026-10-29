@@ -31,6 +31,7 @@ class ProjectReportService(private val access: ProjectAccess, private val projec
     fun generate(email: String, id: UUID, request: ProjectReportInput, deliveryKey: String? = null): ProjectReportView {
         val actor = access.actor(email); val project = access.require(id, actor, request.sendEmail)
         validateWindow(request.from, request.to)
+        if (request.title.length>200 || request.title.any { it.isISOControl() }) throw BadRequestException("Use a report title of up to 200 printable characters")
         if (request.recipientIds.size > 100 || request.kind == ProjectReportKind.SPRINT && request.sprintId == null) throw BadRequestException("Choose a sprint and up to 100 internal recipients")
         val recipients = if (request.sendEmail) (request.recipientIds + project.leadId).map { target ->
             users.findById(target).orElse(null)?.takeIf { it.active && it.role != "EXTERNAL" && access.canRead(it, project) } ?: throw BadRequestException("Every recipient, including the project lead, must be an active internal project member")
@@ -52,12 +53,12 @@ class ProjectReportService(private val access: ProjectAccess, private val projec
             val card = item.card
             listOf("${card.reference.ifBlank { card.id.toString() }}\n${card.title}", ProjectReportAnalytics.people(card,names),
                 "${card.status.name.replace('_', ' ')}\n${card.storyPoints?.toString() ?: "—"} points${card.tshirtSize?.let {"\nSize: $it"}.orEmpty()}${if (card.blocked) "\nBlocked" else ""}",
-                ProjectReportAnalytics.dates(item,LocalDate.now(java.time.ZoneOffset.UTC)), card.description).mapIndexed {index,cell->ProjectReportAnalytics.excerpt(cell,ProjectReportAnalytics.cellLimits[index])}
+                ProjectReportAnalytics.dates(item,LocalDate.now(java.time.ZoneOffset.UTC)), if(request.includeDescriptions) card.description else "").mapIndexed {index,cell->ProjectReportAnalytics.excerpt(cell,ProjectReportAnalytics.cellLimits[index])}
         }) }.ifEmpty { listOf(ProjectReportSection("Project activity", listOf("Result"), listOf(listOf("No tickets matched the selected period or sprint.")))) }
         val context = projects.get(email, id)
         val cover=covers?.context(project)
-        val aiSummary=aiInsights?.summarize(project.name,request,cards)
-        val pdf = renderer.report(ProjectReportDocument("${request.kind.name.lowercase().replaceFirstChar { it.titlecase() }} report", branding.current().applicationName,
+        val aiSummary=if(request.includeAiSummary) aiInsights?.summarize(project.name,request,cards) else null
+        val pdf = renderer.report(ProjectReportDocument(request.title.trim().ifBlank { "${request.kind.name.lowercase().replaceFirstChar { it.titlecase() }} report" }, branding.current().applicationName,
             "${project.name} · ${context.clientName}", "${request.from} — ${request.to}", listOf("${cards.size} tickets in scope", "${cards.count { it.card.status == CardStatus.DONE }} completed; ${cards.count { it.card.status == CardStatus.IN_PROGRESS }} in progress",
                 "${cards.sumOf { it.card.storyPoints ?: 0.0 }} story points", "Project lead: ${users.findById(project.leadId).orElse(null)?.let { it.name ?: it.username } ?: "Member"}", "Confidential delivery-risk scores and personal calendars are excluded."), sections,
             ProjectWorkService.summarize(cards,names.mapKeys {it.key.toString()},LocalDate.now(java.time.ZoneOffset.UTC)),
@@ -108,7 +109,7 @@ class ProjectReportService(private val access: ProjectAccess, private val projec
 @RestController @RequestMapping("/api/projects/{id}/reports")
 class ProjectReportController(private val reports: ProjectReportService, private val rates: com.starter.security.RateLimits) {
     @GetMapping fun list(@AuthenticationPrincipal user: UserDetails, @PathVariable id: UUID) = reports.list(user.username, id)
-    @PostMapping fun generate(@AuthenticationPrincipal user: UserDetails, @PathVariable id: UUID, @RequestBody input: ProjectReportInput): ProjectReportView { rates.check("project-report", user.username, 10, 3600); return reports.generate(user.username, id, input) }
+    @PostMapping fun generate(@AuthenticationPrincipal user: UserDetails, @PathVariable id: UUID, @RequestBody input: ProjectReportInput): ProjectReportView { rates.check("project-report", user.username, 10, 3600); return reports.generate(user.username, id, com.starter.plugins.workflows.WorkflowExportOptions.report(input)) }
     @GetMapping("/{reportId}/pdf") fun pdf(@AuthenticationPrincipal user: UserDetails, @PathVariable id: UUID, @PathVariable reportId: UUID) = ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF)
         .header(HttpHeaders.CACHE_CONTROL, "no-store").header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=project-report-$reportId.pdf").body(reports.pdf(user.username, id, reportId))
 }

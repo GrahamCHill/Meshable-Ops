@@ -13,7 +13,7 @@ enum class NotificationChannel { EMAIL, SMS }
 @Service
 class NotificationService(private val transports: NotificationTransports,private val settings: NotificationSettingsService,
     private val catalogue: NotificationCatalogue,private val renderer: NotificationRenderer,private val journal: NotificationDeliveryRecorder,
-    private val branding: BrandingPreferencesService) {
+    private val branding: BrandingPreferencesService, private val workflows: com.starter.plugins.workflows.WorkflowEgressGuard? = null) {
     fun available(channel: String)=settings.methodEnabled(channel) && transports.available(channel)
     fun available(channel: NotificationChannel)=available(channel.name.lowercase())
     fun availableFor(event: String,method: String)=settings.permitted(event,method) && transports.available(method)
@@ -59,9 +59,11 @@ class NotificationService(private val transports: NotificationTransports,private
     }
     private fun transmit(event: String,method: String,target: NotificationTarget,message: ChannelMessage,key: String): EmailDeliveryResult {
         transports.validate(method,message)
+        if (event != "security.otp") workflows?.beforeSend()
         val attempt=journal.claim(event,method,target,message.recipient,key) ?: return EmailDeliveryResult("SKIPPED","This notification delivery was already attempted")
         val result=try {
-            if(!availableFor(event,method)) EmailDeliveryResult("DISABLED","Delivery settings changed") else transports.send(method,message)
+            if(!availableFor(event,method)) EmailDeliveryResult("DISABLED","Delivery settings changed") else if (event=="security.otp")
+                com.starter.plugins.workflows.WorkflowEgressGuard.securityCode { transports.send(method,message) } else transports.send(method,message)
         } catch (_:Exception) {EmailDeliveryResult("UNAVAILABLE","The delivery method could not confirm acceptance. Check its provider before retrying.")}
         val status=when(result.status) {"ACCEPTED" -> "ACCEPTED";"DISABLED" -> "DISABLED";else -> "FAILED"}
         journal.finish(attempt,status)

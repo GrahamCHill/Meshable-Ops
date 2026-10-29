@@ -1,5 +1,5 @@
 import {useAccess,isAdminRole} from '../../api/access'
-import {useEffect,useState,type ReactNode} from 'react'
+import {lazy,Suspense,useEffect,useState,type ReactNode} from 'react'
 import {NavLink,useNavigate,useLocation} from 'react-router-dom'
 import {useAuthStore} from '../../hooks/useAuthStore'
 import {authApi} from '../../api/auth'
@@ -11,6 +11,7 @@ import {WorkspaceNavigation} from './WorkspaceNavigation'
 import {ApplicationExtensions} from '../../plugins/ApplicationExtensions'
 import {useQuery} from '@tanstack/react-query'
 import {aiApi} from '../../api/ai'
+const WorkflowActionDialog=lazy(()=>import('../../plugins/modules/workflows/components/WorkflowActionDialog'))
 
 export function AppLayout({children}: {children:ReactNode}) {
   const {token,user,refreshUser,logout}=useAuthStore();const navigate=useNavigate();const {pathname}=useLocation();const access=useAccess()
@@ -29,6 +30,6 @@ export function AppLayout({children}: {children:ReactNode}) {
       <WorkspaceNavigation searchEnabled={search.data?.searchEnabled===true}/>
       {isAdminRole(user?.role)&&access.canPath('/admin')&&<div className="admin-navigation"><NavLink to="/admin" className={({isActive})=>`nav-item${isActive?' is-active':''}`}>Administration</NavLink></div>}
     </aside>
-    <main className="app-main"><ApplicationExtensions slot={`page.${feature}.before`}/>{children}<ApplicationExtensions slot={`page.${feature}.after`}/></main><SearchLauncher/>
+    <main className="app-main"><ApplicationExtensions slot={`page.${feature}.before`}/>{children}<ApplicationExtensions slot={`page.${feature}.after`}/></main><SearchLauncher/><Suspense fallback={null}><WorkflowActionDialog/></Suspense>
   </div>
 }

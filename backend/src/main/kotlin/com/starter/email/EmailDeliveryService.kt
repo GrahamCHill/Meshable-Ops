@@ -8,7 +8,8 @@ import java.util.concurrent.Semaphore
 
 /** Optional application mail: callers can inspect the result without making their workflow depend on a mail server. */
 @Service
-class EmailDeliveryService(private val settings: EmailSettingsService, private val provider: EmailProviderClient) {
+class EmailDeliveryService(private val settings: EmailSettingsService, private val provider: EmailProviderClient,
+    private val workflows: com.starter.plugins.workflows.WorkflowEgressGuard? = null) {
     private val workers = Semaphore(2)
 
     fun send(message: SendEmailRequest, attachments: List<EmailAttachment> = emptyList()): EmailDeliveryResult {
@@ -19,6 +20,7 @@ class EmailDeliveryService(private val settings: EmailSettingsService, private v
         if (attachments.size > 1 || attachments.any { it.bytes.isEmpty() || it.bytes.size > EmailAttachment.MAX_BYTES ||
                 !it.filename.endsWith(".pdf", true) || it.filename.length > 200 || it.filename.any { c -> c.isISOControl() || c in "\\\"/" } })
             throw BadRequestException("Attach one PDF of 10 MB or smaller with a valid filename")
+        workflows?.beforeSend()
         if (!workers.tryAcquire()) return EmailDeliveryResult("UNAVAILABLE", "Email delivery is busy. Try again shortly.")
         try {
             val config = settings.current()

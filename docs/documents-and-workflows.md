@@ -44,10 +44,15 @@ Name a design, select library PDFs in its attachments list, then add, drag, sele
 | --- | --- |
 | Start | One entry point; member selects Begin process |
 | Document | Attached generated PDF; preview/download according to document policy, then Continue |
-| Review | Instructions and an explicit review checkbox, with optional saved note; no reviewer assignment or separate approver enforcement |
-| Condition | Literal data-field key, comparison operator/value, True and False connections; member enters the value and server chooses the branch |
+| Review | Assigned internal reviewers, optional initiator approval, enforced separation of approver, and approve/reject actions |
+| Condition | Named data field, comparison, and True/False outputs; uses member input or saved code/trigger values |
+| Code | Restricted Python-style module for bounded calculations and branching, without external access |
+| Audit | Required note, actor, outcome, and time |
 | Email | Attached PDF, fixed recipient/subject/message and plain/password preference; member explicitly sends or records delivery handled separately |
-| End | Member selects Finish workflow; multiple ends are allowed |
+| End | Explicit Allow or Reject outcome; multiple ends are allowed |
+
+Use **Action bindings** to require a process before a core/plugin action can finish.
+See [action enforcement, reviewers, audit, and restricted code](workflow-actions.md).
 
 **Save draft** allows incomplete diagrams. **Validate & mark ready** requires one start, an end, reachable blocks, complete paths, attached PDFs for document/email blocks, email recipient/subject, and both condition outputs. IDs, positions, limits, and document access are checked on every save, including drafts. Loops and duplicate outputs are rejected. Limits: 50 blocks, 100 connections, 50 unique attached PDFs. Optimistic revisions prevent silent concurrent overwrites.
 
@@ -57,13 +62,13 @@ Ready designs remain private until an admin selects **Publish for members when s
 
 Open **Workflows** (`/workflows`), start a published process, and follow its current step. **Your runs** lists the latest 100 runs for the signed-in member, including completed and cancelled runs. Reloading or returning later resumes server-saved progress. Runs are private to their owner, including against other admins. Each start captures the design and its revision; later edits apply to new runs. Paused runs retain their history and can be cancelled. A cancelled run cannot resume. Starting is limited to 20/account/hour.
 
-Conditions evaluate literal input, not code or automatic queries against document fields. String equality trims whitespace and is case sensitive; Contains is case sensitive; Is set checks for nonblank input. Greater than uses decimal numbers with up to 30 whole and 12 fractional digits. Values are saved in the run. The server enforces current node, revision, action, and next branch; users cannot skip directly to a future step.
+Conditions evaluate member input or saved code/trigger values according to their value source. Trigger fields always use immutable action context. String equality trims whitespace and is case sensitive; Contains is case sensitive; Is set checks for nonblank input. Greater than uses decimal numbers with up to 30 whole and 12 fractional digits. Values are saved in the run. The server enforces current node, revision, action, and next branch; users cannot skip directly to a future step. Code blocks support the bounded module language described in [workflow actions](workflow-actions.md).
 
 At a document/email step, members may select a generated PDF already available in their own document library. It replaces that PDF throughout their run, including later steps referring to the same original document. It does not edit the design, other runs, or the stored PDF. The library's **Use in workflow** link carries a suggested PDF; members still explicitly select it at a suitable step. Preview, download, watermark, and attachment policies remain enforced on run-specific PDF endpoints. Previously reached document steps remain accessible while the workflow remains published/ready.
 
 Email never executes in the background. **Send PDF & continue** uses the saved recipient, subject, message, protection preference, and current PDF. Password-protected sends ask for a password at send time; it is not persisted in the design/run/history or included automatically in the message. The PDF is an email attachment. Provider acceptance advances the step but does not prove inbox delivery. Missing or disabled email notification delivery leaves manual confirmation available and does not fail the rest of the workflow system. The Workflow email steps notification controls the explicit send; separate opt-in workflow alerts follow member preferences. See [Notifications](notifications.md).
 
-A durable claim prevents duplicate sends. If a send times out or its result is uncertain, the app will not automatically resend it. Check the provider/outbox, then explicitly record how delivery was handled; a note is required. An in-flight send blocks manual confirmation/cancellation for two minutes, after which a stuck attempt can be handled manually. Manual confirmation is also available when delivery was handled outside the app. Reviews and delivery confirmations are member acknowledgments, not a multi-person approval system. Scheduling, assignments, parallel execution, and background automation are not implemented.
+A durable claim prevents duplicate sends. If a send times out or its result is uncertain, the app will not automatically resend it. Check the provider/outbox, then explicitly record how delivery was handled; a note is required. An in-flight send blocks manual confirmation/cancellation for two minutes, after which a stuck attempt can be handled manually. Manual confirmation is also available when delivery was handled outside the app. Reviews enforce assigned reviewers and the configured initiator-approval option; delivery confirmations remain explicit member acknowledgments. Scheduling and parallel execution are not implemented. Action bindings require prerequisite processes before the original server action can continue.
 
 ## Renderer deployment and security
 

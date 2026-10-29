@@ -30,7 +30,7 @@ enum class AnalyticsProvider(val id: String,val title: String,val resourceLabel:
 
 abstract class AnalyticsPlugin(private val provider: AnalyticsProvider): WorkspacePlugin {
     override val manifest=PluginManifest(provider.id,provider.title,"1.0.0","Read reporting metrics and link approved campaigns, pages and sites to clients and projects.",
-        compatibleVersions=listOf("1.0.0"),categories=setOf("Analytics"),contextTargets=setOf("PROJECT","CLIENT"),
+        compatibleVersions=listOf("1.0.0","1.1.0"),categories=setOf("Analytics"),contextTargets=setOf("PROJECT","CLIENT"),
         extensions=setOf(PluginExtension.PAGE,PluginExtension.API,PluginExtension.DATABASE,PluginExtension.SETTINGS),
         capabilities=mapOf("${provider.id}.metrics" to "${provider.title} reporting"),
         adminMenu=PluginAdminMenu("analytics","Analytics"),tables=listOf(PluginTable(provider.table,"Scoped analytics links and snapshots")),

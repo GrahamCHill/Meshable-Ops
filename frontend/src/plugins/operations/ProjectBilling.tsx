@@ -23,7 +23,7 @@ function ProjectMemberRates({projectId}:{projectId:string}) {
 }
 export function ProjectTimesheetExport({projectId}:{projectId:string}) {
   const [from,setFrom]=useState(monthStart),[to,setTo]=useState(today),run=useRun()
-  return <section><h2>Client timesheet export</h2><p>Export approved billable project time, member names, work descriptions, hours and the approved rate amounts as CSV. Select a period of up to 93 days.</p><DateRange {...{from,to,setFrom,setTo}}/><Notice state={run}/><button disabled={run.busy} onClick={()=>void run.run(async()=>{const response=await api.get<Blob>('/plugins/timesheets/export',{params:{projectId,from,to},responseType:'blob'});downloadProjectBlob(response.data,`project-timesheets-${from}-${to}.csv`)})}>Export project timesheets</button></section>
+  return <section><h2>Client timesheet export</h2><p>Export approved billable project time, member names, work descriptions, hours and the approved rate amounts as CSV. Select a period of up to 93 days.</p><DateRange {...{from,to,setFrom,setTo}}/><Notice state={run}/><button disabled={run.busy} onClick={()=>void run.run(async()=>{const response=await api.get<Blob>('/plugins/timesheets/export',{params:{projectId,from,to},responseType:'blob'});downloadProjectBlob(response.data,String(response.headers['content-disposition']??'').match(/filename="(project-timesheets-\d{4}-\d{2}-\d{2}-\d{4}-\d{2}-\d{2}\.csv)"/)?.[1]??'project-timesheets.csv')})}>Export project timesheets</button></section>
 }
 export default function ProjectBilling({projectId}:{projectId:string}) {
   const [tab,setTab]=useState('assignments'),plugins=useAvailablePlugins()

@@ -19,6 +19,17 @@ class WorkflowRunAccess(private val runs: WorkflowRunRepository,private val defi
         if (lock) writable(actor)
         return (if (lock) runs.locked(id) else runs.findById(id)).orElse(null)?.takeIf { it.ownerId==actor.id } ?: throw NotFoundException("Workflow run unavailable")
     }
+    fun canReview(actor: User, run: WorkflowRun): Boolean {
+        if (!actor.active || actor.role == "EXTERNAL" || run.status != WorkflowRunStatus.IN_PROGRESS || run.currentNodeId == null) return false
+        val block = runtime.current(run)
+        return block.kind == BlockKind.REVIEW && (block.allowInitiatorReview || actor.id != run.ownerId) &&
+            (actor.id in block.reviewerIds || actor.id == run.ownerId && block.allowInitiatorReview)
+    }
+    fun participant(actor: User, id: UUID, lock: Boolean = false): WorkflowRun {
+        if (lock) writable(actor)
+        return (if (lock) runs.locked(id) else runs.findById(id)).orElse(null)?.takeIf { it.ownerId == actor.id || canReview(actor, it) }
+            ?: throw NotFoundException("Workflow run unavailable")
+    }
     @Transactional(readOnly=true,propagation=Propagation.REQUIRES_NEW)
     fun blocked(actor: User,run: WorkflowRun): String? {
         if (runCatching { readableDesigns(actor) }.isFailure) return "Workflow design access is unavailable. Contact an administrator."

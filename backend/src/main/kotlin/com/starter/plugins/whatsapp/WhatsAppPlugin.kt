@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component
 @Component
 class WhatsAppPlugin : WorkspacePlugin {
     override val manifest = PluginManifest("whatsapp", "WhatsApp Business", "1.0.0-a", "Send approved template messages through Meta's WhatsApp Cloud API.",
-        compatibleVersions = listOf("1.0.0"),
+        compatibleVersions = listOf("1.0.0", "1.1.0"),
         extensions = setOf(PluginExtension.API, PluginExtension.SETTINGS, PluginExtension.NOTIFICATIONS), supportedRoles = setOf("ADMIN"), settingsFields = listOf(
             PluginSettingField("accessToken", "Access token", PluginFieldType.SECRET, true, "Token with WhatsApp Business messaging permission.", 4096),
             PluginSettingField("phoneNumberId", "Sender phone number ID", required = true),

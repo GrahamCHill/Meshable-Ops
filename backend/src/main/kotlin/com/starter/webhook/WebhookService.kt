@@ -22,7 +22,7 @@ class WebhookService(private val endpoints: WebhookEndpointRepository, private v
     private val crypto: SecretEncryption, private val tokens: SecureValues, private val mapper: ObjectMapper,
     private val http: WebhookHttpClient, private val rates: RateLimits,
     @Value("\${app.public-base-url:}") private val publicBaseUrl: String,
-    private val receivers: List<IncomingWebhookExtension> = emptyList()) {
+    private val receivers: List<IncomingWebhookExtension> = emptyList(), private val workflows: com.starter.plugins.workflows.WorkflowEgressGuard? = null) {
     private val workers = Semaphore(2)
     fun list() = endpoints.findAll().map(::view)
     fun save(id: UUID?, request: WebhookRequest): WebhookSaved {
@@ -43,6 +43,7 @@ class WebhookService(private val endpoints: WebhookEndpointRepository, private v
     fun send(id: UUID, request: WebhookSendRequest): WebhookDeliveryView {
         val endpoint = endpoint(id)
         if (!endpoint.enabled || endpoint.direction != WebhookDirection.OUTGOING) throw BadRequestException("Enable an outgoing webhook first")
+        workflows?.beforeSend()
         if (!workers.tryAcquire()) throw BadRequestException("Webhook delivery is busy. Try again shortly.")
         try {
             rates.check("webhook-outgoing", id.toString(), 30, 300)

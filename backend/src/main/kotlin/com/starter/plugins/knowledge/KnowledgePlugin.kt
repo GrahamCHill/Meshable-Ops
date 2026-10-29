@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component
 class KnowledgePlugin : WorkspacePlugin {
     override val manifest = PluginManifest(
         "knowledge", "Knowledge base", "1.0.0", "Linked Markdown documentation with images, Mermaid diagrams and permission-controlled PDF books.",
-        compatibleVersions = listOf("1.0.0"), categories = setOf("Productivity"), hasAdminSettings = false,
+        compatibleVersions = listOf("1.0.0", "1.1.0"), categories = setOf("Productivity"), hasAdminSettings = false,
         extensions = setOf(PluginExtension.PAGE, PluginExtension.API, PluginExtension.DATABASE),
         runtimes = setOf(PluginRuntime.REACT, PluginRuntime.KOTLIN, PluginRuntime.PYTHON),
         menuItems = listOf(PluginMenuItem("settings", "Export permissions & cover", setOf("ADMIN"))),

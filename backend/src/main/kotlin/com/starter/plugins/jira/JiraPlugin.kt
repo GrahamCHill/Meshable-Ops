@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component
 @Component
 class JiraPlugin : WorkspacePlugin {
     override val manifest = PluginManifest("jira","Jira","1.0.0","Link projects to Jira and refresh delivery metrics without copying issues into Kanban.",
-        compatibleVersions=listOf("1.0.0"),extensions=setOf(PluginExtension.PAGE,PluginExtension.API,PluginExtension.SETTINGS,PluginExtension.DATABASE),
+        compatibleVersions=listOf("1.0.0","1.1.0"),extensions=setOf(PluginExtension.PAGE,PluginExtension.API,PluginExtension.SETTINGS,PluginExtension.DATABASE),
         categories=setOf("Development"),contextTargets=setOf("PROJECT"),capabilities=mapOf("jira.metrics" to "Jira project metrics"),
         tables=listOf(PluginTable("plugin_jira_projects","Jira project links and metric snapshots")),
         settingsFields=listOf(PluginSettingField("baseUrl","Jira API base URL",required=true,help="HTTPS Jira site, or https://api.atlassian.com/ex/jira/{cloudId} for scoped Cloud API tokens. Do not append /rest/api.",maxLength=1000),

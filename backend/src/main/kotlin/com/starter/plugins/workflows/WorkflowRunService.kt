@@ -14,7 +14,8 @@ import java.util.UUID
 @Service
 class WorkflowRunService(private val definitions: WorkflowRepository,private val runs: WorkflowRunRepository,private val guard: WorkflowRunAccess,
     private val access: DocumentAccess,private val documents: GeneratedDocumentRepository,private val runtime: WorkflowRuntime,
-    private val validation: WorkflowValidation,private val mapper: ObjectMapper,private val rates: RateLimits,private val alerts: com.starter.plugins.workflows.WorkflowNotificationHooks, private val controls: com.starter.access.AccessControlService? = null) {
+    private val validation: WorkflowValidation,private val mapper: ObjectMapper,private val rates: RateLimits,private val alerts: com.starter.plugins.workflows.WorkflowNotificationHooks, private val controls: com.starter.access.AccessControlService? = null,
+    private val audit: com.starter.service.AuditLogService? = null) {
     fun available(email: String): List<RunnableWorkflow> {
         val actor=guard.actor(email);guard.readableDesigns(actor)
         return definitions.runnable((com.starter.access.Roles.admin(actor.role) && controls?.allows("admin.workflows") != false),PageRequest.of(0,100)).map {
@@ -24,25 +25,37 @@ class WorkflowRunService(private val definitions: WorkflowRepository,private val
         }
     }
     fun list(email: String) = runs.owned(guard.actor(email).id,PageRequest.of(0,100))
+    fun reviews(email: String): List<WorkflowRunSummary> {
+        val actor = guard.actor(email)
+        return runs.awaitingReview(actor.id.toString(), PageRequest.of(0, 100)).filter { guard.canReview(actor, it) && guard.blocked(actor, it) == null }
+            .map { WorkflowRunSummary(it.id, it.name, it.workflowId, it.status, it.updatedAt) }
+    }
     @Transactional
-    fun start(email: String,id: UUID): WorkflowRunView {
+    fun start(email: String,id: UUID, context: Map<String,String> = emptyMap()): WorkflowRunView {
         val actor=guard.actor(email);guard.writable(actor);guard.readableDesigns(actor);rates.check("workflow-start",actor.id.toString(),20,3600)
         val source=definitions.findById(id).orElse(null)?.takeIf { it.state==WorkflowState.READY && (it.published || (com.starter.access.Roles.admin(actor.role) && controls?.allows("admin.workflows") != false)) } ?: throw NotFoundException("Published workflow unavailable")
         val graph=mapper.readValue(source.graphJson,WorkflowGraph::class.java)
         val ids: List<UUID> = mapper.readValue(source.documentIdsJson,object:TypeReference<List<UUID>>() {})
         validation.check(graph,ids,true)
         if (graph.nodes.any { it.kind in setOf(BlockKind.DOCUMENT, BlockKind.EMAIL) }) guard.documentSupport(actor)
-        val row=WorkflowRun(ownerId=actor.id,workflowId=source.id,name=source.name,workflowRevision=source.revision,graphJson=source.graphJson,currentNodeId=graph.nodes.single {it.kind==BlockKind.START}.id)
+        if (context.size > 60 || context.any { !it.key.startsWith("trigger.") || it.value.length > 500 }) throw BadRequestException("Workflow trigger context exceeds its limits")
+        val row=WorkflowRun(ownerId=actor.id,workflowId=source.id,name=source.name,workflowRevision=source.revision,graphJson=source.graphJson,currentNodeId=graph.nodes.single {it.kind==BlockKind.START}.id, valuesJson=mapper.writeValueAsString(context))
         guard.active(guard.actor(email),row)
         val saved=runs.saveAndFlush(row);alerts.started(saved)
+        audit?.record(email,"WORKFLOW_STARTED","WORKFLOW_RUN",saved.id.toString())
         return view(email,saved)
     }
-    fun get(email: String,id: UUID) = view(email,guard.owned(guard.actor(email),id))
+    fun get(email: String,id: UUID) = view(email,guard.participant(guard.actor(email),id))
     @Transactional
     fun advance(email: String,id: UUID,request: WorkflowAdvanceRequest): WorkflowRunView {
-        val actor=guard.actor(email);val row=guard.owned(actor,id,true);guard.active(actor,row)
-        runtime.advance(row,request)
+        val actor=guard.actor(email);val row=guard.participant(actor,id,true);guard.active(actor,row)
+        if (runtime.current(row).kind == BlockKind.REVIEW && !guard.canReview(actor,row)) throw ForbiddenException("This step requires an assigned reviewer")
+        if (row.ownerId != actor.id && request.action !in setOf(WorkflowAction.REVIEWED,WorkflowAction.REJECT)) throw ForbiddenException("Reviewers can only complete their assigned review")
+        runtime.advance(row,request,actor.id)
+        audit?.record(email,"WORKFLOW_STEP_${runtime.history(row).last().outcome}","WORKFLOW_RUN",row.id.toString())
         val saved=runs.saveAndFlush(row);alerts.advanced(saved)
+        if (row.ownerId != actor.id) return WorkflowRunView(row.id,row.name,row.workflowId,row.workflowRevision,row.status,row.revision,
+            null,listOf(runtime.history(row).last()),emptyMap(),emptyList(),null,row.emailState,row.emailAttemptAt,false,false)
         return view(email,saved)
     }
     @Transactional
@@ -61,15 +74,19 @@ class WorkflowRunService(private val definitions: WorkflowRepository,private val
         if (runtime.emailBusy(row)) throw ConflictException("Wait for email delivery to finish before cancelling")
         row.status=WorkflowRunStatus.CANCELLED;row.currentNodeId=null;row.updatedAt=Instant.now()
         val saved=runs.saveAndFlush(row);alerts.cancelled(saved)
+        audit?.record(email,"WORKFLOW_CANCELLED","WORKFLOW_RUN",row.id.toString())
         return view(email,saved)
     }
     fun view(email: String,row: WorkflowRun): WorkflowRunView {
         val actor=guard.actor(email)
-        if (row.ownerId!=actor.id) throw NotFoundException("Workflow run unavailable")
+        val owner = row.ownerId == actor.id
+        if (!owner && !guard.canReview(actor,row)) throw NotFoundException("Workflow run unavailable")
         val blocked=guard.blocked(actor,row)
-        val ids=if (blocked==null) guard.allowedDocuments(row) else emptySet()
+        val ids=if (blocked==null && owner) guard.allowedDocuments(row) else emptySet()
         return WorkflowRunView(row.id,row.name,row.workflowId,row.workflowRevision,row.status,row.revision,
-            row.currentNodeId?.let {runtime.effective(row,runtime.current(row))},runtime.history(row),runtime.values(row),
-            if (ids.isEmpty()) emptyList() else documents.workflowMetadata(ids.toList()),blocked,row.emailState,row.emailAttemptAt)
+            row.currentNodeId?.let {runtime.effective(row,runtime.current(row)).let { if(owner) it else it.copy(documentId=null,code="") }},
+            if(owner) runtime.history(row) else emptyList(),runtime.values(row).filterKeys { owner || it.startsWith("trigger.") || it in WorkflowExportOptions.FIELDS },
+            if (ids.isEmpty()) emptyList() else documents.workflowMetadata(ids.toList()),blocked,row.emailState,row.emailAttemptAt,
+            blocked == null && row.status==WorkflowRunStatus.IN_PROGRESS && row.currentNodeId!=null && (runtime.current(row).kind != BlockKind.REVIEW && owner || guard.canReview(actor,row)),owner)
     }
 }

@@ -9,7 +9,8 @@ import org.springframework.stereotype.Component
 
 @Component
 class NotificationTransports(private val email: EmailDeliveryService,private val emailSettings: EmailSettingsService,
-    private val adapters: List<NotificationChannelAdapter>,private val plugins: PluginRegistry) {
+    private val adapters: List<NotificationChannelAdapter>,private val plugins: PluginRegistry,
+    private val workflows: com.starter.plugins.workflows.WorkflowEgressGuard? = null) {
     private val core=NotificationMethod("email","Email",null,NotificationRecipientKind.EMAIL,true,true,true,maxTextLength=20000)
     init {
         require(adapters.map {it.channel}.distinct().size==adapters.size && adapters.none {it.channel=="email"}) {"Duplicate notification method"}
@@ -30,6 +31,7 @@ class NotificationTransports(private val email: EmailDeliveryService,private val
     fun send(id: String,message: ChannelMessage): EmailDeliveryResult {
         validate(id,message)
         if(!available(id)) return EmailDeliveryResult("UNAVAILABLE","The delivery method is disabled or incomplete")
+        workflows?.beforeSend()
         val safe=if(message.html.isBlank()) message else message.copy(html=NotificationRenderer().cleanHtml(message.html))
         return if(id=="email") email.send(SendEmailRequest(safe.recipient,safe.subject,safe.text,safe.html),safe.attachments)
         else adapters.first {it.channel==id}.let {plugins.requireAvailable(it.pluginId,"ADMIN");it.send(safe)}

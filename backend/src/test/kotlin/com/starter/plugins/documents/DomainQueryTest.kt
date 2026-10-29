@@ -40,7 +40,7 @@ class DomainQueryTest {
                 org.assertj.core.api.Assertions.assertThat(imageInfo.isNew(com.starter.model.postgres.BrandingLoginImage(slot = 0))).isFalse()
                 factory.openSession().use { session ->
                     listOf(DocumentTemplateRepository::class.java, GeneratedDocumentRepository::class.java, WorkflowRepository::class.java, com.starter.plugins.workflows.WorkflowRunRepository::class.java, com.starter.repository.postgres.BrandingAssetRepository::class.java, com.starter.repository.postgres.BrandingLoginImageRepository::class.java, com.starter.plugins.kanban.KanbanRepository::class.java, com.starter.plugins.calendar.CalendarEventRepository::class.java,com.starter.plugins.calendar.PersonalCalendarRepository::class.java).forEach { repository ->
-                        repository.methods.mapNotNull { it.getAnnotation(Query::class.java)?.value }.forEach { query -> session.createQuery(query) }
+                        repository.methods.mapNotNull { it.getAnnotation(Query::class.java) }.filterNot { it.nativeQuery }.forEach { query -> session.createQuery(query.value) }
                     }
                 }
             }

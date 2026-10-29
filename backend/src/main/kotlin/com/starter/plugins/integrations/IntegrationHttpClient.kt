@@ -26,7 +26,8 @@ data class IntegrationBytesResponse(val status: Int, val bytes: ByteArray, val h
 
 /** No redirects/retries, bounded bodies, public DNS targets, and no credential URLs in errors. */
 @Component
-class IntegrationHttpClient(private val mapper: ObjectMapper, @Value("\${app.plugins.allow-private-targets:false}") private val allowPrivate: Boolean = false) {
+class IntegrationHttpClient(private val mapper: ObjectMapper, @Value("\${app.plugins.allow-private-targets:false}") private val allowPrivate: Boolean = false,
+    private val workflows: com.starter.plugins.workflows.WorkflowEgressGuard? = null) {
     private val network = WebhookHttpClient(allowPrivate)
     fun request(method: String, url: String, headers: Map<String, String> = emptyMap(), body: String? = null,
         contentType: String = "application/json"): IntegrationResponse = execute(method, validate(url), headers, body, contentType, emptySet())
@@ -60,6 +61,7 @@ class IntegrationHttpClient(private val mapper: ObjectMapper, @Value("\${app.plu
     private fun executeBytes(method: String, uri: URI, headers: Map<String, String>, body: ByteArray?, contentType: String,
         allowedStatuses: Set<Int>, maxBytes: Int): IntegrationBytesResponse {
         require(maxBytes in 1..com.starter.service.PdfService.MAX_BYTES)
+        if (method.uppercase() !in setOf("GET","HEAD","OPTIONS") && uri.host !in setOf("login.microsoftonline.com","oauth2.googleapis.com")) workflows?.beforeSend()
         val resolver = object : DnsResolver {
             override fun resolve(host: String) = network.resolve(host)
             override fun resolveCanonicalHostname(host: String) = host

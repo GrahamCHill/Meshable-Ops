@@ -13,7 +13,8 @@ export function AnalyticsExports({plugin,kind,contextId,linkId,disabled=false}:{
       throw error
     }
     const url=URL.createObjectURL(blob),anchor=document.createElement('a')
-    anchor.href=url;anchor.download=`${plugin}-${kind.toLowerCase()}-insights${linkId?'-'+linkId:''}.${format}`
+    const actualFormat=blob.type.toLowerCase().startsWith('application/pdf')?'pdf':blob.type.toLowerCase().startsWith('text/csv')?'csv':format
+    anchor.href=url;anchor.download=`${plugin}-${kind.toLowerCase()}-insights${linkId?'-'+linkId:''}.${actualFormat}`
     anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
   }})
   return <div className="analytics-exports"><div className="inline-actions"><Button type="button" size="sm" variant="secondary" disabled={disabled||download.isPending} onClick={()=>download.mutate('csv')}><Download size={13}/>{linkId?'CSV':'Export CSV'}</Button><Button type="button" size="sm" variant="secondary" disabled={disabled||download.isPending} onClick={()=>download.mutate('pdf')}><Download size={13}/>{linkId?'PDF':'Export PDF'}</Button></div>{download.isError&&<p role="alert">{getErrorMessage(download.error)}</p>}{download.isSuccess&&<span role="status">Export downloaded.</span>}</div>

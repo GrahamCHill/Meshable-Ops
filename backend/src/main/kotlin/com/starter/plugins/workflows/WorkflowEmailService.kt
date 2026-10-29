@@ -11,29 +11,33 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.util.UUID
 
-data class WorkflowEmailClaim(val ownerId: UUID,val attemptId: UUID,val block: WorkflowBlock)
+data class WorkflowEmailClaim(val ownerId: UUID,val attemptId: UUID,val block: WorkflowBlock,val auditNote: String = "",val actorEmail: String? = null)
 
 /** Commit the claim before any external send so timeouts/crashes never trigger an automatic resend. */
 @Service
-class WorkflowEmailClaims(private val runs: WorkflowRunRepository,private val guard: WorkflowRunAccess,private val runtime: WorkflowRuntime,private val alerts: com.starter.plugins.workflows.WorkflowNotificationHooks) {
+class WorkflowEmailClaims(private val runs: WorkflowRunRepository,private val guard: WorkflowRunAccess,private val runtime: WorkflowRuntime,private val alerts: com.starter.plugins.workflows.WorkflowNotificationHooks,
+    private val audit: com.starter.service.AuditLogService? = null) {
     @Transactional(propagation=Propagation.REQUIRES_NEW)
     fun claim(email: String,id: UUID,request: WorkflowSendRequest): WorkflowEmailClaim {
         val actor=guard.actor(email);val run=guard.owned(actor,id,true);guard.active(actor,run);runtime.matches(run,request.revision,request.nodeId)
         val block=runtime.effective(run,runtime.current(run))
         if (block.kind!=BlockKind.EMAIL || block.documentId==null) throw BadRequestException("This is not an email step")
+        if (block.auditRequired && request.note.isBlank()) throw BadRequestException("An audit note is required for this email step")
         if (run.emailState!=WorkflowEmailState.NONE) throw ConflictException("Delivery was already attempted. Check its result before confirming this step.")
         val attempt=UUID.randomUUID()
         run.emailState=WorkflowEmailState.SENDING;run.emailAttemptId=attempt;run.emailAttemptAt=Instant.now();run.updatedAt=Instant.now()
         runs.saveAndFlush(run)
-        return WorkflowEmailClaim(actor.id,attempt,block)
+        audit?.record(email,"WORKFLOW_EMAIL_CLAIMED","WORKFLOW_RUN",run.id.toString())
+        return WorkflowEmailClaim(actor.id,attempt,block,request.note,email)
     }
     @Transactional(propagation=Propagation.REQUIRES_NEW)
     fun finish(id: UUID,claim: WorkflowEmailClaim,accepted: Boolean) {
         val run=runs.locked(id).orElse(null) ?: return
         if (run.ownerId!=claim.ownerId || run.emailAttemptId!=claim.attemptId || run.emailState!=WorkflowEmailState.SENDING) return
-        if (accepted) runtime.finishStep(run,"EMAIL_ACCEPTED","The email provider accepted the PDF attachment; inbox delivery is not confirmed.")
+        if (accepted) runtime.finishStep(run,"EMAIL_ACCEPTED",claim.auditNote.ifBlank {"The email provider accepted the PDF attachment; inbox delivery is not confirmed."},actorId=claim.ownerId)
         else {run.emailState=WorkflowEmailState.UNCERTAIN;run.updatedAt=Instant.now()}
         runs.saveAndFlush(run)
+        audit?.record(claim.actorEmail,if(accepted) "WORKFLOW_EMAIL_ACCEPTED" else "WORKFLOW_EMAIL_UNCERTAIN","WORKFLOW_RUN",run.id.toString())
         if(accepted) alerts.advanced(run)
     }
 }

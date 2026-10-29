@@ -19,6 +19,8 @@ data class ErrorResponse(val message: String, val status: Int, val timestamp: In
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
+    @ExceptionHandler(com.starter.plugins.workflows.WorkflowRequiredException::class)
+    fun workflowRequired(ex: com.starter.plugins.workflows.WorkflowRequiredException) = ResponseEntity.status(428).contentType(org.springframework.http.MediaType.APPLICATION_JSON).body(ex.detail)
     @ExceptionHandler(com.starter.service.pdfstorage.GeneratedPdfStorageUnavailable::class)
     fun generatedPdfStorageUnavailable(ex: com.starter.service.pdfstorage.GeneratedPdfStorageUnavailable) = ResponseEntity.status(503).body(ErrorResponse(ex.message ?: "PDF storage unavailable", 503))
     @ExceptionHandler(com.starter.plugins.packages.backend.PluginWorkerUnavailable::class)

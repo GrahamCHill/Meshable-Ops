@@ -1,6 +1,10 @@
 -- Vector columns allow NULL while an existing index awaits dimension migration and reindexing.
 CREATE EXTENSION IF NOT EXISTS vector;
 
+-- PostgreSQL's Hibernate-created enum check must accept explicit approval rejections on upgrades.
+ALTER TABLE IF EXISTS workflow_runs DROP CONSTRAINT IF EXISTS workflow_runs_status_check;
+ALTER TABLE IF EXISTS workflow_runs ADD CONSTRAINT workflow_runs_status_check CHECK (status IN ('IN_PROGRESS','COMPLETED','CANCELLED','REJECTED'));
+
 -- Browsing never waits for metadata embeddings. Coalesce directory work independently of content extraction.
 CREATE TABLE IF NOT EXISTS storage_browse_jobs (
     item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,

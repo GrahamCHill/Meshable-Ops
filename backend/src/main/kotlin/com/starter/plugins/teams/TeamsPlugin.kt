@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component
 @Component
 class TeamsPlugin : WorkspacePlugin {
     override val manifest = PluginManifest("teams", "Microsoft Teams", "1.0.0-a", "Post to Teams Workflows or approved Graph chats, with internal member identity links for private notifications.",
-        compatibleVersions = listOf("1.0.0"),
+        compatibleVersions = listOf("1.0.0", "1.1.0"),
         extensions = setOf(PluginExtension.API, PluginExtension.SETTINGS, PluginExtension.NOTIFICATIONS, PluginExtension.DATABASE), supportedRoles = setOf("ADMIN"),
         tables = listOf(PluginTable("plugin_teams_identities", "Internal member Teams links", setOf("ADMIN"), setOf("ADMIN"))), settingsFields = listOf(
             PluginSettingField("mode", "Delivery mode", help = "WEBHOOK (default) for explicit shared posts, or GRAPH for existing chats and private member delivery."),

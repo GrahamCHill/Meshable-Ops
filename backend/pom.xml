@@ -13,7 +13,7 @@
 
   <groupId>com.starter</groupId>
   <artifactId>backend</artifactId>
-  <version>1.0.0</version>
+  <version>1.1.0</version>
   <packaging>jar</packaging>
   <name>Meshable Ops Backend</name>
   <description>Meshable Ops self-hosted business operations workspace</description>

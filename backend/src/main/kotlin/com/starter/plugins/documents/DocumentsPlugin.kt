@@ -16,6 +16,6 @@ class DocumentsPlugin : WorkspacePlugin {
         tables = listOf(PluginTable("generated_documents", "Generated PDFs"),
             PluginTable("document_templates", "Document templates", writeRoles = setOf("ADMIN"))),
         capabilities = mapOf("documents.pdf" to "Generated PDFs and templates"),
-        categories = setOf("Documents", "Productivity"), hasAdminSettings = false, compatibleVersions = listOf("1.0.0"),
+        categories = setOf("Documents", "Productivity"), hasAdminSettings = false, compatibleVersions = listOf("1.0.0", "1.1.0"),
         runtimes = setOf(PluginRuntime.REACT, PluginRuntime.KOTLIN, PluginRuntime.PYTHON))
 }

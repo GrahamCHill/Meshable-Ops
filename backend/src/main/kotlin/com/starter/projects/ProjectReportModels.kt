@@ -9,7 +9,8 @@ import java.util.UUID
 
 enum class ProjectReportKind { SPRINT, MONTHLY, PERIOD }
 data class ProjectReportInput(val kind: ProjectReportKind = ProjectReportKind.PERIOD, val from: LocalDate, val to: LocalDate,
-    val sprintId: UUID? = null, val boardId: UUID? = null, val sendEmail: Boolean = false, val recipientIds: Set<UUID> = emptySet())
+    val sprintId: UUID? = null, val boardId: UUID? = null, val sendEmail: Boolean = false, val recipientIds: Set<UUID> = emptySet(),
+    val title: String = "", val includeDescriptions: Boolean = true, val includeAiSummary: Boolean = true)
 data class ProjectReportSection(val title: String, val columns: List<String>, val rows: List<List<String>>)
 data class ProjectReportDocument(val title: String, val organization: String, val subtitle: String, val period: String,
     val summary: List<String>, val sections: List<ProjectReportSection>, val kanban: ProjectWorkSummary? = null,

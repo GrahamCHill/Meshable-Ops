@@ -35,7 +35,7 @@ class KnowledgeController(private val pages: KnowledgeService, private val acces
         rates.check("knowledge-prepare", user.username, 30, 3600); return exports.prepare(user.username, input)
     }
     @PostMapping("/exports") fun export(@AuthenticationPrincipal user: UserDetails, @RequestBody input: KnowledgeExportInput): ResponseEntity<ByteArray> {
-        rates.check("knowledge-export", user.username, 10, 3600); return pdf(exports.export(user.username, input), "knowledge-book.pdf")
+        rates.check("knowledge-export", user.username, 10, 3600); return pdf(exports.export(user.username, com.starter.plugins.workflows.WorkflowExportOptions.knowledge(input)), "knowledge-book.pdf")
     }
     private fun pdf(bytes: ByteArray, name: String) = ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF)
         .header(HttpHeaders.CACHE_CONTROL, "no-store").header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=$name").body(bytes)

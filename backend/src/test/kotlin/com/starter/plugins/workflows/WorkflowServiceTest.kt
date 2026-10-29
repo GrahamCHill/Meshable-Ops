@@ -87,4 +87,21 @@ class WorkflowServiceTest {
         assertThatThrownBy {runner.advance(member.email,row.id,WorkflowAdvanceRequest(0,"start"))}.isInstanceOf(ForbiddenException::class.java)
         assertThat(runner.cancel(member.email,row.id,0).status).isEqualTo(WorkflowRunStatus.CANCELLED)
     }
+    @Test fun `assigned reviewers receive only their review and an audit receipt without later steps or PDFs`() {
+        val reviewer=User(email="reviewer@example.test")
+        `when`(access.actor(reviewer.email)).thenReturn(reviewer)
+        val review=WorkflowBlock("review",BlockKind.REVIEW,"Approve",reviewerIds=setOf(reviewer.id),allowInitiatorReview=false,auditRequired=true)
+        val graph=WorkflowGraph(listOf(review,WorkflowBlock("end",BlockKind.END,"Private later step")),listOf(WorkflowEdge("next","review","end")))
+        val row=WorkflowRun(ownerId=member.id,workflowId=source.id,graphJson=mapper.writeValueAsString(graph),currentNodeId="review",
+            valuesJson="""{"export.report.title":"Reviewed report","private.field":"hidden"}""")
+        `when`(rows.locked(row.id)).thenReturn(Optional.of(row));`when`(rows.findById(row.id)).thenReturn(Optional.of(row))
+        assertThat(runner.get(reviewer.email,row.id).documents).isEmpty()
+        assertThat(runner.get(reviewer.email,row.id).values).containsEntry("export.report.title","Reviewed report").doesNotContainKey("private.field")
+        assertThatThrownBy {runner.advance(member.email,row.id,WorkflowAdvanceRequest(0,"review",WorkflowAction.REVIEWED,note="Self"))}.isInstanceOf(ForbiddenException::class.java)
+        val receipt=runner.advance(reviewer.email,row.id,WorkflowAdvanceRequest(0,"review",WorkflowAction.REVIEWED,note="Checked"))
+        assertThat(receipt.current).isNull();assertThat(receipt.isOwner).isFalse()
+        assertThat(receipt.history.single().actorId).isEqualTo(reviewer.id)
+        assertThat(row.currentNodeId).isEqualTo("end")
+        assertThatThrownBy {runner.advance(reviewer.email,row.id,WorkflowAdvanceRequest(0,"end"))}.isInstanceOf(NotFoundException::class.java)
+    }
 }

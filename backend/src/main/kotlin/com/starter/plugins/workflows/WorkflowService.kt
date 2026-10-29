@@ -13,8 +13,14 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class WorkflowService(private val repository: WorkflowRepository, private val access: DocumentAccess,
-    private val validation: WorkflowValidation, private val mapper: ObjectMapper, private val modules: com.starter.plugins.BundledModuleAccess) {
+    private val validation: WorkflowValidation, private val mapper: ObjectMapper, private val modules: com.starter.plugins.BundledModuleAccess,
+    private val users: com.starter.repository.postgres.UserRepository? = null, private val audit: com.starter.service.AuditLogService? = null,
+    private val diagramBindings: WorkflowDiagramBindings? = null) {
     fun list(email: String): List<WorkflowView> { val actor = access.admin(email); modules.check("workflows", actor, "workflow_definitions", "admin.workflows"); return repository.visible(actor.id, true, PageRequest.of(0, 100)).map(::view) }
+    fun reviewers(email: String): List<Map<String,String>> {
+        val actor=access.admin(email);modules.check("workflows",actor,"workflow_definitions","admin.workflows")
+        return users?.findAll()?.filter { it.active && it.role!="EXTERNAL" }?.map { mapOf("id" to it.id.toString(),"name" to (it.name ?: it.username),"email" to it.email) }.orEmpty()
+    }
     @Transactional
     fun save(email: String, id: UUID?, request: WorkflowRequest): WorkflowView {
         val actor = access.admin(email)
@@ -23,11 +29,17 @@ class WorkflowService(private val repository: WorkflowRepository, private val ac
             ?: throw NotFoundException("Workflow unavailable") } ?: WorkflowDefinition(ownerId = actor.id)
         if (id != null && saved.revision != request.revision) throw ConflictException("The workflow changed. Reload before saving.")
         validation.check(request.graph, request.documentIds, request.state == WorkflowState.READY)
+        val reviewers = request.graph.nodes.flatMap { it.reviewerIds }.toSet()
+        if (users != null && reviewers.isNotEmpty() && users.findAllById(reviewers).count { it.active && it.role != "EXTERNAL" } != reviewers.size)
+            throw com.starter.exception.BadRequestException("Reviewers must be active internal members")
         access.references(actor, request.documentIds)
         saved.name = request.name.trim(); saved.state = request.state; saved.graphJson = mapper.writeValueAsString(request.graph)
         saved.published = request.published && request.state == WorkflowState.READY
         saved.documentIdsJson = mapper.writeValueAsString(request.documentIds); saved.updatedAt = Instant.now()
-        return view(repository.saveAndFlush(saved))
+        val row = repository.saveAndFlush(saved)
+        diagramBindings?.sync(email,row,request.graph)
+        audit?.record(email,"WORKFLOW_DESIGN_SAVED","WORKFLOW",row.id.toString())
+        return view(row)
     }
     private fun view(saved: WorkflowDefinition) = WorkflowView(saved.id, saved.ownerId, saved.name, saved.state, saved.revision, saved.updatedAt,
         mapper.readValue(saved.graphJson, WorkflowGraph::class.java), mapper.readValue(saved.documentIdsJson, object : TypeReference<List<UUID>>() {}), saved.published)

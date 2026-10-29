@@ -10,7 +10,10 @@ import java.util.UUID
 
 @RestController @RequestMapping("/api/plugins/timesheets")
 class TimesheetController(private val service:TimesheetService,private val visibility:TimeVisibility,private val exports:TimesheetExport) {
-    @GetMapping("/export") fun export(@AuthenticationPrincipal u:UserDetails,@RequestParam projectId:UUID,@RequestParam from:LocalDate,@RequestParam to:LocalDate):ResponseEntity<ByteArray> = ResponseEntity.ok().contentType(MediaType.parseMediaType("text/csv;charset=UTF-8")).header("Content-Disposition","attachment; filename=\"project-timesheets-$from-$to.csv\"").header("Cache-Control","private, no-store").header("X-Content-Type-Options","nosniff").body(exports.csv(u.username,projectId,from,to))
+    @GetMapping("/export") fun export(@AuthenticationPrincipal u:UserDetails,@RequestParam projectId:UUID,@RequestParam from:LocalDate,@RequestParam to:LocalDate):ResponseEntity<ByteArray> {
+        val (selectedFrom,selectedTo)=com.starter.plugins.workflows.WorkflowExportOptions.dates(from,to)
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType("text/csv;charset=UTF-8")).header("Content-Disposition","attachment; filename=\"project-timesheets-$selectedFrom-$selectedTo.csv\"").header("Cache-Control","private, no-store").header("X-Content-Type-Options","nosniff").body(exports.csv(u.username,projectId,selectedFrom,selectedTo))
+    }
     @GetMapping("/totals") fun totals(@AuthenticationPrincipal u:UserDetails,@RequestParam projectId:UUID,@RequestParam from:LocalDate,@RequestParam to:LocalDate)=visibility.totals(u.username,projectId,from,to)
     @GetMapping fun list(@AuthenticationPrincipal u:UserDetails,@RequestParam from:LocalDate,@RequestParam to:LocalDate,@RequestParam(required=false) projectId:UUID?,@RequestParam(defaultValue="false") team:Boolean)=service.list(u.username,from,to,projectId,team)
     @PostMapping fun create(@AuthenticationPrincipal u:UserDetails,@RequestBody i:TimeEntryInput)=service.save(u.username,null,i)

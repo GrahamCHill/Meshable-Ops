@@ -14,7 +14,7 @@ import java.util.UUID
 @Component
 class MermaidPlugin : WorkspacePlugin {
     override val manifest = PluginManifest("mermaid","Mermaid diagrams","1.0.0","Create and maintain project diagrams from Mermaid text with a local preview.",
-        compatibleVersions=listOf("1.0.0"),extensions=setOf(PluginExtension.PAGE,PluginExtension.API,PluginExtension.DATABASE),
+        compatibleVersions=listOf("1.0.0","1.1.0"),extensions=setOf(PluginExtension.PAGE,PluginExtension.API,PluginExtension.DATABASE),
         categories=setOf("Development"),contextTargets=setOf("PROJECT"),hasAdminSettings=false,
         tables=listOf(PluginTable("plugin_mermaid_diagrams","Project diagram sources")))
 }

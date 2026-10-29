@@ -14,6 +14,7 @@ import java.util.UUID
 class WorkflowRunController(private val runs: WorkflowRunService,private val emails: WorkflowEmailService) {
     @GetMapping fun available(@AuthenticationPrincipal user: UserDetails) = runs.available(user.username)
     @GetMapping("/runs") fun list(@AuthenticationPrincipal user: UserDetails) = runs.list(user.username)
+    @GetMapping("/reviews") fun reviews(@AuthenticationPrincipal user: UserDetails) = runs.reviews(user.username)
     @PostMapping("/runs") fun start(@AuthenticationPrincipal user: UserDetails,@RequestBody request: WorkflowStartRequest) = runs.start(user.username,request.workflowId)
     @GetMapping("/runs/{id}") fun get(@AuthenticationPrincipal user: UserDetails,@PathVariable id: UUID) = runs.get(user.username,id)
     @PostMapping("/runs/{id}/advance") fun advance(@AuthenticationPrincipal user: UserDetails,@PathVariable id: UUID,@Valid @RequestBody request: WorkflowAdvanceRequest) = runs.advance(user.username,id,request)

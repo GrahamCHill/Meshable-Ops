@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component
 @Component
 class GoogleDrivePlugin:WorkspacePlugin {
     override val manifest=PluginManifest("google-drive","Google Drive","1.0.0","Browse a selected Google Drive folder with encrypted OAuth credentials.",
-        compatibleVersions=listOf("1.0.0"),extensions=setOf(PluginExtension.PAGE,PluginExtension.API,PluginExtension.SETTINGS),defaultRoles=setOf("ADMIN"),
+        compatibleVersions=listOf("1.0.0","1.1.0"),extensions=setOf(PluginExtension.PAGE,PluginExtension.API,PluginExtension.SETTINGS),defaultRoles=setOf("ADMIN"),
         categories=setOf("Files"),adminMenu=PluginAdminMenu("storage-sharing","Storage & sharing","Google Drive","cloud"),
         capabilities=mapOf("files.google-drive" to "Google Drive folder browsing"),runtimes=setOf(PluginRuntime.REACT,PluginRuntime.KOTLIN),
         settingsFields=listOf(PluginSettingField("clientId","Google OAuth client ID",required=true,maxLength=1000),

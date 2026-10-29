@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component
 class KanbanPlugin : WorkspacePlugin {
     override val manifest = PluginManifest("kanban", "Kanban boards", "1.6.0",
         "Project boards, sprints, assignments, reviews, comments, and Git repository links.", navigationLabel = "Boards",
-        compatibleVersions = listOf("1.0.0"), extensions = PluginExtension.entries.toSet(),
+        compatibleVersions = listOf("1.0.0", "1.1.0"), extensions = PluginExtension.entries.toSet(),
         menuItems = listOf(PluginMenuItem("boards", "Saved boards"), PluginMenuItem("guide", "Board guide")),
         tables = listOf(PluginTable("plugin_kanban_retrospectives", "Sprint retrospectives"), PluginTable("plugin_kanban_comments", "Card comments and mentions"), PluginTable("plugin_kanban_development_links", "Repository and PR links"), PluginTable("plugin_kanban_boards", "Boards and cards"), PluginTable("plugin_kanban_estimation", "Project estimation preferences")),
         settingsFields = listOf(PluginSettingField("storyPoints", "Enable story points", PluginFieldType.BOOLEAN, help = "Organisation default. Administrators can override this per project in these settings.", defaultValue = "true"),

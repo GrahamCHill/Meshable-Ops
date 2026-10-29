@@ -12,7 +12,9 @@ import java.time.Instant
 import java.util.UUID
 
 enum class WorkflowState { DRAFT, READY, ARCHIVED }
-enum class BlockKind { START, DOCUMENT, REVIEW, CONDITION, EMAIL, END }
+enum class BlockKind { START, DOCUMENT, REVIEW, CONDITION, CODE, AUDIT, EMAIL, END }
+enum class ConditionSource { INPUT, VALUE }
+enum class WorkflowEndOutcome { ALLOW, DENY }
 enum class Branch { NEXT, TRUE, FALSE }
 enum class ConditionOperator { EQUALS, NOT_EQUALS, CONTAINS, GREATER_THAN, IS_SET }
 data class WorkflowBlock(@field:Pattern(regexp = "[A-Za-z0-9_-]{1,80}") val id: String, val kind: BlockKind,
@@ -23,7 +25,12 @@ data class WorkflowBlock(@field:Pattern(regexp = "[A-Za-z0-9_-]{1,80}") val id: 
     @field:Email @field:Size(max = 254) val recipient: String = "", @field:Size(max = 200) val subject: String = "",
     val protection: DocumentEmailProtection = DocumentEmailProtection.PLAIN,
     @field:Size(max = 120) val field: String = "", val operator: ConditionOperator = ConditionOperator.EQUALS,
-    @field:Size(max = 500) val expected: String = "")
+    @field:Size(max = 500) val expected: String = "",
+    val allowInitiatorReview: Boolean = true, @field:Size(max = 20) val reviewerIds: Set<UUID> = emptySet(),
+    val auditRequired: Boolean = false, val conditionSource: ConditionSource = ConditionSource.INPUT,
+    @field:Size(max = 8192) val code: String = "", val endOutcome: WorkflowEndOutcome = WorkflowEndOutcome.ALLOW,
+    @field:Size(max = 300) val actionSelector: String = "",
+    @field:Size(max = 120) val contextField: String = "", @field:Size(max = 500) val contextEquals: String = "")
 data class WorkflowEdge(@field:Pattern(regexp = "[A-Za-z0-9_-]{1,80}") val id: String,
     @field:Size(max = 80) val source: String, @field:Size(max = 80) val target: String, val branch: Branch = Branch.NEXT)
 data class WorkflowGraph(@field:Valid @field:Size(max = 50) val nodes: List<WorkflowBlock>, @field:Valid @field:Size(max = 100) val edges: List<WorkflowEdge>)

@@ -71,7 +71,8 @@ class AnalyticsExport(private val analytics: AnalyticsService,private val projec
 class AnalyticsExportController(private val exports: AnalyticsExport) {
     @GetMapping("/{format}") fun download(@AuthenticationPrincipal user: UserDetails,@PathVariable pluginId: String,@PathVariable kind: AnalyticsContext,
         @PathVariable contextId: UUID,@PathVariable format: String,@RequestParam(required=false) linkId: UUID?): ResponseEntity<ByteArray> {
-        val type=AnalyticsExportFormat.entries.find {it.name.equals(format,true)} ?: throw BadRequestException("Choose CSV or PDF export")
+        val selectedFormat=com.starter.plugins.workflows.WorkflowExportOptions.format(format)
+        val type=AnalyticsExportFormat.entries.find {it.name.equals(selectedFormat,true)} ?: throw BadRequestException("Choose CSV or PDF export")
         val body=exports.download(user.username,AnalyticsProvider.from(pluginId),kind,contextId,type,linkId)
         return ResponseEntity.ok().contentType(if(type==AnalyticsExportFormat.PDF)MediaType.APPLICATION_PDF else MediaType("text","csv",Charsets.UTF_8))
             .header(HttpHeaders.CACHE_CONTROL,"no-store").header("X-Content-Type-Options","nosniff")

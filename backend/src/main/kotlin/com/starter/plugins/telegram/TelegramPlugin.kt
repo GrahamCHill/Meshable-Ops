@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component
 @Component
 class TelegramPlugin : WorkspacePlugin {
     override val manifest = PluginManifest("telegram", "Telegram", "1.0.0-a", "Post to approved Telegram chats and send private member notifications through linked bot chats.",
-        compatibleVersions = listOf("1.0.0"),
+        compatibleVersions = listOf("1.0.0", "1.1.0"),
         extensions = setOf(PluginExtension.API, PluginExtension.SETTINGS, PluginExtension.NOTIFICATIONS, PluginExtension.DATABASE), supportedRoles = setOf("ADMIN"),
         tables = listOf(PluginTable("plugin_telegram_identities", "Internal member Telegram links", setOf("ADMIN"), setOf("ADMIN"))), settingsFields = listOf(
             PluginSettingField("botToken", "Bot token", PluginFieldType.SECRET, true, "Obtain the token from BotFather.", 2048),

@@ -15,6 +15,17 @@ class WorkflowValidation {
         if (graph.nodes.any { it.documentId != null && it.documentId !in documents }) bad("Select block documents from the workflow attachments")
         if (graph.nodes.any { it.field.isNotBlank() && !Regex("[A-Za-z][A-Za-z0-9_.-]{0,119}").matches(it.field) }) bad("Use a named data field in conditions")
         if (graph.nodes.any { it.field.split('.').any { part -> part in setOf("__proto__","prototype","constructor") } }) bad("Use a business data-field name")
+        graph.nodes.forEach { node ->
+            if (node.actionSelector.isNotEmpty() && node.kind != BlockKind.START) bad("Plugin triggers belong on the start step")
+            if (node.actionSelector.length > 300 || node.contextField.length > 120 || node.contextEquals.length > 500) bad("Trigger configuration is too long")
+            if (node.contextField.isNotEmpty() && (!node.contextField.startsWith("trigger.") || node.contextEquals.isBlank())) bad("Choose a trigger field and matching value")
+            if (node.actionSelector.isNotEmpty() && graph.nodes.any { it.kind == BlockKind.EMAIL }) bad("Action-triggered workflows must finish before delivery; remove email steps")
+            if (node.reviewerIds.size > 20) bad("Choose at most 20 reviewers")
+            if (node.code.length > 8192) bad("Code steps support up to 8192 characters")
+            if (ready && node.kind == BlockKind.CODE && node.code.isNotBlank()) WorkflowCode.validate(node.code)
+            if (ready && node.kind == BlockKind.CODE && node.code.isBlank()) bad("Code steps need a run(context) module")
+            if (ready && node.kind == BlockKind.REVIEW && !node.allowInitiatorReview && node.reviewerIds.isEmpty()) bad("Choose reviewers when a different approver is required")
+        }
         if (graph.edges.any { it.source !in nodes || it.target !in nodes || it.source == it.target }) bad("Connect two different existing blocks")
         if (graph.edges.map { it.source to it.branch }.distinct().size != graph.edges.size) bad("Each output can connect to one next block")
         val outgoing = graph.edges.groupBy { it.source }

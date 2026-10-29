@@ -14,7 +14,7 @@ abstract class OperationsPlugin:WorkspacePlugin {
     }
 }
 private fun manifest(id:String,name:String,description:String,category:String,settings:List<PluginSettingField> = emptyList(),requires:Set<String> = emptySet(),extends:Set<String> = emptySet(),capabilities:Map<String,String> = emptyMap(),menus:List<PluginMenuItem> = emptyList(),notify:Boolean=false)=PluginManifest(
-    id,name,"1.0.0",description,compatibleVersions=listOf("1.0.0"),
+    id,name,"1.0.0",description,compatibleVersions=listOf("1.0.0","1.1.0"),
     extensions=setOf(PluginExtension.PAGE,PluginExtension.API,PluginExtension.DATABASE,PluginExtension.SETTINGS)+(if(notify)setOf(PluginExtension.NOTIFICATIONS)else emptySet()),
     tables=listOf(PluginTable(OperationsStore.table(id),"$name records")),settingsFields=settings,categories=setOf(category),requires=requires,extends=extends,
     capabilities=capabilities,menuItems=menus,adminMenu=PluginAdminMenu("operations","Operations",name,if(category=="Finance")"briefcase" else "calendar"),
